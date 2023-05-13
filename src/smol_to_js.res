@@ -31,7 +31,7 @@ let string_of_constant = c => {
 }
 
 let string_of_list = ss => {
-  "(" ++ String.concat(" ", ss) ++ ")"
+  "(" ++ String.concat(", ", ss) ++ ")"
 }
 
 let string_of_identifier = x => {
@@ -39,7 +39,14 @@ let string_of_identifier = x => {
   let matchFn = (matchPart, _offset, _wholeString) => {
     Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
   }
-  Js.String2.unsafeReplaceBy0(x, re, matchFn)
+  let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
+
+  // add `$` to the beginning of reserved words
+  if x == "var" {
+    "$var"
+  } else {
+    x
+  }
 }
 
 let string_of_def_var = (x, e) => {
@@ -248,6 +255,19 @@ let smol_to_js: (js_ctx, string) => string = (ctx, smol_program) => {
   }
 }
 
+let translate_results: string => string = results => {
+  let ts = results->Parse_smol.parse_terms
+  String.concat(
+    "\n",
+    ts->map(t => {
+      switch t {
+      | Def(_) => raise(Impossible("expecting results"))
+      | Exp(e) => `${string_of_expr(Expr(false), e)}`
+      }
+    }),
+  )
+}
+
 let translate_program: string => string = program => {
   let ts = program->Parse_smol.parse_terms
   String.concat(
@@ -255,7 +275,12 @@ let translate_program: string => string = program => {
     ts->map(t => {
       switch t {
       | Def(_) => string_of_term(t)
-      | Exp(e) => `console.log(${string_of_expr(Expr(false), e)});`
+      | Exp(e) =>
+        switch e.it {
+        | Set(_x, _e) => `${string_of_expr(Expr(false), e)};`
+        | AppPrm(VecSet, _args) => `${string_of_expr(Expr(false), e)};`
+        | _ => `console.log(${string_of_expr(Expr(false), e)});`
+        }
       }
     }),
   )

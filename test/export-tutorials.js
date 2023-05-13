@@ -1,3 +1,5 @@
+// This file extract programs from `tutorials.js`.
+
 import { tutorials } from "./tutorials.js";
 import fs from 'fs';
 
@@ -12,7 +14,9 @@ function writeProgram(tutorialName, questionName, program, answer) {
 
 for (const tutorialName in tutorials) {
     const tutorial = tutorials[tutorialName];
-    let testText = "";
+    if (tutorialName == "heap") {
+        continue;
+    }
     for (const k in tutorial.questions) {
         const q = tutorial.questions[k];
         if ("program" in q) {

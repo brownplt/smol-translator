@@ -5,7 +5,9 @@
   "type": "module",
   "main": "src/index.bs.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "prepare-test": "node test/main.js",
+    "run-test": "python3 /Users/lukc/Documents/GitHub/smol-translator/test/tester.py",
+    "test": "npm run prepare-test && npm run run-test",
     "res:build": "rescript",
     "res:dev": "rescript build -with-deps -w"
   },

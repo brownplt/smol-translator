@@ -26,7 +26,7 @@ function string_of_constant(c) {
 }
 
 function string_of_list(ss) {
-  return "(" + $$String.concat(" ", ss) + ")";
+  return "(" + $$String.concat(", ", ss) + ")";
 }
 
 function string_of_identifier(x) {
@@ -34,7 +34,12 @@ function string_of_identifier(x) {
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
   };
-  return x.replace(re, matchFn);
+  var x$1 = x.replace(re, matchFn);
+  if (x$1 === "var") {
+    return "$var";
+  } else {
+    return x$1;
+  }
 }
 
 function string_of_def_var(x, e) {
@@ -297,6 +302,14 @@ function string_of_expr(ctx, e) {
   }
 }
 
+function string_of_term(t) {
+  if (t.TAG === /* Def */0) {
+    return string_of_def(t._0);
+  } else {
+    return string_of_expr(/* Stat */1, t._0);
+  }
+}
+
 function string_of_def(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -306,24 +319,6 @@ function string_of_def(d) {
   } else {
     return string_of_def_fun(string_of_identifier(Format.unannotate(match._0)), Belt_List.map(Belt_List.map(match._1, Format.unannotate), string_of_identifier), string_of_block(/* Return */2, match._2));
   }
-}
-
-function string_of_xe(xe) {
-  return [
-          string_of_identifier(xe[0].it),
-          string_of_expr(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
-function string_of_eb(ctx, eb) {
-  return [
-          string_of_expr(/* Expr */{
-                _0: false
-              }, eb[0]),
-          string_of_block(ctx, eb[1])
-        ];
 }
 
 function string_of_block(ctx, b) {
@@ -336,12 +331,22 @@ function string_of_block(ctx, b) {
                 ]));
 }
 
-function string_of_term(t) {
-  if (t.TAG === /* Def */0) {
-    return string_of_def(t._0);
-  } else {
-    return string_of_expr(/* Stat */1, t._0);
-  }
+function string_of_eb(ctx, eb) {
+  return [
+          string_of_expr(/* Expr */{
+                _0: false
+              }, eb[0]),
+          string_of_block(ctx, eb[1])
+        ];
+}
+
+function string_of_xe(xe) {
+  return [
+          string_of_identifier(xe[0].it),
+          string_of_expr(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function string_of_ob(ctx, ob) {
@@ -409,16 +414,48 @@ function smol_to_js(ctx, smol_program) {
   }
 }
 
+function translate_results(results) {
+  var ts = Parse_smol.parse_terms(results);
+  return $$String.concat("\n", Belt_List.map(ts, (function (t) {
+                    if (t.TAG !== /* Def */0) {
+                      return "" + string_of_expr(/* Expr */{
+                                  _0: false
+                                }, t._0) + "";
+                    }
+                    throw {
+                          RE_EXN_ID: Format.Impossible,
+                          _1: "expecting results",
+                          Error: new Error()
+                        };
+                  })));
+}
+
 function translate_program(program) {
   var ts = Parse_smol.parse_terms(program);
   return $$String.concat("\n", Belt_List.map(ts, (function (t) {
                     if (t.TAG === /* Def */0) {
                       return string_of_term(t);
-                    } else {
-                      return "console.log(" + string_of_expr(/* Expr */{
-                                  _0: false
-                                }, t._0) + ");";
                     }
+                    var e = t._0;
+                    var match = e.it;
+                    switch (match.TAG | 0) {
+                      case /* Set */2 :
+                          return "" + string_of_expr(/* Expr */{
+                                      _0: false
+                                    }, e) + ";";
+                      case /* AppPrm */5 :
+                          if (match._0 === 12) {
+                            return "" + string_of_expr(/* Expr */{
+                                        _0: false
+                                      }, e) + ";";
+                          }
+                          break;
+                      default:
+                        
+                    }
+                    return "console.log(" + string_of_expr(/* Expr */{
+                                _0: false
+                              }, e) + ");";
                   })));
 }
 
@@ -448,6 +485,7 @@ export {
   string_of_top_level ,
   as_many_then_one ,
   smol_to_js ,
+  translate_results ,
   translate_program ,
 }
 /* No side effect */

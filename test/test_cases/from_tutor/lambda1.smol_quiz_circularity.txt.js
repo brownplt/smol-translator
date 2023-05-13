@@ -1,0 +1,11 @@
+#0='#
+#0#(#0#)
+;;
+an
+mpair
+whose
+elements
+refer
+back
+to
+itself
