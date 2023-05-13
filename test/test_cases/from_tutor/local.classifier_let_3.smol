@@ -1,0 +1,4 @@
+(let ([h (lambda (x)
+           (or (equal? x 64)
+               (h (* x 2))))])
+  (h 2))

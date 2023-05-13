@@ -1,0 +1,4 @@
+(defvar var (mvec 0))
+(defvar vec (mvec 2 var 3))
+(set! var 1)
+vec

@@ -1,0 +1,2 @@
+(defvar x 3)
+(defvar v (mvec 1 2 x))

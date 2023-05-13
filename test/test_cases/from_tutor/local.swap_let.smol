@@ -1,0 +1,6 @@
+(defvar a 1)
+(defvar b 2)
+
+(let ([a (* b 10)]
+      [b (* a 10)])
+  (mvec a b))

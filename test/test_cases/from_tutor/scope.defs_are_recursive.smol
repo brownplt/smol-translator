@@ -1,0 +1,4 @@
+(deffun (multr s)
+  (* s r))
+(defvar r 3)
+(multr 40)

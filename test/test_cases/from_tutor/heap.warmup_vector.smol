@@ -1,0 +1,3 @@
+(defvar x (mvec 2))
+(vec-set! x 0 33)
+x

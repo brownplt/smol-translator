@@ -1,0 +1,7 @@
+(defvar it 100)
+(deffun (fun)
+  (deffun (what-is-it) it)
+  (defvar it 1)
+  (what-is-it))
+
+(fun)

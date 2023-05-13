@@ -1,0 +1,7 @@
+(defvar a 30)
+(defvar b
+  (begin
+    (set! a (* a 2))
+    a))
+a
+b

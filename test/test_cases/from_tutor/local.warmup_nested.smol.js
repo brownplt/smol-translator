@@ -1,0 +1,1 @@
+console.log(((a)=>{return ((b)=>{return a - b;})(1);})(100));

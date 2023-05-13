@@ -1,0 +1,3 @@
+(let ([foo 123]
+      [get-foo (lambda () foo)])
+  (get-foo))

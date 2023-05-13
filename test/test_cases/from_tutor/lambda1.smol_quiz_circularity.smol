@@ -1,0 +1,4 @@
+(defvar x (mvec 2 3))
+(set-right! x x)
+(set-left! x x)
+x
