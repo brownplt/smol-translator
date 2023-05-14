@@ -1,5 +1,5 @@
-(deffun (f)
-  a)
-(defvar b (f))
-(defvar a 12)
-b
+(deffun (getx)
+  x)
+(defvar y (getx))
+(defvar x 12)
+y

@@ -1,2 +1,2 @@
-(defvar v (mvec (mvec 10 20 30) (mvec 40 50 60) (mvec 70 80 90)))
-(vec-ref (vec-ref v 2) 1)
+(defvar v (mvec (mvec 10 20) (mvec 30 40)))
+(vec-ref (vec-ref v 1) 0)

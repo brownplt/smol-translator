@@ -1,4 +1,4 @@
-(deffun (average x y) (/ (+ x y) 2))
-(deffun (fun1) average)
-(defvar x (fun1))
-(x 200 400)
+(deffun (add1 x) (+ x 1))
+(deffun (g) add1)
+(defvar f (g))
+(f 100)

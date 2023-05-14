@@ -1,9 +1,9 @@
-let it = 100;
-function whatIsIt() {
-  return it;
+let x = 1;
+function getX() {
+  return x;
 }
-function fun() {
-  let it = 1;
-  return whatIsIt();
+function main() {
+  let x = 2;
+  return getX();
 }
-console.log(fun());
+console.log(main());

@@ -1,6 +1,6 @@
-let a = 2;
-let fun = function (b) {
-  return a + b;
+let x = 1;
+let f = function (y) {
+  return x + y;
 };
-a = 3;
-console.log(fun(a));
+x = 2;
+console.log(f(x));

@@ -1,6 +1,7 @@
-function g(a) {
-  return function (b) {
-    return a + b;
+function f(x) {
+  return function (y) {
+    return x + y;
   };
 }
-console.log(g(3)(2));
+let x = 0;
+console.log(f(2)(1));

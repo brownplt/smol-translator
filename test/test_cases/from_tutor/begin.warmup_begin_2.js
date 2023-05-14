@@ -1,2 +1,2 @@
-let res = ((67), ((123), 45));
-console.log(res);
+let z = ((123, 45), (67));
+console.log(z);

@@ -1,2 +1,2 @@
-foo = 42;
-console.log(foo);
+foobar = 2;
+console.log(foobar);

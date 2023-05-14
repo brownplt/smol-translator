@@ -1,10 +1,10 @@
-let a = 1;
-function f() {
-  function g() {
-    return a;
+let x = 2;
+function main() {
+  function getx() {
+    return x;
   }
-  let b = g();
-  let a = 2;
-  return b;
+  let y = getx();
+  let x = 3;
+  return y;
 }
-console.log(f());
+console.log(main());

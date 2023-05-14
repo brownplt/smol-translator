@@ -1,2 +1,2 @@
-(deffun (g n m) n + m)
-(g 17 23)
+(deffun (f a b) a + b)
+(f 5 10)

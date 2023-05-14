@@ -1,3 +1,3 @@
-let discount = 10;
-discount = 10 + 15;
-console.log(discount);
+let rent = 100;
+rent = 100 * 2;
+console.log(rent);

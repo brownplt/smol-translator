@@ -1,7 +1,7 @@
-let var5 = 1;
-function updateVar(var6) {
-  var5 = 2;
-  return var6;
+let x = 12;
+function setAndReturn(y) {
+  x = 0;
+  return y;
 }
-console.log(updateVar(var5));
-console.log(var5);
+console.log(setAndReturn(x));
+console.log(x);

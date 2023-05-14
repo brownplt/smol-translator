@@ -1,3 +1,3 @@
-let x = [ 4, 5, 6 ];
-x[2] = [ 10, 9, 8 ];
-console.log(x[4]);
+let m = [ 1, 2 ];
+m[1] = [ 3, 4 ];
+console.log(m[2]);

@@ -1,10 +1,10 @@
-function fun(A) {
-  function whatIsA() {
-    return A;
+function makeGetter(x) {
+  function getX() {
+    return x;
   }
-  return whatIsA;
+  return getX;
 }
-let whatIsA = fun(22);
-let whatIsB = fun(33);
-console.log(whatIsA());
-console.log(whatIsB());
+let getA = makeGetter(1);
+let getB = makeGetter(2);
+console.log(getA());
+console.log(getB());

@@ -1,6 +1,6 @@
-function f1() {
-  return 173;
+function get() {
+  return 42;
 }
-let f2 = f1;
-let f3 = f2;
-console.log(f3() * 10);
+let f = get;
+let g = f;
+console.log(g());

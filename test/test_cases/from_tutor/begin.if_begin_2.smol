@@ -1,8 +1,8 @@
-(defvar x 7)
-(deffun (f n)
-  (if (> n 100)
+(defvar counter 0)
+(deffun (factorial n)
+  (if (equal? n 0)
       (begin
         1
-        (set! x (+ x 1)))
-      (* (f (+ n 1)) n)))
-(f 45)
+        (set! counter (+ counter 1)))
+      (* (factorial (- n 1)) n)))
+(factorial 2)

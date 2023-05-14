@@ -1,2 +1,2 @@
-let foo = 123 / 0;
-console.log(456);
+let x = 1 / 0;
+console.log(42);

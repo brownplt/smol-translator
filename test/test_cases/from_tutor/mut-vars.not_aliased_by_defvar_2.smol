@@ -1,5 +1,5 @@
-(defvar zzz 1)
-(defvar abc zzz)
-(set! abc 2)
-zzz
-abc
+(defvar m 40)
+(defvar n m)
+(set! n 22)
+m
+n

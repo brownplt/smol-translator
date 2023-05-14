@@ -1,4 +1,4 @@
-let $var = [ 0 ];
-let vec = [ 2, $var, 3 ];
-$var[0] = 1;
-console.log(vec);
+let x = [ 3 ];
+let v = [ 1, 2, x ];
+x[0] = 4;
+console.log(v);

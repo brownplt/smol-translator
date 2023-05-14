@@ -1,10 +1,10 @@
-(defvar a 2)
-(defvar b a)
-(defvar c
+(defvar x 0)
+(defvar y x)
+(defvar z
   (begin
-    (set! a (* a 3))
-    (set! b 123)
-    a))
-a
-b
-c
+    (set! x (+ x 1))
+    (set! y 4)
+    x))
+x
+y
+z

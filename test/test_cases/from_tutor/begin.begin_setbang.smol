@@ -1,7 +1,7 @@
-(defvar a 30)
-(defvar b
+(defvar x 0)
+(defvar y
   (begin
-    (set! a (* a 2))
-    a))
-a
-b
+    (set! x (+ x 1))
+    x))
+x
+y

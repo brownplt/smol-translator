@@ -1,6 +1,6 @@
-let var1 = [ 10, 17 ];
-function updateVar(var2) {
-  return var2[0] = 20;
+let x = [ 1, 0 ];
+function f(y) {
+  return y[0] = 173;
 }
-console.log(updateVar(var1));
-console.log(var1);
+console.log(f(x));
+console.log(x);

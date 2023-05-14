@@ -1,9 +1,8 @@
-(defvar x 0)
-(deffun (fib n)
-  (if (<= n 1)
+(defvar counter 0)
+(deffun (factorial n)
+  (if (equal? n 0)
       1
       (begin
-        (set! x (+ x 1))
-        (+ (fib (- n 1))
-           (fib (- n 2))))))
-(fib 2)
+        (set! counter (+ counter 1))
+        (* (factorial (- n 1)) n))))
+(factorial 2)

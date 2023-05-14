@@ -1,3 +1,3 @@
-(deffun (prod n n)
-  (* n n))
-(prod 2 3)
+(deffun (f x x)
+  (+ x x))
+(f 1 2)

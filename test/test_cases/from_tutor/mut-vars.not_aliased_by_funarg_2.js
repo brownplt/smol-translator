@@ -1,6 +1,6 @@
-let s = 1;
-function updateVar(t) {
-  t = 2;
-  return s;
+let x = 12;
+function setAndReturn(y) {
+  y = 0;
+  return x;
 }
-console.log(updateVar(s));
+console.log(setAndReturn(x));

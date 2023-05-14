@@ -1,4 +1,4 @@
-let mv = [ 13 ];
-let mv2 = [ mv, mv ];
-mv2[0][0] = 42;
-console.log(mv2[1]);
+let v = [ 1, 2, 3 ];
+let vv = [ v, v ];
+vv[1][0] = 10;
+console.log(vv[0]);

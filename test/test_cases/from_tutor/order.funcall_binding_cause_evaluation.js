@@ -1,4 +1,4 @@
-function func(foo) {
-  return 89;
+function f(x) {
+  return 42;
 }
-console.log(func(67 / 0));
+console.log(f(1 / 0));

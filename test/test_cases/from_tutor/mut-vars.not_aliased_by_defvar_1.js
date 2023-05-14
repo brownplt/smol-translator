@@ -1,5 +1,5 @@
-let var1 = 1;
-let var2 = var1;
-var1 = 2;
-console.log(var1);
-console.log(var2);
+let x = 12;
+let y = x;
+x = 0;
+console.log(x);
+console.log(y);

@@ -1,6 +1,6 @@
-let r = 3;
-function multr(s) {
-  let r = 2;
-  return s * r;
+let y = 100;
+function addy(x) {
+  let y = 200;
+  return x + y;
 }
-console.log(multr(5));
+console.log(addy(2));

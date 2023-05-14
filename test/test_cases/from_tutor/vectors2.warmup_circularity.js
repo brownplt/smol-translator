@@ -1,3 +1,3 @@
-let x = [ 4, 2, 5, 6 ];
-x[2] = x;
+let x = [ 1, 0, 2 ];
+x[1] = x;
 console.log(x.length);

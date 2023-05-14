@@ -1,10 +1,10 @@
-let a = 2;
-function makeFun() {
-  function addA(b) {
-    return a + b;
+let x = 1;
+function makeF() {
+  function addx(y) {
+    return x + y;
   }
-  return addA;
+  return addx;
 }
-let fun = makeFun();
-a = 100;
-console.log(fun(a));
+let f = makeF();
+x = 2;
+console.log(f(x));

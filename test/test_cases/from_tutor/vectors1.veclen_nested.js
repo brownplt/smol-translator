@@ -1,1 +1,1 @@
-console.log([ 1, [ 2, 3 ], 4 ].length);
+console.log([ 4, [ 5, 6 ] ].length);

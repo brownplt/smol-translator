@@ -1,8 +1,8 @@
-function average(x, y) {
-  return (x + y) / 2;
+function add1(x) {
+  return x + 1;
 }
-function fun1() {
-  return average;
+function g() {
+  return add1;
 }
-let x = fun1();
-console.log(x(200, 400));
+let f = g();
+console.log(f(100));

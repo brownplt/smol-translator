@@ -1,7 +1,7 @@
-(defvar it 100)
-(deffun (what-is-it) it)
+(defvar x 1)
+(deffun (get-x) x)
 
-(deffun (fun)
-  (defvar it 1)
-  (what-is-it))
-(fun)
+(deffun (main)
+  (defvar x 2)
+  (get-x))
+(main)

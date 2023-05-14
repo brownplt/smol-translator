@@ -1,1 +1,1 @@
-(vec-len (mvec 1 (mvec 2 3) 4))
+(vec-len (mvec 4 (mvec 5 6)))

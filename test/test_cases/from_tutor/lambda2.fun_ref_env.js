@@ -1,10 +1,10 @@
-function f(n) {
-  function g(m) {
-    return m * n;
+function makeAddy(y) {
+  function addy(x) {
+    return x + y;
   }
-  return g;
+  return addy;
 }
-let fun1 = f(10);
-let fun2 = f(100);
-console.log(fun1(4));
-console.log(fun2(4));
+let f = makeAddy(10);
+let g = makeAddy(50);
+console.log(f(2));
+console.log(g(2));

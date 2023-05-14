@@ -1,6 +1,6 @@
-let $var = 1;
-function proc() {
-  return $var = 2;
+let x = 12;
+function f() {
+  return x = 0;
 }
-console.log(proc());
-console.log($var);
+console.log(f());
+console.log(x);

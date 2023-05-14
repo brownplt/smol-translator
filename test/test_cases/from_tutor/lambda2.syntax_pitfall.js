@@ -1,6 +1,6 @@
-function g(n, m) {
-  n;
-  +;
-  return m;
+function f(a, b) {
+  a;
+  function(x, y) { return x + y; };
+  return b;
 }
-console.log(g(17, 23));
+console.log(f(5, 10));

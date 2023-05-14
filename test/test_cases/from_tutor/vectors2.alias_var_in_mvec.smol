@@ -1,4 +1,4 @@
-(defvar var 0)
-(defvar vec (mvec 2 var 3))
-(set! var 1)
-vec
+(defvar x 3)
+(defvar v (mvec 1 2 x))
+(set! x 4)
+v

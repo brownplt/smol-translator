@@ -1,6 +1,6 @@
-(defvar a 2)
-(defvar fun
-  (lambda (b)
-    (+ a b)))
-(set! a 3)
-(fun a)
+(defvar x 1)
+(defvar f
+  (lambda (y)
+    (+ x y)))
+(set! x 2)
+(f x)

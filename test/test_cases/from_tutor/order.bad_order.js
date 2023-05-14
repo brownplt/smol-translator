@@ -1,4 +1,4 @@
-let b = 20 * a;
-let a = 10;
-console.log(a);
-console.log(b);
+let y = x + 2;
+let x = 1;
+console.log(x);
+console.log(y);

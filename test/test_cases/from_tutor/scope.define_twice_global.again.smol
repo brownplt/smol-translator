@@ -1,0 +1,3 @@
+(defvar foobar 10)
+(defvar foobar 99)
+foobar

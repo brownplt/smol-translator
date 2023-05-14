@@ -44,6 +44,14 @@ let string_of_identifier = x => {
   // add `$` to the beginning of reserved words
   if x == "var" {
     "$var"
+  } else if x == "+" {
+    "function(x, y) { return x + y; }"
+  } else if x == "-" {
+    "function(x, y) { return x - y; }"
+  } else if x == "*" {
+    "function(x, y) { return x * y; }"
+  } else if x == "/" {
+    "function(x, y) { return x / y; }"
   } else {
     x
   }

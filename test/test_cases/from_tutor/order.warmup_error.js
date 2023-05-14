@@ -1,1 +1,1 @@
-console.log(1024 / 0);
+console.log(1 / 0);

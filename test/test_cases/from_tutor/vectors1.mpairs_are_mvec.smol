@@ -1,2 +1,2 @@
-(defvar mv (mvec 5 30))
-(right mv)
+(defvar mv (mvec 4 5))
+(left mv)

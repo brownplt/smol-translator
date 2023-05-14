@@ -37,6 +37,14 @@ function string_of_identifier(x) {
   var x$1 = x.replace(re, matchFn);
   if (x$1 === "var") {
     return "$var";
+  } else if (x$1 === "+") {
+    return "function(x, y) { return x + y; }";
+  } else if (x$1 === "-") {
+    return "function(x, y) { return x - y; }";
+  } else if (x$1 === "*") {
+    return "function(x, y) { return x * y; }";
+  } else if (x$1 === "/") {
+    return "function(x, y) { return x / y; }";
   } else {
     return x$1;
   }

@@ -1,3 +1,3 @@
-let foobar = 10;
-let foobar = 99;
-console.log(foobar);
+let x = 1;
+let x = 2;
+console.log(x);

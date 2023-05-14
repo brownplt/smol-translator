@@ -1,4 +1,4 @@
-(deffun (g a)
-  (lambda (b) (+ a b)))
-
-((g 3) 2)
+(deffun (f x)
+  (lambda (y) (+ x y)))
+(defvar x 0)
+((f 2) 1)

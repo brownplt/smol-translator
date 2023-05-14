@@ -37,7 +37,7 @@ for (const tutorialName in tutorials) {
         const q = tutorial.questions[k];
         if ("again" in q) {
             const { program, answer } = q.again;
-            writeProgram(tutorialName, k, program, answer);
+            writeProgram(tutorialName, `${k}.again`, program, answer);
         }
     }
 }

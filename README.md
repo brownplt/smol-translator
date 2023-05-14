@@ -1,6 +1,10 @@
 # smol-translator
 
-Translate SMoL programs to other programming languages
+Translate SMoL to other programming languages. Translation to JavaScript is ready.
+See [the SMoL vs JavaScript section](#smol-vs-javascript) for limitations and
+known incompatibilities between the languages.
+Translation to Python is WIP. See [the SMoL vs JavaScript section](#smol-vs-javascript) for limitations and
+known incompatibilities between the languages.
 
 ## Test Suite
 
@@ -9,3 +13,22 @@ Tested with almost all programs from the SMoL Tutor. The only exceptions are:
 - Programs from the heap tutorial. This tutorial is all about heap structure, so expected answers are NOT program outputs.
 - Programs from the local tutorial. This tutorial is all about local binding forms, which doesn't apply to many languages.
 - Programs where the expected output involve `@`. These programs are, again, testing heap structures.
+
+## SMoL vs JavaScript
+
+Every SMoL program can be translated to JavaScript. The translation is mostly straightforward,
+except that `let` expressions (in generally) must be turned into [Immediately Invoked Function Expressions](https://developer.mozilla.org/en-US/docs/Glossary/IIFE).
+
+Program outputs might differ slightly after the translation due to the following language differences:
+
+- In JavaScript, division by zero produces `Infinity` or a number rather than an error.
+- Variable mutation (e.g., `x = 2`) produces the new value (in this case, `2`) rather than a none/void/unit value.
+- Indexing an array (known as "vector" in SMoL) outside its index range (e.g., `[1, 2][99]`) produces the `undefined` value rather than an error.
+
+## SMoL vs Python
+
+Many SMoL program can be translated to idiomatic Python. However, we find it difficult to translate the following language constructs:
+
+- multi-term `lambda` expressions: Python `lambda` must contain exactly one term; and the term must be an expression.
+- `let` expressions: Python provides nothing similar enough to `let` expressions; we also can't translate `let` to function application
+  as [we did for JavaScript](#smol-vs-javascript) because the aforementioned limitation of Python `lambda`.

@@ -1,9 +1,9 @@
-function fun() {
-  let it = 32;
-  function whatIsIt() {
-    return it;
+function makeGetter() {
+  let x = 1;
+  function getX() {
+    return x;
   }
-  return whatIsIt;
+  return getX;
 }
-let whatIsIt = fun();
-console.log(whatIsIt());
+let getX = makeGetter();
+console.log(getX());

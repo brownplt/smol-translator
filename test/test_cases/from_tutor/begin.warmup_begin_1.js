@@ -1,2 +1,2 @@
-let bval = (7, 6, 5);
-console.log(bval);
+let x = (2, 3, 4);
+console.log(x);

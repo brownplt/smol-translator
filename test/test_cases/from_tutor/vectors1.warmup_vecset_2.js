@@ -1,3 +1,3 @@
-let v = [ 23 ];
-v[0] = 66;
-console.log(v);
+let x = [ 2 ];
+x[0] = 10;
+console.log(x);

@@ -1,4 +1,4 @@
-(deffun (multr s)
-  (defvar r 2)
-  (* s r))
-(* (multr 5) r)
+(deffun (addy x)
+  (defvar y 200)
+  (+ x y))
+(+ (addy 2) y)

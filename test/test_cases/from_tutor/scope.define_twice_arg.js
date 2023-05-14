@@ -1,4 +1,4 @@
-function prod(n, n) {
-  return n * n;
+function f(x, x) {
+  return x + x;
 }
-console.log(prod(2, 3));
+console.log(f(1, 2));

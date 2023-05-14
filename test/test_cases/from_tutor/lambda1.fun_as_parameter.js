@@ -1,7 +1,7 @@
-function ffx(f, x) {
+function twice(f, x) {
   return f(f(x));
 }
-function add1(x) {
-  return x + 1;
+function double(x) {
+  return x + x;
 }
-console.log(ffx(add1, 1));
+console.log(twice(double, 1));

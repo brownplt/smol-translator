@@ -1,6 +1,6 @@
-let a = 2;
-let b = a;
-let c = (a = a * 3, b = 123, a);
-console.log(a);
-console.log(b);
-console.log(c);
+let x = 0;
+let y = x;
+let z = (x = x + 1, y = 4, x);
+console.log(x);
+console.log(y);
+console.log(z);

@@ -1,0 +1,5 @@
+(defvar zzz 1)
+(defvar abc zzz)
+(set! abc 2)
+zzz
+abc

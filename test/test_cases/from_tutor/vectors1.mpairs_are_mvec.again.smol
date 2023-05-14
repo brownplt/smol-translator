@@ -1,0 +1,2 @@
+(defvar mv (mvec 5 30))
+(right mv)

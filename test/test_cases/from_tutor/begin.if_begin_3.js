@@ -1,5 +1,5 @@
-let x = 0;
-function fib(n) {
-  return (n <= 1 ? 1 : (x = x + 1, fib(n - 1) + fib(n - 2)));
+let counter = 0;
+function factorial(n) {
+  return (equal?(n, 0) ? 1 : (counter = counter + 1, factorial(n - 1) * n));
 }
-console.log(fib(2));
+console.log(factorial(2));

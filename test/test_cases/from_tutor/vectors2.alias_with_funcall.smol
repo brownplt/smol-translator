@@ -1,5 +1,5 @@
-(defvar var1 (mvec 10 17))
-(deffun (update-var var2)
-  (vec-set! var2 0 20))
-(update-var var1)
-var1
+(defvar x (mvec 1 0))
+(deffun (f y)
+  (vec-set! y 0 173))
+(f x)
+x

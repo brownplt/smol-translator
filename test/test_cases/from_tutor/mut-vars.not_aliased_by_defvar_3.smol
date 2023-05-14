@@ -1,5 +1,5 @@
-(defvar c 2)
-(defvar d (* c 3))
-(set! c 4)
-c
-d
+(defvar x 1)
+(defvar y (+ x 100))
+(set! x 2)
+x
+y

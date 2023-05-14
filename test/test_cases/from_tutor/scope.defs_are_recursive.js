@@ -1,5 +1,5 @@
-function multr(s) {
-  return s * r;
+function addy(x) {
+  return x + y;
 }
-let r = 3;
-console.log(multr(40));
+let y = 1;
+console.log(addy(2));

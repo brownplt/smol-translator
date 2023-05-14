@@ -1,6 +1,6 @@
-function f() {
-  return a;
+function getx() {
+  return x;
 }
-let b = f();
-let a = 12;
-console.log(b);
+let y = getx();
+let x = 12;
+console.log(y);

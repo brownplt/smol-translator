@@ -1,5 +1,5 @@
-let x = 7;
-function f(n) {
-  return (n > 100 ? (1, x = x + 1) : f(n + 1) * n);
+let counter = 0;
+function factorial(n) {
+  return (equal?(n, 0) ? (1, counter = counter + 1) : factorial(n - 1) * n);
 }
-console.log(f(45));
+console.log(factorial(2));

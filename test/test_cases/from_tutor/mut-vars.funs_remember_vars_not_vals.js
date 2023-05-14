@@ -1,10 +1,10 @@
-let tmp = 4;
-function lookup() {
-  return tmp;
+let x = 1;
+function getx() {
+  return x;
 }
-function update(val) {
-  return tmp = val;
+function setx(newVal) {
+  return x = newVal;
 }
-console.log(lookup());
-console.log(update(3));
-console.log(lookup());
+console.log(getx());
+console.log(setx(2));
+console.log(getx());

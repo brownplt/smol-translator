@@ -1,4 +1,4 @@
-(defvar a 10)
-(defvar b (* 20 a))
-a
-b
+(defvar x 1)
+(defvar y (+ x 2))
+x
+y

@@ -1,5 +1,5 @@
-let zzz = 1;
-let abc = zzz;
-abc = 2;
-console.log(zzz);
-console.log(abc);
+let m = 40;
+let n = m;
+n = 22;
+console.log(m);
+console.log(n);

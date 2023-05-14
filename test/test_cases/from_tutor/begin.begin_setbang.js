@@ -1,4 +1,4 @@
-let a = 30;
-let b = (a = a * 2, a);
-console.log(a);
-console.log(b);
+let x = 0;
+let y = (x = x + 1, x);
+console.log(x);
+console.log(y);

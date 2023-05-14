@@ -1,4 +1,4 @@
-(deffun (f1) 173)
-(defvar f2 f1)
-(defvar f3 f2)
-(* (f3) 10)
+(deffun (get) 42)
+(defvar f get)
+(defvar g f)
+(g)

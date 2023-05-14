@@ -1,4 +1,4 @@
-(defvar x 7)
-(deffun (fun n)
-  (* n 2))
-(mvec (fun x) x)
+(defvar n 3)
+(deffun (f x)
+  (+ x 1))
+(mvec n (f n))

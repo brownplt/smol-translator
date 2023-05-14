@@ -1,8 +1,8 @@
-(defvar res
+(defvar z
   (begin
     (begin
-      67)
+      123
+      45)
     (begin
-      (begin 123)
-      45)))
-res
+      67)))
+z

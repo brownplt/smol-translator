@@ -1,5 +1,5 @@
-(defvar var 1)
-(deffun (proc)
-  (set! var 2))
-(proc)
-var
+(defvar x 12)
+(deffun (f)
+  (set! x 0))
+(f)
+x
