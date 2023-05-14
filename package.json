@@ -1,5 +1,5 @@
 {
-  "name": "smol-translator",
+  "name": "@lukc1024/smol-translator",
   "version": "1.0.0",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
@@ -9,7 +9,7 @@
     "prepare-test:get-programs": "node test/extract_programs_from_tutorials.js",
     "prepare-test:translate": "node test/translate_programs.js",
     "prepare-test": "npm run prepare-test:get-programs && npm run prepare-test:translate",
-    "run-test": "python3 /Users/lukc/Documents/GitHub/smol-translator/test/tester.py",
+    "run-test": "python3 test/tester.py",
     "test": "npm run prepare-test && npm run run-test",
     "res:build": "rescript",
     "res:dev": "rescript build -with-deps -w"
