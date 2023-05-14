@@ -21,7 +21,7 @@
   },
   "license": "MIT",
   "dependencies": {
-    "@lukc1024/s-expression": "file:../s-expression",
+    "@lukc1024/s-expression": "^1.0.0",
     "rescript": "^10.1.4"
   }
 }
