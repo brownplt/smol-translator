@@ -80,6 +80,13 @@ let as_many_then_one = (context, es) => {
   }
 }
 
+let as_one = (context, es) => {
+  switch es {
+  | list{e} => e
+  | _ => raise(ParseError(SExprArityError(ExactlyOne, context, es)))
+  }
+}
+
 let as_two = (context, es) => {
   switch es {
   | list{e1, e2} => (e1, e2)
@@ -111,7 +118,7 @@ let as_expr = (context, e) => {
   }
 }
 
-let constant_of_atom = (ann, atom) => {
+let constant_of_atom = (_ann, atom) => {
   switch atom {
   | S_expression.Str(s) => (Con(Str(s)): expression)
   | Sym("#t") => Con(Lgc(true))
@@ -157,6 +164,10 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
   | Sequence(Vector, _b, es) => {
       let es = es->List.map(value_of_sexpr)
       Exp({ann, it: AppPrm(VecNew, es)})
+    }
+  | Sequence(List, _b, list{{it: Atom(Sym("quote")), ann: _}, ...rest}) => {
+      let e = as_one("a quoted value", rest)
+      Exp(value_of_sexpr(e))
     }
   | Sequence(List, _b, list{{it: Atom(Sym("defvar")), ann: _}, ...rest}) => {
       let (x, e) = as_two("a variable and an expression", rest)
@@ -289,6 +300,16 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
   | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => app_prm(ann, Le, es)
   | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => app_prm(ann, Ge, es)
   | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => app_prm(ann, Ne, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("pair")), ann: _}, ...es}) => app_prm(ann, PairNew, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("mpair")), ann: _}, ...es}) => app_prm(ann, PairNew, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("left")), ann: _}, ...es}) =>
+    app_prm(ann, PairRefLeft, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("right")), ann: _}, ...es}) =>
+    app_prm(ann, PairRefRight, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("set-left!")), ann: _}, ...es}) =>
+    app_prm(ann, PairSetLeft, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("set-right!")), ann: _}, ...es}) =>
+    app_prm(ann, PairSetRight, es)
   | Sequence(List, _b, list{{it: Atom(Sym("vec")), ann: _}, ...es}) => app_prm(ann, VecNew, es)
   | Sequence(List, _b, list{{it: Atom(Sym("mvec")), ann: _}, ...es}) => app_prm(ann, VecNew, es)
   | Sequence(List, _b, list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}) => app_prm(ann, VecRef, es)

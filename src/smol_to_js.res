@@ -81,7 +81,12 @@ let string_of_expr_app_prm = (p, es) => {
   | (Le, list{e1, e2}) => `${e1} <= ${e2}`
   | (Ge, list{e1, e2}) => `${e1} >= ${e2}`
   | (Ne, list{e1, e2}) => `${e1} != ${e2}`
-  | (VecNew, es) => `[${String.concat(", ", es)}]`
+  | (PairRefLeft, list{e1}) => `${e1}[0]`
+  | (PairRefRight, list{e1}) => `${e1}[1]`
+  | (PairSetLeft, list{e1, e2}) => `${e1}[0]=${e2}`
+  | (PairSetRight, list{e1, e2}) => `${e1}[1]=${e2}`
+  | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`
+  | (VecNew, es) => `[ ${String.concat(", ", es)} ]`
   | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`
   | (VecRef, list{e1, e2}) => `${e1}[${e2}]`
   | (VecLen, list{e}) => `${e}.length`
@@ -124,9 +129,12 @@ let string_of_expr_let = (xes, b) => {
       |> String.concat(", ")})`
 }
 
-let maybe_wrap = (ctx, code) => {
-  switch ctx {
-  | Expr(true) => `(${code})`
+let maybe_wrap = (ctx, p, code) => {
+  switch (ctx, p) {
+  | (Expr(true), Add) => `(${code})`
+  | (Expr(true), Sub) => `(${code})`
+  | (Expr(true), Mul) => `(${code})`
+  | (Expr(true), Div) => `(${code})`
   | _ => code
   }
 }
@@ -155,7 +163,7 @@ let rec string_of_expr = (ctx: js_ctx, e: annotated<expression>): string => {
       string_of_block(Return, b),
     ) |> consider_context(ctx)
   | AppPrm(p, es) =>
-    let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx)
+    let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
     if p != Error {
       o |> consider_context(ctx)
     } else {
@@ -258,7 +266,7 @@ let smol_to_js: (js_ctx, string) => string = (ctx, smol_program) => {
 let translate_results: string => string = results => {
   let ts = results->Parse_smol.parse_terms
   String.concat(
-    "\n",
+    " ",
     ts->map(t => {
       switch t {
       | Def(_) => raise(Impossible("expecting results"))

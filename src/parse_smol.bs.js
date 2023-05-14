@@ -150,6 +150,34 @@ function as_many_then_one(context, es) {
       };
 }
 
+function as_one(context, es) {
+  if (es) {
+    if (es.tl) {
+      throw {
+            RE_EXN_ID: ParseError,
+            _1: {
+              TAG: /* SExprArityError */1,
+              _0: /* ExactlyOne */0,
+              _1: context,
+              _2: es
+            },
+            Error: new Error()
+          };
+    }
+    return es.hd;
+  }
+  throw {
+        RE_EXN_ID: ParseError,
+        _1: {
+          TAG: /* SExprArityError */1,
+          _0: /* ExactlyOne */0,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
 function as_two(context, es) {
   if (es) {
     var match = es.tl;
@@ -266,7 +294,7 @@ function as_expr(context, e) {
       };
 }
 
-function constant_of_atom(ann, atom) {
+function constant_of_atom(_ann, atom) {
   if (atom.TAG === /* Str */0) {
     return {
             TAG: /* Con */0,
@@ -332,7 +360,7 @@ function value_of_sexpr(e) {
     return {
             it: {
               TAG: /* AppPrm */5,
-              _0: /* VecNew */10,
+              _0: /* VecNew */15,
               _1: es
             },
             ann: ann
@@ -415,7 +443,7 @@ function term_of_sexpr(e) {
             _0: {
               it: {
                 TAG: /* AppPrm */5,
-                _0: /* VecNew */10,
+                _0: /* VecNew */15,
                 _1: es
               },
               ann: ann
@@ -572,9 +600,9 @@ function term_of_sexpr(e) {
                     };
           case "eq?" :
           case "eqv?" :
-              return app_prm(ann, /* Eqv */14, es$1.tl);
+              return app_prm(ann, /* Eqv */19, es$1.tl);
           case "error" :
-              return app_prm(ann, /* Error */15, es$1.tl);
+              return app_prm(ann, /* Error */20, es$1.tl);
           case "if" :
               var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
               var e_cnd = as_expr("a (conditional) expression", term_of_sexpr(match$9[0]));
@@ -613,6 +641,8 @@ function term_of_sexpr(e) {
                         ann: ann
                       }
                     };
+          case "left" :
+              return app_prm(ann, /* PairRefLeft */12, es$1.tl);
           case "let" :
               var match$11 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
               var xes = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$11[0]), (function (param) {
@@ -644,33 +674,48 @@ function term_of_sexpr(e) {
                         ann: ann
                       }
                     };
+          case "mpair" :
+          case "pair" :
+              return app_prm(ann, /* PairNew */10, es$1.tl);
+          case "quote" :
+              var e$2 = as_one("a quoted value", es$1.tl);
+              return {
+                      TAG: /* Exp */1,
+                      _0: value_of_sexpr(e$2)
+                    };
+          case "right" :
+              return app_prm(ann, /* PairRefRight */11, es$1.tl);
           case "set!" :
               var match$12 = as_two("a variable and an expression", es$1.tl);
               var x$1 = as_id("a variable to be set", match$12[0]);
-              var e$2 = as_expr("an expression", term_of_sexpr(match$12[1]));
+              var e$3 = as_expr("an expression", term_of_sexpr(match$12[1]));
               return {
                       TAG: /* Exp */1,
                       _0: {
                         it: {
                           TAG: /* Set */2,
                           _0: x$1,
-                          _1: e$2
+                          _1: e$3
                         },
                         ann: ann
                       }
                     };
+          case "set-left!" :
+              return app_prm(ann, /* PairSetLeft */14, es$1.tl);
+          case "set-right!" :
+              return app_prm(ann, /* PairSetRight */13, es$1.tl);
           case "mvec" :
           case "vec" :
-              return app_prm(ann, /* VecNew */10, es$1.tl);
+              return app_prm(ann, /* VecNew */15, es$1.tl);
           case "vec-len" :
           case "vlen" :
-              return app_prm(ann, /* VecLen */13, es$1.tl);
+              return app_prm(ann, /* VecLen */18, es$1.tl);
           case "vec-ref" :
           case "vref" :
-              return app_prm(ann, /* VecRef */11, es$1.tl);
+              return app_prm(ann, /* VecRef */16, es$1.tl);
           case "vec-set!" :
           case "vset!" :
-              return app_prm(ann, /* VecSet */12, es$1.tl);
+              return app_prm(ann, /* VecSet */17, es$1.tl);
           default:
             
         }
@@ -680,7 +725,7 @@ function term_of_sexpr(e) {
     
   }
   var match$13 = as_one_then_many("a function call/application, which includes a function and then one ore more arguments", es$1);
-  var e$3 = as_expr("a function", term_of_sexpr(match$13[0]));
+  var e$4 = as_expr("a function", term_of_sexpr(match$13[0]));
   var es$2 = Belt_List.map(Belt_List.map(match$13[1], term_of_sexpr), (function (param) {
           return as_expr("an argument", param);
         }));
@@ -689,7 +734,7 @@ function term_of_sexpr(e) {
           _0: {
             it: {
               TAG: /* App */6,
-              _0: e$3,
+              _0: e$4,
               _1: es$2
             },
             ann: ann
@@ -730,6 +775,7 @@ export {
   as_list ,
   as_one_then_many ,
   as_many_then_one ,
+  as_one ,
   as_two ,
   as_three ,
   as_one_then_many_then_one ,

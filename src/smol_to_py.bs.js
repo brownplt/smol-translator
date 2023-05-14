@@ -130,9 +130,15 @@ function string_of_expr_app_prm(p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* VecNew */10 :
+    case /* PairNew */10 :
+    case /* PairRefRight */11 :
+    case /* PairRefLeft */12 :
+    case /* PairSetRight */13 :
+    case /* PairSetLeft */14 :
+        return "/* a primitive operation not supported yet */";
+    case /* VecNew */15 :
         return "[" + $$String.concat(", ", es) + "]";
-    case /* VecRef */11 :
+    case /* VecRef */16 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
@@ -142,7 +148,7 @@ function string_of_expr_app_prm(p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* VecSet */12 :
+    case /* VecSet */17 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
@@ -156,13 +162,13 @@ function string_of_expr_app_prm(p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* VecLen */13 :
+    case /* VecLen */18 :
         if (es && !es.tl) {
           return "" + es.hd + ".length";
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* Eqv */14 :
+    case /* Eqv */19 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
@@ -172,7 +178,7 @@ function string_of_expr_app_prm(p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* Error */15 :
+    case /* Error */20 :
         if (es && !es.tl) {
           return "raise " + es.hd + "";
         } else {
@@ -256,7 +262,7 @@ function string_of_expr(ctx, e) {
         var o = maybe_wrap(ctx, string_of_expr_app_prm(p, Belt_List.map(c._1, (function (param) {
                         return string_of_expr(partial_arg, param);
                       }))));
-        if (p !== /* Error */15) {
+        if (p !== /* Error */20) {
           return consider_context(ctx, o);
         } else {
           return o;

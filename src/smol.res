@@ -10,6 +10,11 @@ type primitive =
   | Le
   | Ge
   | Ne
+  | PairNew
+  | PairRefRight
+  | PairRefLeft
+  | PairSetRight
+  | PairSetLeft
   | VecNew
   | VecRef
   | VecSet

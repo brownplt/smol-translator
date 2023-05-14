@@ -1,4 +1,0 @@
-(defvar vr 7)
-(let ([vr 1])
-  (+ vr 4))
-(+ vr 5)

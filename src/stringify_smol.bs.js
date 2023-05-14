@@ -55,20 +55,35 @@ function string_of_prm(o) {
         return ">=";
     case /* Ne */9 :
         return "!=";
-    case /* VecNew */10 :
+    case /* PairNew */10 :
+    case /* PairRefRight */11 :
+    case /* PairRefLeft */12 :
+    case /* PairSetRight */13 :
+    case /* PairSetLeft */14 :
+        break;
+    case /* VecNew */15 :
         return "vec";
-    case /* VecRef */11 :
+    case /* VecRef */16 :
         return "vec-ref";
-    case /* VecSet */12 :
+    case /* VecSet */17 :
         return "vec-set!";
-    case /* VecLen */13 :
+    case /* VecLen */18 :
         return "vec-len";
-    case /* Eqv */14 :
+    case /* Eqv */19 :
         return "eq?";
-    case /* Error */15 :
+    case /* Error */20 :
         return "error";
     
   }
+  throw {
+        RE_EXN_ID: "Match_failure",
+        _1: [
+          "stringify_smol.res",
+          28,
+          2
+        ],
+        Error: new Error()
+      };
 }
 
 function string_of_list(ss) {

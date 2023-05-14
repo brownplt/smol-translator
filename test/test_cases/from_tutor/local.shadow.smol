@@ -1,3 +1,0 @@
-(defvar a 30)
-(defvar b (let ([a 2]) a))
-(* a b)

@@ -5,7 +5,10 @@
   "type": "module",
   "main": "src/index.bs.js",
   "scripts": {
-    "prepare-test": "node test/main.js",
+    "clean": "rm test/test_cases/from_tutor/*",
+    "prepare-test:get-programs": "node test/extract_programs_from_tutorials.js",
+    "prepare-test:translate": "node test/translate_programs.js",
+    "prepare-test": "npm run prepare-test:get-programs && npm run prepare-test:translate",
     "run-test": "python3 /Users/lukc/Documents/GitHub/smol-translator/test/tester.py",
     "test": "npm run prepare-test && npm run run-test",
     "res:build": "rescript",
