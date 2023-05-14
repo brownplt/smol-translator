@@ -8,13 +8,12 @@ known incompatibilities between the languages.
 
 ## Test Suite
 
-Tested with almost all programs from the SMoL Tutor. The only exceptions are:
+This translator has been tested with more than 80% programs from the SMoL Tutor. 154 were tested. 31 were skipped for various reasons:
 
-- Programs from the heap tutorial. This tutorial is all about heap structure, so expected answers are NOT program outputs.
-- Programs from the local tutorial. This tutorial is all about local binding forms, which doesn't apply to many languages.
-- Programs where the expected output involve `@`. These programs are, again, testing heap structures.
-
-
+1. (8 skipped) Programs from the heap tutorial. This tutorial is all about heap structure, so expected answers are NOT program outputs.
+2. (20 skipped) Programs from the local tutorial. This tutorial is all about local binding forms, which doesn't apply to many languages.
+3. (2 skipped) Programs where the expected output involve `@`. These programs are, again, testing heap structures.
+4. (1 skipped) Programs where the expected output involve `=`. These programs output circular data structures. It is difficult to translate the outputs.
 
 ## SMoL vs JavaScript
 
@@ -26,6 +25,8 @@ Program outputs might differ slightly after the translation due to the following
 - In JavaScript, division by zero produces `Infinity` or a number rather than an error.
 - Variable mutation (e.g., `x = 2`) produces the new value (in this case, `2`) rather than a none/void/unit value.
 - Indexing an array (known as "vector" in SMoL) outside its index range (e.g., `[1, 2][99]`) produces the `undefined` value rather than an error.
+
+All 24 failure (out of 154 tests) are due to the aforementioned reasons.
 
 ## SMoL vs Python
 
