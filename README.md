@@ -14,6 +14,8 @@ Tested with almost all programs from the SMoL Tutor. The only exceptions are:
 - Programs from the local tutorial. This tutorial is all about local binding forms, which doesn't apply to many languages.
 - Programs where the expected output involve `@`. These programs are, again, testing heap structures.
 
+
+
 ## SMoL vs JavaScript
 
 Every SMoL program can be translated to JavaScript. The translation is mostly straightforward,

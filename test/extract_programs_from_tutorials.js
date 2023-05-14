@@ -10,18 +10,22 @@ function skip(tutorialName, questionName) {
     console.log(`SKIPPED ${tutorialName}.${questionName}`);
 }
 
-function writeProgram(tutorialName, questionName, program, answer) {
+function writeProgram(tutorialName, questionName, program, outputs) {
+    if (!(typeof program == "string" && typeof outputs == "string")) {
+        console.log(tutorialName, questionName, program, outputs);
+        throw Error("WTF");
+    }
     // skip the whole heap and the whole local tutorials
-    if (tutorialName == "heap" || tutorialName == "local") {
+    if (tutorialName == "heap" || tutorialName == "local" || outputs.includes("@") || outputs.includes("=")) {
         skip(tutorialName, questionName);
         return;
     }
     // console.log(`${tutorialName}.${questionName}`);
     // console.log(program);
-    // console.log(answer);
+    // console.log(outputs);
     // console.log("-----");
     fs.writeFileSync(`./test/test_cases/from_tutor/${tutorialName}.${questionName}.smol`, program);
-    fs.writeFileSync(`./test/test_cases/from_tutor/${tutorialName}.${questionName}.smol.txt`, answer);
+    fs.writeFileSync(`./test/test_cases/from_tutor/${tutorialName}.${questionName}.smol.txt`, outputs);
 }
 
 for (const tutorialName in tutorials) {
@@ -29,15 +33,15 @@ for (const tutorialName in tutorials) {
     for (const k in tutorial.questions) {
         const q = tutorial.questions[k];
         if ("program" in q) {
-            const { program, answer } = q;
-            writeProgram(tutorialName, k, program, answer);
+            const { program, answer: outputs } = q;
+            writeProgram(tutorialName, k, program, outputs);
         }
     }
     for (const k in tutorial.questions) {
         const q = tutorial.questions[k];
         if ("again" in q) {
-            const { program, answer } = q.again;
-            writeProgram(tutorialName, `${k}.again`, program, answer);
+            const { program, answer: outputs } = q.again;
+            writeProgram(tutorialName, `${k}.again`, program, outputs);
         }
     }
 }

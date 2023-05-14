@@ -456,6 +456,7 @@ function term_of_sexpr(e) {
     if (match.TAG === /* Atom */0) {
       var match$1 = match._0;
       if (match$1.TAG !== /* Str */0) {
+        var exit = 0;
         switch (match$1._0) {
           case "!=" :
               return app_prm(ann, /* Ne */9, es$1.tl);
@@ -599,8 +600,10 @@ function term_of_sexpr(e) {
                       }
                     };
           case "eq?" :
+          case "equal?" :
           case "eqv?" :
-              return app_prm(ann, /* Eqv */19, es$1.tl);
+              exit = 2;
+              break;
           case "error" :
               return app_prm(ann, /* Error */20, es$1.tl);
           case "if" :
@@ -719,6 +722,10 @@ function term_of_sexpr(e) {
           default:
             
         }
+        if (exit === 2) {
+          return app_prm(ann, /* Eqv */19, es$1.tl);
+        }
+        
       }
       
     }

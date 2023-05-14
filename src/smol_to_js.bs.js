@@ -38,13 +38,13 @@ function string_of_identifier(x) {
   if (x$1 === "var") {
     return "$var";
   } else if (x$1 === "+") {
-    return "function(x, y) { return x + y; }";
+    return "(function(x, y) { return x + y; })";
   } else if (x$1 === "-") {
-    return "function(x, y) { return x - y; }";
+    return "(function(x, y) { return x - y; })";
   } else if (x$1 === "*") {
-    return "function(x, y) { return x * y; }";
+    return "(function(x, y) { return x * y; })";
   } else if (x$1 === "/") {
-    return "function(x, y) { return x / y; }";
+    return "(function(x, y) { return x / y; })";
   } else {
     return x$1;
   }
