@@ -1,7 +1,7 @@
 // This program translates SMoL programs to JavaScript
 //   and will do so for Python in the future.
 
-import * as S2J from '../src/smol_to_js.bs.js';
+import * as S2J from '../src/SMoLTranslatorUtilities/smol_to_js.bs.js';
 import fs from "fs";
 
 const path = "./test/test_cases/from_tutor";

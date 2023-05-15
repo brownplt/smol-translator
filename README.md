@@ -6,6 +6,24 @@ known incompatibilities between the languages.
 Translation to Python is WIP. See [the SMoL vs JavaScript section](#smol-vs-javascript) for limitations and
 known incompatibilities between the languages.
 
+## Usage
+
+Most people translate full programs. If this is your case, you can say
+
+```
+import { toJS } from SMoLTranslator;
+toJS("program", smolSourceCode)
+```
+
+Replace `JS` with `PY` if you want Python-like syntax.
+
+The translator supports more than program-level translation. Shown below is a description of all supported context:
+
+- `program`: accept any number of terms; every term ends with `;` for some languages; expressions are wrapped in `console.log(_)` or `print(_)`, except for assignment expressions.
+- `function-body`: accept one or more terms, last of which must be an expression; every term ends with `;` for some languages; the last expression is wrapped in `return _`.
+- `one-term`: accept exactly one term; no `;` is added.
+- `many-terms`: accept any number of terms; no `;` is added.
+
 ## Test Suite
 
 This translator has been tested with more than 80% programs from the SMoL Tutor. 154 were tested. 31 were skipped for various reasons:
