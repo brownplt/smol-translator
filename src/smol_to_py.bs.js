@@ -248,7 +248,7 @@ function string_of_expr(ctx, e) {
                           }, c._1)));
     case /* Lam */3 :
         var b = c._1;
-        var b$1 = b[0] ? "..." : string_of_expr(/* Expr */{
+        var b$1 = b[0] ? "\n" + string_of_block(/* Return */2, b) + "\nend" : string_of_expr(/* Expr */{
                 _0: false
               }, b[1]);
         return consider_context(ctx, string_of_expr_lam(Belt_List.map(Belt_List.map(c._0, Format.unannotate), string_of_identifier), b$1));
@@ -425,7 +425,7 @@ function translate_program(program) {
                     if (t.TAG === /* Def */0) {
                       return string_of_term(t);
                     } else {
-                      return "console.log(" + string_of_expr(/* Expr */{
+                      return "print(" + string_of_expr(/* Expr */{
                                   _0: false
                                 }, t._0) + ")";
                     }

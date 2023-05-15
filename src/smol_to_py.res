@@ -152,7 +152,7 @@ let rec string_of_expr = (ctx: js_ctx, e: annotated<expression>): string => {
       let (ts, e) = b
       switch ts {
       | list{} => string_of_expr(Expr(false), e)
-      | _ => "..."
+      | _ => `\n${string_of_block(Return, b)}\nend`
       }
     }
     string_of_expr_lam(xs->map(unannotate)->map(string_of_identifier), b) |> consider_context(ctx)
@@ -268,7 +268,7 @@ let translate_program: string => string = program => {
     ts->map(t => {
       switch t {
       | Def(_) => string_of_term(t)
-      | Exp(e) => `console.log(${string_of_expr(Expr(false), e)})`
+      | Exp(e) => `print(${string_of_expr(Expr(false), e)})`
       }
     }),
   )
