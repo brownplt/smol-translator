@@ -60,15 +60,15 @@ module Stringify: {
   let string_of_expr_cnd: (list<(string, string)>, option<Js.String.t>) => string
   let string_of_expr_if: (string, string, string) => string
   let string_of_expr_let: (
-  Belt.List.t<(SExpression.annotated<string>, Js.String.t)>,
-  Js.String.t,
-) => string
+    Belt.List.t<(SExpression.annotated<string>, Js.String.t)>,
+    Js.String.t,
+  ) => string
   let string_of_expr: SExpression.annotated<expression> => symbol
   let string_of_def: SExpression.annotated<definition> => symbol
   let string_of_xe: ((SExpression.annotated<symbol>, SExpression.annotated<expression>)) => (
-  SExpression.annotated<symbol>,
-  Js.String.t,
-)
+    SExpression.annotated<symbol>,
+    Js.String.t,
+  )
   let string_of_eb: ((SExpression.annotated<expression>, block)) => (symbol, Js.String.t)
   let string_of_ob: option<block> => option<Js.String.t>
   let string_of_block: block => Js.String.t
@@ -92,35 +92,10 @@ type parse_error =
   | LiteralSymbolError(string)
   | LiteralListError(SExpression.annotated<s_expr>)
   | TermKindError(term_kind, string, term)
-type exn +=  ParseError(parse_error)
+type exn += ParseError(parse_error)
 let stringOfExprs: Belt.List.t<SExpression.annotated<SExpression.t>> => string
 let stringOfParseError: parse_error => string
-let as_id: (string, SExpression.annotated<s_expr>) => SExpression.annotated<string>
-let as_list: (string, SExpression.annotated<s_expr>) => list<SExpression.annotated<SExpression.t>>
-let as_one_then_many: (string, list<SExpression.annotated<s_expr>>) => (
-  SExpression.annotated<s_expr>,
-  list<SExpression.annotated<s_expr>>,
-)
-let as_many_then_one: (string, list<SExpression.annotated<s_expr>>) => (
-  list<SExpression.annotated<s_expr>>,
-  SExpression.annotated<s_expr>,
-)
-let as_one: (string, list<SExpression.annotated<s_expr>>) => SExpression.annotated<s_expr>
-let as_two: (string, list<SExpression.annotated<s_expr>>) => (
-  SExpression.annotated<s_expr>,
-  SExpression.annotated<s_expr>,
-)
-let as_three: (string, list<SExpression.annotated<s_expr>>) => (
-  SExpression.annotated<s_expr>,
-  SExpression.annotated<s_expr>,
-  SExpression.annotated<s_expr>,
-)
-let as_one_then_many_then_one: (string, list<SExpression.annotated<s_expr>>) => (
-  SExpression.annotated<s_expr>,
-  list<SExpression.annotated<s_expr>>,
-  SExpression.annotated<s_expr>,
-)
-type exn +=  ExpectingExpression
+type exn += ExpectingExpression
 let as_expr: (string, term) => SExpression.annotated<expression>
 let constant_of_atom: ('a, SExpression.Atom.t) => expression
 let value_of_sexpr: SExpression.annotated<s_expr> => SExpression.annotated<expression>

@@ -18,6 +18,52 @@ function indent(s, i) {
 
 var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoLTranslator.Impossible");
 
+function as_many_then_one(es) {
+  if (es) {
+    var e1 = es.hd;
+    var match = Belt_List.reverse(es.tl);
+    if (match) {
+      return [
+              {
+                hd: e1,
+                tl: Belt_List.reverse(match.tl)
+              },
+              match.hd
+            ];
+    } else {
+      return [
+              /* [] */0,
+              e1
+            ];
+    }
+  }
+  throw {
+        RE_EXN_ID: Impossible,
+        _1: "unsafe",
+        Error: new Error()
+      };
+}
+
+function maybe_wrap(ctx, p, code) {
+  if (typeof ctx === "number") {
+    return code;
+  }
+  if (!ctx._0) {
+    return code;
+  }
+  if (p >= 4) {
+    return code;
+  }
+  switch (p) {
+    case /* Add */0 :
+    case /* Sub */1 :
+    case /* Mul */2 :
+    case /* Div */3 :
+        return "(" + code + ")";
+    
+  }
+}
+
 function string_of_constant(c) {
   if (typeof c === "number") {
     return "null";
@@ -60,14 +106,6 @@ function string_of_identifier(x) {
   } else {
     return x$1;
   }
-}
-
-function string_of_def_var(x, e) {
-  return "let " + string_of_identifier(x.it) + " = " + e + ";";
-}
-
-function string_of_def_fun(f, xs, b) {
-  return "function " + f + "" + string_of_list(xs) + " {\n  " + indent(b, 2) + "\n}";
 }
 
 function string_of_expr_set(x, e) {
@@ -256,15 +294,6 @@ function string_of_expr_bgn(es, e) {
                 ])) + ")";
 }
 
-function string_of_expr_cnd(ebs, ob) {
-  var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
-  var ebs$1 = Belt_List.map(ebs, (function (param) {
-          return "if (" + param[0] + ") {\n  " + indent(param[1], 2) + "\n}";
-        }));
-  var ebs$2 = $$String.concat(" else ", ebs$1);
-  return ebs$2 + ob$1;
-}
-
 function string_of_expr_if(e_cnd, e_thn, e_els) {
   return "(" + e_cnd + " ? " + e_thn + " : " + e_els + ")";
 }
@@ -277,38 +306,15 @@ function string_of_expr_let(xes, b) {
                   }))) + ")";
 }
 
-function maybe_wrap(ctx, p, code) {
-  if (typeof ctx === "number") {
-    return code;
-  }
-  if (!ctx._0) {
-    return code;
-  }
-  if (p >= 4) {
-    return code;
-  }
-  switch (p) {
-    case /* Add */0 :
-    case /* Sub */1 :
-    case /* Mul */2 :
-    case /* Div */3 :
-        return "(" + code + ")";
-    
-  }
-}
-
 function consider_context(ctx, code) {
-  if (typeof ctx !== "number") {
+  if (typeof ctx === "number") {
+    if (ctx !== 0) {
+      return "return " + code + ";";
+    } else {
+      return "" + code + ";";
+    }
+  } else {
     return code;
-  }
-  switch (ctx) {
-    case /* Term */0 :
-        return code;
-    case /* Stat */1 :
-        return "" + code + ";";
-    case /* Return */2 :
-        return "return " + code + ";";
-    
   }
 }
 
@@ -324,9 +330,9 @@ function string_of_expr(ctx, e) {
                             _0: false
                           }, c._1)));
     case /* Lam */3 :
-        return consider_context(ctx, string_of_expr_lam(Belt_List.map(Belt_List.map(c._0, unannotate), string_of_identifier), string_of_block(/* Return */2, c._1)));
+        return consider_context(ctx, string_of_expr_lam(Belt_List.map(Belt_List.map(c._0, unannotate), string_of_identifier), string_of_block(/* Return */1, c._1)));
     case /* Let */4 :
-        return consider_context(ctx, string_of_expr_let(Belt_List.map(c._0, string_of_xe), string_of_block(/* Return */2, c._1)));
+        return consider_context(ctx, string_of_expr_let(Belt_List.map(c._0, string_of_xe), string_of_block(/* Return */1, c._1)));
     case /* AppPrm */5 :
         var p = c._0;
         var partial_arg = /* Expr */{
@@ -367,23 +373,20 @@ function string_of_expr(ctx, e) {
                             _0: false
                           }, c._2)));
     case /* Cnd */9 :
-        return string_of_expr_cnd(Belt_List.map(c._0, (function (param) {
-                          return string_of_eb(ctx, param);
-                        })), Belt_Option.map(c._1, (function (param) {
-                          return string_of_block(ctx, param);
-                        })));
+        var ebs = Belt_List.map(c._0, (function (param) {
+                return string_of_eb(ctx, param);
+              }));
+        var ob = Belt_Option.map(c._1, (function (param) {
+                return string_of_block(ctx, param);
+              }));
+        var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
+        var ebs$1 = Belt_List.map(ebs, (function (param) {
+                return "if (" + param[0] + ") {\n  " + indent(param[1], 2) + "\n}";
+              }));
+        var ebs$2 = $$String.concat(" else ", ebs$1);
+        return ebs$2 + ob$1;
     
   }
-}
-
-function string_of_block(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], string_of_term),
-                  {
-                    hd: string_of_expr(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
 }
 
 function string_of_xe(xe) {
@@ -404,36 +407,38 @@ function string_of_eb(ctx, eb) {
         ];
 }
 
-function string_of_def(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return string_of_def_var(match._0, string_of_expr(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    return string_of_def_fun(string_of_identifier(match._0.it), Belt_List.map(Belt_List.map(match._1, unannotate), string_of_identifier), string_of_block(/* Return */2, match._2));
-  }
+function string_of_block(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], string_of_term),
+                  {
+                    hd: string_of_expr(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
 }
 
 function string_of_term(t) {
   if (t.TAG === /* Def */0) {
-    return string_of_def(t._0);
+    var d = t._0;
+    var match = d.it;
+    if (match.TAG === /* Var */0) {
+      var x = match._0;
+      var e = string_of_expr(/* Expr */{
+            _0: false
+          }, match._1);
+      return "let " + string_of_identifier(x.it) + " = " + e + ";";
+    } else {
+      var f = string_of_identifier(match._0.it);
+      var xs = Belt_List.map(Belt_List.map(match._1, unannotate), string_of_identifier);
+      var b = string_of_block(/* Return */1, match._2);
+      return "function " + f + "" + string_of_list(xs) + " {\n  " + indent(b, 2) + "\n}";
+    }
   } else {
-    return string_of_expr(/* Stat */1, t._0);
+    return string_of_expr(/* Stat */0, t._0);
   }
 }
 
-function string_of_ob(ctx, ob) {
-  return Belt_Option.map(ob, (function (param) {
-                return string_of_block(ctx, param);
-              }));
-}
-
-function string_of_top_level(ts) {
-  return $$String.concat("\n", Belt_List.map(ts, string_of_term));
-}
-
-function as_many_then_one(es) {
+function as_many_then_one$1(es) {
   if (es) {
     var e1 = es.hd;
     var match = Belt_List.reverse(es.tl);
@@ -459,48 +464,15 @@ function as_many_then_one(es) {
       };
 }
 
-function smol_to_js(ctx, smol_program) {
-  var ts = SMoL.fromString(smol_program);
-  if (typeof ctx !== "number") {
-    if (ts && !ts.tl) {
-      return string_of_expr(ctx, SMoL.as_expr("", ts.hd));
-    } else {
-      return "...expecting exactly one expression...";
-    }
-  }
-  switch (ctx) {
-    case /* Term */0 :
-        if (ts && !ts.tl) {
-          return string_of_term(ts.hd);
-        } else {
-          return "...expecting exactly one term...";
-        }
-    case /* Stat */1 :
-        return string_of_top_level(ts);
-    case /* Return */2 :
-        var match = as_many_then_one(ts);
-        var e = SMoL.as_expr("", match[1]);
-        return string_of_block(/* Return */2, [
-                    match[0],
-                    e
-                  ]);
-    
-  }
-}
-
-function translate_results(results) {
+function translate_expressions(results) {
   var ts = SMoL.fromString(results);
-  return $$String.concat(" ", Belt_List.map(ts, (function (t) {
-                    if (t.TAG !== /* Def */0) {
-                      return "" + string_of_expr(/* Expr */{
-                                  _0: false
-                                }, t._0) + "";
-                    }
-                    throw {
-                          RE_EXN_ID: Impossible,
-                          _1: "expecting results",
-                          Error: new Error()
-                        };
+  var partial_arg = /* Expr */{
+    _0: true
+  };
+  return $$String.concat(" ", Belt_List.map(Belt_List.map(ts, (function (param) {
+                        return SMoL.as_expr("expr", param);
+                      })), (function (param) {
+                    return string_of_expr(partial_arg, param);
                   })));
 }
 
@@ -533,35 +505,15 @@ function translate_program(program) {
                   })));
 }
 
-var SMoLToJS = {
-  string_of_constant: string_of_constant,
-  string_of_list: string_of_list,
-  string_of_identifier: string_of_identifier,
-  string_of_def_var: string_of_def_var,
-  string_of_def_fun: string_of_def_fun,
-  string_of_expr_set: string_of_expr_set,
-  string_of_expr_lam: string_of_expr_lam,
-  string_of_expr_app_prm: string_of_expr_app_prm,
-  string_of_expr_app: string_of_expr_app,
-  string_of_expr_bgn: string_of_expr_bgn,
-  string_of_expr_cnd: string_of_expr_cnd,
-  string_of_expr_if: string_of_expr_if,
-  string_of_expr_let: string_of_expr_let,
-  maybe_wrap: maybe_wrap,
-  consider_context: consider_context,
-  string_of_expr: string_of_expr,
-  string_of_def: string_of_def,
-  string_of_xe: string_of_xe,
-  string_of_eb: string_of_eb,
-  string_of_ob: string_of_ob,
-  string_of_block: string_of_block,
-  string_of_term: string_of_term,
-  string_of_top_level: string_of_top_level,
-  as_many_then_one: as_many_then_one,
-  smol_to_js: smol_to_js,
-  translate_results: translate_results,
-  translate_program: translate_program
-};
+function translate_function_body(program) {
+  var ts = SMoL.fromString(program);
+  var match = as_many_then_one$1(ts);
+  var e = SMoL.as_expr("result", match[1]);
+  return string_of_block(/* Return */1, [
+              match[0],
+              e
+            ]);
+}
 
 function string_of_constant$1(c) {
   if (typeof c === "number") {
@@ -595,18 +547,6 @@ function string_of_identifier$1(x) {
     return "_";
   };
   return x.replace(re, matchFn);
-}
-
-function string_of_def_var$1(x, e) {
-  return "" + string_of_identifier$1(x.it) + " = " + e + "";
-}
-
-function string_of_def_fun$1(f, xs, b) {
-  return "def " + f + "" + string_of_list$1(xs) + ":\n    " + indent(b, 4) + "";
-}
-
-function string_of_expr_set$1(x, e) {
-  return "" + x + " := " + e + "";
 }
 
 function string_of_expr_lam$1(xs, b) {
@@ -688,20 +628,56 @@ function string_of_expr_app_prm$1(p, es) {
           return "/* a primitive operation not supported yet */";
         }
     case /* PairNew */10 :
+        if (!es) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var match$6 = es.tl;
+        if (match$6 && !match$6.tl) {
+          return "[ " + es.hd + ", " + match$6.hd + " ]";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
     case /* PairRefRight */11 :
+        if (es && !es.tl) {
+          return "" + es.hd + "[1]";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
     case /* PairRefLeft */12 :
+        if (es && !es.tl) {
+          return "" + es.hd + "[0]";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
     case /* PairSetRight */13 :
+        if (!es) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var match$7 = es.tl;
+        if (match$7 && !match$7.tl) {
+          return "" + es.hd + "[1] := " + match$7.hd + "";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
     case /* PairSetLeft */14 :
-        return "/* a primitive operation not supported yet */";
+        if (!es) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var match$8 = es.tl;
+        if (match$8 && !match$8.tl) {
+          return "" + es.hd + "[0] := " + match$8.hd + "";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
     case /* VecNew */15 :
         return "[" + $$String.concat(", ", es) + "]";
     case /* VecRef */16 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
-        var match$6 = es.tl;
-        if (match$6 && !match$6.tl) {
-          return "" + es.hd + "[" + match$6.hd + "]";
+        var match$9 = es.tl;
+        if (match$9 && !match$9.tl) {
+          return "" + es.hd + "[" + match$9.hd + "]";
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -709,13 +685,13 @@ function string_of_expr_app_prm$1(p, es) {
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
-        var match$7 = es.tl;
-        if (!match$7) {
+        var match$10 = es.tl;
+        if (!match$10) {
           return "/* a primitive operation not supported yet */";
         }
-        var match$8 = match$7.tl;
-        if (match$8 && !match$8.tl) {
-          return "" + es.hd + "[" + match$7.hd + "] = " + match$8.hd + "";
+        var match$11 = match$10.tl;
+        if (match$11 && !match$11.tl) {
+          return "" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "";
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -729,9 +705,9 @@ function string_of_expr_app_prm$1(p, es) {
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
-        var match$9 = es.tl;
-        if (match$9 && !match$9.tl) {
-          return "" + es.hd + " is " + match$9.hd + "";
+        var match$12 = es.tl;
+        if (match$12 && !match$12.tl) {
+          return "" + es.hd + " is " + match$12.hd + "";
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -759,33 +735,12 @@ function string_of_expr_bgn$1(es, e) {
                 ])) + ")[-1]";
 }
 
-function string_of_expr_cnd$1(ebs, ob) {
-  var ob$1 = ob !== undefined ? "else:\n    " + indent(ob, 4) + "" : "";
-  var ebs$1 = Belt_List.map(ebs, (function (param) {
-          return "if " + param[0] + ":\n    " + indent(param[1], 2) + "\n";
-        }));
-  var ebs$2 = $$String.concat("el", ebs$1);
-  return ebs$2 + ob$1;
-}
-
 function string_of_expr_if$1(e_cnd, e_thn, e_els) {
   return "" + e_thn + " if " + e_cnd + " else " + e_els + "";
 }
 
-function string_of_expr_let$1(_xes, _b) {
-  return "\"...a let-expression...\"";
-}
-
-function maybe_wrap$1(ctx, code) {
-  if (typeof ctx === "number" || !ctx._0) {
-    return code;
-  } else {
-    return "(" + code + ")";
-  }
-}
-
 function consider_context$1(ctx, code) {
-  if (typeof ctx === "number" && ctx >= 2) {
+  if (typeof ctx === "number" && ctx !== 0) {
     return "return " + code + "";
   } else {
     return code;
@@ -800,23 +755,35 @@ function string_of_expr$1(ctx, e) {
     case /* Ref */1 :
         return consider_context$1(ctx, string_of_identifier$1(c._0.it));
     case /* Set */2 :
-        return consider_context$1(ctx, string_of_expr_set$1(string_of_identifier$1(c._0.it), string_of_expr$1(/* Expr */{
-                            _0: false
-                          }, c._1)));
+        var x = string_of_identifier$1(c._0.it);
+        var e$1 = string_of_expr$1(/* Expr */{
+              _0: false
+            }, c._1);
+        if (typeof ctx === "number") {
+          if (ctx !== 0) {
+            return "return (" + x + " := " + e$1 + ")";
+          } else {
+            return "" + x + " = " + e$1 + "";
+          }
+        } else if (ctx._0) {
+          return "(" + x + " := " + e$1 + ")";
+        } else {
+          return "" + x + " := " + e$1 + "";
+        }
     case /* Lam */3 :
         var b = c._1;
-        var b$1 = b[0] ? "\n" + string_of_block$1(/* Return */2, b) + "\nend" : string_of_expr$1(/* Expr */{
+        var b$1 = b[0] ? "\n" + string_of_block$1(/* Return */1, b) + "\nend" : string_of_expr$1(/* Expr */{
                 _0: false
               }, b[1]);
         return consider_context$1(ctx, string_of_expr_lam$1(Belt_List.map(Belt_List.map(c._0, unannotate), string_of_identifier$1), b$1));
     case /* Let */4 :
-        return consider_context$1(ctx, (string_of_block$1(/* Return */2, c._1), Belt_List.map(c._0, string_of_xe$1), "\"...a let-expression...\""));
+        return consider_context$1(ctx, (string_of_block$1(/* Return */1, c._1), Belt_List.map(c._0, string_of_xe$1), "\"...a let-expression...\""));
     case /* AppPrm */5 :
         var p = c._0;
         var partial_arg = /* Expr */{
           _0: true
         };
-        var o = maybe_wrap$1(ctx, string_of_expr_app_prm$1(p, Belt_List.map(c._1, (function (param) {
+        var o = maybe_wrap(ctx, p, string_of_expr_app_prm$1(p, Belt_List.map(c._1, (function (param) {
                         return string_of_expr$1(partial_arg, param);
                       }))));
         if (p !== /* OError */20) {
@@ -852,11 +819,18 @@ function string_of_expr$1(ctx, e) {
                           }, c._2)));
     case /* Cnd */9 :
         if (typeof ctx === "number") {
-          return string_of_expr_cnd$1(Belt_List.map(c._0, (function (param) {
-                            return string_of_eb$1(ctx, param);
-                          })), Belt_Option.map(c._1, (function (param) {
-                            return string_of_block$1(ctx, param);
-                          })));
+          var ebs = Belt_List.map(c._0, (function (param) {
+                  return string_of_eb$1(ctx, param);
+                }));
+          var ob = Belt_Option.map(c._1, (function (param) {
+                  return string_of_block$1(ctx, param);
+                }));
+          var ob$1 = ob !== undefined ? "else:\n    " + indent(ob, 4) + "" : "";
+          var ebs$1 = Belt_List.map(ebs, (function (param) {
+                  return "if " + param[0] + ":\n    " + indent(param[1], 2) + "\n";
+                }));
+          var ebs$2 = $$String.concat("el", ebs$1);
+          return ebs$2 + ob$1;
         } else {
           return "if...";
         }
@@ -864,15 +838,13 @@ function string_of_expr$1(ctx, e) {
   }
 }
 
-function string_of_def$1(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return string_of_def_var$1(match._0, string_of_expr$1(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    return string_of_def_fun$1(string_of_identifier$1(match._0.it), Belt_List.map(Belt_List.map(match._1, unannotate), string_of_identifier$1), string_of_block$1(/* Return */2, match._2));
-  }
+function string_of_xe$1(xe) {
+  return [
+          string_of_identifier$1(xe[0].it),
+          string_of_expr$1(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function string_of_eb$1(ctx, eb) {
@@ -894,85 +866,24 @@ function string_of_block$1(ctx, b) {
                 ]));
 }
 
-function string_of_xe$1(xe) {
-  return [
-          string_of_identifier$1(xe[0].it),
-          string_of_expr$1(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
 function string_of_term$1(t) {
   if (t.TAG === /* Def */0) {
-    return string_of_def$1(t._0);
+    var d = t._0;
+    var match = d.it;
+    if (match.TAG === /* Var */0) {
+      var x = match._0;
+      var e = string_of_expr$1(/* Expr */{
+            _0: false
+          }, match._1);
+      return "" + string_of_identifier$1(x.it) + " = " + e + "";
+    } else {
+      var f = string_of_identifier$1(match._0.it);
+      var xs = Belt_List.map(Belt_List.map(match._1, unannotate), string_of_identifier$1);
+      var b = string_of_block$1(/* Return */1, match._2);
+      return "def " + f + "" + string_of_list$1(xs) + ":\n    " + indent(b, 4) + "";
+    }
   } else {
-    return string_of_expr$1(/* Stat */1, t._0);
-  }
-}
-
-function string_of_ob$1(ctx, ob) {
-  return Belt_Option.map(ob, (function (param) {
-                return string_of_block$1(ctx, param);
-              }));
-}
-
-function string_of_top_level$1(ts) {
-  return $$String.concat("\n", Belt_List.map(ts, string_of_term$1));
-}
-
-function as_many_then_one$1(es) {
-  if (es) {
-    var e1 = es.hd;
-    var match = Belt_List.reverse(es.tl);
-    if (match) {
-      return [
-              {
-                hd: e1,
-                tl: Belt_List.reverse(match.tl)
-              },
-              match.hd
-            ];
-    } else {
-      return [
-              /* [] */0,
-              e1
-            ];
-    }
-  }
-  throw {
-        RE_EXN_ID: Impossible,
-        _1: "unsafe",
-        Error: new Error()
-      };
-}
-
-function smol_to_py(ctx, smol_program) {
-  var ts = SMoL.fromString(smol_program);
-  if (typeof ctx !== "number") {
-    if (ts && !ts.tl) {
-      return string_of_expr$1(ctx, SMoL.as_expr("", ts.hd));
-    } else {
-      return "...expecting exactly one expression...";
-    }
-  }
-  switch (ctx) {
-    case /* Term */0 :
-        if (ts && !ts.tl) {
-          return string_of_term$1(ts.hd);
-        } else {
-          return "...expecting exactly one term...";
-        }
-    case /* Stat */1 :
-        return string_of_top_level$1(ts);
-    case /* Return */2 :
-        var match = as_many_then_one$1(ts);
-        var e = SMoL.as_expr("", match[1]);
-        return string_of_block$1(/* Return */2, [
-                    match[0],
-                    e
-                  ]);
-    
+    return string_of_expr$1(/* Stat */0, t._0);
   }
 }
 
@@ -989,40 +900,46 @@ function translate_program$1(program) {
                   })));
 }
 
-var SMoLToPy = {
-  string_of_constant: string_of_constant$1,
-  string_of_list: string_of_list$1,
-  string_of_identifier: string_of_identifier$1,
-  string_of_def_var: string_of_def_var$1,
-  string_of_def_fun: string_of_def_fun$1,
-  string_of_expr_set: string_of_expr_set$1,
-  string_of_expr_lam: string_of_expr_lam$1,
-  string_of_expr_app_prm: string_of_expr_app_prm$1,
-  string_of_expr_app: string_of_expr_app$1,
-  string_of_expr_bgn: string_of_expr_bgn$1,
-  string_of_expr_cnd: string_of_expr_cnd$1,
-  string_of_expr_if: string_of_expr_if$1,
-  string_of_expr_let: string_of_expr_let$1,
-  maybe_wrap: maybe_wrap$1,
-  consider_context: consider_context$1,
-  string_of_expr: string_of_expr$1,
-  string_of_def: string_of_def$1,
-  string_of_xe: string_of_xe$1,
-  string_of_eb: string_of_eb$1,
-  string_of_ob: string_of_ob$1,
-  string_of_block: string_of_block$1,
-  string_of_term: string_of_term$1,
-  string_of_top_level: string_of_top_level$1,
-  as_many_then_one: as_many_then_one$1,
-  smol_to_py: smol_to_py,
-  translate_program: translate_program$1
-};
+function translate_function_body$1(program) {
+  var ts = SMoL.fromString(program);
+  var match = as_many_then_one(ts);
+  var e = SMoL.as_expr("result", match[1]);
+  return string_of_block$1(/* Return */1, [
+              match[0],
+              e
+            ]);
+}
+
+function translate_expressions$1(results) {
+  var ts = SMoL.fromString(results);
+  var partial_arg = /* Expr */{
+    _0: true
+  };
+  return $$String.concat(" ", Belt_List.map(Belt_List.map(ts, (function (param) {
+                        return SMoL.as_expr("expr", param);
+                      })), (function (param) {
+                    return string_of_expr$1(partial_arg, param);
+                  })));
+}
+
+var toJsProgram = translate_program;
+
+var toJsFunctionBody = translate_function_body;
+
+var toJsExpressions = translate_expressions;
+
+var toPyProgram = translate_program$1;
+
+var toPyFunctionBody = translate_function_body$1;
+
+var toPyExpressions = translate_expressions$1;
 
 export {
-  unannotate ,
-  indent ,
-  Impossible ,
-  SMoLToJS ,
-  SMoLToPy ,
+  toJsProgram ,
+  toJsFunctionBody ,
+  toJsExpressions ,
+  toPyProgram ,
+  toPyFunctionBody ,
+  toPyExpressions ,
 }
 /* No side effect */

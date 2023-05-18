@@ -1,10 +1,6 @@
+open Belt
 open SExpression
-
-type context =
-  | Program
-  | FunctionBody
-  | OneTerm
-  | ManyTerms
+open SMoL
 
 let unannotate = x => x.it
 
@@ -12,25 +8,36 @@ let indent = (s, i) => {
   let pad = Js.String.repeat(i, " ")
   Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)
 }
-
 exception Impossible(string)
 
+let as_many_then_one = es => {
+  switch es {
+  | list{e1, ...rest} =>
+    switch List.reverse(rest) {
+    | list{} => (list{}, e1)
+    | list{x, ...xs} => (list{e1, ...List.reverse(xs)}, x)
+    }
+  | _ => raise(Impossible("unsafe"))
+  }
+}
+
+type js_ctx =
+  | Expr(bool) // the bool indicates whether we are in an infix operation
+  | Stat
+  | Return
+
+let maybe_wrap = (ctx, p, code) => {
+  switch (ctx, p) {
+  | (Expr(true), Add) => `(${code})`
+  | (Expr(true), Sub) => `(${code})`
+  | (Expr(true), Mul) => `(${code})`
+  | (Expr(true), Div) => `(${code})`
+  | _ => code
+  }
+}
+
 module SMoLToJS = {
-  /*
-
-This file convert smol programs to JavaScript
-
-*/
-
-  open SMoL
-  open Belt
   open List
-
-  type js_ctx =
-    | Term
-    | Expr(bool) // the bool indicates whether we are in an infix operation
-    | Stat
-    | Return
 
   let string_of_constant = c => {
     switch c {
@@ -153,19 +160,8 @@ This file convert smol programs to JavaScript
         |> String.concat(", ")})`
   }
 
-  let maybe_wrap = (ctx, p, code) => {
-    switch (ctx, p) {
-    | (Expr(true), Add) => `(${code})`
-    | (Expr(true), Sub) => `(${code})`
-    | (Expr(true), Mul) => `(${code})`
-    | (Expr(true), Div) => `(${code})`
-    | _ => code
-    }
-  }
-
   let consider_context = (ctx: js_ctx, code: string) => {
     switch ctx {
-    | Term
     | Expr(_) => code
     | Stat => `${code};`
     | Return => `return ${code};`
@@ -258,9 +254,9 @@ This file convert smol programs to JavaScript
     }
   }
 
-  let string_of_top_level = ts => {
-    ts->map(string_of_term) |> String.concat("\n")
-  }
+  // let string_of_top_level = ts => {
+  //   ts->map(string_of_term) |> String.concat("\n")
+  // }
 
   let as_many_then_one = es => {
     switch es {
@@ -273,33 +269,25 @@ This file convert smol programs to JavaScript
     }
   }
 
-  let smol_to_js: (js_ctx, string) => string = (ctx, smol_program) => {
-    let ts = smol_program->SMoL.fromString
-    switch (ctx, ts) {
-    | (Term, list{t}) => string_of_term(t)
-    | (Term, _) => "...expecting exactly one term..."
-    | (Expr(_), list{t}) => string_of_expr(ctx, t |> SMoL.as_expr(""))
-    | (Expr(_), _) => "...expecting exactly one expression..."
-    | (Stat, ts) => string_of_top_level(ts)
-    | (Return, ts) => {
-        let (ts, tz) = as_many_then_one(ts)
-        let e = tz |> SMoL.as_expr("")
-        string_of_block(Return, (ts, e))
-      }
-    }
-  }
+  // let smol_to_js: (js_ctx, string) => string = (ctx, smol_program) => {
+  //   let ts = smol_program->SMoL.fromString
+  //   switch (ctx, ts) {
+  //   | (Term, list{t}) => string_of_term(t)
+  //   | (Term, _) => "...expecting exactly one term..."
+  //   | (Expr(_), list{t}) => string_of_expr(ctx, t |> SMoL.as_expr(""))
+  //   | (Expr(_), _) => "...expecting exactly one expression..."
+  //   | (Stat, ts) => string_of_top_level(ts)
+  //   | (Return, ts) => {
+  //       let (ts, tz) = as_many_then_one(ts)
+  //       let e = tz |> SMoL.as_expr("")
+  //       string_of_block(Return, (ts, e))
+  //     }
+  //   }
+  // }
 
-  let translate_results: string => string = results => {
+  let translate_expressions: string => string = results => {
     let ts = results->SMoL.fromString
-    String.concat(
-      " ",
-      ts->map(t => {
-        switch t {
-        | Def(_) => raise(Impossible("expecting results"))
-        | Exp(e) => `${string_of_expr(Expr(false), e)}`
-        }
-      }),
-    )
+    String.concat(" ", ts->map(as_expr("expr"))->map(string_of_expr(Expr(true))))
   }
 
   let translate_program: string => string = program => {
@@ -319,24 +307,23 @@ This file convert smol programs to JavaScript
       }),
     )
   }
+
+  let translate_function_body: string => string = program => {
+    let ts = program->SMoL.fromString
+    let (ts, t) = as_many_then_one(ts)
+    let e = as_expr("result", t)
+    string_of_block(Return, (ts, e))
+  }
 }
 
 module SMoLToPy = {
-  /*
-
-This file convert smol programs to JavaScript
-
-*/
-
-  open SMoL
-  open Belt
   open List
 
-  type js_ctx =
-    | Term
-    | Expr(bool) // the bool indicates whether we are in an infix operation
-    | Stat
-    | Return
+  // type js_ctx =
+  //   | Term
+  //   | Expr(bool) // the bool indicates whether we are in an infix operation
+  //   | Stat
+  //   | Return
 
   let string_of_constant = c => {
     switch c {
@@ -380,8 +367,13 @@ This file convert smol programs to JavaScript
     `def ${f}${string_of_list(xs)}:\n    ${indent(b, 4)}`
   }
 
-  let string_of_expr_set = (x, e) => {
-    `${x} := ${e}`
+  let string_of_expr_set = (ctx, x, e) => {
+    switch ctx {
+    | Expr(true) => `(${x} := ${e})`
+    | Expr(false) => `${x} := ${e}`
+    | Stat => `${x} = ${e}`
+    | Return => `return (${x} := ${e})`
+    }
   }
 
   let string_of_expr_lam = (xs, b) => {
@@ -404,6 +396,11 @@ This file convert smol programs to JavaScript
     | (Le, list{e1, e2}) => `${e1} <= ${e2}`
     | (Ge, list{e1, e2}) => `${e1} >= ${e2}`
     | (Ne, list{e1, e2}) => `${e1} != ${e2}`
+    | (PairRefLeft, list{e1}) => `${e1}[0]`
+    | (PairRefRight, list{e1}) => `${e1}[1]`
+    | (PairSetLeft, list{e1, e2}) => `${e1}[0] := ${e2}`
+    | (PairSetRight, list{e1, e2}) => `${e1}[1] := ${e2}`
+    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`
     | (VecNew, es) => `[${String.concat(", ", es)}]`
     | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]`
@@ -446,13 +443,6 @@ This file convert smol programs to JavaScript
     `"...a let-expression..."`
   }
 
-  let maybe_wrap = (ctx, code) => {
-    switch ctx {
-    | Expr(true) => `(${code})`
-    | _ => code
-    }
-  }
-
   let consider_context = (ctx: js_ctx, code: string) => {
     switch ctx {
     | Return => `return ${code}`
@@ -465,10 +455,7 @@ This file convert smol programs to JavaScript
     | Con(c) => string_of_constant(c) |> consider_context(ctx)
     | Ref(x) => string_of_identifier(x.it) |> consider_context(ctx)
     | Set(x, e) =>
-      string_of_expr_set(
-        x->unannotate->string_of_identifier,
-        string_of_expr(Expr(false), e),
-      ) |> consider_context(ctx)
+      string_of_expr_set(ctx, x->unannotate->string_of_identifier, string_of_expr(Expr(false), e))
     | Lam(xs, b) =>
       let b = {
         let (ts, e) = b
@@ -479,7 +466,7 @@ This file convert smol programs to JavaScript
       }
       string_of_expr_lam(xs->map(unannotate)->map(string_of_identifier), b) |> consider_context(ctx)
     | AppPrm(p, es) =>
-      let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx)
+      let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
       if p != OError {
         o |> consider_context(ctx)
       } else {
@@ -554,37 +541,6 @@ This file convert smol programs to JavaScript
     }
   }
 
-  let string_of_top_level = ts => {
-    ts->map(string_of_term) |> String.concat("\n")
-  }
-
-  let as_many_then_one = es => {
-    switch es {
-    | list{e1, ...rest} =>
-      switch reverse(rest) {
-      | list{} => (list{}, e1)
-      | list{x, ...xs} => (list{e1, ...reverse(xs)}, x)
-      }
-    | _ => raise(Impossible("unsafe"))
-    }
-  }
-
-  let smol_to_py: (js_ctx, string) => string = (ctx, smol_program) => {
-    let ts = smol_program->SMoL.fromString
-    switch (ctx, ts) {
-    | (Term, list{t}) => string_of_term(t)
-    | (Term, _) => "...expecting exactly one term..."
-    | (Expr(_), list{t}) => string_of_expr(ctx, t |> SMoL.as_expr(""))
-    | (Expr(_), _) => "...expecting exactly one expression..."
-    | (Stat, ts) => string_of_top_level(ts)
-    | (Return, ts) => {
-        let (ts, tz) = as_many_then_one(ts)
-        let e = tz |> SMoL.as_expr("")
-        string_of_block(Return, (ts, e))
-      }
-    }
-  }
-
   let translate_program: string => string = program => {
     let ts = program->SMoL.fromString
     String.concat(
@@ -597,4 +553,23 @@ This file convert smol programs to JavaScript
       }),
     )
   }
+
+  let translate_function_body: string => string = program => {
+    let ts = program->SMoL.fromString
+    let (ts, t) = as_many_then_one(ts)
+    let e = as_expr("result", t)
+    string_of_block(Return, (ts, e))
+  }
+
+  let translate_expressions: string => string = results => {
+    let ts = results->SMoL.fromString
+    String.concat(" ", ts->map(as_expr("expr"))->map(string_of_expr(Expr(true))))
+  }
 }
+
+let toJsProgram = SMoLToJS.translate_program
+let toJsFunctionBody = SMoLToJS.translate_function_body
+let toJsExpressions = SMoLToJS.translate_expressions
+let toPyProgram = SMoLToPy.translate_program
+let toPyFunctionBody = SMoLToPy.translate_function_body
+let toPyExpressions = SMoLToPy.translate_expressions
