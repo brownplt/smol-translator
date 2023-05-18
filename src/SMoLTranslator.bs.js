@@ -535,7 +535,7 @@ function string_of_constant$1(c) {
 }
 
 function string_of_list$1(ss) {
-  return "(" + $$String.concat(" ", ss) + ")";
+  return "(" + $$String.concat(", ", ss) + ")";
 }
 
 function string_of_identifier$1(x) {
@@ -557,23 +557,45 @@ function string_of_expr_lam$1(xs, b) {
   }
 }
 
-function string_of_expr_app_prm$1(p, es) {
+function wrap(ctx, code) {
+  if (typeof ctx === "number") {
+    if (ctx !== 0) {
+      return "return (" + code + ")";
+    } else {
+      return code;
+    }
+  } else if (ctx._0) {
+    return "(" + code + ")";
+  } else {
+    return code;
+  }
+}
+
+function ret(ctx, code) {
+  if (typeof ctx === "number" && ctx !== 0) {
+    return "return " + code + "";
+  } else {
+    return code;
+  }
+}
+
+function string_of_expr_app_prm$1(ctx, p, es) {
   switch (p) {
     case /* Add */0 :
-        return "" + $$String.concat(" + ", es) + "";
+        return wrap(ctx, "" + $$String.concat(" + ", es) + "");
     case /* Sub */1 :
-        return "" + $$String.concat(" - ", es) + "";
+        return wrap(ctx, "" + $$String.concat(" - ", es) + "");
     case /* Mul */2 :
-        return "" + $$String.concat(" * ", es) + "";
+        return wrap(ctx, "" + $$String.concat(" * ", es) + "");
     case /* Div */3 :
-        return "" + $$String.concat(" / ", es) + "";
+        return wrap(ctx, "" + $$String.concat(" / ", es) + "");
     case /* Lt */4 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
         var match = es.tl;
         if (match && !match.tl) {
-          return "" + es.hd + " < " + match.hd + "";
+          return wrap(ctx, "" + es.hd + " < " + match.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -583,7 +605,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$1 = es.tl;
         if (match$1 && !match$1.tl) {
-          return "" + es.hd + " is " + match$1.hd + "";
+          return wrap(ctx, "" + es.hd + " is " + match$1.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -593,7 +615,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$2 = es.tl;
         if (match$2 && !match$2.tl) {
-          return "" + es.hd + " > " + match$2.hd + "";
+          return wrap(ctx, "" + es.hd + " > " + match$2.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -603,7 +625,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$3 = es.tl;
         if (match$3 && !match$3.tl) {
-          return "" + es.hd + " <= " + match$3.hd + "";
+          return wrap(ctx, "" + es.hd + " <= " + match$3.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -613,7 +635,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$4 = es.tl;
         if (match$4 && !match$4.tl) {
-          return "" + es.hd + " >= " + match$4.hd + "";
+          return wrap(ctx, "" + es.hd + " >= " + match$4.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -623,7 +645,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$5 = es.tl;
         if (match$5 && !match$5.tl) {
-          return "" + es.hd + " != " + match$5.hd + "";
+          return wrap(ctx, "" + es.hd + " != " + match$5.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -633,19 +655,19 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$6 = es.tl;
         if (match$6 && !match$6.tl) {
-          return "[ " + es.hd + ", " + match$6.hd + " ]";
+          return ret(ctx, "[ " + es.hd + ", " + match$6.hd + " ]");
         } else {
           return "/* a primitive operation not supported yet */";
         }
     case /* PairRefRight */11 :
         if (es && !es.tl) {
-          return "" + es.hd + "[1]";
+          return wrap(ctx, "" + es.hd + "[1]");
         } else {
           return "/* a primitive operation not supported yet */";
         }
     case /* PairRefLeft */12 :
         if (es && !es.tl) {
-          return "" + es.hd + "[0]";
+          return wrap(ctx, "" + es.hd + "[0]");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -654,30 +676,58 @@ function string_of_expr_app_prm$1(p, es) {
           return "/* a primitive operation not supported yet */";
         }
         var match$7 = es.tl;
-        if (match$7 && !match$7.tl) {
-          return "" + es.hd + "[1] := " + match$7.hd + "";
-        } else {
+        if (!match$7) {
           return "/* a primitive operation not supported yet */";
+        }
+        if (match$7.tl) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var e2 = match$7.hd;
+        var e1 = es.hd;
+        if (typeof ctx === "number") {
+          if (ctx !== 0) {
+            return "return " + e1 + ".__setitem__(1, " + e2 + ")";
+          } else {
+            return "" + e1 + "[1] = " + e2 + "";
+          }
+        } else if (ctx._0) {
+          return "" + e1 + ".__setitem__(1, " + e2 + ")";
+        } else {
+          return "" + e1 + ".__setitem__(1, " + e2 + ")";
         }
     case /* PairSetLeft */14 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
         var match$8 = es.tl;
-        if (match$8 && !match$8.tl) {
-          return "" + es.hd + "[0] := " + match$8.hd + "";
-        } else {
+        if (!match$8) {
           return "/* a primitive operation not supported yet */";
         }
+        if (match$8.tl) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var e2$1 = match$8.hd;
+        var e1$1 = es.hd;
+        if (typeof ctx === "number") {
+          if (ctx !== 0) {
+            return "return " + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+          } else {
+            return "" + e1$1 + "[0] = " + e2$1 + "";
+          }
+        } else if (ctx._0) {
+          return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+        } else {
+          return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+        }
     case /* VecNew */15 :
-        return "[" + $$String.concat(", ", es) + "]";
+        return ret(ctx, "[" + $$String.concat(", ", es) + "]");
     case /* VecRef */16 :
         if (!es) {
           return "/* a primitive operation not supported yet */";
         }
         var match$9 = es.tl;
         if (match$9 && !match$9.tl) {
-          return "" + es.hd + "[" + match$9.hd + "]";
+          return ret(ctx, "" + es.hd + "[" + match$9.hd + "]");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -690,14 +740,29 @@ function string_of_expr_app_prm$1(p, es) {
           return "/* a primitive operation not supported yet */";
         }
         var match$11 = match$10.tl;
-        if (match$11 && !match$11.tl) {
-          return "" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "";
-        } else {
+        if (!match$11) {
           return "/* a primitive operation not supported yet */";
+        }
+        if (match$11.tl) {
+          return "/* a primitive operation not supported yet */";
+        }
+        var e3 = match$11.hd;
+        var e2$2 = match$10.hd;
+        var e1$2 = es.hd;
+        if (typeof ctx === "number") {
+          if (ctx !== 0) {
+            return "return " + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+          } else {
+            return "" + e1$2 + "[" + e2$2 + "] = " + e3 + "";
+          }
+        } else if (ctx._0) {
+          return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+        } else {
+          return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
         }
     case /* VecLen */18 :
         if (es && !es.tl) {
-          return "" + es.hd + ".length";
+          return ret(ctx, "" + es.hd + ".length");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -707,7 +772,7 @@ function string_of_expr_app_prm$1(p, es) {
         }
         var match$12 = es.tl;
         if (match$12 && !match$12.tl) {
-          return "" + es.hd + " is " + match$12.hd + "";
+          return wrap(ctx, "" + es.hd + " is " + match$12.hd + "");
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -726,13 +791,13 @@ function string_of_expr_app$1(e, es) {
 }
 
 function string_of_expr_bgn$1(es, e) {
-  return "(" + $$String.concat(", ", Belt_List.concatMany([
+  return "[" + $$String.concat(", ", Belt_List.concatMany([
                   es,
                   {
                     hd: e,
                     tl: /* [] */0
                   }
-                ])) + ")[-1]";
+                ])) + "][-1]";
 }
 
 function string_of_expr_if$1(e_cnd, e_thn, e_els) {
@@ -780,32 +845,35 @@ function string_of_expr$1(ctx, e) {
         return consider_context$1(ctx, (string_of_block$1(/* Return */1, c._1), Belt_List.map(c._0, string_of_xe$1), "\"...a let-expression...\""));
     case /* AppPrm */5 :
         var p = c._0;
-        var partial_arg = /* Expr */{
-          _0: true
-        };
-        var o = maybe_wrap(ctx, p, string_of_expr_app_prm$1(p, Belt_List.map(c._1, (function (param) {
-                        return string_of_expr$1(partial_arg, param);
-                      }))));
-        if (p !== /* OError */20) {
-          return consider_context$1(ctx, o);
-        } else {
-          return o;
+        if (p !== 17) {
+          var partial_arg = /* Expr */{
+            _0: true
+          };
+          return string_of_expr_app_prm$1(ctx, p, Belt_List.map(c._1, (function (param) {
+                            return string_of_expr$1(partial_arg, param);
+                          })));
         }
-    case /* App */6 :
         var partial_arg$1 = /* Expr */{
+          _0: false
+        };
+        return string_of_expr_app_prm$1(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
+                          return string_of_expr$1(partial_arg$1, param);
+                        })));
+    case /* App */6 :
+        var partial_arg$2 = /* Expr */{
           _0: false
         };
         return consider_context$1(ctx, string_of_expr_app$1(string_of_expr$1(/* Expr */{
                             _0: false
                           }, c._0), Belt_List.map(c._1, (function (param) {
-                              return string_of_expr$1(partial_arg$1, param);
+                              return string_of_expr$1(partial_arg$2, param);
                             }))));
     case /* Bgn */7 :
-        var partial_arg$2 = /* Expr */{
+        var partial_arg$3 = /* Expr */{
           _0: false
         };
         return consider_context$1(ctx, string_of_expr_bgn$1(Belt_List.map(c._0, (function (param) {
-                              return string_of_expr$1(partial_arg$2, param);
+                              return string_of_expr$1(partial_arg$3, param);
                             })), string_of_expr$1(/* Expr */{
                             _0: false
                           }, c._1)));

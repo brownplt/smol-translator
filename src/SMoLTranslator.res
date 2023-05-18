@@ -340,7 +340,7 @@ module SMoLToPy = {
   }
 
   let string_of_list = ss => {
-    "(" ++ String.concat(" ", ss) ++ ")"
+    "(" ++ String.concat(", ", ss) ++ ")"
   }
 
   let string_of_identifier = x => {
@@ -384,28 +384,61 @@ module SMoLToPy = {
     }
   }
 
-  let string_of_expr_app_prm = (p, es) => {
+  let wrap = (ctx, code) => {
+    switch ctx {
+    | Expr(true) => `(${code})`
+    | Return => `return (${code})`
+    | _ => code
+    }
+  }
+
+  let ret = (ctx, code) => {
+    switch ctx {
+    | Return => `return ${code}`
+    | _ => code
+    }
+  }
+
+  let string_of_expr_app_prm = (ctx, p, es) => {
     switch (p, es) {
-    | (Add, es) => `${String.concat(" + ", es)}`
-    | (Sub, es) => `${String.concat(" - ", es)}`
-    | (Mul, es) => `${String.concat(" * ", es)}`
-    | (Div, es) => `${String.concat(" / ", es)}`
-    | (Lt, list{e1, e2}) => `${e1} < ${e2}`
-    | (Eq, list{e1, e2}) => `${e1} is ${e2}`
-    | (Gt, list{e1, e2}) => `${e1} > ${e2}`
-    | (Le, list{e1, e2}) => `${e1} <= ${e2}`
-    | (Ge, list{e1, e2}) => `${e1} >= ${e2}`
-    | (Ne, list{e1, e2}) => `${e1} != ${e2}`
-    | (PairRefLeft, list{e1}) => `${e1}[0]`
-    | (PairRefRight, list{e1}) => `${e1}[1]`
-    | (PairSetLeft, list{e1, e2}) => `${e1}[0] := ${e2}`
-    | (PairSetRight, list{e1, e2}) => `${e1}[1] := ${e2}`
-    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`
-    | (VecNew, es) => `[${String.concat(", ", es)}]`
-    | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`
-    | (VecRef, list{e1, e2}) => `${e1}[${e2}]`
-    | (VecLen, list{e}) => `${e}.length`
-    | (Eqv, list{e1, e2}) => `${e1} is ${e2}`
+    | (Add, es) => `${String.concat(" + ", es)}` |> wrap(ctx)
+    | (Sub, es) => `${String.concat(" - ", es)}` |> wrap(ctx)
+    | (Mul, es) => `${String.concat(" * ", es)}` |> wrap(ctx)
+    | (Div, es) => `${String.concat(" / ", es)}` |> wrap(ctx)
+    | (Lt, list{e1, e2}) => `${e1} < ${e2}` |> wrap(ctx)
+    | (Eq, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
+    | (Gt, list{e1, e2}) => `${e1} > ${e2}` |> wrap(ctx)
+    | (Le, list{e1, e2}) => `${e1} <= ${e2}` |> wrap(ctx)
+    | (Ge, list{e1, e2}) => `${e1} >= ${e2}` |> wrap(ctx)
+    | (Ne, list{e1, e2}) => `${e1} != ${e2}` |> wrap(ctx)
+    | (PairRefLeft, list{e1}) => `${e1}[0]` |> wrap(ctx)
+    | (PairRefRight, list{e1}) => `${e1}[1]` |> wrap(ctx)
+    | (PairSetLeft, list{e1, e2}) =>
+      switch ctx {
+      | Stat => `${e1}[0] = ${e2}`
+      | Expr(true) => `${e1}.__setitem__(0, ${e2})`
+      | Expr(false) => `${e1}.__setitem__(0, ${e2})`
+      | Return => `return ${e1}.__setitem__(0, ${e2})`
+      }
+    | (PairSetRight, list{e1, e2}) =>
+      switch ctx {
+      | Stat => `${e1}[1] = ${e2}`
+      | Expr(true) => `${e1}.__setitem__(1, ${e2})`
+      | Expr(false) => `${e1}.__setitem__(1, ${e2})`
+      | Return => `return ${e1}.__setitem__(1, ${e2})`
+      }
+    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]` |> ret(ctx)
+    | (VecNew, es) => `[${String.concat(", ", es)}]` |> ret(ctx)
+    | (VecSet, list{e1, e2, e3}) =>
+      switch ctx {
+      | Stat => `${e1}[${e2}] = ${e3}`
+      | Expr(true) => `${e1}.__setitem__(${e2}, ${e3})`
+      | Expr(false) => `${e1}.__setitem__(${e2}, ${e3})`
+      | Return => `return ${e1}.__setitem__(${e2}, ${e3})`
+      }
+    | (VecRef, list{e1, e2}) => `${e1}[${e2}]` |> ret(ctx)
+    | (VecLen, list{e}) => `${e}.length` |> ret(ctx)
+    | (Eqv, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
     | (OError, list{e}) => `raise ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
@@ -416,7 +449,7 @@ module SMoLToPy = {
   }
 
   let string_of_expr_bgn = (es, e) => {
-    `(${String.concat(", ", list{...es, e})})[-1]`
+    `[${String.concat(", ", list{...es, e})}][-1]`
   }
 
   // let string_of_expr_whl = (_e, _b) => {
@@ -465,13 +498,9 @@ module SMoLToPy = {
         }
       }
       string_of_expr_lam(xs->map(unannotate)->map(string_of_identifier), b) |> consider_context(ctx)
-    | AppPrm(p, es) =>
-      let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
-      if p != OError {
-        o |> consider_context(ctx)
-      } else {
-        o
-      }
+    | AppPrm(VecSet, es) =>
+      string_of_expr_app_prm(ctx, VecSet, es->map(string_of_expr(Expr(false))))
+    | AppPrm(p, es) => string_of_expr_app_prm(ctx, p, es->map(string_of_expr(Expr(true))))
     | App(e, es) =>
       string_of_expr_app(
         string_of_expr(Expr(false), e),
