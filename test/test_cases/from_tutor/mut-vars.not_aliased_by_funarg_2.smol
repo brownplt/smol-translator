@@ -1,5 +1,0 @@
-(defvar x 12)
-(deffun (set-and-return y)
-  (set! y 0)
-  x)
-(set-and-return x)

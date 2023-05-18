@@ -1,3 +1,0 @@
-(deffun (func foo)
-  89)
-(func (/ 67 0))

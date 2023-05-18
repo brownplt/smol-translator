@@ -1,6 +1,0 @@
-(deffun (make-getter)
-  (defvar x 1)
-  (deffun (get-x) x)
-  get-x)
-(defvar get-x (make-getter))
-(get-x)

@@ -1,5 +1,0 @@
-(defvar x 1)
-(defvar y (+ x 100))
-(set! x 2)
-x
-y

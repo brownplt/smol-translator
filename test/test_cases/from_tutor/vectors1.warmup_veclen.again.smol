@@ -1,2 +1,0 @@
-(defvar mv (mvec 17 3 0))
-(vec-len mv)

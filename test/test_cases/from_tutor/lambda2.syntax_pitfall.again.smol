@@ -1,2 +1,0 @@
-(deffun (g n m) n + m)
-(g 17 23)

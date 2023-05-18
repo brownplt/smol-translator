@@ -1,9 +1,0 @@
-(defvar x 2)
-(deffun (main)
-  (deffun (getx)
-    x)
-  (defvar y (getx))
-  (defvar x 3)
-  y)
-
-(main)

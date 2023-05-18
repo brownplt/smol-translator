@@ -1,4 +1,0 @@
-(defvar x (mpair 76 18))
-(set-right! x x)
-(set-left! (right (right x)) 2)
-(left x)

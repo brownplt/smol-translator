@@ -1,3 +1,0 @@
-(defvar v (mvec 23 4))
-(vec-set! v 0 66)
-v

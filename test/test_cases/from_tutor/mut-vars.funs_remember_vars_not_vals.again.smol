@@ -1,8 +1,0 @@
-(defvar tmp 4)
-(deffun (lookup)
-  tmp)
-(deffun (update val)
-  (set! tmp val))
-(lookup)
-(update 3)
-(lookup)

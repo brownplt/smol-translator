@@ -1,3 +1,0 @@
-(deffun (sum x y z)
-  (+ x (+ y z)))
-(sum 2 1 3)

@@ -1,6 +1,0 @@
-(defvar a 2)
-(defvar fun
-  (lambda (b)
-    (+ a b)))
-(set! a 3)
-(fun a)
