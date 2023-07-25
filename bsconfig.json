@@ -1,5 +1,5 @@
 {
-    "name": "@lukc1024/smol-translator",
+    "name": "@lukuangchen/smol-translator",
     "sources": [
         {
             "dir": "src",
@@ -18,6 +18,6 @@
     ],
     "suffix": ".bs.js",
     "bs-dependencies": [
-        "@lukc1024/s-expression"
+        "@lukuangchen/s-expression"
     ]
 }

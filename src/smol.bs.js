@@ -5,7 +5,7 @@ import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
 import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
-import * as SExpression from "@lukc1024/s-expression/src/SExpression.bs.js";
+import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 
 function unannotate(x) {
@@ -78,7 +78,7 @@ function string_of_prm(o) {
         return "vec-len";
     case /* Eqv */19 :
         return "eq?";
-    case /* OError */20 :
+    case /* Err */20 :
         return "error";
     
   }
@@ -887,7 +887,7 @@ function term_of_sexpr(e) {
               exit = 2;
               break;
           case "error" :
-              return app_prm(ann, /* OError */20, es$1.tl);
+              return app_prm(ann, /* Err */20, es$1.tl);
           case "if" :
               var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
               var e_cnd = as_expr("a (conditional) expression", term_of_sexpr(match$9[0]));

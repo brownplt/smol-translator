@@ -1,6 +1,6 @@
 {
-  "name": "@lukc1024/smol-translator",
-  "version": "1.0.0",
+  "name": "@lukuangchen/smol-translator",
+  "version": "2.0.0",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
   "main": "src/index.bs.js",
@@ -17,11 +17,11 @@
   "author": {
     "name": "Kuang-Chen Lu",
     "email": "kuang-chen_lu@brown.edu",
-    "url": "https://lukc1024.github.io"
+    "url": "https://lukuangchen.github.io"
   },
   "license": "MIT",
   "dependencies": {
-    "@lukc1024/s-expression": "^2.0.0",
+    "@lukuangchen/s-expression": "^2.0.0",
     "rescript": "^10.1.4"
   }
 }

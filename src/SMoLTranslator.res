@@ -1,6 +1,6 @@
 open Belt
-open SExpression
 open SMoL
+open SExpression
 
 let unannotate = x => x.it
 
@@ -122,7 +122,7 @@ module SMoLToJS = {
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]`
     | (VecLen, list{e}) => `${e}.length`
     | (Eqv, list{e1, e2}) => `${e1} === ${e2}`
-    | (OError, list{e}) => `throw ${e}`
+    | (Err, list{e}) => `throw ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
   }
@@ -184,7 +184,7 @@ module SMoLToJS = {
       ) |> consider_context(ctx)
     | AppPrm(p, es) =>
       let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
-      if p != OError {
+      if p != Err {
         o |> consider_context(ctx)
       } else {
         o
@@ -439,7 +439,7 @@ module SMoLToPy = {
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]` |> ret(ctx)
     | (VecLen, list{e}) => `${e}.length` |> ret(ctx)
     | (Eqv, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
-    | (OError, list{e}) => `raise ${e}`
+    | (Err, list{e}) => `raise ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
   }

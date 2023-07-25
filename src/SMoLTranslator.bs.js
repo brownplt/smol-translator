@@ -270,7 +270,7 @@ function string_of_expr_app_prm(p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* OError */20 :
+    case /* Err */20 :
         if (es && !es.tl) {
           return "throw " + es.hd + "";
         } else {
@@ -341,7 +341,7 @@ function string_of_expr(ctx, e) {
         var o = maybe_wrap(ctx, p, string_of_expr_app_prm(p, Belt_List.map(c._1, (function (param) {
                         return string_of_expr(partial_arg, param);
                       }))));
-        if (p !== /* OError */20) {
+        if (p !== /* Err */20) {
           return consider_context(ctx, o);
         } else {
           return o;
@@ -776,7 +776,7 @@ function string_of_expr_app_prm$1(ctx, p, es) {
         } else {
           return "/* a primitive operation not supported yet */";
         }
-    case /* OError */20 :
+    case /* Err */20 :
         if (es && !es.tl) {
           return "raise " + es.hd + "";
         } else {
