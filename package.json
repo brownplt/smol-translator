@@ -1,9 +1,9 @@
 {
   "name": "@lukuangchen/smol-translator",
-  "version": "2.0.1",
+  "version": "3.0.0",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
-  "main": "src/index.bs.js",
+  "main": "src/SMoL.bs.js",
   "scripts": {
     "clean": "rm test/test_cases/from_tutor/*",
     "prepare-test:get-programs": "node test/extract_programs_from_tutorials.js",

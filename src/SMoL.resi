@@ -106,3 +106,12 @@ let term_of_sexpr: annotated<s_expr> => term
 let app_prm: (SExpression.srcrange, primitive, Belt.List.t<annotated<s_expr>>) => term
 let terms_of_sexprs: Belt.List.t<annotated<s_expr>> => Belt.List.t<term>
 let fromString: string => Belt.List.t<term>
+
+module Translator : {
+  let toJsProgram: string => string
+  let toJsFunctionBody: string => string
+  let toJsExpressions: string => string
+  let toPyProgram: string => string
+  let toPyFunctionBody: string => string
+  let toPyExpressions: string => string
+}
