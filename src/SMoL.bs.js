@@ -8,16 +8,7 @@ import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 
-function unannotate(x) {
-  return x.it;
-}
-
-function indent(s, i) {
-  var pad = Js_string.repeat(i, " ");
-  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
-}
-
-function string_of_prm(o) {
+function string_of_primitive(o) {
   switch (o) {
     case /* Add */0 :
         return "+";
@@ -61,6 +52,26 @@ function string_of_prm(o) {
         return "eq?";
     case /* Err */20 :
         return "error";
+    
+  }
+}
+
+function unannotate(x) {
+  return x.it;
+}
+
+function indent(s, i) {
+  var pad = Js_string.repeat(i, " ");
+  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
+}
+
+function string_of_result(r) {
+  switch (r.TAG | 0) {
+    case /* Vec */0 :
+    case /* Fun */1 :
+        return "@" + String(r._0) + "";
+    case /* PrmFun */2 :
+        return string_of_primitive(r._0);
     
   }
 }
@@ -120,7 +131,7 @@ function string_of_expr(e) {
         return "(let " + indent(xes$2, 5) + "\n" + indent(b$1, 2) + ")";
     case /* AppPrm */5 :
         var es = Belt_List.map(c._1, string_of_expr);
-        var e$2 = string_of_prm(c._0);
+        var e$2 = string_of_primitive(c._0);
         return string_of_list({
                     hd: e$2,
                     tl: es
@@ -233,6 +244,7 @@ function string_of_program(ts) {
 }
 
 var Stringify = {
+  string_of_result: string_of_result,
   string_of_expr: string_of_expr,
   string_of_def: string_of_def,
   string_of_term: string_of_term,
@@ -1986,6 +1998,17 @@ function translate_expressions$1(results) {
                   })));
 }
 
+function string_of_result$1(r) {
+  switch (r.TAG | 0) {
+    case /* Vec */0 :
+    case /* Fun */1 :
+        return string_of_result(r);
+    case /* PrmFun */2 :
+        return string_of_identifier(string_of_result(r));
+    
+  }
+}
+
 var partial_arg = /* Expr */{
   _0: false
 };
@@ -2003,12 +2026,24 @@ function string_of_program$1(ts) {
 }
 
 var StringifyAsJS = {
+  string_of_result: string_of_result$1,
   string_of_expr: string_of_expr$3,
   string_of_def: string_of_def$1,
   string_of_term: string_of_term$1,
   string_of_block: string_of_block$3,
   string_of_program: string_of_program$1
 };
+
+function string_of_result$2(r) {
+  switch (r.TAG | 0) {
+    case /* Vec */0 :
+    case /* Fun */1 :
+        return string_of_result(r);
+    case /* PrmFun */2 :
+        return string_of_identifier$1(string_of_result(r));
+    
+  }
+}
 
 var partial_arg$1 = /* Expr */{
   _0: false
@@ -2027,6 +2062,7 @@ function string_of_program$2(ts) {
 }
 
 var StringifyAsPY = {
+  string_of_result: string_of_result$2,
   string_of_expr: string_of_expr$4,
   string_of_def: string_of_def$2,
   string_of_term: string_of_term$2,
@@ -2046,15 +2082,12 @@ var SMoLToPY = {
   translate_expressions: translate_expressions$1
 };
 
-var stringOfSExpr = SExpression.toString;
-
 export {
   Stringify ,
   StringifyAsJS ,
   StringifyAsPY ,
   SMoLToJS ,
   SMoLToPY ,
-  stringOfSExpr ,
   ParseError ,
   stringOfExprs ,
   stringOfParseError ,

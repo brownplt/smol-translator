@@ -50,6 +50,32 @@ and term =
   | Exp(annotated<expression>)
 and program = list<term>
 
+let string_of_primitive = (o: primitive) => {
+  switch o {
+  | Add => "+"
+  | Sub => "-"
+  | Mul => "*"
+  | Div => "/"
+  | Lt => "<"
+  | Eq => "="
+  | Gt => ">"
+  | Le => "<="
+  | Ge => ">="
+  | Ne => "!="
+  | PairNew => "pair"
+  | PairRefLeft => "left"
+  | PairRefRight => "right"
+  | PairSetLeft => "set-left!"
+  | PairSetRight => "set-right!"
+  | VecNew => "vec"
+  | VecRef => "vec-ref"
+  | VecSet => "vec-set!"
+  | VecLen => "vec-len"
+  | Eqv => "eq?"
+  | Err => "error"
+  }
+}
+
 let unannotate = x => x.it
 
 let indent = (s, i) => {
@@ -57,7 +83,13 @@ let indent = (s, i) => {
   Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)
 }
 
+type result =
+  | Vec(int) // the int is the address
+  | Fun(int) // the int is the address
+  | PrmFun(primitive)
+
 module type Stringifier = {
+  let string_of_result: result => string
   let string_of_expr: annotated<expression> => string
   let string_of_def: annotated<definition> => string
   let string_of_term: term => string
@@ -82,29 +114,11 @@ module Stringify: Stringifier = {
     }
   }
 
-  let string_of_prm = (o: primitive) => {
-    switch o {
-    | Add => "+"
-    | Sub => "-"
-    | Mul => "*"
-    | Div => "/"
-    | Lt => "<"
-    | Eq => "="
-    | Gt => ">"
-    | Le => "<="
-    | Ge => ">="
-    | Ne => "!="
-    | PairNew => "pair"
-    | PairRefLeft => "left"
-    | PairRefRight => "right"
-    | PairSetLeft => "set-left!"
-    | PairSetRight => "set-right!"
-    | VecNew => "vec"
-    | VecRef => "vec-ref"
-    | VecSet => "vec-set!"
-    | VecLen => "vec-len"
-    | Eqv => "eq?"
-    | Err => "error"
+  let string_of_result = r => {
+    switch r {
+    | Vec(i) => `@${i |> Int.toString}`
+    | Fun(i) => `@${i |> Int.toString}`
+    | PrmFun(p) => string_of_primitive(p)
     }
   }
 
@@ -173,7 +187,7 @@ module Stringify: Stringifier = {
     | Ref(x) => x.it
     | Set(x, e) => string_of_expr_set(x->unannotate, string_of_expr(e))
     | Lam(xs, b) => string_of_expr_lam(xs->map(unannotate), string_of_block(b))
-    | AppPrm(p, es) => string_of_expr_app(string_of_prm(p), es->map(string_of_expr))
+    | AppPrm(p, es) => string_of_expr_app(string_of_primitive(p), es->map(string_of_expr))
     | App(e, es) => string_of_expr_app(string_of_expr(e), es->map(string_of_expr))
     | Let(xes, b) => string_of_expr_let(xes->map(string_of_xe), string_of_block(b))
     | Cnd(ebs, ob) => string_of_expr_cnd(ebs->map(string_of_eb), string_of_ob(ob))
@@ -221,7 +235,6 @@ module Stringify: Stringifier = {
 let toString = Stringify.string_of_term
 
 type s_expr = SExpression.t
-let stringOfSExpr = SExpression.toString
 
 type kind_expectation =
   | Atom
@@ -250,17 +263,22 @@ exception ParseError(parse_error)
 let stringOfExprs = es => {
   switch es {
   | list{} => "no term"
-  | list{e} => `one term: ${stringOfSExpr(e)}`
+  | list{e} => `one term: ${SExpression.toString(e)}`
   | es =>
-    `${List.length(es)->Int.toString} terms: ${String.concat(", ", es->List.map(stringOfSExpr))}`
+    `${List.length(es)->Int.toString} terms: ${String.concat(
+        ", ",
+        es->List.map(SExpression.toString),
+      )}`
   }
 }
 
 let stringOfParseError: parse_error => string = err => {
   switch err {
-  | SExprKindError(_kind, context, sexpr) => `expecting a ${context}, given ${stringOfSExpr(sexpr)}`
+  | SExprKindError(_kind, context, sexpr) =>
+    `expecting a ${context}, given ${SExpression.toString(sexpr)}`
   | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
-  | LiteralListError(sexpr) => `expecting a constant or a vector, given ${stringOfSExpr(sexpr)}`
+  | LiteralListError(sexpr) =>
+    `expecting a constant or a vector, given ${SExpression.toString(sexpr)}`
   | SExprArityError(_arity_expectation, context, es) =>
     `expecting ${context}, given ${stringOfExprs(es)}`
   | TermKindError(_term_kind, context, term) => `expecting ${context}, given ${toString(term)}`
@@ -426,26 +444,6 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
       Exp({ann, it: Bgn(terms, result)})
     }
 
-  // | Sequence(List, _b, list{{it: Atom(Sym("while")), ann: _}, ...rest}) => {
-  //     let (cond, terms, result) = as_one_then_many_then_one(rest->List.map(term_of_sexpr))
-  //     let cond = cond->as_expr
-  //     let result = result |> as_expr
-  //     Exp({ann, it: Whl(cond, (terms, result))})
-  //   }
-
-  // | Sequence(List, _b, list{{it: Atom(Sym("for")), ann: _}, ...rest}) => {
-  //     let (x, rest) = as_one_or_more(rest)
-  //     let (e_from, rest) = as_one_or_more(rest)
-  //     let (e_to, rest) = as_one_or_more(rest)
-  //     let (terms, result) = as_one_or_more_tail(rest)
-  //     let x = x->as_id
-  //     let e_from = e_from->term_of_sexpr->as_expr
-  //     let e_to = e_to->term_of_sexpr->as_expr
-  //     let terms = terms->List.map(term_of_sexpr)
-  //     let result = result->term_of_sexpr->as_expr
-  //     Def({ann, it: For(x, e_from, e_to, (terms, result))})
-  //   }
-
   | Sequence(List, _b, list{{it: Atom(Sym("set!")), ann: _}, ...rest}) => {
       let (x, e) = as_two("a variable and an expression", rest)
       let x = as_id("a variable to be set", x)
@@ -591,7 +589,6 @@ let maybe_wrap = (ctx, p, code) => {
   | _ => code
   }
 }
-
 
 module type Translator = {
   let translate_program: string => string
@@ -1121,17 +1118,29 @@ module SMoLToPY = {
 }
 
 module StringifyAsJS: Stringifier = {
+  let string_of_result = r => {
+    switch r {
+    | PrmFun(_p) => SMoLToJS.string_of_identifier(Stringify.string_of_result(r))
+    | _ => Stringify.string_of_result(r)
+    }
+  }
   let string_of_def = SMoLToJS.string_of_def
   let string_of_expr = SMoLToJS.string_of_expr(Expr(false))
   let string_of_term = SMoLToJS.string_of_term
   let string_of_block = SMoLToJS.string_of_block(Return)
-  let string_of_program = (ts) => String.concat(";\n", ts -> List.map(string_of_term))
+  let string_of_program = ts => String.concat(";\n", ts->List.map(string_of_term))
 }
 
 module StringifyAsPY = {
+  let string_of_result = r => {
+    switch r {
+    | PrmFun(_p) => SMoLToPY.string_of_identifier(Stringify.string_of_result(r))
+    | _ => Stringify.string_of_result(r)
+    }
+  }
   let string_of_def = SMoLToPY.string_of_def
   let string_of_expr = SMoLToPY.string_of_expr(Expr(false))
   let string_of_term = SMoLToPY.string_of_term
   let string_of_block = SMoLToPY.string_of_block(Return)
-  let string_of_program = (ts) => String.concat("\n", ts -> List.map(string_of_term))
+  let string_of_program = ts => String.concat("\n", ts->List.map(string_of_term))
 }

@@ -46,7 +46,14 @@ and definition =
   | Fun(annotated<symbol>, list<annotated<symbol>>, block)
 and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
+
+type result =
+  | Vec(int) // the int is the address
+  | Fun(int) // the int is the address
+  | PrmFun(primitive)
+
 module type Stringifier = {
+  let string_of_result: result => string
   let string_of_expr: annotated<expression> => string
   let string_of_def: annotated<definition> => string
   let string_of_term: term => string
@@ -67,7 +74,6 @@ module type Translator = {
 module SMoLToJS : Translator
 module SMoLToPY : Translator
 
-let stringOfSExpr: annotated<SExpression.t> => string
 type kind_expectation = Atom | List
 type arity_expectation =
   | ExactlyOne
