@@ -290,7 +290,7 @@ var Stringify = {
   string_of_term: string_of_term
 };
 
-var ParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.ParseError");
+var ParseError = /* @__PURE__ */Caml_exceptions.create("SMoLTr.ParseError");
 
 function stringOfExprs(es) {
   if (es) {
@@ -558,7 +558,7 @@ function as_one_then_many_then_one(context, es) {
       };
 }
 
-var ExpectingExpression = /* @__PURE__ */Caml_exceptions.create("SMoL.ExpectingExpression");
+var ExpectingExpression = /* @__PURE__ */Caml_exceptions.create("SMoLTr.ExpectingExpression");
 
 function as_expr(context, e) {
   if (e.TAG !== /* Def */0) {
@@ -1065,7 +1065,7 @@ function indent$1(s, i) {
   return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
 }
 
-var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Translator.Impossible");
+var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoLTr.Translator.Impossible");
 
 function as_many_then_one$1(es) {
   if (es) {

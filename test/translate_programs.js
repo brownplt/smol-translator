@@ -1,7 +1,7 @@
 // This program translates SMoL programs to JavaScript
 //   and will do so for Python in the future.
 
-import * as tr from '../src/SMoLTranslator.bs.js';
+import * as tr from '../src/SMoLTr.bs.js';
 import fs from "fs";
 
 const path = "./test/test_cases/from_tutor";
