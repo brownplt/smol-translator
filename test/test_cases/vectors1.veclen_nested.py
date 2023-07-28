@@ -1,1 +1,1 @@
-print([4, [5, 6]].length)
+print(len([4, [5, 6]]))

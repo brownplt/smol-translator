@@ -1,6 +1,6 @@
 function buildDbl(n) {
   function dbl() {
-    n = n * 2
+    n = n * 2;
     return n;
   }
   return dbl;

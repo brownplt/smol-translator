@@ -651,7 +651,7 @@ module SMoLToJS = {
   }
 
   let string_of_expr_set = (ctx, x, e) => {
-    let itself = `${x} = ${e}`;
+    let itself = `${x} = ${e}`
     switch ctx {
     | Expr(false) => itself
     | Expr(true) => `(${itself})`
@@ -720,8 +720,10 @@ module SMoLToJS = {
   }
 
   let string_of_expr_let = (xes, b) => {
-    `((${xes->List.map(((x, _e)) => x) |> String.concat(", ")})=>{${b}})(${xes->List.map(((_x, e)) => e)
-        |> String.concat(", ")})`
+    `((${xes->List.map(((x, _e)) => x) |> String.concat(", ")})=>{${b}})(${xes->List.map(((
+        _x,
+        e,
+      )) => e) |> String.concat(", ")})`
   }
 
   let consider_context = (ctx: js_ctx, code: string) => {
@@ -737,18 +739,15 @@ module SMoLToJS = {
     | Con(c) => string_of_constant(c) |> consider_context(ctx)
     | Ref(x) => string_of_identifier(x.it) |> consider_context(ctx)
     | Set(x, e) =>
-      string_of_expr_set(
-        ctx,
-        x->unannotate->string_of_identifier,
-        string_of_expr(Expr(false), e),
-      )
+      string_of_expr_set(ctx, x->unannotate->string_of_identifier, string_of_expr(Expr(false), e))
     | Lam(xs, b) =>
       string_of_expr_lam(
         xs->List.map(unannotate)->List.map(string_of_identifier),
         string_of_block(Return, b),
       ) |> consider_context(ctx)
     | AppPrm(p, es) =>
-      let o = string_of_expr_app_prm(p, es->List.map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
+      let o =
+        string_of_expr_app_prm(p, es->List.map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
       if p != Err {
         o |> consider_context(ctx)
       } else {
@@ -760,9 +759,10 @@ module SMoLToJS = {
         es->List.map(string_of_expr(Expr(false))),
       ) |> consider_context(ctx)
     | Let(xes, b) =>
-      string_of_expr_let(xes->List.map(string_of_xe), string_of_block(Return, b)) |> consider_context(
-        ctx,
-      )
+      string_of_expr_let(
+        xes->List.map(string_of_xe),
+        string_of_block(Return, b),
+      ) |> consider_context(ctx)
     | Cnd(ebs, ob) => string_of_expr_cnd(ebs->List.map(string_of_eb(ctx)), string_of_ob(ctx, ob))
     | If(e_cnd, e_thn, e_els) =>
       string_of_expr_if(
@@ -899,7 +899,7 @@ module SMoLToPY = {
     switch ctx {
     | Expr(true) => `(${x} := ${e})`
     | Expr(false) => `${x} := ${e}`
-    | Stat => `${x} = ${e}`
+    | Stat => `${x} := ${e}`
     | Return => `return (${x} := ${e})`
     }
   }
@@ -965,7 +965,7 @@ module SMoLToPY = {
       | Return => `return ${e1}.__setitem__(${e2}, ${e3})`
       }
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]` |> ret(ctx)
-    | (VecLen, list{e}) => `${e}.length` |> ret(ctx)
+    | (VecLen, list{e}) => `len(${e})` |> ret(ctx)
     | (Eqv, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
     | (Err, list{e}) => `raise ${e}`
     | _ => "/* a primitive operation not supported yet */"
@@ -1018,10 +1018,31 @@ module SMoLToPY = {
         let (ts, e) = b
         switch ts {
         | list{} => string_of_expr(Expr(false), e)
-        | _ => `\n${string_of_block(Return, b)}\nend`
+        | ts => {
+            let is_exp = t =>
+              switch t {
+              | Exp(_) => true
+              | Def(_) => false
+              }
+            let as_exp = t =>
+              switch t {
+              | Exp(e) => e
+              | Def(_) => raise(Impossible("We have checked!"))
+              }
+            if List.every(ts, is_exp) {
+              let es = list{...ts->List.map(as_exp), e}
+              let es = es->List.map(string_of_expr(Expr(false)))
+              `[${String.concat(", ", es)}][-1]`
+            } else {
+              `\n${string_of_block(Return, b)}\nend`
+            }
+          }
         }
       }
-      string_of_expr_lam(xs->List.map(unannotate)->List.map(string_of_identifier), b) |> consider_context(ctx)
+      string_of_expr_lam(
+        xs->List.map(unannotate)->List.map(string_of_identifier),
+        b,
+      ) |> consider_context(ctx)
     | AppPrm(VecSet, es) =>
       string_of_expr_app_prm(ctx, VecSet, es->List.map(string_of_expr(Expr(false))))
     | AppPrm(p, es) => string_of_expr_app_prm(ctx, p, es->List.map(string_of_expr(Expr(true))))
@@ -1031,9 +1052,10 @@ module SMoLToPY = {
         es->List.map(string_of_expr(Expr(false))),
       ) |> consider_context(ctx)
     | Let(xes, b) =>
-      string_of_expr_let(xes->List.map(string_of_xe), string_of_block(Return, b)) |> consider_context(
-        ctx,
-      )
+      string_of_expr_let(
+        xes->List.map(string_of_xe),
+        string_of_block(Return, b),
+      ) |> consider_context(ctx)
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) => "if..."
@@ -1063,13 +1085,6 @@ module SMoLToPY = {
         xs->List.map(unannotate)->List.map(string_of_identifier),
         string_of_block(Return, b),
       )
-    // | For(x, e_from, e_to, b) =>
-    //   string_of_def_for(
-    //     x,
-    //     string_of_expr(Expr, e_from),
-    //     string_of_expr(Expr, e_to),
-    //     string_of_block(Expr, b),
-    //   )
     }
   }
   and string_of_xe = xe => {
@@ -1094,17 +1109,29 @@ module SMoLToPY = {
     }
   }
 
-  let translate_program: string => string = program => {
-    let ts = program->terms_of_string
+  let string_of_program = ts => {
     String.concat(
       "\n",
       ts->List.map(t => {
         switch t {
         | Def(_) => string_of_term(t)
-        | Exp(e) => `print(${string_of_expr(Expr(false), e)})`
+        | Exp(e) =>
+          switch e.it {
+          | Set(_x, _e) => string_of_expr(Stat, e)
+          | AppPrm(VecSet, _args) => string_of_expr(Stat, e)
+          | AppPrm(PairSetLeft, _args) => string_of_expr(Stat, e)
+          | AppPrm(PairSetRight, _args) => string_of_expr(Stat, e)
+          | _ => `print(${string_of_expr(Expr(false), e)})`
+          }
         }
       }),
     )
+
+  }
+
+  let translate_program: string => string = program => {
+    let ts = program->terms_of_string
+    string_of_program(ts)
   }
 
   let translate_block: string => string = program => {
@@ -1126,7 +1153,7 @@ let stringify = {
   string_of_def,
   string_of_term,
   string_of_block,
-  string_of_program
+  string_of_program,
 }
 
 let stringifyAsJS: stringifier = {
@@ -1141,7 +1168,7 @@ let stringifyAsJS: stringifier = {
   string_of_expr: SMoLToJS.string_of_expr(Expr(false)),
   string_of_term: SMoLToJS.string_of_term,
   string_of_block: SMoLToJS.string_of_block(Return),
-  string_of_program: ts => String.concat("\n", ts->List.map(SMoLToJS.string_of_term))
+  string_of_program: ts => String.concat("\n", ts->List.map(SMoLToJS.string_of_term)),
 }
 
 let stringifyAsPY: stringifier = {
@@ -1156,5 +1183,5 @@ let stringifyAsPY: stringifier = {
   string_of_expr: SMoLToPY.string_of_expr(Expr(false)),
   string_of_term: SMoLToPY.string_of_term,
   string_of_block: SMoLToPY.string_of_block(Return),
-  string_of_program: ts => String.concat("\n", ts->List.map(SMoLToPY.string_of_term)),
+  string_of_program: SMoLToPY.string_of_program
 }

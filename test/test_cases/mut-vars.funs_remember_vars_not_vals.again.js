@@ -3,7 +3,7 @@ function lookup() {
   return tmp;
 }
 function update(val) {
-  return tmp = val
+  return tmp = val;
 }
 console.log(lookup());
 console.log(update(3));

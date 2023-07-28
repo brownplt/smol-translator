@@ -4,5 +4,5 @@ def make_f():
         return (x + y)
     return addx
 f = make_f()
-print(x := 2)
+x := 2
 print(f(x))

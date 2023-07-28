@@ -1,6 +1,6 @@
 let x = 12;
 function setAndReturn(y) {
-  x = 0
+  x = 0;
   return y;
 }
 console.log(setAndReturn(x));

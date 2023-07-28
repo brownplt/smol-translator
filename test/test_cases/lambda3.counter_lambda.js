@@ -1,6 +1,6 @@
 function makeCounter(count) {
   return function () {
-    count = count + 1
+    count = count + 1;
     return count;
   };
 }
