@@ -655,8 +655,8 @@ module SMoLToJS = {
     switch ctx {
     | Expr(false) => itself
     | Expr(true) => `(${itself})`
-    | Stat => itself
-    | Return => `return ${itself}`
+    | Stat => `${itself};`
+    | Return => `return ${itself};`
     }
   }
 

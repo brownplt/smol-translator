@@ -1327,9 +1327,9 @@ function string_of_expr$1(ctx, e) {
         var itself = "" + x + " = " + e$1 + "";
         if (typeof ctx === "number") {
           if (ctx !== 0) {
-            return "return " + itself + "";
+            return "return " + itself + ";";
           } else {
-            return itself;
+            return "" + itself + ";";
           }
         } else if (ctx._0) {
           return "(" + itself + ")";
