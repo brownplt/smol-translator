@@ -2038,7 +2038,7 @@ function stringifyAsJS_string_of_block(param) {
 }
 
 function stringifyAsJS_string_of_program(ts) {
-  return $$String.concat(";\n", Belt_List.map(ts, string_of_term$1));
+  return $$String.concat("\n", Belt_List.map(ts, string_of_term$1));
 }
 
 var stringifyAsJS = {

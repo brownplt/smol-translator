@@ -1141,7 +1141,7 @@ let stringifyAsJS: stringifier = {
   string_of_expr: SMoLToJS.string_of_expr(Expr(false)),
   string_of_term: SMoLToJS.string_of_term,
   string_of_block: SMoLToJS.string_of_block(Return),
-  string_of_program: ts => String.concat(";\n", ts->List.map(SMoLToJS.string_of_term))
+  string_of_program: ts => String.concat("\n", ts->List.map(SMoLToJS.string_of_term))
 }
 
 let stringifyAsPY: stringifier = {
