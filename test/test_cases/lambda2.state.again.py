@@ -4,5 +4,5 @@ def make_fun():
         return (a + b)
     return add_a
 fun = make_fun()
-a := 100
+a = 100
 print(fun(a))

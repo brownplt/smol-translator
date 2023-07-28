@@ -1,4 +1,9 @@
 counter = 0
 def factorial(n):
-    return 1 if n is 0 else [counter := counter + 1, factorial(n - 1) * n][-1]
+    global counter
+    if n == 0:
+        return 1
+    else:
+        counter = counter + 1
+        return (factorial(n - 1) * n)
 print(factorial(2))

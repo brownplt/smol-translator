@@ -1,2 +1,2 @@
-foobar := 2
+foobar = 2
 print(foobar)

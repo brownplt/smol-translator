@@ -38,35 +38,7 @@ def run_py_file(test):
     return actual_result
 
 
-# suffix = ".js"
-# # i = 0
-# for test in glob.glob("./test/test_cases/*{}".format(suffix)):
-#     # i = i + 1
-#     # if i > 10:
-#     #     break
-#     program = open(test).read()
-#     try:
-#         wished_results = "{}.js.txt".format(test[:-len(suffix)])
-#         wished_results = open(wished_results).read().strip()
-#         actual_results = run_js_file(test)
-#         if wished_results == actual_results:
-#             print("PASSED {}".format(test))
-#         else:
-#             print("FAILED {}".format(test))
-#             print("Program:")
-#             print(program)
-#             print("Wished: {}".format(repr(wished_results)))
-#             print("Actual: {}".format(repr(actual_results)))
-#             print("----------")
-#     except FileNotFoundError as e:
-#         print("FAILED {}".format(test))
-#         print("Program:")
-#         print(program)
-#         print("No expected output.")
-#         print("----------")
-
-
-suffix = ".py"
+suffix = ".js"
 # i = 0
 for test in glob.glob("./test/test_cases/*{}".format(suffix)):
     # i = i + 1
@@ -74,9 +46,9 @@ for test in glob.glob("./test/test_cases/*{}".format(suffix)):
     #     break
     program = open(test).read()
     try:
-        wished_results = "{}.py.txt".format(test[:-len(suffix)])
+        wished_results = "{}.js.txt".format(test[:-len(suffix)])
         wished_results = open(wished_results).read().strip()
-        actual_results = run_py_file(test)
+        actual_results = run_js_file(test)
         if wished_results == actual_results:
             print("PASSED {}".format(test))
         else:
@@ -92,3 +64,31 @@ for test in glob.glob("./test/test_cases/*{}".format(suffix)):
         print(program)
         print("No expected output.")
         print("----------")
+
+
+# suffix = ".py"
+# # i = 0
+# for test in glob.glob("./test/test_cases/*{}".format(suffix)):
+#     # i = i + 1
+#     # if i > 10:
+#     #     break
+#     program = open(test).read()
+#     try:
+#         wished_results = "{}.py.txt".format(test[:-len(suffix)])
+#         wished_results = open(wished_results).read().strip()
+#         actual_results = run_py_file(test)
+#         if wished_results == actual_results:
+#             print("PASSED {}".format(test))
+#         else:
+#             print("FAILED {}".format(test))
+#             print("Program:")
+#             print(program)
+#             print("Wished: {}".format(repr(wished_results)))
+#             print("Actual: {}".format(repr(actual_results)))
+#             print("----------")
+#     except FileNotFoundError as e:
+#         print("FAILED {}".format(test))
+#         print("Program:")
+#         print(program)
+#         print("No expected output.")
+#         print("----------")

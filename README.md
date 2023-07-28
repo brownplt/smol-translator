@@ -39,7 +39,8 @@ below is a description of all supported context:
 ## Test Suite
 
 This translator has been tested with more than 80% programs from the
-SMoL Tutor. 154 were tested. 31 were skipped (not tested) for various reasons:
+SMoL Tutor. 154 were tested. 31 were skipped (not tested) for various
+reasons:
 
 1. (8 skipped) Programs from the heap tutorial. This tutorial is all
    about heap structure, so expected answers are NOT program outputs.
@@ -64,7 +65,7 @@ following language differences:
 
 - In JavaScript, division by zero produces `Infinity` or a number
   rather than an error.
-- Variable mutation (e.g., `x = 2`) produces the new value (in this
+- Variable assignment (e.g., `x = 2`) produces the new value (in this
   case, `2`) rather than a none/void/unit value.
 - Indexing an array (known as "vector" in SMoL) outside its index
   range (e.g., `["a", "b", "c"][99]`) produces the `undefined` value
@@ -75,12 +76,18 @@ reasons.
 
 ## SMoL vs Python
 
-Many SMoL program can be translated to idiomatic Python. However, we
-find it difficult to translate the following language constructs:
+The translator might produce a Python program that reduces to
+different results if the source program
 
-- Multi-term `lambda` expressions: Python `lambda` must contain
-  exactly one term; and the term must be an expression.
-- `let` expressions: Python provides nothing similar enough to `let`
-  expressions; we also can't translate `let` to function application
-  as [we did for JavaScript](#smol-vs-javascript) because the
-  aforementioned limitation of Python `lambda`.
+- uses `set!` inside a `lambda` to assign externally defined
+  variables, or
+- expects a distinction between variable definitions and variable
+  assignments, or
+- expects variable assignments to produce `#<void>` (known as `None`
+  in Python), or
+- expects `#<void>` not be printed, or
+- expects infix operators to be valid expressions, or
+- expects, for example, `(2 + 4) / 2` is `3` rather than `3.0`
+
+All 24 test failure (out of 154 tests) are due to the aforementioned
+reasons.

@@ -23,6 +23,29 @@ type primitive =
   | VecLen
   | Eqv
   | Err
+let all_primitives = [
+  Add,
+  Sub,
+  Mul,
+  Div,
+  Lt,
+  Eq,
+  Gt,
+  Le,
+  Ge,
+  Ne,
+  PairNew,
+  PairRefRight,
+  PairRefLeft,
+  PairSetRight,
+  PairSetLeft,
+  VecNew,
+  VecRef,
+  VecSet,
+  VecLen,
+  Eqv,
+  Err,
+]
 type constant =
   | Uni
   | Num(float)
@@ -642,10 +665,6 @@ module SMoLToJS = {
     `let ${string_of_identifier(x.it)} = ${e};`
   }
 
-  // let string_of_def_for = (_x, _e_from, _e_to, _body) => {
-  //   raise(TranslationNotSupportedYet("`for`-loop"))
-  // }
-
   let string_of_def_fun = (f, xs, b) => {
     `function ${f}${string_of_list(xs)} {\n  ${indent(b, 2)}\n}`
   }
@@ -698,10 +717,6 @@ module SMoLToJS = {
   let string_of_expr_bgn = (es, e) => {
     `(${String.concat(", ", list{...es, e})})`
   }
-
-  // let string_of_expr_whl = (_e, _b) => {
-  //   raise(TranslationNotSupportedYet("`while`-loop"))
-  // }
 
   let string_of_expr_cnd = (ebs: list<(string, string)>, ob) => {
     let ob = {
@@ -853,6 +868,49 @@ module SMoLToJS = {
 }
 
 module SMoLToPY = {
+  // Python translation is tricky because we need to know whether a variable
+  // reference is pointing to non-local variable.
+  // - If the variable is local, we proceed normally.
+  // - If the variable is external but neither global nor built-in, we need to declare it local in the local scope
+  // - If the variable is global, we need to declare it global
+  // - If the variable is built-in, we proceed normally
+
+  type placeOfDef =
+    | BuiltIn
+    | Global
+    | NonLocal
+    | Local
+
+  type environment = Js.Dict.t<placeOfDef>
+
+  // When generating Python code, we need to think about where we are in
+  // an AST tree
+  type context = {
+    node: js_ctx,
+    block: placeOfDef,
+    refs: Js.Array.t<symbol>,
+    env: environment,
+  }
+
+  let base_env = Js.Dict.fromArray(
+    all_primitives->Array.map(p => (string_of_primitive(p), BuiltIn)),
+  )
+  let make_global_env = xs => {
+    let env = Js.Dict.entries(base_env)
+    Js.Dict.fromArray(Array.concat(env, xs->List.map(x => (x, Global))->List.toArray))
+  }
+  let make_local_env = (env, xs) => {
+    let env = Js.Dict.entries(env)
+    let env = env->Array.map(((x, p)) => {
+      let p = switch p {
+      | Local => NonLocal
+      | p => p
+      }
+      (x, p)
+    })
+    Js.Dict.fromArray(Array.concat(env, xs->List.map(x => (x, Local))->List.toArray))
+  }
+
   let string_of_constant = c => {
     switch c {
     | Uni => "None"
@@ -896,10 +954,10 @@ module SMoLToPY = {
   }
 
   let string_of_expr_set = (ctx, x, e) => {
-    switch ctx {
+    switch ctx.node {
     | Expr(true) => `(${x} := ${e})`
     | Expr(false) => `${x} := ${e}`
-    | Stat => `${x} := ${e}`
+    | Stat => `${x} = ${e}`
     | Return => `return (${x} := ${e})`
     }
   }
@@ -913,7 +971,7 @@ module SMoLToPY = {
   }
 
   let wrap = (ctx, code) => {
-    switch ctx {
+    switch ctx.node {
     | Expr(true) => `(${code})`
     | Return => `return (${code})`
     | _ => code
@@ -921,7 +979,7 @@ module SMoLToPY = {
   }
 
   let ret = (ctx, code) => {
-    switch ctx {
+    switch ctx.node {
     | Return => `return ${code}`
     | _ => code
     }
@@ -934,7 +992,7 @@ module SMoLToPY = {
     | (Mul, es) => `${String.concat(" * ", es)}` |> wrap(ctx)
     | (Div, es) => `${String.concat(" / ", es)}` |> wrap(ctx)
     | (Lt, list{e1, e2}) => `${e1} < ${e2}` |> wrap(ctx)
-    | (Eq, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
+    | (Eq, list{e1, e2}) => `${e1} == ${e2}` |> wrap(ctx)
     | (Gt, list{e1, e2}) => `${e1} > ${e2}` |> wrap(ctx)
     | (Le, list{e1, e2}) => `${e1} <= ${e2}` |> wrap(ctx)
     | (Ge, list{e1, e2}) => `${e1} >= ${e2}` |> wrap(ctx)
@@ -942,14 +1000,14 @@ module SMoLToPY = {
     | (PairRefLeft, list{e1}) => `${e1}[0]` |> wrap(ctx)
     | (PairRefRight, list{e1}) => `${e1}[1]` |> wrap(ctx)
     | (PairSetLeft, list{e1, e2}) =>
-      switch ctx {
+      switch ctx.node {
       | Stat => `${e1}[0] = ${e2}`
       | Expr(true) => `${e1}.__setitem__(0, ${e2})`
       | Expr(false) => `${e1}.__setitem__(0, ${e2})`
       | Return => `return ${e1}.__setitem__(0, ${e2})`
       }
     | (PairSetRight, list{e1, e2}) =>
-      switch ctx {
+      switch ctx.node {
       | Stat => `${e1}[1] = ${e2}`
       | Expr(true) => `${e1}.__setitem__(1, ${e2})`
       | Expr(false) => `${e1}.__setitem__(1, ${e2})`
@@ -958,7 +1016,7 @@ module SMoLToPY = {
     | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]` |> ret(ctx)
     | (VecNew, es) => `[${String.concat(", ", es)}]` |> ret(ctx)
     | (VecSet, list{e1, e2, e3}) =>
-      switch ctx {
+      switch ctx.node {
       | Stat => `${e1}[${e2}] = ${e3}`
       | Expr(true) => `${e1}.__setitem__(${e2}, ${e3})`
       | Expr(false) => `${e1}.__setitem__(${e2}, ${e3})`
@@ -966,7 +1024,7 @@ module SMoLToPY = {
       }
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]` |> ret(ctx)
     | (VecLen, list{e}) => `len(${e})` |> ret(ctx)
-    | (Eqv, list{e1, e2}) => `${e1} is ${e2}` |> wrap(ctx)
+    | (Eqv, list{e1, e2}) => `${e1} == ${e2}` |> wrap(ctx)
     | (Err, list{e}) => `raise ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
@@ -976,10 +1034,6 @@ module SMoLToPY = {
     `${e}${string_of_list(es)}`
   }
 
-  let string_of_expr_bgn = (es, e) => {
-    `[${String.concat(", ", list{...es, e})}][-1]`
-  }
-
   let string_of_expr_cnd = (ebs: list<(string, string)>, ob) => {
     let ob = {
       switch ob {
@@ -987,146 +1041,254 @@ module SMoLToPY = {
       | Some(b) => `else:\n    ${indent(b, 4)}`
       }
     }
-    let ebs = ebs->List.map(((e, b)) => `if ${e}:\n    ${indent(b, 2)}\n`)
+    let ebs = ebs->List.map(((e, b)) => `if ${e}:\n    ${indent(b, 4)}\n`)
     let ebs = String.concat("el", ebs)
     ebs ++ ob
   }
 
-  let string_of_expr_if = (e_cnd: string, e_thn: string, e_els: string) => {
-    `${e_thn} if ${e_cnd} else ${e_els}`
+  let string_of_expr_if = (ctx, e_cnd: string, e_thn: string, e_els: string) => {
+    switch ctx.node {
+    | Expr(_) => `${e_thn} if ${e_cnd} else ${e_els}`
+    | _ => `if ${e_cnd}:\n    ${indent(e_thn, 4)}\nelse:\n    ${indent(e_els, 4)}`
+    }
   }
 
   let string_of_expr_let = (_xes, _b) => {
     `"...a let-expression..."`
   }
 
-  let consider_context = (ctx: js_ctx, code: string) => {
-    switch ctx {
+  let consider_context = (ctx: context, code: string) => {
+    switch ctx.node {
     | Return => `return ${code}`
     | _ => code
     }
   }
 
-  let rec string_of_expr = (ctx: js_ctx, e: annotated<expression>): string => {
+  let rec string_of_expr = (ctx: context, e: annotated<expression>): string => {
     switch e.it {
     | Con(c) => string_of_constant(c) |> consider_context(ctx)
     | Ref(x) => string_of_identifier(x.it) |> consider_context(ctx)
-    | Set(x, e) =>
-      string_of_expr_set(ctx, x->unannotate->string_of_identifier, string_of_expr(Expr(false), e))
-    | Lam(xs, b) =>
-      let b = {
-        let (ts, e) = b
-        switch ts {
-        | list{} => string_of_expr(Expr(false), e)
-        | ts => {
-            let is_exp = t =>
-              switch t {
-              | Exp(_) => true
-              | Def(_) => false
-              }
-            let as_exp = t =>
-              switch t {
-              | Exp(e) => e
-              | Def(_) => raise(Impossible("We have checked!"))
-              }
-            if List.every(ts, is_exp) {
-              let es = list{...ts->List.map(as_exp), e}
-              let es = es->List.map(string_of_expr(Expr(false)))
-              `[${String.concat(", ", es)}][-1]`
-            } else {
-              `\n${string_of_block(Return, b)}\nend`
-            }
-          }
-        }
+    | Set(x, e) => {
+        let _ = Js.Array.unshift(unannotate(x), ctx.refs)
+        string_of_expr_set(
+          ctx,
+          x->unannotate->string_of_identifier,
+          string_of_expr(
+            {
+              ...ctx,
+              node: Expr(false),
+            },
+            e,
+          ),
+        )
       }
+    | Lam(xs, b) =>
       string_of_expr_lam(
         xs->List.map(unannotate)->List.map(string_of_identifier),
-        b,
+        string_of_block({...ctx, node: Expr(false)}, xs, b),
       ) |> consider_context(ctx)
     | AppPrm(VecSet, es) =>
-      string_of_expr_app_prm(ctx, VecSet, es->List.map(string_of_expr(Expr(false))))
-    | AppPrm(p, es) => string_of_expr_app_prm(ctx, p, es->List.map(string_of_expr(Expr(true))))
+      string_of_expr_app_prm(ctx, VecSet, es->List.map(string_of_expr({...ctx, node: Expr(false)})))
+    | AppPrm(p, es) =>
+      string_of_expr_app_prm(
+        ctx,
+        p,
+        es->List.map(
+          string_of_expr({
+            ...ctx,
+            node: Expr(true),
+          }),
+        ),
+      )
     | App(e, es) =>
       string_of_expr_app(
-        string_of_expr(Expr(false), e),
-        es->List.map(string_of_expr(Expr(false))),
+        string_of_expr({...ctx, node: Expr(false)}, e),
+        es->List.map(string_of_expr({...ctx, node: Expr(false)})),
       ) |> consider_context(ctx)
     | Let(xes, b) =>
       string_of_expr_let(
-        xes->List.map(string_of_xe),
-        string_of_block(Return, b),
+        xes->List.map(string_of_xe(ctx)),
+        string_of_block({...ctx, node: Return}, xes->List.map(((x, _e)) => x), b),
       ) |> consider_context(ctx)
     | Cnd(ebs, ob) =>
-      switch ctx {
+      switch ctx.node {
       | Expr(_) => "if..."
       | _ => string_of_expr_cnd(ebs->List.map(string_of_eb(ctx)), string_of_ob(ctx, ob))
       }
     | If(e_cnd, e_thn, e_els) =>
       string_of_expr_if(
-        string_of_expr(Expr(false), e_cnd),
-        string_of_expr(Expr(false), e_thn),
-        string_of_expr(Expr(false), e_els),
-      ) |> consider_context(ctx)
-    // | Whl(e, b) =>
-    //   string_of_expr_whl(string_of_expr(Expr(false), e), string_of_block(Expr(false), b)) |> consider_context(ctx)
-    | Bgn(es, e) =>
-      string_of_expr_bgn(
-        es->List.map(string_of_expr(Expr(false))),
-        string_of_expr(Expr(false), e),
-      ) |> consider_context(ctx)
+        ctx,
+        string_of_expr({...ctx, node: Expr(false)}, e_cnd),
+        string_of_expr(ctx, e_thn),
+        string_of_expr(ctx, e_els),
+      )
+    | Bgn(es, e) => string_of_expr_bgn(ctx, es, e)
     }
   }
-  and string_of_def = (d: annotated<definition>): string => {
+  and string_of_expr_bgn = (ctx, es, e) => {
+    switch ctx.node {
+      | Expr(_) => {
+        let ese = list{...es, e}
+        let ese = ese -> List.map(string_of_expr({...ctx, node: Expr(false)}))
+        `[${String.concat(", ", ese)}][-1]`
+      }
+      | _ => {
+        let es = es -> List.map(string_of_expr({...ctx, node:Stat}))
+        let e = e |> string_of_expr(ctx)
+        String.concat("\n", list{...es, e})}
+    }
+  }
+  and string_of_def = (ctx: context, d: annotated<definition>): string => {
     switch d.it {
-    | Var(x, e) => string_of_def_var(x, string_of_expr(Expr(false), e))
+    | Var(x, e) => string_of_def_var(x, string_of_expr({...ctx, node: Expr(false)}, e))
     | Fun(f, xs, b) =>
       string_of_def_fun(
         f->unannotate->string_of_identifier,
         xs->List.map(unannotate)->List.map(string_of_identifier),
-        string_of_block(Return, b),
+        string_of_block({...ctx, node: Return}, xs, b),
       )
     }
   }
-  and string_of_xe = xe => {
+  and string_of_xe = (ctx: context, xe) => {
     let (x, e) = xe
-    (string_of_identifier(x.it), string_of_expr(Expr(false), e))
+    (string_of_identifier(x.it), string_of_expr({...ctx, node: Expr(false)}, e))
   }
-  and string_of_eb = (ctx, eb) => {
+  and string_of_eb = (ctx: context, eb) => {
     let (e, b) = eb
-    (string_of_expr(Expr(false), e), string_of_block(ctx, b))
+    (string_of_expr({...ctx, node: Expr(false)}, e), string_of_block(ctx, list{}, b))
   }
-  and string_of_ob = (ctx, ob) => {
-    ob->Option.map(string_of_block(ctx))
+  and string_of_ob = (ctx: context, ob) => {
+    ob->Option.map(string_of_block(ctx, list{}))
   }
-  and string_of_block = (ctx, b) => {
-    let (ts, e) = b
-    String.concat("\n", list{...ts->List.map(string_of_term), string_of_expr(ctx, e)})
+  and block_as_expr = (ctx, ts, e) => {
+    switch ts {
+    | list{} => string_of_expr(ctx, e)
+    | ts => {
+        let is_exp = t =>
+          switch t {
+          | Exp(_) => true
+          | Def(_) => false
+          }
+        let as_exp = t =>
+          switch t {
+          | Exp(e) => e
+          | Def(_) => raise(Impossible("We have checked!"))
+          }
+        if List.every(ts, is_exp) {
+          let es = list{...ts->List.map(as_exp), e}
+          let es = es->List.map(string_of_expr({...ctx, node: Expr(false)}))
+          `(${String.concat(", ", es)})[-1]`
+        } else {
+          `\nbegin\n    ${string_of_block({...ctx, node: Return}, list{}, (ts, e))->indent(4)}\nend`
+        }
+      }
+    }
   }
-  and string_of_term = t => {
+  and identifier_of_term = t => {
     switch t {
-    | Exp(e) => string_of_expr(Stat, e)
-    | Def(d) => string_of_def(d)
+    | Def(d) =>
+      switch d.it {
+      | Var(x, _e) => Some(x)
+      | Fun(f, _xs, _b) => Some(f)
+      }
+    | Exp(_) => None
+    }
+  }
+  and xs_of_ts = ts => ts->List.keepMap(identifier_of_term)->List.map(unannotate)
+
+  and string_of_block = (ctx: context, xs, b: block) => {
+    let (ts, e) = b
+    let refs: Js.Array.t<symbol> = []
+    let ys: list<string> = ts->xs_of_ts
+    // extend the outside environment
+    let ctx = {...ctx, env: make_local_env(ctx.env, list{...xs->List.map(unannotate), ...ys})}
+    // now we must be in a local scope
+    let ctx = {...ctx, block: Local}
+    let ctx = {...ctx, refs}
+    // Js.Console.log("Set up a new environment and a new refs!")
+    // Js.Console.log(ctx.env)
+    // Js.Console.log(ctx.refs)
+    switch ctx.node {
+    | Expr(_) => {
+        let result = block_as_expr(ctx, ts, e)
+        let refs = refs |> Js.Array.filter(x => {
+          switch Js.Dict.get(ctx.env, x)->Option.getWithDefault(NonLocal) {
+          | Local | BuiltIn => false
+          | _ => true
+          }
+        })
+
+        // Js.Console.log("Any non-local?")
+        // Js.Console.log(ctx.refs)
+        if Js.Array.length(refs) == 0 {
+          result
+        } else {
+          `("WARNING: the translation might be inaccurate", ${result})[-1]`
+        }
+      }
+    | _ =>
+      let result = String.concat(
+        "\n",
+        list{...ts->List.map(string_of_term({...ctx, node: Stat})), string_of_expr(ctx, e)},
+      )
+      let refs = refs |> Js.Array.filter(x => {
+        switch Js.Dict.get(ctx.env, x)->Option.getWithDefault(NonLocal) {
+        | Local | BuiltIn => false
+        | _ => true
+        }
+      })
+      // Js.Console.log("Any non-local?")
+      // Js.Console.log(ctx.refs)
+      let globals = refs |> Js.Array.filter(x => {
+        switch Js.Dict.get(ctx.env, x)->Option.getWithDefault(NonLocal) {
+        | Global => true
+        | _ => false
+        }
+      })
+      let nonlocals = refs |> Js.Array.filter(x => {
+        switch Js.Dict.get(ctx.env, x)->Option.getWithDefault(NonLocal) {
+        | NonLocal => true
+        | _ => false
+        }
+      })
+      let decl_globals = if Array.length(globals) == 0 {
+        ""
+      } else {
+        `global ${String.concat(", ", globals->List.fromArray)}\n`
+      }
+      let decl_nonlocals = if Array.length(nonlocals) == 0 {
+        ""
+      } else {
+        `nonlocal ${String.concat(", ", nonlocals->List.fromArray)}\n`
+      }
+      `${decl_globals}${decl_nonlocals}${result}`
+    }
+  }
+  and string_of_term = (ctx, t) => {
+    switch t {
+    | Exp(e) => string_of_expr({...ctx, node: Stat}, e)
+    | Def(d) => string_of_def(ctx, d)
     }
   }
 
   let string_of_program = ts => {
+    let ctx = {node: Stat, block: Global, env: make_global_env(ts->xs_of_ts), refs: []}
     String.concat(
       "\n",
       ts->List.map(t => {
         switch t {
-        | Def(_) => string_of_term(t)
+        | Def(_) => string_of_term(ctx, t)
         | Exp(e) =>
           switch e.it {
-          | Set(_x, _e) => string_of_expr(Stat, e)
-          | AppPrm(VecSet, _args) => string_of_expr(Stat, e)
-          | AppPrm(PairSetLeft, _args) => string_of_expr(Stat, e)
-          | AppPrm(PairSetRight, _args) => string_of_expr(Stat, e)
-          | _ => `print(${string_of_expr(Expr(false), e)})`
+          | Set(_x, _e) => string_of_expr({...ctx, node: Stat}, e)
+          | AppPrm(VecSet, _args) => string_of_expr({...ctx, node: Stat}, e)
+          | AppPrm(PairSetLeft, _args) => string_of_expr({...ctx, node: Stat}, e)
+          | AppPrm(PairSetRight, _args) => string_of_expr({...ctx, node: Stat}, e)
+          | _ => `print(${string_of_expr({...ctx, node: Expr(false)}, e)})`
           }
         }
       }),
     )
-
   }
 
   let translate_program: string => string = program => {
@@ -1138,12 +1300,14 @@ module SMoLToPY = {
     let ts = program->terms_of_string
     let (ts, t) = as_many_then_one(ts)
     let e = as_expr("result", t)
-    string_of_block(Return, (ts, e))
+    let ctx = {node: Return, block: Local, env: Js.Dict.empty(), refs: []}
+    string_of_block(ctx, list{}, (ts, e))
   }
 
   let translate_expressions: string => string = results => {
     let ts = results->terms_of_string
-    String.concat(" ", ts->List.map(as_expr("expr"))->List.map(string_of_expr(Expr(true))))
+    let ctx = {node: Expr(false), block: Local, env: Js.Dict.empty(), refs: []}
+    String.concat(" ", ts->List.map(as_expr("expr"))->List.map(string_of_expr(ctx)))
   }
 }
 
@@ -1172,16 +1336,22 @@ let stringifyAsJS: stringifier = {
 }
 
 let stringifyAsPY: stringifier = {
-  string_of_result: r => {
-    switch r {
-    | Con(c) => SMoLToJS.string_of_constant(c)
-    | PrmFun(_p) => SMoLToPY.string_of_identifier(string_of_result(r))
-    | _ => string_of_result(r)
-    }
-  },
-  string_of_def: SMoLToPY.string_of_def,
-  string_of_expr: SMoLToPY.string_of_expr(Expr(false)),
-  string_of_term: SMoLToPY.string_of_term,
-  string_of_block: SMoLToPY.string_of_block(Return),
-  string_of_program: SMoLToPY.string_of_program
+  open SMoLToPY
+  let stat_ctx = {refs: [], node: Stat, block: Local, env: Js.Dict.empty()}
+  let expr_ctx = {refs: [], node: Expr(false), block: Local, env: Js.Dict.empty()}
+  let body_ctx = {refs: [], node: Return, block: Local, env: Js.Dict.empty()}
+  {
+    string_of_result: r => {
+      switch r {
+      | Con(c) => SMoLToJS.string_of_constant(c)
+      | PrmFun(_p) => SMoLToPY.string_of_identifier(string_of_result(r))
+      | _ => string_of_result(r)
+      }
+    },
+    string_of_def: SMoLToPY.string_of_def(stat_ctx),
+    string_of_expr: SMoLToPY.string_of_expr(expr_ctx),
+    string_of_term: SMoLToPY.string_of_term(stat_ctx),
+    string_of_block: SMoLToPY.string_of_block(body_ctx, list{}),
+    string_of_program: SMoLToPY.string_of_program,
+  }
 }

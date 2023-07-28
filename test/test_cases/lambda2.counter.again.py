@@ -1,6 +1,7 @@
 def build_dbl(n):
     def dbl():
-        n := n * 2
+        nonlocal n
+        n = n * 2
         return n
     return dbl
 dbl1 = build_dbl(1)

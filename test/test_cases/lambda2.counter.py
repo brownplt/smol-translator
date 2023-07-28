@@ -1,6 +1,7 @@
 def make_counter(count):
     def counter():
-        count := count + 1
+        nonlocal count
+        count = count + 1
         return count
     return counter
 f = make_counter(0)

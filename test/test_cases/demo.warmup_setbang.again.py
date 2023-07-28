@@ -1,3 +1,3 @@
 discount = 10
-discount := 10 + 15
+discount = 10 + 15
 print(discount)
