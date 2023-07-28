@@ -1,0 +1,5 @@
+(defvar c 2)
+(defvar d (* c 3))
+(set! c 4)
+c
+d

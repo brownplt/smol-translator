@@ -1,0 +1,7 @@
+(defvar x 0)
+(defvar y
+  (begin
+    (set! x (+ x 1))
+    x))
+x
+y

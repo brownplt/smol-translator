@@ -1,10 +1,10 @@
 // This program translates SMoL programs to JavaScript
 //   and will do so for Python in the future.
 
-import * as tr from '../src/SMoLTr.bs.js';
+import * as SMoL from '../src/SMoL.bs.js';
 import fs from "fs";
 
-const path = "./test/test_cases/from_tutor";
+const path = "./test/test_cases";
 const suffix = ".smol";
 for (const f of fs.readdirSync(path)) {
     if (f.endsWith(suffix)) {
@@ -16,8 +16,8 @@ for (const f of fs.readdirSync(path)) {
             const outputs = fs.readFileSync(outputsFile, 'utf8');
             if (!outputs.includes("@")) {
                 try {
-                    fs.writeFileSync(`${path}/${name}.js`, tr.toJsProgram(program));
-                    fs.writeFileSync(`${path}/${name}.js.txt`, tr.toJsExpressions(outputs));
+                    fs.writeFileSync(`${path}/${name}.js`, SMoL.SMoLToJS.translate_program(program));
+                    fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.SMoLToJS.translate_expressions(outputs));
                 } catch (err) {
                     fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
                 }
@@ -33,8 +33,8 @@ for (const f of fs.readdirSync(path)) {
             const outputs = fs.readFileSync(outputsFile, 'utf8');
             if (!outputs.includes("@")) {
                 try {
-                    fs.writeFileSync(`${path}/${name}.py`, tr.toPyProgram(program));
-                    fs.writeFileSync(`${path}/${name}.py.txt`, tr.toPyExpressions(outputs));
+                    fs.writeFileSync(`${path}/${name}.py`, SMoL.SMoLToPY.translate_program(program));
+                    fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.SMoLToPY.translate_expressions(outputs));
                 } catch (err) {
                     fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
                 }

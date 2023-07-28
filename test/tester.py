@@ -40,7 +40,7 @@ def run_py_file(test):
 
 suffix = ".js"
 # i = 0
-for test in glob.glob("./test/test_cases/**/*{}".format(suffix)):
+for test in glob.glob("./test/test_cases/*{}".format(suffix)):
     # i = i + 1
     # if i > 10:
     #     break
@@ -68,7 +68,7 @@ for test in glob.glob("./test/test_cases/**/*{}".format(suffix)):
 
 suffix = ".py"
 # i = 0
-for test in glob.glob("./test/test_cases/**/*{}".format(suffix)):
+for test in glob.glob("./test/test_cases/*{}".format(suffix)):
     # i = i + 1
     # if i > 10:
     #     break

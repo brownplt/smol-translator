@@ -1,0 +1,4 @@
+(deffun (foo)
+  y)
+(defvar y 1)
+(foo)

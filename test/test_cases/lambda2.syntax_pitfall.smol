@@ -1,0 +1,2 @@
+(deffun (f a b) a + b)
+(f 5 10)

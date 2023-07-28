@@ -1,0 +1,11 @@
+(deffun (make-counter count)
+  (deffun (counter)
+    (set! count (+ count 1))
+    count)
+  counter)
+(defvar f (make-counter 0))
+(defvar g (make-counter 0))
+
+(f)
+(f)
+(g)

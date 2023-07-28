@@ -1,0 +1,5 @@
+(defvar x 12)
+(defvar y x)
+(set! x 0)
+x
+y

@@ -39,7 +39,7 @@ below is a description of all supported context:
 ## Test Suite
 
 This translator has been tested with more than 80% programs from the
-SMoL Tutor. 154 were tested. 31 were skipped for various reasons:
+SMoL Tutor. 154 were tested. 31 were skipped (not tested) for various reasons:
 
 1. (8 skipped) Programs from the heap tutorial. This tutorial is all
    about heap structure, so expected answers are NOT program outputs.

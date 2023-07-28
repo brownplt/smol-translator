@@ -1,0 +1,8 @@
+(deffun (f n)
+  (deffun (g m)
+    (* m n))
+  g)
+(defvar fun1 (f 10))
+(defvar fun2 (f 100))
+(fun1 4)
+(fun2 4)

@@ -1,0 +1,4 @@
+(defvar v (mvec 1 2 3))
+(defvar vv (mpair v v))
+(vec-set! (right vv) 0 10)
+(left vv)

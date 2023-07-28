@@ -48,22 +48,23 @@ and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
 
 type result =
+  | Con(constant)
   | Vec(int) // the int is the address
   | Fun(int) // the int is the address
   | PrmFun(primitive)
 
-module type Stringifier = {
-  let string_of_result: result => string
-  let string_of_expr: annotated<expression> => string
-  let string_of_def: annotated<definition> => string
-  let string_of_term: term => string
-  let string_of_block: block => string
-  let string_of_program: program => string
+type stringifier = {
+  string_of_result: result => string,
+  string_of_expr: annotated<expression> => string,
+  string_of_def: annotated<definition> => string,
+  string_of_term: term => string,
+  string_of_block: block => string,
+  string_of_program: program => string,
 }
 
-module Stringify: Stringifier
-module StringifyAsJS: Stringifier
-module StringifyAsPY: Stringifier
+let stringify: stringifier
+let stringifyAsJS: stringifier
+let stringifyAsPY: stringifier
 
 module type Translator = {
   let translate_program: string => string

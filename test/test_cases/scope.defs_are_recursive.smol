@@ -1,0 +1,4 @@
+(deffun (addy x)
+  (+ x y))
+(defvar y 1)
+(addy 2)

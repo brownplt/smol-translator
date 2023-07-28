@@ -84,155 +84,153 @@ let indent = (s, i) => {
 }
 
 type result =
+  | Con(constant)
   | Vec(int) // the int is the address
   | Fun(int) // the int is the address
   | PrmFun(primitive)
 
-module type Stringifier = {
-  let string_of_result: result => string
-  let string_of_expr: annotated<expression> => string
-  let string_of_def: annotated<definition> => string
-  let string_of_term: term => string
-  let string_of_block: block => string
-  let string_of_program: program => string
+type stringifier = {
+  string_of_result: result => string,
+  string_of_expr: annotated<expression> => string,
+  string_of_def: annotated<definition> => string,
+  string_of_term: term => string,
+  string_of_block: block => string,
+  string_of_program: program => string,
 }
 
-module Stringify: Stringifier = {
-  open List
-
-  let string_of_constant = c => {
-    switch c {
-    | Uni => "#<void>"
-    | Num(n) => Float.toString(n)
-    | Lgc(l) =>
-      if l {
-        "#t"
-      } else {
-        "#f"
-      }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+let string_of_constant = c => {
+  switch c {
+  | Uni => "#<void>"
+  | Num(n) => Float.toString(n)
+  | Lgc(l) =>
+    if l {
+      "#t"
+    } else {
+      "#f"
     }
-  }
-
-  let string_of_result = r => {
-    switch r {
-    | Vec(i) => `@${i |> Int.toString}`
-    | Fun(i) => `@${i |> Int.toString}`
-    | PrmFun(p) => string_of_primitive(p)
-    }
-  }
-
-  let string_of_list = ss => {
-    "(" ++ String.concat(" ", ss) ++ ")"
-  }
-
-  let string_of_def_var = (x, e) => {
-    string_of_list(list{"defvar", x.it, e})
-  }
-
-  let string_of_def_fun = (f, xs, b) => {
-    // string_of_list(list{"deffun", string_of_list(list{f, ...xs}), b})
-    "(" ++ "deffun" ++ " " ++ string_of_list(list{f, ...xs}) ++ "\n  " ++ indent(b, 2) ++ ")"
-  }
-
-  let string_of_expr_set = (x, e) => {
-    string_of_list(list{"set!", x, e})
-  }
-
-  let string_of_expr_lam = (xs, b) => {
-    // if String.contains(b, '\n') {
-    "(" ++ "lambda" ++ " " ++ string_of_list(xs) ++ "\n  " ++ indent(b, 2) ++ ")"
-    // } else {
-    // "(" ++ "lambda" ++ " " ++ string_of_list(xs) ++ " " ++ b ++ ")"
-    // }
-  }
-
-  let string_of_expr_app = (e, es) => {
-    string_of_list(list{e, ...es})
-  }
-
-  let string_of_expr_bgn = (es, e) => {
-    let b = String.concat("\n", list{...es, e})
-    "(begin\n  " ++ indent(b, 2) ++ ")"
-  }
-
-  let string_of_expr_cnd = (ebs: list<(string, string)>, ob) => {
-    let ebs = {
-      switch ob {
-      | None => ebs
-      | Some(b) => list{...ebs, ("else", b)}
-      }
-    }
-    let ebs = ebs->List.map(((e, b)) => `[${e}\n ${indent(b, 1)}]`)
-    let ebs = String.concat("\n", ebs)
-    "(" ++ "cond\n  " ++ indent(ebs, 2) ++ ")"
-  }
-
-  let string_of_expr_if = (e_cnd: string, e_thn: string, e_els: string) => {
-    `(if ${indent(e_cnd, 4)}\n    ${indent(e_thn, 4)}\n    ${indent(e_els, 4)})`
-  }
-
-  let string_of_expr_let = (xes, b) => {
-    let xes = xes->List.map(((x, e)) => {
-      let x = unannotate(x)
-      `[${x} ${indent(e, 2 + String.length(x))}]`
-    })
-    let xes = String.concat("\n", xes)
-    `(let ${indent(xes, 5)}\n${indent(b, 2)})`
-  }
-
-  let rec string_of_expr = (e: annotated<expression>): string => {
-    switch e.it {
-    | Con(c) => string_of_constant(c)
-    | Ref(x) => x.it
-    | Set(x, e) => string_of_expr_set(x->unannotate, string_of_expr(e))
-    | Lam(xs, b) => string_of_expr_lam(xs->map(unannotate), string_of_block(b))
-    | AppPrm(p, es) => string_of_expr_app(string_of_primitive(p), es->map(string_of_expr))
-    | App(e, es) => string_of_expr_app(string_of_expr(e), es->map(string_of_expr))
-    | Let(xes, b) => string_of_expr_let(xes->map(string_of_xe), string_of_block(b))
-    | Cnd(ebs, ob) => string_of_expr_cnd(ebs->map(string_of_eb), string_of_ob(ob))
-    | If(e_cnd, e_thn, e_els) =>
-      string_of_expr_if(string_of_expr(e_cnd), string_of_expr(e_thn), string_of_expr(e_els))
-    // | Whl(e, b) => string_of_expr_whl(string_of_expr(e), string_of_block(b))
-    | Bgn(es, e) => string_of_expr_bgn(es->map(string_of_expr), string_of_expr(e))
-    }
-  }
-  and string_of_def = (d: annotated<definition>): string => {
-    switch d.it {
-    | Var(x, e) => string_of_def_var(x, string_of_expr(e))
-    | Fun(f, xs, b) => string_of_def_fun(f->unannotate, xs->map(unannotate), string_of_block(b))
-    // | For(x, e_from, e_to, b) =>
-    //   string_of_def_for(x, string_of_expr(e_from), string_of_expr(e_to), string_of_block(b))
-    }
-  }
-  and string_of_xe = xe => {
-    let (x, e) = xe
-    (x, string_of_expr(e))
-  }
-  and string_of_eb = eb => {
-    let (e, b) = eb
-    (string_of_expr(e), string_of_block(b))
-  }
-  and string_of_ob = ob => {
-    ob->Option.map(string_of_block)
-  }
-  and string_of_block = b => {
-    let (ts, e) = b
-    String.concat("\n", list{...ts->map(string_of_term), string_of_expr(e)})
-  }
-  and string_of_term = t => {
-    switch t {
-    | Exp(e) => string_of_expr(e)
-    | Def(d) => string_of_def(d)
-    }
-  }
-
-  let string_of_program = ts => {
-    String.concat("\n", ts->map(string_of_term))
+  | Str(s) => "\"" ++ String.escaped(s) ++ "\""
   }
 }
 
-let toString = Stringify.string_of_term
+let string_of_result = r => {
+  switch r {
+  | Con(c) => string_of_constant(c)
+  | Vec(i) => `@${i |> Int.toString}`
+  | Fun(i) => `@${i |> Int.toString}`
+  | PrmFun(p) => string_of_primitive(p)
+  }
+}
+
+let string_of_list = ss => {
+  "(" ++ String.concat(" ", ss) ++ ")"
+}
+
+let string_of_def_var = (x, e) => {
+  string_of_list(list{"defvar", x.it, e})
+}
+
+let string_of_def_fun = (f, xs, b) => {
+  // string_of_list(list{"deffun", string_of_list(list{f, ...xs}), b})
+  "(" ++ "deffun" ++ " " ++ string_of_list(list{f, ...xs}) ++ "\n  " ++ indent(b, 2) ++ ")"
+}
+
+let string_of_expr_set = (x, e) => {
+  string_of_list(list{"set!", x, e})
+}
+
+let string_of_expr_lam = (xs, b) => {
+  // if String.contains(b, '\n') {
+  "(" ++ "lambda" ++ " " ++ string_of_list(xs) ++ "\n  " ++ indent(b, 2) ++ ")"
+  // } else {
+  // "(" ++ "lambda" ++ " " ++ string_of_list(xs) ++ " " ++ b ++ ")"
+  // }
+}
+
+let string_of_expr_app = (e, es) => {
+  string_of_list(list{e, ...es})
+}
+
+let string_of_expr_bgn = (es, e) => {
+  let b = String.concat("\n", list{...es, e})
+  "(begin\n  " ++ indent(b, 2) ++ ")"
+}
+
+let string_of_expr_cnd = (ebs: list<(string, string)>, ob) => {
+  let ebs = {
+    switch ob {
+    | None => ebs
+    | Some(b) => list{...ebs, ("else", b)}
+    }
+  }
+  let ebs = ebs->List.map(((e, b)) => `[${e}\n ${indent(b, 1)}]`)
+  let ebs = String.concat("\n", ebs)
+  "(" ++ "cond\n  " ++ indent(ebs, 2) ++ ")"
+}
+
+let string_of_expr_if = (e_cnd: string, e_thn: string, e_els: string) => {
+  `(if ${indent(e_cnd, 4)}\n    ${indent(e_thn, 4)}\n    ${indent(e_els, 4)})`
+}
+
+let string_of_expr_let = (xes, b) => {
+  let xes = xes->List.map(((x, e)) => {
+    let x = unannotate(x)
+    `[${x} ${indent(e, 2 + String.length(x))}]`
+  })
+  let xes = String.concat("\n", xes)
+  `(let ${indent(xes, 5)}\n${indent(b, 2)})`
+}
+
+let rec string_of_expr = (e: annotated<expression>): string => {
+  switch e.it {
+  | Con(c) => string_of_constant(c)
+  | Ref(x) => x.it
+  | Set(x, e) => string_of_expr_set(x->unannotate, string_of_expr(e))
+  | Lam(xs, b) => string_of_expr_lam(xs->List.map(unannotate), string_of_block(b))
+  | AppPrm(p, es) => string_of_expr_app(string_of_primitive(p), es->List.map(string_of_expr))
+  | App(e, es) => string_of_expr_app(string_of_expr(e), es->List.map(string_of_expr))
+  | Let(xes, b) => string_of_expr_let(xes->List.map(string_of_xe), string_of_block(b))
+  | Cnd(ebs, ob) => string_of_expr_cnd(ebs->List.map(string_of_eb), string_of_ob(ob))
+  | If(e_cnd, e_thn, e_els) =>
+    string_of_expr_if(string_of_expr(e_cnd), string_of_expr(e_thn), string_of_expr(e_els))
+  // | Whl(e, b) => string_of_expr_whl(string_of_expr(e), string_of_block(b))
+  | Bgn(es, e) => string_of_expr_bgn(es->List.map(string_of_expr), string_of_expr(e))
+  }
+}
+and string_of_def = (d: annotated<definition>): string => {
+  switch d.it {
+  | Var(x, e) => string_of_def_var(x, string_of_expr(e))
+  | Fun(f, xs, b) => string_of_def_fun(f->unannotate, xs->List.map(unannotate), string_of_block(b))
+  // | For(x, e_from, e_to, b) =>
+  //   string_of_def_for(x, string_of_expr(e_from), string_of_expr(e_to), string_of_block(b))
+  }
+}
+and string_of_xe = xe => {
+  let (x, e) = xe
+  (x, string_of_expr(e))
+}
+and string_of_eb = eb => {
+  let (e, b) = eb
+  (string_of_expr(e), string_of_block(b))
+}
+and string_of_ob = ob => {
+  ob->Option.map(string_of_block)
+}
+and string_of_block = b => {
+  let (ts, e) = b
+  String.concat("\n", list{...ts->List.map(string_of_term), string_of_expr(e)})
+}
+and string_of_term = t => {
+  switch t {
+  | Exp(e) => string_of_expr(e)
+  | Def(d) => string_of_def(d)
+  }
+}
+
+let string_of_program = ts => {
+  String.concat("\n", ts->List.map(string_of_term))
+}
+
+let toString = string_of_term
 
 type s_expr = SExpression.t
 
@@ -652,8 +650,14 @@ module SMoLToJS = {
     `function ${f}${string_of_list(xs)} {\n  ${indent(b, 2)}\n}`
   }
 
-  let string_of_expr_set = (x, e) => {
-    `${x} = ${e}`
+  let string_of_expr_set = (ctx, x, e) => {
+    let itself = `${x} = ${e}`;
+    switch ctx {
+    | Expr(false) => itself
+    | Expr(true) => `(${itself})`
+    | Stat => itself
+    | Return => `return ${itself}`
+    }
   }
 
   let string_of_expr_lam = (xs, b) => {
@@ -706,7 +710,7 @@ module SMoLToJS = {
       | Some(b) => ` else {\n  ${indent(b, 2)}\n}`
       }
     }
-    let ebs = ebs->map(((e, b)) => `if (${e}) {\n  ${indent(b, 2)}\n}`)
+    let ebs = ebs->List.map(((e, b)) => `if (${e}) {\n  ${indent(b, 2)}\n}`)
     let ebs = String.concat(" else ", ebs)
     ebs ++ ob
   }
@@ -716,7 +720,7 @@ module SMoLToJS = {
   }
 
   let string_of_expr_let = (xes, b) => {
-    `((${xes->map(((x, _e)) => x) |> String.concat(", ")})=>{${b}})(${xes->map(((_x, e)) => e)
+    `((${xes->List.map(((x, _e)) => x) |> String.concat(", ")})=>{${b}})(${xes->List.map(((_x, e)) => e)
         |> String.concat(", ")})`
   }
 
@@ -734,16 +738,17 @@ module SMoLToJS = {
     | Ref(x) => string_of_identifier(x.it) |> consider_context(ctx)
     | Set(x, e) =>
       string_of_expr_set(
+        ctx,
         x->unannotate->string_of_identifier,
         string_of_expr(Expr(false), e),
-      ) |> consider_context(ctx)
+      )
     | Lam(xs, b) =>
       string_of_expr_lam(
-        xs->map(unannotate)->map(string_of_identifier),
+        xs->List.map(unannotate)->List.map(string_of_identifier),
         string_of_block(Return, b),
       ) |> consider_context(ctx)
     | AppPrm(p, es) =>
-      let o = string_of_expr_app_prm(p, es->map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
+      let o = string_of_expr_app_prm(p, es->List.map(string_of_expr(Expr(true)))) |> maybe_wrap(ctx, p)
       if p != Err {
         o |> consider_context(ctx)
       } else {
@@ -752,13 +757,13 @@ module SMoLToJS = {
     | App(e, es) =>
       string_of_expr_app(
         string_of_expr(Expr(false), e),
-        es->map(string_of_expr(Expr(false))),
+        es->List.map(string_of_expr(Expr(false))),
       ) |> consider_context(ctx)
     | Let(xes, b) =>
-      string_of_expr_let(xes->map(string_of_xe), string_of_block(Return, b)) |> consider_context(
+      string_of_expr_let(xes->List.map(string_of_xe), string_of_block(Return, b)) |> consider_context(
         ctx,
       )
-    | Cnd(ebs, ob) => string_of_expr_cnd(ebs->map(string_of_eb(ctx)), string_of_ob(ctx, ob))
+    | Cnd(ebs, ob) => string_of_expr_cnd(ebs->List.map(string_of_eb(ctx)), string_of_ob(ctx, ob))
     | If(e_cnd, e_thn, e_els) =>
       string_of_expr_if(
         string_of_expr(Expr(false), e_cnd),
@@ -767,7 +772,7 @@ module SMoLToJS = {
       ) |> consider_context(ctx)
     | Bgn(es, e) =>
       string_of_expr_bgn(
-        es->map(string_of_expr(Expr(false))),
+        es->List.map(string_of_expr(Expr(false))),
         string_of_expr(Expr(false), e),
       ) |> consider_context(ctx)
     }
@@ -778,7 +783,7 @@ module SMoLToJS = {
     | Fun(f, xs, b) =>
       string_of_def_fun(
         f->unannotate->string_of_identifier,
-        xs->map(unannotate)->map(string_of_identifier),
+        xs->List.map(unannotate)->List.map(string_of_identifier),
         string_of_block(Return, b),
       )
     }
@@ -796,7 +801,7 @@ module SMoLToJS = {
   }
   and string_of_block = (ctx, b) => {
     let (ts, e) = b
-    String.concat("\n", list{...ts->map(string_of_term), string_of_expr(ctx, e)})
+    String.concat("\n", list{...ts->List.map(string_of_term), string_of_expr(ctx, e)})
   }
   and string_of_term = t => {
     switch t {
@@ -818,14 +823,14 @@ module SMoLToJS = {
 
   let translate_expressions: string => string = results => {
     let ts = results->terms_of_string
-    String.concat(" ", ts->map(as_expr("expr"))->map(string_of_expr(Expr(true))))
+    String.concat(" ", ts->List.map(as_expr("expr"))->List.map(string_of_expr(Expr(true))))
   }
 
   let translate_program: string => string = program => {
     let ts = program->terms_of_string
     String.concat(
       "\n",
-      ts->map(t => {
+      ts->List.map(t => {
         switch t {
         | Def(_) => string_of_term(t)
         | Exp(e) =>
@@ -848,8 +853,6 @@ module SMoLToJS = {
 }
 
 module SMoLToPY = {
-  open List
-
   let string_of_constant = c => {
     switch c {
     | Uni => "None"
@@ -984,7 +987,7 @@ module SMoLToPY = {
       | Some(b) => `else:\n    ${indent(b, 4)}`
       }
     }
-    let ebs = ebs->map(((e, b)) => `if ${e}:\n    ${indent(b, 2)}\n`)
+    let ebs = ebs->List.map(((e, b)) => `if ${e}:\n    ${indent(b, 2)}\n`)
     let ebs = String.concat("el", ebs)
     ebs ++ ob
   }
@@ -1018,23 +1021,23 @@ module SMoLToPY = {
         | _ => `\n${string_of_block(Return, b)}\nend`
         }
       }
-      string_of_expr_lam(xs->map(unannotate)->map(string_of_identifier), b) |> consider_context(ctx)
+      string_of_expr_lam(xs->List.map(unannotate)->List.map(string_of_identifier), b) |> consider_context(ctx)
     | AppPrm(VecSet, es) =>
-      string_of_expr_app_prm(ctx, VecSet, es->map(string_of_expr(Expr(false))))
-    | AppPrm(p, es) => string_of_expr_app_prm(ctx, p, es->map(string_of_expr(Expr(true))))
+      string_of_expr_app_prm(ctx, VecSet, es->List.map(string_of_expr(Expr(false))))
+    | AppPrm(p, es) => string_of_expr_app_prm(ctx, p, es->List.map(string_of_expr(Expr(true))))
     | App(e, es) =>
       string_of_expr_app(
         string_of_expr(Expr(false), e),
-        es->map(string_of_expr(Expr(false))),
+        es->List.map(string_of_expr(Expr(false))),
       ) |> consider_context(ctx)
     | Let(xes, b) =>
-      string_of_expr_let(xes->map(string_of_xe), string_of_block(Return, b)) |> consider_context(
+      string_of_expr_let(xes->List.map(string_of_xe), string_of_block(Return, b)) |> consider_context(
         ctx,
       )
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) => "if..."
-      | _ => string_of_expr_cnd(ebs->map(string_of_eb(ctx)), string_of_ob(ctx, ob))
+      | _ => string_of_expr_cnd(ebs->List.map(string_of_eb(ctx)), string_of_ob(ctx, ob))
       }
     | If(e_cnd, e_thn, e_els) =>
       string_of_expr_if(
@@ -1046,7 +1049,7 @@ module SMoLToPY = {
     //   string_of_expr_whl(string_of_expr(Expr(false), e), string_of_block(Expr(false), b)) |> consider_context(ctx)
     | Bgn(es, e) =>
       string_of_expr_bgn(
-        es->map(string_of_expr(Expr(false))),
+        es->List.map(string_of_expr(Expr(false))),
         string_of_expr(Expr(false), e),
       ) |> consider_context(ctx)
     }
@@ -1057,7 +1060,7 @@ module SMoLToPY = {
     | Fun(f, xs, b) =>
       string_of_def_fun(
         f->unannotate->string_of_identifier,
-        xs->map(unannotate)->map(string_of_identifier),
+        xs->List.map(unannotate)->List.map(string_of_identifier),
         string_of_block(Return, b),
       )
     // | For(x, e_from, e_to, b) =>
@@ -1082,7 +1085,7 @@ module SMoLToPY = {
   }
   and string_of_block = (ctx, b) => {
     let (ts, e) = b
-    String.concat("\n", list{...ts->map(string_of_term), string_of_expr(ctx, e)})
+    String.concat("\n", list{...ts->List.map(string_of_term), string_of_expr(ctx, e)})
   }
   and string_of_term = t => {
     switch t {
@@ -1095,7 +1098,7 @@ module SMoLToPY = {
     let ts = program->terms_of_string
     String.concat(
       "\n",
-      ts->map(t => {
+      ts->List.map(t => {
         switch t {
         | Def(_) => string_of_term(t)
         | Exp(e) => `print(${string_of_expr(Expr(false), e)})`
@@ -1113,34 +1116,45 @@ module SMoLToPY = {
 
   let translate_expressions: string => string = results => {
     let ts = results->terms_of_string
-    String.concat(" ", ts->map(as_expr("expr"))->map(string_of_expr(Expr(true))))
+    String.concat(" ", ts->List.map(as_expr("expr"))->List.map(string_of_expr(Expr(true))))
   }
 }
 
-module StringifyAsJS: Stringifier = {
-  let string_of_result = r => {
-    switch r {
-    | PrmFun(_p) => SMoLToJS.string_of_identifier(Stringify.string_of_result(r))
-    | _ => Stringify.string_of_result(r)
-    }
-  }
-  let string_of_def = SMoLToJS.string_of_def
-  let string_of_expr = SMoLToJS.string_of_expr(Expr(false))
-  let string_of_term = SMoLToJS.string_of_term
-  let string_of_block = SMoLToJS.string_of_block(Return)
-  let string_of_program = ts => String.concat(";\n", ts->List.map(string_of_term))
+let stringify = {
+  string_of_result,
+  string_of_expr,
+  string_of_def,
+  string_of_term,
+  string_of_block,
+  string_of_program
 }
 
-module StringifyAsPY = {
-  let string_of_result = r => {
+let stringifyAsJS: stringifier = {
+  string_of_result: r => {
     switch r {
-    | PrmFun(_p) => SMoLToPY.string_of_identifier(Stringify.string_of_result(r))
-    | _ => Stringify.string_of_result(r)
+    | Con(c) => SMoLToJS.string_of_constant(c)
+    | PrmFun(_p) => SMoLToJS.string_of_identifier(string_of_result(r))
+    | _ => string_of_result(r)
     }
-  }
-  let string_of_def = SMoLToPY.string_of_def
-  let string_of_expr = SMoLToPY.string_of_expr(Expr(false))
-  let string_of_term = SMoLToPY.string_of_term
-  let string_of_block = SMoLToPY.string_of_block(Return)
-  let string_of_program = ts => String.concat("\n", ts->List.map(string_of_term))
+  },
+  string_of_def: SMoLToJS.string_of_def,
+  string_of_expr: SMoLToJS.string_of_expr(Expr(false)),
+  string_of_term: SMoLToJS.string_of_term,
+  string_of_block: SMoLToJS.string_of_block(Return),
+  string_of_program: ts => String.concat(";\n", ts->List.map(SMoLToJS.string_of_term))
+}
+
+let stringifyAsPY: stringifier = {
+  string_of_result: r => {
+    switch r {
+    | Con(c) => SMoLToJS.string_of_constant(c)
+    | PrmFun(_p) => SMoLToPY.string_of_identifier(string_of_result(r))
+    | _ => string_of_result(r)
+    }
+  },
+  string_of_def: SMoLToPY.string_of_def,
+  string_of_expr: SMoLToPY.string_of_expr(Expr(false)),
+  string_of_term: SMoLToPY.string_of_term,
+  string_of_block: SMoLToPY.string_of_block(Return),
+  string_of_program: ts => String.concat("\n", ts->List.map(SMoLToPY.string_of_term)),
 }

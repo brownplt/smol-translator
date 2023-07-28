@@ -24,8 +24,8 @@ function writeProgram(tutorialName, questionName, program, outputs) {
     // console.log(program);
     // console.log(outputs);
     // console.log("-----");
-    fs.writeFileSync(`./test/test_cases/from_tutor/${tutorialName}.${questionName}.smol`, program);
-    fs.writeFileSync(`./test/test_cases/from_tutor/${tutorialName}.${questionName}.smol.txt`, outputs);
+    fs.writeFileSync(`./test/test_cases/${tutorialName}.${questionName}.smol`, program);
+    fs.writeFileSync(`./test/test_cases/${tutorialName}.${questionName}.smol.txt`, outputs);
 }
 
 for (const tutorialName in tutorials) {

@@ -1,0 +1,9 @@
+(defvar x 5)
+(deffun (set1 x y)
+  (set! x y))
+(deffun (set2 a y)
+  (set! x y))
+(set1 x 6)
+x
+(set2 x 7)
+x

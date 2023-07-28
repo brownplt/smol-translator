@@ -1,0 +1,5 @@
+(defvar y 100)
+(deffun (addy x)
+  (defvar y 200)
+  (+ x y))
+(+ (addy 2) y)

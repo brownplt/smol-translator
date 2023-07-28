@@ -1,0 +1,7 @@
+(defvar x 1)
+(deffun (main)
+  (defvar x 2)
+  (deffun (get-x) x)
+  (get-x))
+
+(main)

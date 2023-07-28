@@ -1,0 +1,8 @@
+(deffun (make-addy y)
+  (deffun (addy x)
+    (+ x y))
+  addy)
+(defvar f (make-addy 10))
+(defvar g (make-addy 50))
+(f 2)
+(g 2)
