@@ -91,3 +91,17 @@ different results if the source program
 
 All 24 test failure (out of 154 tests) are due to the aforementioned
 reasons.
+
+## Key Challenges to the Translation
+
+There are a few key differences between SMoL and the target languages
+(currently JavaScript and Python):
+
+- `return` is needed.
+- Some SMoL constructs (e.g., `if`) has an expression version and a
+  statement version in a target language. Even worse, the less
+  flexible target construct (e.g., `if` statements) is more idiomatic
+  in the target language. So the translator need to use the statement
+  version as often as possible while not doing it blindly.
+- Top-level expressions need to be wrapped in a printing construct.
+- Python has unusual `nonlocal` and `global` keywords
