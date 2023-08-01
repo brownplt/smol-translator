@@ -1,6 +1,0 @@
-(deffun (add1 n)
-  (+ n 1))
-(deffun (sub1 n)
-  (- n 1))
-(defvar v (mpair add1 sub1))
-((right v) 2)

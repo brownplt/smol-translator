@@ -1,4 +1,0 @@
-(defvar y (+ x 2))
-(defvar x 1)
-x
-y

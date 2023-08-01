@@ -1,4 +1,0 @@
-(deffun (f x)
-  (lambda (y) (+ x y)))
-(defvar x 0)
-((f 2) 1)

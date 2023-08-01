@@ -1,6 +1,0 @@
-(defvar var5 1)
-(deffun (update-var var6)
-  (set! var5 2)
-  var6)
-(update-var var5)
-var5

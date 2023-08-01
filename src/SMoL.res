@@ -973,7 +973,7 @@ module SMoLToPY = {
   let wrap = (ctx, code) => {
     switch ctx.node {
     | Expr(true) => `(${code})`
-    | Return => `return (${code})`
+    | Return => `return ${code}`
     | _ => code
     }
   }

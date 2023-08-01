@@ -1,4 +1,0 @@
-(defvar a 10)
-(defvar b (* 20 a))
-a
-b

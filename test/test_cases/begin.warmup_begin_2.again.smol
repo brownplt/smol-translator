@@ -1,8 +1,0 @@
-(defvar res
-  (begin
-    (begin
-      67)
-    (begin
-      (begin 123)
-      45)))
-res

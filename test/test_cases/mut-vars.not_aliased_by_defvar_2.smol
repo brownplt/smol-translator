@@ -1,5 +1,0 @@
-(defvar m 40)
-(defvar n m)
-(set! n 22)
-m
-n

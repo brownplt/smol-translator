@@ -1,8 +1,0 @@
-(defvar z
-  (begin
-    (begin
-      123
-      45)
-    (begin
-      67)))
-z

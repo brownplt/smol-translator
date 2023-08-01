@@ -1,4 +1,0 @@
-(defvar x (mvec 3))
-(defvar v (mvec 1 2 x))
-(vec-set! x 0 4)
-v

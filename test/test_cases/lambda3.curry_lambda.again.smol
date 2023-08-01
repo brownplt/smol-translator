@@ -1,4 +1,0 @@
-(deffun (g a)
-  (lambda (b) (+ a b)))
-
-((g 3) 2)

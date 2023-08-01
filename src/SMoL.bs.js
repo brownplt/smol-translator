@@ -1633,7 +1633,7 @@ function wrap(ctx, code) {
   var match = ctx.node;
   if (typeof match === "number") {
     if (match !== 0) {
-      return "return (" + code + ")";
+      return "return " + code + "";
     } else {
       return code;
     }

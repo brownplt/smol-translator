@@ -1,6 +1,0 @@
-(deffun (fun)
-  (defvar it 32)
-  (deffun (what-is-it) it)
-  what-is-it)
-(defvar what-is-it (fun))
-(what-is-it)

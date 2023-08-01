@@ -1,4 +1,0 @@
-(defvar x (mvec 12))
-(defvar y x)
-(vec-set! x 0 34)
-y

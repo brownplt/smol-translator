@@ -1,5 +1,0 @@
-(defvar var 1)
-(deffun (proc)
-  (set! var 2))
-(proc)
-var

@@ -1,2 +1,0 @@
-(defvar bval (begin 7 6 5))
-bval

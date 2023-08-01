@@ -1,1 +1,0 @@
-(vec-len (mvec 1 (mvec 2 3) 4))

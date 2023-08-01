@@ -1,5 +1,0 @@
-(deffun (ffx f x)
-  (f (f x)))
-(deffun (add1 x)
-  (+ x 1))
-(ffx add1 1)

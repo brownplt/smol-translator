@@ -1,8 +1,0 @@
-(defvar x 1)
-(deffun (make-f)
-  (deffun (addx y)
-    (+ x y))
-  addx)
-(defvar f (make-f))
-(set! x 2)
-(f x)
