@@ -829,7 +829,7 @@ function term_of_sexpr(e) {
                 continue ;
               };
           case "deffun" :
-              var match$6 = as_one_then_many_then_one("", es$1.tl);
+              var match$6 = as_one_then_many_then_one("a function header and a body", es$1.tl);
               var match$7 = as_one_then_many("function name followed by parameters", as_list("function name and parameters", match$6[0]));
               var fun = as_id("a function name", match$7[0]);
               var args = Belt_List.map(match$7[1], (function (param) {

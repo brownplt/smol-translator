@@ -436,7 +436,7 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
     }
 
   | Sequence(List, _b, list{{it: Atom(Sym("deffun")), ann: _}, ...rest}) => {
-      let (head, terms, result) = as_one_then_many_then_one("", rest)
+      let (head, terms, result) = as_one_then_many_then_one("a function header and a body", rest)
       let (fun, args) = as_one_then_many(
         "function name followed by parameters",
         as_list("function name and parameters", head),
