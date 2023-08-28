@@ -274,6 +274,7 @@ type term_kind =
   | Expression
 
 type parse_error =
+  | SExprParseError(string)
   | SExprKindError(kind_expectation, string, annotated<s_expr>)
   | SExprArityError(arity_expectation, string, list<annotated<s_expr>>)
   | LiteralSymbolError(string)
@@ -295,6 +296,7 @@ let stringOfExprs = es => {
 
 let stringOfParseError: parse_error => string = err => {
   switch err {
+  | SExprParseError(msg) => `expecting a (valid) s-expression, but the input is not: ${msg}`
   | SExprKindError(_kind, context, sexpr) =>
     `expecting a ${context}, given ${SExpression.toString(sexpr)}`
   | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
@@ -368,7 +370,6 @@ let as_one_then_many_then_one = (context, es) => {
   }
 }
 
-exception ExpectingExpression
 let as_expr = (context, e) => {
   switch e {
   | Exp(e) => e
@@ -580,7 +581,12 @@ and terms_of_sexprs = es => {
 }
 
 let terms_of_string = src => {
-  src->SExpression.fromString->terms_of_sexprs
+  switch src->SExpression.fromString {
+    | sexpr => terms_of_sexprs(sexpr)
+    | exception SExpression.ParseError(err) => {
+      raise(ParseError(SExprParseError(SExpression.Error.toString(err))))
+    }
+  }
 }
 
 exception Impossible(string)

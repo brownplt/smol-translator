@@ -85,6 +85,7 @@ type arity_expectation =
   | OneThenManyThenOne
 type term_kind = Definition | Expression
 type parse_error =
+  | SExprParseError(string)
   | SExprKindError(kind_expectation, string, annotated<SExpression.t>)
   | SExprArityError(arity_expectation, string, list<annotated<SExpression.t>>)
   | LiteralSymbolError(string)
@@ -93,7 +94,6 @@ type parse_error =
 type exn += ParseError(parse_error)
 let stringOfExprs: List.t<annotated<SExpression.t>> => string
 let stringOfParseError: parse_error => string
-type exn += ExpectingExpression
 let as_expr: (string, term) => annotated<expression>
 let constant_of_atom: ('a, SExpression.Atom.t) => expression
 let value_of_sexpr: annotated<SExpression.t> => annotated<expression>

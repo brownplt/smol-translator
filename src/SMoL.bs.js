@@ -10,6 +10,7 @@ import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
+import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
 var all_primitives = [
   /* Add */0,
@@ -291,15 +292,17 @@ function stringOfExprs(es) {
 
 function stringOfParseError(err) {
   switch (err.TAG | 0) {
-    case /* SExprKindError */0 :
+    case /* SExprParseError */0 :
+        return "expecting a (valid) s-expression, but the input is not: " + err._0 + "";
+    case /* SExprKindError */1 :
         return "expecting a " + err._1 + ", given " + SExpression.toString(err._2) + "";
-    case /* SExprArityError */1 :
+    case /* SExprArityError */2 :
         return "expecting " + err._1 + ", given " + stringOfExprs(err._2) + "";
-    case /* LiteralSymbolError */2 :
+    case /* LiteralSymbolError */3 :
         return "expecting a literal value, given a symbol " + err._0 + "";
-    case /* LiteralListError */3 :
+    case /* LiteralListError */4 :
         return "expecting a constant or a vector, given " + SExpression.toString(err._0) + "";
-    case /* TermKindError */4 :
+    case /* TermKindError */5 :
         return "expecting " + err._1 + ", given " + string_of_term(err._2) + "";
     
   }
@@ -318,7 +321,7 @@ function as_id(context, e) {
     throw {
           RE_EXN_ID: ParseError,
           _1: {
-            TAG: /* SExprKindError */0,
+            TAG: /* SExprKindError */1,
             _0: /* Atom */0,
             _1: context,
             _2: e
@@ -329,7 +332,7 @@ function as_id(context, e) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprKindError */0,
+          TAG: /* SExprKindError */1,
           _0: /* Atom */0,
           _1: context,
           _2: e
@@ -344,7 +347,7 @@ function as_list(context, e) {
     throw {
           RE_EXN_ID: ParseError,
           _1: {
-            TAG: /* SExprKindError */0,
+            TAG: /* SExprKindError */1,
             _0: /* List */1,
             _1: context,
             _2: e
@@ -356,7 +359,7 @@ function as_list(context, e) {
     throw {
           RE_EXN_ID: ParseError,
           _1: {
-            TAG: /* SExprKindError */0,
+            TAG: /* SExprKindError */1,
             _0: /* List */1,
             _1: context,
             _2: e
@@ -377,7 +380,7 @@ function as_one_then_many(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* OneThenMany */3,
           _1: context,
           _2: es
@@ -408,7 +411,7 @@ function as_many_then_one(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* ManyThenOne */4,
           _1: context,
           _2: es
@@ -423,7 +426,7 @@ function as_one(context, es) {
       throw {
             RE_EXN_ID: ParseError,
             _1: {
-              TAG: /* SExprArityError */1,
+              TAG: /* SExprArityError */2,
               _0: /* ExactlyOne */0,
               _1: context,
               _2: es
@@ -436,7 +439,7 @@ function as_one(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* ExactlyOne */0,
           _1: context,
           _2: es
@@ -459,7 +462,7 @@ function as_two(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* ExactlyTwo */1,
           _1: context,
           _2: es
@@ -487,7 +490,7 @@ function as_three(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* ExactlyThree */2,
           _1: context,
           _2: es
@@ -523,7 +526,7 @@ function as_one_then_many_then_one(context, es) {
     throw {
           RE_EXN_ID: ParseError,
           _1: {
-            TAG: /* SExprArityError */1,
+            TAG: /* SExprArityError */2,
             _0: /* OneThenManyThenOne */5,
             _1: context,
             _2: es
@@ -534,7 +537,7 @@ function as_one_then_many_then_one(context, es) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* SExprArityError */1,
+          TAG: /* SExprArityError */2,
           _0: /* OneThenManyThenOne */5,
           _1: context,
           _2: es
@@ -543,8 +546,6 @@ function as_one_then_many_then_one(context, es) {
       };
 }
 
-var ExpectingExpression = /* @__PURE__ */Caml_exceptions.create("SMoL.ExpectingExpression");
-
 function as_expr(context, e) {
   if (e.TAG !== /* Def */0) {
     return e._0;
@@ -552,7 +553,7 @@ function as_expr(context, e) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* TermKindError */4,
+          TAG: /* TermKindError */5,
           _0: /* Expression */1,
           _1: context,
           _2: e
@@ -605,7 +606,7 @@ function constant_of_atom(_ann, atom) {
       throw {
             RE_EXN_ID: ParseError,
             _1: {
-              TAG: /* LiteralSymbolError */2,
+              TAG: /* LiteralSymbolError */3,
               _0: x
             },
             Error: new Error()
@@ -636,7 +637,7 @@ function value_of_sexpr(e) {
   throw {
         RE_EXN_ID: ParseError,
         _1: {
-          TAG: /* LiteralListError */3,
+          TAG: /* LiteralListError */4,
           _0: e
         },
         Error: new Error()
@@ -1038,7 +1039,25 @@ function terms_of_sexprs(es) {
 }
 
 function terms_of_string(src) {
-  return Belt_List.map(SExpression.fromString(src), term_of_sexpr);
+  var sexpr;
+  try {
+    sexpr = SExpression.fromString(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SExpression.ParseError) {
+      throw {
+            RE_EXN_ID: ParseError,
+            _1: {
+              TAG: /* SExprParseError */0,
+              _0: SExpression.$$Error.toString(err._1)
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  return Belt_List.map(sexpr, term_of_sexpr);
 }
 
 var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
@@ -1502,7 +1521,7 @@ function as_many_then_one$2(es) {
 }
 
 function translate_expressions(results) {
-  var ts = Belt_List.map(SExpression.fromString(results), term_of_sexpr);
+  var ts = terms_of_string(results);
   var partial_arg = /* Expr */{
     _0: true
   };
@@ -1514,7 +1533,7 @@ function translate_expressions(results) {
 }
 
 function translate_program(program) {
-  var ts = Belt_List.map(SExpression.fromString(program), term_of_sexpr);
+  var ts = terms_of_string(program);
   return $$String.concat("\n", Belt_List.map(ts, (function (t) {
                     if (t.TAG === /* Def */0) {
                       return string_of_term$1(t);
@@ -1543,7 +1562,7 @@ function translate_program(program) {
 }
 
 function translate_block(program) {
-  var ts = Belt_List.map(SExpression.fromString(program), term_of_sexpr);
+  var ts = terms_of_string(program);
   var match = as_many_then_one$2(ts);
   var e = as_expr("result", match[1]);
   return string_of_block$1(/* Return */1, [
@@ -2337,11 +2356,11 @@ function string_of_program$1(ts) {
 }
 
 function translate_program$1(program) {
-  return string_of_program$1(Belt_List.map(SExpression.fromString(program), term_of_sexpr));
+  return string_of_program$1(terms_of_string(program));
 }
 
 function translate_block$1(program) {
-  var ts = Belt_List.map(SExpression.fromString(program), term_of_sexpr);
+  var ts = terms_of_string(program);
   var match = as_many_then_one$1(ts);
   var e = as_expr("result", match[1]);
   var ctx_refs = [];
@@ -2359,7 +2378,7 @@ function translate_block$1(program) {
 }
 
 function translate_expressions$1(results) {
-  var ts = Belt_List.map(SExpression.fromString(results), term_of_sexpr);
+  var ts = terms_of_string(results);
   var ctx_node = /* Expr */{
     _0: false
   };
@@ -2521,7 +2540,6 @@ export {
   ParseError ,
   stringOfExprs ,
   stringOfParseError ,
-  ExpectingExpression ,
   as_expr ,
   constant_of_atom ,
   value_of_sexpr ,
