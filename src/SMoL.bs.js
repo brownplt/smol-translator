@@ -161,7 +161,8 @@ function string_of_expr(e) {
                 return "[" + x + " " + indent(param[1], 2 + x.length | 0) + "]";
               }));
         var xes$2 = $$String.concat("\n", xes$1);
-        return "(let " + indent(xes$2, 5) + "\n" + indent(b$1, 2) + ")";
+        var xes$3 = "(" + indent(xes$2, 1) + ")";
+        return "(let " + indent(xes$3, 5) + "\n  " + indent(b$1, 2) + ")";
     case /* AppPrm */5 :
         var es = Belt_List.map(c._1, string_of_expr);
         var e$2 = string_of_primitive(c._0);

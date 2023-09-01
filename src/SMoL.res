@@ -200,7 +200,8 @@ let string_of_expr_let = (xes, b) => {
     `[${x} ${indent(e, 2 + String.length(x))}]`
   })
   let xes = String.concat("\n", xes)
-  `(let ${indent(xes, 5)}\n${indent(b, 2)})`
+  let xes = `(${indent(xes, 1)})`
+  `(let ${indent(xes, 5)}\n  ${indent(b, 2)})`
 }
 
 let rec string_of_expr = (e: annotated<expression>): string => {
