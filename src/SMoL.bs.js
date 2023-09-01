@@ -139,16 +139,20 @@ function string_of_expr(e) {
     case /* Set */2 :
         var x = c._0.it;
         var e$1 = string_of_expr(c._1);
-        return string_of_list({
-                    hd: "set!",
-                    tl: {
-                      hd: x,
+        if (!$$String.contains(e$1, /* '\n' */10)) {
+          return string_of_list({
+                      hd: "set!",
                       tl: {
-                        hd: e$1,
-                        tl: /* [] */0
+                        hd: x,
+                        tl: {
+                          hd: e$1,
+                          tl: /* [] */0
+                        }
                       }
-                    }
-                  });
+                    });
+        }
+        var prefix = "(set! " + x + " ";
+        return "" + prefix + "" + indent(e$1, prefix.length) + ")";
     case /* Lam */3 :
         var xs = Belt_List.map(c._0, unannotate);
         var b = string_of_block(c._1);

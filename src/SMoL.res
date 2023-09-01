@@ -158,7 +158,13 @@ let string_of_def_fun = (f, xs, b) => {
 }
 
 let string_of_expr_set = (x, e) => {
-  string_of_list(list{"set!", x, e})
+  if String.contains(e, '\n') {
+    let prefix = `(set! ${x} `
+    let suffix = `)`
+    `${prefix}${indent(e, String.length(prefix))}${suffix}`
+  } else {
+    string_of_list(list{"set!", x, e})
+  }
 }
 
 let string_of_expr_lam = (xs, b) => {
@@ -583,10 +589,10 @@ and terms_of_sexprs = es => {
 
 let terms_of_string = src => {
   switch src->SExpression.fromString {
-    | sexpr => terms_of_sexprs(sexpr)
-    | exception SExpression.ParseError(err) => {
-      raise(ParseError(SExprParseError(SExpression.Error.toString(err))))
-    }
+  | sexpr => terms_of_sexprs(sexpr)
+  | exception SExpression.ParseError(err) => raise(
+      ParseError(SExprParseError(SExpression.Error.toString(err))),
+    )
   }
 }
 
@@ -1134,15 +1140,16 @@ module SMoLToPY = {
   }
   and string_of_expr_bgn = (ctx, es, e) => {
     switch ctx.node {
-      | Expr(_) => {
+    | Expr(_) => {
         let ese = list{...es, e}
-        let ese = ese -> List.map(string_of_expr({...ctx, node: Expr(false)}))
+        let ese = ese->List.map(string_of_expr({...ctx, node: Expr(false)}))
         `[${String.concat(", ", ese)}][-1]`
       }
-      | _ => {
-        let es = es -> List.map(string_of_expr({...ctx, node:Stat}))
+    | _ => {
+        let es = es->List.map(string_of_expr({...ctx, node: Stat}))
         let e = e |> string_of_expr(ctx)
-        String.concat("\n", list{...es, e})}
+        String.concat("\n", list{...es, e})
+      }
     }
   }
   and string_of_def = (ctx: context, d: annotated<definition>): string => {
