@@ -59,6 +59,7 @@ type rec expression =
   | Set(annotated<symbol>, annotated<expression>)
   | Lam(list<annotated<symbol>>, block)
   | Let(list<(annotated<symbol>, annotated<expression>)>, block)
+  | Letrec(list<(annotated<symbol>, annotated<expression>)>, block)
   | AppPrm(primitive, list<annotated<expression>>)
   | App(annotated<expression>, list<annotated<expression>>)
   | Bgn(list<annotated<expression>>, annotated<expression>)
@@ -149,7 +150,7 @@ let string_of_list = ss => {
 }
 
 let string_of_def_var = (x, e) => {
-  string_of_list(list{"defvar", x.it, e})
+  string_of_list(list{"defvar", x, e})
 }
 
 let string_of_def_fun = (f, xs, b) => {
@@ -209,6 +210,15 @@ let string_of_expr_let = (xes, b) => {
   let xes = `(${indent(xes, 1)})`
   `(let ${indent(xes, 5)}\n  ${indent(b, 2)})`
 }
+let string_of_expr_letrec = (xes, b) => {
+  let xes = xes->List.map(((x, e)) => {
+    let x = unannotate(x)
+    `[${x} ${indent(e, 2 + String.length(x))}]`
+  })
+  let xes = String.concat("\n", xes)
+  let xes = `(${indent(xes, 1)})`
+  `(letrec ${indent(xes, 5)}\n  ${indent(b, 2)})`
+}
 
 let rec string_of_expr = (e: annotated<expression>): string => {
   switch e.it {
@@ -219,6 +229,7 @@ let rec string_of_expr = (e: annotated<expression>): string => {
   | AppPrm(p, es) => string_of_expr_app(string_of_primitive(p), es->List.map(string_of_expr))
   | App(e, es) => string_of_expr_app(string_of_expr(e), es->List.map(string_of_expr))
   | Let(xes, b) => string_of_expr_let(xes->List.map(string_of_xe), string_of_block(b))
+  | Letrec(xes, b) => string_of_expr_letrec(xes->List.map(string_of_xe), string_of_block(b))
   | Cnd(ebs, ob) => string_of_expr_cnd(ebs->List.map(string_of_eb), string_of_ob(ob))
   | If(e_cnd, e_thn, e_els) =>
     string_of_expr_if(string_of_expr(e_cnd), string_of_expr(e_thn), string_of_expr(e_els))
@@ -228,7 +239,7 @@ let rec string_of_expr = (e: annotated<expression>): string => {
 }
 and string_of_def = (d: annotated<definition>): string => {
   switch d.it {
-  | Var(x, e) => string_of_def_var(x, string_of_expr(e))
+  | Var(x, e) => string_of_def_var(x.it, string_of_expr(e))
   | Fun(f, xs, b) => string_of_def_fun(f->unannotate, xs->List.map(unannotate), string_of_block(b))
   // | For(x, e_from, e_to, b) =>
   //   string_of_def_for(x, string_of_expr(e_from), string_of_expr(e_to), string_of_block(b))
@@ -424,6 +435,23 @@ let expr_of_atom = (ann, atom) => {
   }
 }
 
+let rec letstar = (ann, xes, body): annotated<expression> => {
+  switch xes {
+    | list{} => {
+      switch body {
+        | (list{}, e) => e
+        | body => {ann, it: Let(list{}, body)}
+      }
+    }
+    | list{(x, e)} => {
+      {ann, it: Let(list{(x, e)}, body)}
+    }
+    | list{(x, e), ...xes} => {
+      {ann, it: Let(list{(x, e)}, (list{}, letstar(ann, xes, body)))}
+    }
+  }
+}
+
 let rec term_of_sexpr = (e: annotated<s_expr>) => {
   let ann = e.ann
   switch e.it {
@@ -533,6 +561,38 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
       let ts = ts->List.map(term_of_sexpr)
       let result = term_of_sexpr(result) |> as_expr("an expression to be return")
       Exp({ann, it: Let(xes, (ts, result))})
+    }
+
+  | Sequence(List, _b, list{{it: Atom(Sym("let*")), ann: _}, ...rest}) => {
+      let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
+      let xes =
+        as_list("variable-expression pairs", xes)
+        ->List.map(as_list("a variable and an expression"))
+        ->List.map(as_two("a variable and an expression"))
+      let xes = xes->List.map(((x, e)) => {
+        let x = as_id("a variable to be bound", x)
+        let e = term_of_sexpr(e) |> as_expr("an expression")
+        (x, e)
+      })
+      let ts = ts->List.map(term_of_sexpr)
+      let result = term_of_sexpr(result) |> as_expr("an expression to be return")
+      Exp(letstar(ann, xes, (ts, result)))
+    }
+
+  | Sequence(List, _b, list{{it: Atom(Sym("letrec")), ann: _}, ...rest}) => {
+      let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
+      let xes =
+        as_list("variable-expression pairs", xes)
+        ->List.map(as_list("a variable and an expression"))
+        ->List.map(as_two("a variable and an expression"))
+      let xes = xes->List.map(((x, e)) => {
+        let x = as_id("a variable to be bound", x)
+        let e = term_of_sexpr(e) |> as_expr("an expression")
+        (x, e)
+      })
+      let ts = ts->List.map(term_of_sexpr)
+      let result = term_of_sexpr(result) |> as_expr("an expression to be return")
+      Exp({ann, it: Letrec(xes, (ts, result))})
     }
 
   | Atom(atom) => Exp({ann, it: expr_of_atom(ann, atom)})
@@ -674,8 +734,8 @@ module SMoLToJS = {
     }
   }
 
-  let string_of_def_var = (x, e) => {
-    `let ${string_of_identifier(x.it)} = ${e};`
+  let string_of_def_var = (x: string, e) => {
+    `let ${string_of_identifier(x)} = ${e};`
   }
 
   let string_of_def_fun = (f, xs, b) => {
@@ -754,6 +814,15 @@ module SMoLToJS = {
       )) => e) |> String.concat(", ")})`
   }
 
+  let string_of_expr_letrec = (xes: list<(string, string)>, b) => {
+    let b = String.concat(";\n",
+      list{
+        ...xes -> List.map(((x: string, e: string)) => string_of_def_var(x, e)),
+        b
+      })
+    `()=>{${b}})()`
+  }
+
   let consider_context = (ctx: js_ctx, code: string) => {
     switch ctx {
     | Expr(_) => code
@@ -791,6 +860,11 @@ module SMoLToJS = {
         xes->List.map(string_of_xe),
         string_of_block(Return, b),
       ) |> consider_context(ctx)
+    | Letrec(xes, b) =>
+      string_of_expr_letrec(
+        xes->List.map(string_of_xe),
+        string_of_block(Return, b),
+      ) |> consider_context(ctx)
     | Cnd(ebs, ob) => string_of_expr_cnd(ebs->List.map(string_of_eb(ctx)), string_of_ob(ctx, ob))
     | If(e_cnd, e_thn, e_els) =>
       string_of_expr_if(
@@ -807,7 +881,7 @@ module SMoLToJS = {
   }
   and string_of_def = (d: annotated<definition>): string => {
     switch d.it {
-    | Var(x, e) => string_of_def_var(x, string_of_expr(Expr(false), e))
+    | Var(x, e) => string_of_def_var(x.it, string_of_expr(Expr(false), e))
     | Fun(f, xs, b) =>
       string_of_def_fun(
         f->unannotate->string_of_identifier,
@@ -955,7 +1029,7 @@ module SMoLToPY = {
   }
 
   let string_of_def_var = (x, e) => {
-    `${string_of_identifier(x.it)} = ${e}`
+    `${string_of_identifier(x)} = ${e}`
   }
 
   // let string_of_def_for = (_x, _e_from, _e_to, _body) => {
@@ -1069,6 +1143,9 @@ module SMoLToPY = {
   let string_of_expr_let = (_xes, _b) => {
     `"...a let-expression..."`
   }
+  let string_of_expr_letrec = (_xes, _b) => {
+    `"...a letrec-expression..."`
+  }
 
   let consider_context = (ctx: context, code: string) => {
     switch ctx.node {
@@ -1123,6 +1200,11 @@ module SMoLToPY = {
         xes->List.map(string_of_xe(ctx)),
         string_of_block({...ctx, node: Return}, xes->List.map(((x, _e)) => x), b),
       ) |> consider_context(ctx)
+    | Letrec(xes, b) =>
+      string_of_expr_letrec(
+        xes->List.map(string_of_xe(ctx)),
+        string_of_block({...ctx, node: Return}, xes->List.map(((x, _e)) => x), b),
+      ) |> consider_context(ctx)
     | Cnd(ebs, ob) =>
       switch ctx.node {
       | Expr(_) => "if..."
@@ -1154,7 +1236,7 @@ module SMoLToPY = {
   }
   and string_of_def = (ctx: context, d: annotated<definition>): string => {
     switch d.it {
-    | Var(x, e) => string_of_def_var(x, string_of_expr({...ctx, node: Expr(false)}, e))
+    | Var(x, e) => string_of_def_var(x.it, string_of_expr({...ctx, node: Expr(false)}, e))
     | Fun(f, xs, b) =>
       string_of_def_fun(
         f->unannotate->string_of_identifier,

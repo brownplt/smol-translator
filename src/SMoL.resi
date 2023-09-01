@@ -31,6 +31,7 @@ type rec expression =
   | Set(annotated<symbol>, annotated<expression>)
   | Lam(list<annotated<symbol>>, block)
   | Let(list<(annotated<symbol>, annotated<expression>)>, block)
+  | Letrec(list<(annotated<symbol>, annotated<expression>)>, block)
   | AppPrm(primitive, list<annotated<expression>>)
   | App(annotated<expression>, list<annotated<expression>>)
   | Bgn(list<annotated<expression>>, annotated<expression>)
