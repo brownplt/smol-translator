@@ -299,6 +299,7 @@ type parse_error =
   | LiteralListError(annotated<s_expr>)
   | TermKindError(term_kind, string, term)
 exception ParseError(parse_error)
+exception TranslationError(string)
 
 let stringOfExprs = es => {
   switch es {
@@ -1141,10 +1142,10 @@ module SMoLToPY = {
   }
 
   let string_of_expr_let = (_xes, _b) => {
-    `"...a let-expression..."`
+    raise(TranslationError("do not support let-expression..."))
   }
   let string_of_expr_letrec = (_xes, _b) => {
-    `"...a letrec-expression..."`
+    raise(TranslationError("do not support letrec-expression..."))
   }
 
   let consider_context = (ctx: context, code: string) => {

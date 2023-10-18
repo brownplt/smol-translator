@@ -293,6 +293,8 @@ function string_of_program(ts) {
 
 var ParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.ParseError");
 
+var TranslationError = /* @__PURE__ */Caml_exceptions.create("SMoL.TranslationError");
+
 function stringOfExprs(es) {
   if (es) {
     if (es.tl) {
@@ -2080,28 +2082,42 @@ function string_of_expr$2(ctx, e) {
                           }, xs, c._1)));
     case /* Let */4 :
         var xes = c._0;
-        return consider_context$1(ctx, (string_of_block$2({
-                          node: /* Return */1,
-                          block: ctx.block,
-                          refs: ctx.refs,
-                          env: ctx.env
-                        }, Belt_List.map(xes, (function (param) {
-                                return param[0];
-                              })), c._1), Belt_List.map(xes, (function (param) {
-                            return string_of_xe$2(ctx, param);
-                          })), "\"...a let-expression...\""));
+        string_of_block$2({
+              node: /* Return */1,
+              block: ctx.block,
+              refs: ctx.refs,
+              env: ctx.env
+            }, Belt_List.map(xes, (function (param) {
+                    return param[0];
+                  })), c._1);
+        Belt_List.map(xes, (function (param) {
+                return string_of_xe$2(ctx, param);
+              }));
+        throw {
+              RE_EXN_ID: TranslationError,
+              _1: "do not support let-expression...",
+              Error: new Error()
+            };
+        return consider_context$1(ctx, undefined);
     case /* Letrec */5 :
         var xes$1 = c._0;
-        return consider_context$1(ctx, (string_of_block$2({
-                          node: /* Return */1,
-                          block: ctx.block,
-                          refs: ctx.refs,
-                          env: ctx.env
-                        }, Belt_List.map(xes$1, (function (param) {
-                                return param[0];
-                              })), c._1), Belt_List.map(xes$1, (function (param) {
-                            return string_of_xe$2(ctx, param);
-                          })), "\"...a letrec-expression...\""));
+        string_of_block$2({
+              node: /* Return */1,
+              block: ctx.block,
+              refs: ctx.refs,
+              env: ctx.env
+            }, Belt_List.map(xes$1, (function (param) {
+                    return param[0];
+                  })), c._1);
+        Belt_List.map(xes$1, (function (param) {
+                return string_of_xe$2(ctx, param);
+              }));
+        throw {
+              RE_EXN_ID: TranslationError,
+              _1: "do not support letrec-expression...",
+              Error: new Error()
+            };
+        return consider_context$1(ctx, undefined);
     case /* AppPrm */6 :
         var p = c._0;
         if (p !== 17) {
