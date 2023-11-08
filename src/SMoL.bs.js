@@ -1197,7 +1197,7 @@ function terms_of_string(src) {
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SExpression.ParseError) {
+    if (err.RE_EXN_ID === SExpression.SExpressionError) {
       throw {
             RE_EXN_ID: ParseError,
             _1: {

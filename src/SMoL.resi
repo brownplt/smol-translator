@@ -1,5 +1,4 @@
 open SExpression
-open Belt
 
 type primitive =
   | Add
@@ -49,59 +48,50 @@ and definition =
 and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
 
-type result =
-  | Con(constant)
-  | Vec(int) // the int is the address
-  | Fun(int) // the int is the address
-  | PrmFun(primitive)
-
-type stringifier = {
-  string_of_result: result => string,
-  string_of_expr: annotated<expression> => string,
-  string_of_def: annotated<definition> => string,
-  string_of_term: term => string,
-  string_of_block: block => string,
-  string_of_program: program => string,
+module SExprKind: {
+  type t = Atom | List
+  let toString: t => string
 }
-
-let stringify: stringifier
-let stringifyAsJS: stringifier
-let stringifyAsPY: stringifier
-
-module type Translator = {
-  let translate_program: string => string
-  let translate_block: string => string
-  let translate_expressions: string => string
-}
-
-module SMoLToJS : Translator
-module SMoLToPY : Translator
-
-type kind_expectation = Atom | List
-type arity_expectation =
+module Arity: {
+  type t =
   | ExactlyOne
   | ExactlyTwo
   | ExactlyThree
   | OneThenMany
   | ManyThenOne
   | OneThenManyThenOne
-type term_kind = Definition | Expression
-type parse_error =
-  | SExprParseError(string)
-  | SExprKindError(kind_expectation, string, annotated<SExpression.t>)
-  | SExprArityError(arity_expectation, string, list<annotated<SExpression.t>>)
-  | LiteralSymbolError(string)
-  | LiteralListError(annotated<SExpression.t>)
-  | TermKindError(term_kind, string, term)
-type exn += ParseError(parse_error)
-type exn += TranslationError(string)
-let stringOfExprs: List.t<annotated<SExpression.t>> => string
-let stringOfParseError: parse_error => string
-let as_expr: (string, term) => annotated<expression>
-let constant_of_atom: ('a, SExpression.Atom.t) => expression
-let value_of_sexpr: annotated<SExpression.t> => annotated<expression>
-let expr_of_atom: (SExpression.srcrange, SExpression.Atom.t) => expression
-let term_of_sexpr: annotated<SExpression.t> => term
-let app_prm: (SExpression.srcrange, primitive, List.t<annotated<SExpression.t>>) => term
-let terms_of_sexprs: List.t<annotated<SExpression.t>> => List.t<term>
-let terms_of_string: string => List.t<term>
+  let toString: t => string
+}
+module TermKind: {
+  type t = Definition | Expression
+  let toString: t => string
+}
+module ParseError: {
+  type t =
+    | SExprParseError(string)
+    | SExprKindError(SExprKind.t, string, annotated<SExpression.t>)
+    | SExprArityError(Arity.t, string, list<annotated<SExpression.t>>)
+    | LiteralSymbolError(string)
+    | LiteralListError(annotated<SExpression.t>)
+    | TermKindError(TermKind.t, string, term)
+  let toString : t => string
+}
+type exn += ParseError(ParseError.t)
+module Parser: {
+  let parseProgram: string => program
+  let parseBlock: string => block
+  let parseTerms: string => list<term>
+  let parseTerm: string => option<term>
+  let parseExp: string => expression
+  let parseDef: string => definition
+}
+
+type exn += PrintError(string)
+module type Printer = {
+  let programToString: program => string
+  let blockToString: block => string
+  let termsToString: list<term> => string
+  let termToString: option<term> => string
+  let expToString: expression => string
+  let defToString: definition => string
+}
