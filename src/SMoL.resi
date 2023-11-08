@@ -23,6 +23,7 @@ type primitive =
   | VecLen
   | Eqv
   | Err
+  | Not
 type constant = Uni | Num(float) | Lgc(bool) | Str(string)
 type symbol = string
 type rec expression =

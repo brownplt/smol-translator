@@ -23,6 +23,7 @@ type primitive =
   | VecLen
   | Eqv
   | Err
+  | Not
 let all_primitives = [
   Add,
   Sub,
@@ -45,6 +46,7 @@ let all_primitives = [
   VecLen,
   Eqv,
   Err,
+  Not,
 ]
 type constant =
   | Uni
@@ -97,6 +99,7 @@ let string_of_primitive = (o: primitive) => {
   | VecLen => "vec-len"
   | Eqv => "eq?"
   | Err => "error"
+  | Not => "not"
   }
 }
 
@@ -639,6 +642,7 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
   | Sequence(List, _b, list{{it: Atom(Sym("eqv?")), ann: _}, ...es}) => app_prm(ann, Eqv, es)
   | Sequence(List, _b, list{{it: Atom(Sym("equal?")), ann: _}, ...es}) => app_prm(ann, Eqv, es)
   | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => app_prm(ann, Err, es)
+  | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => app_prm(ann, Not, es)
   | Sequence(List, _b, es) => {
       let (e, es) = as_one_then_many(
         "a function call/application, which includes a function and then zero or more arguments",
@@ -790,6 +794,7 @@ module SMoLToJS = {
     | (VecLen, list{e}) => `${e}.length`
     | (Eqv, list{e1, e2}) => `${e1} === ${e2}`
     | (Err, list{e}) => `throw ${e}`
+    | (Not, list{e}) => `! ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
   }
@@ -1124,6 +1129,7 @@ module SMoLToPY = {
     | (VecLen, list{e}) => `len(${e})` |> ret(ctx)
     | (Eqv, list{e1, e2}) => `${e1} == ${e2}` |> wrap(ctx)
     | (Err, list{e}) => `raise ${e}`
+    | (Not, list{e}) => `not ${e}`
     | _ => "/* a primitive operation not supported yet */"
     }
   }

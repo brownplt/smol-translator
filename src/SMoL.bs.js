@@ -33,7 +33,8 @@ var all_primitives = [
   /* VecSet */17,
   /* VecLen */18,
   /* Eqv */19,
-  /* Err */20
+  /* Err */20,
+  /* Not */21
 ];
 
 function string_of_primitive(o) {
@@ -80,6 +81,8 @@ function string_of_primitive(o) {
         return "eq?";
     case /* Err */20 :
         return "error";
+    case /* Not */21 :
+        return "not";
     
   }
 }
@@ -1072,6 +1075,8 @@ function term_of_sexpr(e) {
                         ann: ann
                       }
                     };
+          case "not" :
+              return app_prm(ann, /* Not */21, es$1.tl);
           case "mpair" :
           case "pair" :
               return app_prm(ann, /* PairNew */10, es$1.tl);
@@ -1465,6 +1470,12 @@ function string_of_expr_app_prm(p, es) {
     case /* Err */20 :
         if (es && !es.tl) {
           return "throw " + es.hd + "";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
+    case /* Not */21 :
+        if (es && !es.tl) {
+          return "! " + es.hd + "";
         } else {
           return "/* a primitive operation not supported yet */";
         }
@@ -2040,6 +2051,12 @@ function string_of_expr_app_prm$1(ctx, p, es) {
     case /* Err */20 :
         if (es && !es.tl) {
           return "raise " + es.hd + "";
+        } else {
+          return "/* a primitive operation not supported yet */";
+        }
+    case /* Not */21 :
+        if (es && !es.tl) {
+          return "not " + es.hd + "";
         } else {
           return "/* a primitive operation not supported yet */";
         }
