@@ -11,8 +11,7 @@
     "prepare-test": "npm run prepare-test:get-programs && npm run prepare-test:translate",
     "run-test": "python3 test/tester.py",
     "test": "npm run clean && npm run prepare-test && npm run run-test",
-    "res:build": "rescript",
-    "res:dev": "rescript build -with-deps -w",
+    "rescript": "rescript build -with-deps -w",
     "publish": "npm publish --access public"
   },
   "author": {

@@ -1192,9 +1192,8 @@ function terms_of_sexprs(es) {
 }
 
 function terms_of_string(src) {
-  var sexpr;
   try {
-    sexpr = SExpression.fromString(src);
+    return Belt_List.map(SExpression.fromString(src), term_of_sexpr);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -1210,7 +1209,6 @@ function terms_of_string(src) {
     }
     throw err;
   }
-  return Belt_List.map(sexpr, term_of_sexpr);
 }
 
 var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
@@ -2750,6 +2748,7 @@ export {
   SMoLToJS ,
   SMoLToPY ,
   ParseError ,
+  TranslationError ,
   stringOfExprs ,
   stringOfParseError ,
   as_expr ,

@@ -94,6 +94,7 @@ type parse_error =
   | LiteralListError(annotated<SExpression.t>)
   | TermKindError(term_kind, string, term)
 type exn += ParseError(parse_error)
+type exn += TranslationError(string)
 let stringOfExprs: List.t<annotated<SExpression.t>> => string
 let stringOfParseError: parse_error => string
 let as_expr: (string, term) => annotated<expression>

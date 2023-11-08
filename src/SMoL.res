@@ -663,8 +663,8 @@ and terms_of_sexprs = es => {
 }
 
 let terms_of_string = src => {
-  switch src->SExpression.fromString {
-  | sexpr => terms_of_sexprs(sexpr)
+  switch src->SExpression.fromString->terms_of_sexprs {
+  | terms => terms
   | exception SExpression.ParseError(err) => raise(
       ParseError(SExprParseError(SExpression.Error.toString(err))),
     )
