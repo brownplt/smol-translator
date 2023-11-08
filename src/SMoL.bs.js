@@ -1114,6 +1114,27 @@ function term_of_sexpr(e) {
           case "vec-set!" :
           case "vset!" :
               return app_prm(ann, /* VecSet */17, es$1.tl);
+          case "λ" :
+              var match$15 = as_one_then_many_then_one("the function signature followed by the function body", es$1.tl);
+              var args$2 = Belt_List.map(as_list("function parameters", match$15[0]), (function (param) {
+                      return as_id("a parameter", param);
+                    }));
+              var terms$5 = Belt_List.map(match$15[1], term_of_sexpr);
+              var result$8 = as_expr("an expression to be returned", term_of_sexpr(match$15[2]));
+              return {
+                      TAG: /* Exp */1,
+                      _0: {
+                        it: {
+                          TAG: /* Lam */3,
+                          _0: args$2,
+                          _1: [
+                            terms$5,
+                            result$8
+                          ]
+                        },
+                        ann: ann
+                      }
+                    };
           default:
             
         }
@@ -1126,9 +1147,9 @@ function term_of_sexpr(e) {
     }
     
   }
-  var match$15 = as_one_then_many("a function call/application, which includes a function and then one ore more arguments", es$1);
-  var e$4 = as_expr("a function", term_of_sexpr(match$15[0]));
-  var es$2 = Belt_List.map(Belt_List.map(match$15[1], term_of_sexpr), (function (param) {
+  var match$16 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es$1);
+  var e$4 = as_expr("a function", term_of_sexpr(match$16[0]));
+  var es$2 = Belt_List.map(Belt_List.map(match$16[1], term_of_sexpr), (function (param) {
           return as_expr("an argument", param);
         }));
   return {

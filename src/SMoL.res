@@ -484,7 +484,17 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
       Def({ann, it: Fun(fun, args, (terms, result))})
     }
 
-  | Sequence(List, _b, list{{it: Atom(Sym("lambda")), ann: _}, ...rest}) => {
+  | Sequence(List, _b, list{{it: Atom(Sym("lambda")), ann: _}, ...rest}) =>{
+      let (args, terms, result) = as_one_then_many_then_one(
+        "the function signature followed by the function body",
+        rest,
+      )
+      let args = as_list("function parameters", args)->List.map(as_id("a parameter"))
+      let terms = terms->List.map(term_of_sexpr)
+      let result = result |> term_of_sexpr |> as_expr("an expression to be returned")
+      Exp({ann, it: Lam(args, (terms, result))})
+    }
+  | Sequence(List, _b, list{{it: Atom(Sym("λ")), ann: _}, ...rest}) => {
       let (args, terms, result) = as_one_then_many_then_one(
         "the function signature followed by the function body",
         rest,
@@ -631,7 +641,7 @@ let rec term_of_sexpr = (e: annotated<s_expr>) => {
   | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => app_prm(ann, Err, es)
   | Sequence(List, _b, es) => {
       let (e, es) = as_one_then_many(
-        "a function call/application, which includes a function and then one ore more arguments",
+        "a function call/application, which includes a function and then zero or more arguments",
         es,
       )
       let e = e->term_of_sexpr |> as_expr("a function")
