@@ -48,7 +48,7 @@ and definition =
 and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
 
-type exn += PrintError(string)
+type exn += SMoLPrintError(string)
 module type Printer = {
   let printProgram: program => string
   let printBlock: block => string
@@ -91,3 +91,17 @@ module Parser: {
   let parseTerms: string => list<term>
   let parseProgram: string => program
 }
+
+module TranslateError: {
+  type t =
+  | ParseError(ParseError.t)
+  | PrintError(string)
+  let toString: t => string
+}
+type exn += SMoLTranslateError(TranslateError.t)
+module type Translator = {
+  let translateTerms: string => string
+  let translateProgram: string => string
+}
+module PYTranslator: Translator
+module JSTranslator: Translator

@@ -37,7 +37,7 @@ var all_primitives = [
   /* Not */21
 ];
 
-var PrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.PrintError");
+var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
 
 function unannotate(x) {
   return x.it;
@@ -1967,7 +1967,7 @@ function exprApp_prmToString$1(ctx, p, es) {
     
   }
   throw {
-        RE_EXN_ID: PrintError,
+        RE_EXN_ID: SMoLPrintError,
         _1: "found a primitive operation (" + primitiveToString(p) + ") not supported yet.",
         Error: new Error()
       };
@@ -2067,7 +2067,7 @@ function expToString$2(ctx, e) {
                 return xeToString$2(ctx, param);
               }));
         throw {
-              RE_EXN_ID: PrintError,
+              RE_EXN_ID: SMoLPrintError,
               _1: "Python translation does not support letrec-expression.",
               Error: new Error()
             };
@@ -2210,7 +2210,7 @@ function expToString$2(ctx, e) {
           return ebs$2 + ob$1;
         }
         throw {
-              RE_EXN_ID: PrintError,
+              RE_EXN_ID: SMoLPrintError,
               _1: "Python translation does not fully support `cond` yet.",
               Error: new Error()
             };
@@ -2368,7 +2368,7 @@ function printBlock$3(ctx, xs, b) {
       return "(" + $$String.concat(", ", es$1) + ")[-1]";
     }
     throw {
-          RE_EXN_ID: PrintError,
+          RE_EXN_ID: SMoLPrintError,
           _1: "Python translator can't translate block that contains definitions and appears in an expression context.",
           Error: new Error()
         };
@@ -2465,6 +2465,182 @@ function printBlock$4(param) {
             ]);
 }
 
+function toString$4(t) {
+  if (t.TAG === /* ParseError */0) {
+    return toString$3(t._0);
+  } else {
+    return t._0;
+  }
+}
+
+var TranslateError = {
+  toString: toString$4
+};
+
+var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
+
+function translateTerms(src) {
+  var ts;
+  try {
+    ts = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return $$String.concat(" ", Belt_List.map(ts, printTerm$2));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram(src) {
+  var p;
+  try {
+    p = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$1(p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var PYTranslator = {
+  translateTerms: translateTerms,
+  translateProgram: translateProgram
+};
+
+function translateTerms$1(src) {
+  var ts;
+  try {
+    ts = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return $$String.concat(" ", Belt_List.map(ts, printTerm$1));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram$1(src) {
+  var p;
+  try {
+    p = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram(p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var JSTranslator = {
+  translateTerms: translateTerms$1,
+  translateProgram: translateProgram$1
+};
+
 var SMoLPrinter = {
   printProgram: termsToString,
   printBlock: printBlock,
@@ -2489,7 +2665,7 @@ var Parser = {
 };
 
 export {
-  PrintError ,
+  SMoLPrintError ,
   SMoLPrinter ,
   JSPrinter ,
   PYPrinter ,
@@ -2499,5 +2675,9 @@ export {
   ParseError ,
   SMoLParseError ,
   Parser ,
+  TranslateError ,
+  SMoLTranslateError ,
+  PYTranslator ,
+  JSTranslator ,
 }
 /* base_env Not a pure module */

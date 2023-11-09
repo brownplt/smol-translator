@@ -75,7 +75,7 @@ and term =
   | Exp(annotated<expression>)
 and program = list<term>
 
-type exn += PrintError(string)
+type exn += SMoLPrintError(string)
 module type Printer = {
   let printProgram: program => string
   let printBlock: block => string
@@ -1061,7 +1061,7 @@ module PYPrinter = {
     | (Not, list{e}) => `not ${e}` |> wrap(ctx)
     | (p, _) =>
       raise(
-        PrintError(
+        SMoLPrintError(
           `found a primitive operation (${SMoLPrinter.primitiveToString(p)}) not supported yet.`,
         ),
       )
@@ -1095,7 +1095,7 @@ module PYPrinter = {
     exprAppToString(exprLamToString(xes->List.map(((x, e)) => `${x}=${e}`), b), list{})
   }
   let exprLetrecToString = (_xes, _b) => {
-    raise(PrintError("Python translation does not support letrec-expression."))
+    raise(SMoLPrintError("Python translation does not support letrec-expression."))
   }
 
   let consider_context = (code: string, ctx: context) => {
@@ -1158,7 +1158,7 @@ module PYPrinter = {
       )->consider_context(ctx)
     | Cnd(ebs, ob) =>
       switch ctx.node {
-      | Expr(_) => raise(PrintError("Python translation does not fully support `cond` yet."))
+      | Expr(_) => raise(SMoLPrintError("Python translation does not fully support `cond` yet."))
       | _ => exprCndToString(ebs->List.map(ebToString(ctx)), obToString(ctx, ob))
       }
     | If(e_cnd, e_thn, e_els) =>
@@ -1252,7 +1252,11 @@ module PYPrinter = {
                 let es = es->List.map(expToString({...ctx, node: Expr(false)}))
                 `(${String.concat(", ", es)})[-1]`
               } else {
-                raise(PrintError("Python translator can't translate block that contains definitions and appears in an expression context."))
+                raise(
+                  SMoLPrintError(
+                    "Python translator can't translate block that contains definitions and appears in an expression context.",
+                  ),
+                )
               }
             }
           }
@@ -1321,14 +1325,70 @@ module PYPrinter = {
 
   let printProgram = ts => {
     let ctx = {node: TopLevel, block: Global, env: make_global_env(ts->xs_of_ts), refs: []}
-    String.concat(
-      "\n",
-      ts->List.map(termToString(ctx))
-    )
+    String.concat("\n", ts->List.map(termToString(ctx)))
   }
 
   let printBlock = ((ts, e)) => {
     let ctx = {node: Return, block: Local, env: Js.Dict.empty(), refs: []}
     printBlock(ctx, list{}, (ts, e))
+  }
+}
+
+module type Translator = {
+  let translateTerms: string => string
+  let translateProgram: string => string
+}
+module TranslateError = {
+  type t =
+    | ParseError(ParseError.t)
+    | PrintError(string)
+  let toString = t => {
+    switch t {
+    | ParseError(err) => ParseError.toString(err)
+    | PrintError(err) => err
+    }
+  }
+}
+exception SMoLTranslateError(TranslateError.t)
+
+module PYTranslator = {
+  let translateTerms = src => {
+    switch Parser.parseTerms(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | ts => switch String.concat(" ", ts->List.map(PYPrinter.printTerm)) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
+  }
+  let translateProgram = src => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p => switch PYPrinter.printProgram(p) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
+  }
+}
+
+module JSTranslator = {
+  let translateTerms = src => {
+    switch Parser.parseTerms(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | ts => switch String.concat(" ", ts->List.map(JSPrinter.printTerm)) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
+  }
+  let translateProgram = src => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p => switch JSPrinter.printProgram(p) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
   }
 }
