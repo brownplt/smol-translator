@@ -37,7 +37,26 @@ var all_primitives = [
   /* Not */21
 ];
 
-function string_of_primitive(o) {
+var PrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.PrintError");
+
+function unannotate(x) {
+  return x.it;
+}
+
+function indent(s, i) {
+  var pad = Js_string.repeat(i, " ");
+  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
+}
+
+function indentBlock(s, i) {
+  return indent("\n" + s, i);
+}
+
+function hcat(s1, s2) {
+  return "" + s1 + "" + indent(s2, s1.length) + "";
+}
+
+function primitiveToString(o) {
   switch (o) {
     case /* Add */0 :
         return "+";
@@ -87,132 +106,105 @@ function string_of_primitive(o) {
   }
 }
 
-function unannotate(x) {
-  return x.it;
-}
-
-function indent(s, i) {
-  var pad = Js_string.repeat(i, " ");
-  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
-}
-
-function string_of_constant(c) {
-  if (typeof c === "number") {
-    return "#<void>";
-  }
-  switch (c.TAG | 0) {
-    case /* Num */0 :
-        return String(c._0);
-    case /* Lgc */1 :
-        if (c._0) {
-          return "#t";
-        } else {
-          return "#f";
-        }
-    case /* Str */2 :
-        return "\"" + $$String.escaped(c._0) + "\"";
-    
-  }
-}
-
-function string_of_result(r) {
-  switch (r.TAG | 0) {
-    case /* Con */0 :
-        return string_of_constant(r._0);
-    case /* Vec */1 :
-    case /* Fun */2 :
-        return "@" + String(r._0) + "";
-    case /* PrmFun */3 :
-        return string_of_primitive(r._0);
-    
-  }
-}
-
-function string_of_list(ss) {
+function listToString(ss) {
   return "(" + $$String.concat(" ", ss) + ")";
 }
 
-function string_of_expr(e) {
-  var c = e.it;
-  switch (c.TAG | 0) {
+function defvarLike(op, x, e) {
+  if ($$String.contains(e, /* '\n' */10)) {
+    return hcat("(" + op + " " + x + " ", "" + e + ")");
+  } else {
+    return listToString({
+                hd: op,
+                tl: {
+                  hd: x,
+                  tl: {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                }
+              });
+  }
+}
+
+function beginLike(op, ts) {
+  return "(" + op + "" + indentBlock($$String.concat("\n", ts), 2) + ")";
+}
+
+function letLike(op, xes, b) {
+  var xes$1 = Belt_List.map(xes, (function (param) {
+          var x = param[0].it;
+          return hcat("[" + x + " ", "" + param[1] + "]");
+        }));
+  var xes$2 = $$String.concat("\n", xes$1);
+  var xes$3 = "(" + indent(xes$2, 1) + ")";
+  return hcat("(" + op + " ", "" + xes$3 + "") + ("" + indentBlock(b, 2) + ")");
+}
+
+function expToString(e) {
+  switch (e.TAG | 0) {
     case /* Con */0 :
-        return string_of_constant(c._0);
-    case /* Ref */1 :
-        return c._0.it;
-    case /* Set */2 :
-        var x = c._0.it;
-        var e$1 = string_of_expr(c._1);
-        if (!$$String.contains(e$1, /* '\n' */10)) {
-          return string_of_list({
-                      hd: "set!",
-                      tl: {
-                        hd: x,
-                        tl: {
-                          hd: e$1,
-                          tl: /* [] */0
-                        }
-                      }
-                    });
+        var c = e._0;
+        if (typeof c === "number") {
+          return "#<void>";
         }
-        var prefix = "(set! " + x + " ";
-        return "" + prefix + "" + indent(e$1, prefix.length) + ")";
+        switch (c.TAG | 0) {
+          case /* Num */0 :
+              return String(c._0);
+          case /* Lgc */1 :
+              if (c._0) {
+                return "#t";
+              } else {
+                return "#f";
+              }
+          case /* Str */2 :
+              return "\"" + $$String.escaped(c._0) + "\"";
+          
+        }
+    case /* Ref */1 :
+        return e._0.it;
+    case /* Set */2 :
+        return defvarLike("set!", e._0.it, expToString(e._1.it));
     case /* Lam */3 :
-        var xs = Belt_List.map(c._0, unannotate);
-        var b = string_of_block(c._1);
-        return "(lambda " + string_of_list(xs) + "\n  " + indent(b, 2) + ")";
+        var xs = Belt_List.map(e._0, unannotate);
+        var b = printBlock(e._1);
+        return defvarLike("lambda", listToString(xs), b);
     case /* Let */4 :
-        var xes = Belt_List.map(c._0, string_of_xe);
-        var b$1 = string_of_block(c._1);
-        var xes$1 = Belt_List.map(xes, (function (param) {
-                var x = param[0].it;
-                return "[" + x + " " + indent(param[1], 2 + x.length | 0) + "]";
-              }));
-        var xes$2 = $$String.concat("\n", xes$1);
-        var xes$3 = "(" + indent(xes$2, 1) + ")";
-        return "(let " + indent(xes$3, 5) + "\n  " + indent(b$1, 2) + ")";
+        return letLike("let", Belt_List.map(e._0, xeToString), printBlock(e._1));
     case /* Letrec */5 :
-        var xes$4 = Belt_List.map(c._0, string_of_xe);
-        var b$2 = string_of_block(c._1);
-        var xes$5 = Belt_List.map(xes$4, (function (param) {
-                var x = param[0].it;
-                return "[" + x + " " + indent(param[1], 2 + x.length | 0) + "]";
-              }));
-        var xes$6 = $$String.concat("\n", xes$5);
-        var xes$7 = "(" + indent(xes$6, 1) + ")";
-        return "(letrec " + indent(xes$7, 5) + "\n  " + indent(b$2, 2) + ")";
+        return letLike("letrec", Belt_List.map(e._0, xeToString), printBlock(e._1));
     case /* AppPrm */6 :
-        var es = Belt_List.map(c._1, string_of_expr);
-        var e$2 = string_of_primitive(c._0);
-        return string_of_list({
-                    hd: e$2,
+        var es = expsToString(e._1);
+        var e$1 = primitiveToString(e._0);
+        return listToString({
+                    hd: e$1,
                     tl: es
                   });
     case /* App */7 :
-        var es$1 = Belt_List.map(c._1, string_of_expr);
-        var e$3 = string_of_expr(c._0);
-        return string_of_list({
-                    hd: e$3,
+        var es$1 = expsToString(e._1);
+        var e$2 = expToString(e._0.it);
+        return listToString({
+                    hd: e$2,
                     tl: es$1
                   });
     case /* Bgn */8 :
-        var es$2 = Belt_List.map(c._0, string_of_expr);
-        var e$4 = string_of_expr(c._1);
-        var b$3 = $$String.concat("\n", Belt_List.concatMany([
-                  es$2,
-                  {
-                    hd: e$4,
-                    tl: /* [] */0
-                  }
-                ]));
-        return "(begin\n  " + indent(b$3, 2) + ")";
+        var es$2 = expsToString(e._0);
+        var e$3 = expToString(e._1.it);
+        return beginLike("begin", Belt_List.concatMany([
+                        es$2,
+                        {
+                          hd: e$3,
+                          tl: /* [] */0
+                        }
+                      ]));
     case /* If */9 :
-        var e_cnd = string_of_expr(c._0);
-        var e_thn = string_of_expr(c._1);
-        var e_els = string_of_expr(c._2);
-        return "(if " + indent(e_cnd, 4) + "\n    " + indent(e_thn, 4) + "\n    " + indent(e_els, 4) + ")";
+        var e_cnd = expToString(e._0.it);
+        var e_thn = expToString(e._1.it);
+        var e_els = expToString(e._2.it);
+        return "(if " + indent(e_cnd, 4) + "" + indentBlock(e_thn, 4) + "" + indentBlock(e_els, 4) + ")";
     case /* Cnd */10 :
-        var ebs = Belt_List.map(c._0, string_of_eb);
-        var ob = Belt_Option.map(c._1, string_of_block);
+        var ebs = Belt_List.map(e._0, ebToString);
+        var ob = Belt_Option.map(e._1, printBlock);
         var ebs$1 = ob !== undefined ? Belt_List.concatMany([
                 ebs,
                 {
@@ -224,363 +216,133 @@ function string_of_expr(e) {
                 }
               ]) : ebs;
         var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-                return "[" + param[0] + "\n " + indent(param[1], 1) + "]";
+                return "[" + param[0] + "" + indentBlock(param[1], 1) + "]";
               }));
-        var ebs$3 = $$String.concat("\n", ebs$2);
-        return "(cond\n  " + indent(ebs$3, 2) + ")";
+        return beginLike("cond", ebs$2);
     
   }
 }
 
-function string_of_def(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    var x = match._0.it;
-    var e = string_of_expr(match._1);
-    return string_of_list({
-                hd: "defvar",
-                tl: {
-                  hd: x,
-                  tl: {
-                    hd: e,
-                    tl: /* [] */0
-                  }
-                }
-              });
-  } else {
-    var f = match._0.it;
-    var xs = Belt_List.map(match._1, unannotate);
-    var b = string_of_block(match._2);
-    return "(deffun " + string_of_list({
-                hd: f,
-                tl: xs
-              }) + "\n  " + indent(b, 2) + ")";
-  }
+function expsToString(es) {
+  return Belt_List.map(Belt_List.map(es, unannotate), expToString);
 }
 
-function string_of_xe(xe) {
+function xeToString(xe) {
   return [
           xe[0],
-          string_of_expr(xe[1])
+          expToString(xe[1].it)
         ];
 }
 
-function string_of_eb(eb) {
+function ebToString(eb) {
   return [
-          string_of_expr(eb[0]),
-          string_of_block(eb[1])
+          expToString(eb[0].it),
+          printBlock(eb[1])
         ];
 }
 
-function string_of_block(b) {
+function printBlock(b) {
   return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], string_of_term),
+                  Belt_List.map(b[0], printTerm),
                   {
-                    hd: string_of_expr(b[1]),
+                    hd: expToString(b[1].it),
                     tl: /* [] */0
                   }
                 ]));
 }
 
-function string_of_term(t) {
+function printTerm(t) {
   if (t.TAG === /* Def */0) {
-    return string_of_def(t._0);
-  } else {
-    return string_of_expr(t._0);
-  }
-}
-
-function string_of_program(ts) {
-  return $$String.concat("\n", Belt_List.map(ts, string_of_term));
-}
-
-var ParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.ParseError");
-
-var TranslationError = /* @__PURE__ */Caml_exceptions.create("SMoL.TranslationError");
-
-function stringOfExprs(es) {
-  if (es) {
-    if (es.tl) {
-      return "" + String(Belt_List.length(es)) + " terms: " + $$String.concat(", ", Belt_List.map(es, SExpression.toString)) + "";
+    var d = t._0.it;
+    if (d.TAG === /* Var */0) {
+      return defvarLike("defvar", d._0.it, expToString(d._1.it));
     } else {
-      return "one term: " + SExpression.toString(es.hd) + "";
+      var f = d._0.it;
+      var xs = Belt_List.map(d._1, unannotate);
+      var b = printBlock(d._2);
+      return defvarLike("deffun", listToString({
+                      hd: f,
+                      tl: xs
+                    }), b);
     }
   } else {
-    return "no term";
+    return expToString(t._0.it);
   }
 }
 
-function stringOfParseError(err) {
-  switch (err.TAG | 0) {
+function termsToString(ts) {
+  return $$String.concat("\n", Belt_List.map(ts, printTerm));
+}
+
+function toString(t) {
+  if (t) {
+    return "list";
+  } else {
+    return "atom";
+  }
+}
+
+var SExprKind = {
+  toString: toString
+};
+
+function toString$1(t) {
+  switch (t) {
+    case /* ExactlyOne */0 :
+        return "exactly one";
+    case /* ExactlyTwo */1 :
+        return "exactly two";
+    case /* ExactlyThree */2 :
+        return "exactly three";
+    case /* OneThenMany */3 :
+        return "one followed by many";
+    case /* ManyThenOne */4 :
+        return "many followed by one";
+    case /* OneThenManyThenOne */5 :
+        return "one followed by several followed by one";
+    
+  }
+}
+
+var Arity = {
+  toString: toString$1
+};
+
+function toString$2(t) {
+  if (t) {
+    return "expression";
+  } else {
+    return "definition";
+  }
+}
+
+var TermKind = {
+  toString: toString$2
+};
+
+function toString$3(t) {
+  switch (t.TAG | 0) {
     case /* SExprParseError */0 :
-        return "expecting a (valid) s-expression, but the input is not: " + err._0 + "";
+        return "expecting a (valid) s-expression, but the input is not: " + t._0 + "";
     case /* SExprKindError */1 :
-        return "expecting a " + err._1 + ", given " + SExpression.toString(err._2) + "";
+        return "expecting a " + t._1 + ", given " + SExpression.toString(t._2) + "";
     case /* SExprArityError */2 :
-        return "expecting " + err._1 + ", given " + stringOfExprs(err._2) + "";
+        return "expecting " + t._1 + ", given " + $$String.concat(" ", Belt_List.map(t._2, SExpression.toString)) + "";
     case /* LiteralSymbolError */3 :
-        return "expecting a literal value, given a symbol " + err._0 + "";
+        return "expecting a literal value, given a symbol " + t._0 + "";
     case /* LiteralListError */4 :
-        return "expecting a constant or a vector, given " + SExpression.toString(err._0) + "";
+        return "expecting a constant or a vector, given " + SExpression.toString(t._0) + "";
     case /* TermKindError */5 :
-        return "expecting " + err._1 + ", given " + string_of_term(err._2) + "";
+        return "expecting " + t._1 + ", given " + printTerm(t._2) + "";
     
   }
 }
 
-function as_id(context, e) {
-  var match = e.it;
-  if (match.TAG === /* Atom */0) {
-    var x = match._0;
-    if (x.TAG !== /* Str */0) {
-      return {
-              it: x._0,
-              ann: e.ann
-            };
-    }
-    throw {
-          RE_EXN_ID: ParseError,
-          _1: {
-            TAG: /* SExprKindError */1,
-            _0: /* Atom */0,
-            _1: context,
-            _2: e
-          },
-          Error: new Error()
-        };
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprKindError */1,
-          _0: /* Atom */0,
-          _1: context,
-          _2: e
-        },
-        Error: new Error()
-      };
-}
+var ParseError = {
+  toString: toString$3
+};
 
-function as_list(context, e) {
-  var match = e.it;
-  if (match.TAG === /* Atom */0) {
-    throw {
-          RE_EXN_ID: ParseError,
-          _1: {
-            TAG: /* SExprKindError */1,
-            _0: /* List */1,
-            _1: context,
-            _2: e
-          },
-          Error: new Error()
-        };
-  }
-  if (match._0) {
-    throw {
-          RE_EXN_ID: ParseError,
-          _1: {
-            TAG: /* SExprKindError */1,
-            _0: /* List */1,
-            _1: context,
-            _2: e
-          },
-          Error: new Error()
-        };
-  }
-  return match._2;
-}
-
-function as_one_then_many(context, es) {
-  if (es) {
-    return [
-            es.hd,
-            es.tl
-          ];
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* OneThenMany */3,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_many_then_one(context, es) {
-  if (es) {
-    var e1 = es.hd;
-    var match = Belt_List.reverse(es.tl);
-    if (match) {
-      return [
-              {
-                hd: e1,
-                tl: Belt_List.reverse(match.tl)
-              },
-              match.hd
-            ];
-    } else {
-      return [
-              /* [] */0,
-              e1
-            ];
-    }
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* ManyThenOne */4,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_one(context, es) {
-  if (es) {
-    if (es.tl) {
-      throw {
-            RE_EXN_ID: ParseError,
-            _1: {
-              TAG: /* SExprArityError */2,
-              _0: /* ExactlyOne */0,
-              _1: context,
-              _2: es
-            },
-            Error: new Error()
-          };
-    }
-    return es.hd;
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* ExactlyOne */0,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_two(context, es) {
-  if (es) {
-    var match = es.tl;
-    if (match && !match.tl) {
-      return [
-              es.hd,
-              match.hd
-            ];
-    }
-    
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* ExactlyTwo */1,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_three(context, es) {
-  if (es) {
-    var match = es.tl;
-    if (match) {
-      var match$1 = match.tl;
-      if (match$1 && !match$1.tl) {
-        return [
-                es.hd,
-                match.hd,
-                match$1.hd
-              ];
-      }
-      
-    }
-    
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* ExactlyThree */2,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_one_then_many_then_one(context, es) {
-  if (es) {
-    var match = es.tl;
-    if (match) {
-      var e2 = match.hd;
-      var e1 = es.hd;
-      var match$1 = Belt_List.reverse(match.tl);
-      if (match$1) {
-        return [
-                e1,
-                {
-                  hd: e2,
-                  tl: Belt_List.reverse(match$1.tl)
-                },
-                match$1.hd
-              ];
-      } else {
-        return [
-                e1,
-                /* [] */0,
-                e2
-              ];
-      }
-    }
-    throw {
-          RE_EXN_ID: ParseError,
-          _1: {
-            TAG: /* SExprArityError */2,
-            _0: /* OneThenManyThenOne */5,
-            _1: context,
-            _2: es
-          },
-          Error: new Error()
-        };
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* SExprArityError */2,
-          _0: /* OneThenManyThenOne */5,
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
-function as_expr(context, e) {
-  if (e.TAG !== /* Def */0) {
-    return e._0;
-  }
-  throw {
-        RE_EXN_ID: ParseError,
-        _1: {
-          TAG: /* TermKindError */5,
-          _0: /* Expression */1,
-          _1: context,
-          _2: e
-        },
-        Error: new Error()
-      };
-}
+var SMoLParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLParseError");
 
 function constant_of_atom(_ann, atom) {
   if (atom.TAG === /* Str */0) {
@@ -624,7 +386,7 @@ function constant_of_atom(_ann, atom) {
         return tryNum;
       }
       throw {
-            RE_EXN_ID: ParseError,
+            RE_EXN_ID: SMoLParseError,
             _1: {
               TAG: /* LiteralSymbolError */3,
               _0: x
@@ -655,10 +417,264 @@ function value_of_sexpr(e) {
           };
   }
   throw {
-        RE_EXN_ID: ParseError,
+        RE_EXN_ID: SMoLParseError,
         _1: {
           TAG: /* LiteralListError */4,
           _0: e
+        },
+        Error: new Error()
+      };
+}
+
+function as_id(context, e) {
+  var match = e.it;
+  if (match.TAG === /* Atom */0) {
+    var x = match._0;
+    if (x.TAG !== /* Str */0) {
+      return {
+              it: x._0,
+              ann: e.ann
+            };
+    }
+    throw {
+          RE_EXN_ID: SMoLParseError,
+          _1: {
+            TAG: /* SExprKindError */1,
+            _0: /* Atom */0,
+            _1: context,
+            _2: e
+          },
+          Error: new Error()
+        };
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprKindError */1,
+          _0: /* Atom */0,
+          _1: context,
+          _2: e
+        },
+        Error: new Error()
+      };
+}
+
+function as_list(context, e) {
+  var match = e.it;
+  if (match.TAG === /* Atom */0) {
+    throw {
+          RE_EXN_ID: SMoLParseError,
+          _1: {
+            TAG: /* SExprKindError */1,
+            _0: /* List */1,
+            _1: context,
+            _2: e
+          },
+          Error: new Error()
+        };
+  }
+  if (match._0) {
+    throw {
+          RE_EXN_ID: SMoLParseError,
+          _1: {
+            TAG: /* SExprKindError */1,
+            _0: /* List */1,
+            _1: context,
+            _2: e
+          },
+          Error: new Error()
+        };
+  }
+  return match._2;
+}
+
+function as_one_then_many(context, es) {
+  if (es) {
+    return [
+            es.hd,
+            es.tl
+          ];
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* OneThenMany */3,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_many_then_one(context, es) {
+  if (es) {
+    var e1 = es.hd;
+    var match = Belt_List.reverse(es.tl);
+    if (match) {
+      return [
+              {
+                hd: e1,
+                tl: Belt_List.reverse(match.tl)
+              },
+              match.hd
+            ];
+    } else {
+      return [
+              /* [] */0,
+              e1
+            ];
+    }
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* ManyThenOne */4,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_one(context, es) {
+  if (es) {
+    if (es.tl) {
+      throw {
+            RE_EXN_ID: SMoLParseError,
+            _1: {
+              TAG: /* SExprArityError */2,
+              _0: /* ExactlyOne */0,
+              _1: context,
+              _2: es
+            },
+            Error: new Error()
+          };
+    }
+    return es.hd;
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* ExactlyOne */0,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_two(context, es) {
+  if (es) {
+    var match = es.tl;
+    if (match && !match.tl) {
+      return [
+              es.hd,
+              match.hd
+            ];
+    }
+    
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* ExactlyTwo */1,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_three(context, es) {
+  if (es) {
+    var match = es.tl;
+    if (match) {
+      var match$1 = match.tl;
+      if (match$1 && !match$1.tl) {
+        return [
+                es.hd,
+                match.hd,
+                match$1.hd
+              ];
+      }
+      
+    }
+    
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* ExactlyThree */2,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_one_then_many_then_one(context, es) {
+  if (es) {
+    var match = es.tl;
+    if (match) {
+      var e2 = match.hd;
+      var e1 = es.hd;
+      var match$1 = Belt_List.reverse(match.tl);
+      if (match$1) {
+        return [
+                e1,
+                {
+                  hd: e2,
+                  tl: Belt_List.reverse(match$1.tl)
+                },
+                match$1.hd
+              ];
+      } else {
+        return [
+                e1,
+                /* [] */0,
+                e2
+              ];
+      }
+    }
+    throw {
+          RE_EXN_ID: SMoLParseError,
+          _1: {
+            TAG: /* SExprArityError */2,
+            _0: /* OneThenManyThenOne */5,
+            _1: context,
+            _2: es
+          },
+          Error: new Error()
+        };
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* SExprArityError */2,
+          _0: /* OneThenManyThenOne */5,
+          _1: context,
+          _2: es
+        },
+        Error: new Error()
+      };
+}
+
+function as_expr(context, e) {
+  if (e.TAG !== /* Def */0) {
+    return e._0;
+  }
+  throw {
+        RE_EXN_ID: SMoLParseError,
+        _1: {
+          TAG: /* TermKindError */5,
+          _0: /* Expression */1,
+          _1: context,
+          _2: e
         },
         Error: new Error()
       };
@@ -767,7 +783,7 @@ function letstar(ann, xes, body) {
   }
 }
 
-function term_of_sexpr(e) {
+function termOfSExpr(e) {
   var ann = e.ann;
   var atom = e.it;
   if (atom.TAG === /* Atom */0) {
@@ -823,10 +839,10 @@ function term_of_sexpr(e) {
               return app_prm(ann, /* Ge */8, es$1.tl);
           case "begin" :
               var match$2 = as_many_then_one("one or more expressions", es$1.tl);
-              var terms = Belt_List.map(Belt_List.map(match$2[0], term_of_sexpr), (function (param) {
+              var terms = Belt_List.map(Belt_List.map(match$2[0], termOfSExpr), (function (param) {
                       return as_expr("an expression", param);
                     }));
-              var result = as_expr("an expression", term_of_sexpr(match$2[1]));
+              var result = as_expr("an expression", termOfSExpr(match$2[1]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -868,8 +884,8 @@ function term_of_sexpr(e) {
                 if (match$4.TAG === /* Atom */0) {
                   var match$5 = match$4._0;
                   if (match$5.TAG !== /* Str */0 && match$5._0 === "else" && !branches$1.tl) {
-                    var terms$1 = Belt_List.map(match$3[1], term_of_sexpr);
-                    var result$1 = as_expr("an expression", term_of_sexpr(match$3[2]));
+                    var terms$1 = Belt_List.map(match$3[1], termOfSExpr);
+                    var result$1 = as_expr("an expression", termOfSExpr(match$3[2]));
                     return {
                             TAG: /* Exp */1,
                             _0: {
@@ -887,9 +903,9 @@ function term_of_sexpr(e) {
                   }
                   
                 }
-                var $$case$1 = as_expr("a (conditional) expression", term_of_sexpr($$case));
-                var terms$2 = Belt_List.map(match$3[1], term_of_sexpr);
-                var result$2 = as_expr("an expression", term_of_sexpr(match$3[2]));
+                var $$case$1 = as_expr("a (conditional) expression", termOfSExpr($$case));
+                var terms$2 = Belt_List.map(match$3[1], termOfSExpr);
+                var result$2 = as_expr("an expression", termOfSExpr(match$3[2]));
                 _branches = branches$1.tl;
                 _parsed = {
                   hd: [
@@ -910,8 +926,8 @@ function term_of_sexpr(e) {
               var args = Belt_List.map(match$7[1], (function (param) {
                       return as_id("a parameter", param);
                     }));
-              var terms$3 = Belt_List.map(match$6[1], term_of_sexpr);
-              var result$3 = as_expr("an expression to be returned", term_of_sexpr(match$6[2]));
+              var terms$3 = Belt_List.map(match$6[1], termOfSExpr);
+              var result$3 = as_expr("an expression to be returned", termOfSExpr(match$6[2]));
               return {
                       TAG: /* Def */0,
                       _0: {
@@ -930,7 +946,7 @@ function term_of_sexpr(e) {
           case "defvar" :
               var match$8 = as_two("a variable and an expression", es$1.tl);
               var x = as_id("a variable name", match$8[0]);
-              var e$1 = as_expr("an expression", term_of_sexpr(match$8[1]));
+              var e$1 = as_expr("an expression", termOfSExpr(match$8[1]));
               return {
                       TAG: /* Def */0,
                       _0: {
@@ -951,9 +967,9 @@ function term_of_sexpr(e) {
               return app_prm(ann, /* Err */20, es$1.tl);
           case "if" :
               var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
-              var e_cnd = as_expr("a (conditional) expression", term_of_sexpr(match$9[0]));
-              var e_thn = as_expr("an expression", term_of_sexpr(match$9[1]));
-              var e_els = as_expr("an expression", term_of_sexpr(match$9[2]));
+              var e_cnd = as_expr("a (conditional) expression", termOfSExpr(match$9[0]));
+              var e_thn = as_expr("an expression", termOfSExpr(match$9[1]));
+              var e_els = as_expr("an expression", termOfSExpr(match$9[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -971,8 +987,8 @@ function term_of_sexpr(e) {
               var args$1 = Belt_List.map(as_list("function parameters", match$10[0]), (function (param) {
                       return as_id("a parameter", param);
                     }));
-              var terms$4 = Belt_List.map(match$10[1], term_of_sexpr);
-              var result$4 = as_expr("an expression to be returned", term_of_sexpr(match$10[2]));
+              var terms$4 = Belt_List.map(match$10[1], termOfSExpr);
+              var result$4 = as_expr("an expression to be returned", termOfSExpr(match$10[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -998,14 +1014,14 @@ function term_of_sexpr(e) {
                     }));
               var xes$1 = Belt_List.map(xes, (function (param) {
                       var x = as_id("a variable to be bound", param[0]);
-                      var e = as_expr("an expression", term_of_sexpr(param[1]));
+                      var e = as_expr("an expression", termOfSExpr(param[1]));
                       return [
                               x,
                               e
                             ];
                     }));
-              var ts = Belt_List.map(match$11[1], term_of_sexpr);
-              var result$5 = as_expr("an expression to be return", term_of_sexpr(match$11[2]));
+              var ts = Belt_List.map(match$11[1], termOfSExpr);
+              var result$5 = as_expr("an expression to be return", termOfSExpr(match$11[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1029,14 +1045,14 @@ function term_of_sexpr(e) {
                     }));
               var xes$3 = Belt_List.map(xes$2, (function (param) {
                       var x = as_id("a variable to be bound", param[0]);
-                      var e = as_expr("an expression", term_of_sexpr(param[1]));
+                      var e = as_expr("an expression", termOfSExpr(param[1]));
                       return [
                               x,
                               e
                             ];
                     }));
-              var ts$1 = Belt_List.map(match$12[1], term_of_sexpr);
-              var result$6 = as_expr("an expression to be return", term_of_sexpr(match$12[2]));
+              var ts$1 = Belt_List.map(match$12[1], termOfSExpr);
+              var result$6 = as_expr("an expression to be return", termOfSExpr(match$12[2]));
               return {
                       TAG: /* Exp */1,
                       _0: letstar(ann, xes$3, [
@@ -1053,14 +1069,14 @@ function term_of_sexpr(e) {
                     }));
               var xes$5 = Belt_List.map(xes$4, (function (param) {
                       var x = as_id("a variable to be bound", param[0]);
-                      var e = as_expr("an expression", term_of_sexpr(param[1]));
+                      var e = as_expr("an expression", termOfSExpr(param[1]));
                       return [
                               x,
                               e
                             ];
                     }));
-              var ts$2 = Belt_List.map(match$13[1], term_of_sexpr);
-              var result$7 = as_expr("an expression to be return", term_of_sexpr(match$13[2]));
+              var ts$2 = Belt_List.map(match$13[1], termOfSExpr);
+              var result$7 = as_expr("an expression to be return", termOfSExpr(match$13[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1091,7 +1107,7 @@ function term_of_sexpr(e) {
           case "set!" :
               var match$14 = as_two("a variable and an expression", es$1.tl);
               var x$1 = as_id("a variable to be set", match$14[0]);
-              var e$3 = as_expr("an expression", term_of_sexpr(match$14[1]));
+              var e$3 = as_expr("an expression", termOfSExpr(match$14[1]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1124,8 +1140,8 @@ function term_of_sexpr(e) {
               var args$2 = Belt_List.map(as_list("function parameters", match$15[0]), (function (param) {
                       return as_id("a parameter", param);
                     }));
-              var terms$5 = Belt_List.map(match$15[1], term_of_sexpr);
-              var result$8 = as_expr("an expression to be returned", term_of_sexpr(match$15[2]));
+              var terms$5 = Belt_List.map(match$15[1], termOfSExpr);
+              var result$8 = as_expr("an expression to be returned", termOfSExpr(match$15[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1153,8 +1169,8 @@ function term_of_sexpr(e) {
     
   }
   var match$16 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es$1);
-  var e$4 = as_expr("a function", term_of_sexpr(match$16[0]));
-  var es$2 = Belt_List.map(Belt_List.map(match$16[1], term_of_sexpr), (function (param) {
+  var e$4 = as_expr("a function", termOfSExpr(match$16[0]));
+  var es$2 = Belt_List.map(Belt_List.map(match$16[1], termOfSExpr), (function (param) {
           return as_expr("an argument", param);
         }));
   return {
@@ -1171,7 +1187,7 @@ function term_of_sexpr(e) {
 }
 
 function app_prm(ann, p, es) {
-  var es$1 = Belt_List.map(Belt_List.map(es, term_of_sexpr), (function (param) {
+  var es$1 = Belt_List.map(Belt_List.map(es, termOfSExpr), (function (param) {
           return as_expr("an argument", param);
         }));
   return {
@@ -1187,23 +1203,20 @@ function app_prm(ann, p, es) {
         };
 }
 
-function terms_of_sexprs(es) {
-  return Belt_List.map(es, term_of_sexpr);
-}
-
-function terms_of_string(src) {
+function parseTerms(src) {
   try {
-    return Belt_List.map(SExpression.fromString(src), term_of_sexpr);
+    return Belt_List.map(SExpression.fromString(src), termOfSExpr);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
     if (err.RE_EXN_ID === SExpression.SExpressionError) {
+      var err$1 = {
+        TAG: /* SExprParseError */0,
+        _0: SExpression.$$Error.toString(err._1)
+      };
       throw {
-            RE_EXN_ID: ParseError,
-            _1: {
-              TAG: /* SExprParseError */0,
-              _0: SExpression.$$Error.toString(err._1)
-            },
+            RE_EXN_ID: SMoLParseError,
+            _1: err$1,
             Error: new Error()
           };
     }
@@ -1211,55 +1224,26 @@ function terms_of_string(src) {
   }
 }
 
-var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
-
-function as_many_then_one$1(es) {
-  if (es) {
-    var e1 = es.hd;
-    var match = Belt_List.reverse(es.tl);
-    if (match) {
-      return [
-              {
-                hd: e1,
-                tl: Belt_List.reverse(match.tl)
-              },
-              match.hd
-            ];
+function consider_context(e, ctx) {
+  if (typeof ctx !== "number") {
+    if (ctx._0) {
+      return "(" + e + ")";
     } else {
-      return [
-              /* [] */0,
-              e1
-            ];
+      return "" + e + "";
     }
   }
-  throw {
-        RE_EXN_ID: Impossible,
-        _1: "unsafe",
-        Error: new Error()
-      };
-}
-
-function maybe_wrap(ctx, p, code) {
-  if (typeof ctx === "number") {
-    return code;
-  }
-  if (!ctx._0) {
-    return code;
-  }
-  if (p >= 4) {
-    return code;
-  }
-  switch (p) {
-    case /* Add */0 :
-    case /* Sub */1 :
-    case /* Mul */2 :
-    case /* Div */3 :
-        return "(" + code + ")";
+  switch (ctx) {
+    case /* Stat */0 :
+        return "" + e + ";";
+    case /* Return */1 :
+        return "return " + e + ";";
+    case /* TopLevel */2 :
+        return "console.log(" + e + ")";
     
   }
 }
 
-function string_of_constant$1(c) {
+function constantToString(c) {
   if (typeof c === "number") {
     return "null";
   }
@@ -1278,11 +1262,11 @@ function string_of_constant$1(c) {
   }
 }
 
-function string_of_list$1(ss) {
+function listToString$1(ss) {
   return "(" + $$String.concat(", ", ss) + ")";
 }
 
-function string_of_identifier(x) {
+function xToString(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -1303,15 +1287,19 @@ function string_of_identifier(x) {
   }
 }
 
-function string_of_def_var(x, e) {
-  return "let " + string_of_identifier(x) + " = " + e + ";";
+function defvarToString(x, e) {
+  return "let " + xToString(x) + " = " + e + ";";
 }
 
-function string_of_expr_lam(xs, b) {
-  return "function " + string_of_list$1(xs) + " {\n  " + indent(b, 2) + "\n}";
+function exprSetToString(x, e) {
+  return "" + x + " = " + e + "";
 }
 
-function string_of_expr_app_prm(p, es) {
+function exprLamToString(xs, b) {
+  return "function " + listToString$1(xs) + " {\n  " + indent(b, 2) + "\n}";
+}
+
+function exprApp_prmToString(p, es) {
   switch (p) {
     case /* Add */0 :
         return "" + $$String.concat(" + ", es) + "";
@@ -1481,11 +1469,11 @@ function string_of_expr_app_prm(p, es) {
   }
 }
 
-function string_of_expr_app(e, es) {
-  return "" + e + "" + string_of_list$1(es) + "";
+function exprAppToString(e, es) {
+  return "" + e + "" + listToString$1(es) + "";
 }
 
-function string_of_expr_bgn(es, e) {
+function exprBgnToString(es, e) {
   return "(" + $$String.concat(", ", Belt_List.concatMany([
                   es,
                   {
@@ -1495,11 +1483,11 @@ function string_of_expr_bgn(es, e) {
                 ])) + ")";
 }
 
-function string_of_expr_if(e_cnd, e_thn, e_els) {
+function exprIfToString(e_cnd, e_thn, e_els) {
   return "(" + e_cnd + " ? " + e_thn + " : " + e_els + ")";
 }
 
-function string_of_expr_let(xes, b) {
+function exprLetToString(xes, b) {
   return "((" + $$String.concat(", ", Belt_List.map(xes, (function (param) {
                     return param[0];
                   }))) + ")=>{" + b + "})(" + $$String.concat(", ", Belt_List.map(xes, (function (param) {
@@ -1507,10 +1495,10 @@ function string_of_expr_let(xes, b) {
                   }))) + ")";
 }
 
-function string_of_expr_letrec(xes, b) {
+function exprLetrecToString(xes, b) {
   var b$1 = $$String.concat(";\n", Belt_List.concatMany([
             Belt_List.map(xes, (function (param) {
-                    return string_of_def_var(param[0], param[1]);
+                    return defvarToString(param[0], param[1]);
                   })),
             {
               hd: b,
@@ -1520,58 +1508,33 @@ function string_of_expr_letrec(xes, b) {
   return "()=>{" + b$1 + "})()";
 }
 
-function consider_context(ctx, code) {
-  if (typeof ctx === "number") {
-    if (ctx !== 0) {
-      return "return " + code + ";";
-    } else {
-      return "" + code + ";";
-    }
-  } else {
-    return code;
-  }
-}
-
-function string_of_expr$1(ctx, e) {
+function expToString$1(ctx, e) {
   var c = e.it;
   switch (c.TAG | 0) {
     case /* Con */0 :
-        return consider_context(ctx, string_of_constant$1(c._0));
+        return consider_context(constantToString(c._0), ctx);
     case /* Ref */1 :
-        return consider_context(ctx, string_of_identifier(c._0.it));
+        return consider_context(xToString(c._0.it), ctx);
     case /* Set */2 :
-        var x = string_of_identifier(c._0.it);
-        var e$1 = string_of_expr$1(/* Expr */{
-              _0: false
-            }, c._1);
-        var itself = "" + x + " = " + e$1 + "";
-        if (typeof ctx === "number") {
-          if (ctx !== 0) {
-            return "return " + itself + ";";
-          } else {
-            return "" + itself + ";";
-          }
-        } else if (ctx._0) {
-          return "(" + itself + ")";
-        } else {
-          return itself;
-        }
+        return consider_context(exprSetToString(xToString(c._0.it), expToString$1(/* Expr */{
+                            _0: false
+                          }, c._1)), ctx);
     case /* Lam */3 :
-        return consider_context(ctx, string_of_expr_lam(Belt_List.map(Belt_List.map(c._0, unannotate), string_of_identifier), string_of_block$1(/* Return */1, c._1)));
+        return consider_context(exprLamToString(Belt_List.map(Belt_List.map(c._0, unannotate), xToString), printBlock$1(/* Return */1, c._1)), ctx);
     case /* Let */4 :
-        return consider_context(ctx, string_of_expr_let(Belt_List.map(c._0, string_of_xe$1), string_of_block$1(/* Return */1, c._1)));
+        return consider_context(exprLetToString(Belt_List.map(c._0, xeToString$1), printBlock$1(/* Return */1, c._1)), ctx);
     case /* Letrec */5 :
-        return consider_context(ctx, string_of_expr_letrec(Belt_List.map(c._0, string_of_xe$1), string_of_block$1(/* Return */1, c._1)));
+        return consider_context(exprLetrecToString(Belt_List.map(c._0, xeToString$1), printBlock$1(/* Return */1, c._1)), ctx);
     case /* AppPrm */6 :
         var p = c._0;
         var partial_arg = /* Expr */{
           _0: true
         };
-        var o = maybe_wrap(ctx, p, string_of_expr_app_prm(p, Belt_List.map(c._1, (function (param) {
-                        return string_of_expr$1(partial_arg, param);
-                      }))));
+        var o = exprApp_prmToString(p, Belt_List.map(c._1, (function (param) {
+                    return expToString$1(partial_arg, param);
+                  })));
         if (p !== /* Err */20) {
-          return consider_context(ctx, o);
+          return consider_context(o, ctx);
         } else {
           return o;
         }
@@ -1579,34 +1542,34 @@ function string_of_expr$1(ctx, e) {
         var partial_arg$1 = /* Expr */{
           _0: false
         };
-        return consider_context(ctx, string_of_expr_app(string_of_expr$1(/* Expr */{
+        return consider_context(exprAppToString(expToString$1(/* Expr */{
                             _0: false
                           }, c._0), Belt_List.map(c._1, (function (param) {
-                              return string_of_expr$1(partial_arg$1, param);
-                            }))));
+                              return expToString$1(partial_arg$1, param);
+                            }))), ctx);
     case /* Bgn */8 :
         var partial_arg$2 = /* Expr */{
           _0: false
         };
-        return consider_context(ctx, string_of_expr_bgn(Belt_List.map(c._0, (function (param) {
-                              return string_of_expr$1(partial_arg$2, param);
-                            })), string_of_expr$1(/* Expr */{
+        return consider_context(exprBgnToString(Belt_List.map(c._0, (function (param) {
+                              return expToString$1(partial_arg$2, param);
+                            })), expToString$1(/* Expr */{
                             _0: false
-                          }, c._1)));
+                          }, c._1)), ctx);
     case /* If */9 :
-        return consider_context(ctx, string_of_expr_if(string_of_expr$1(/* Expr */{
-                            _0: false
-                          }, c._0), string_of_expr$1(/* Expr */{
-                            _0: false
-                          }, c._1), string_of_expr$1(/* Expr */{
-                            _0: false
-                          }, c._2)));
+        return consider_context(exprIfToString(expToString$1(/* Expr */{
+                            _0: true
+                          }, c._0), expToString$1(/* Expr */{
+                            _0: true
+                          }, c._1), expToString$1(/* Expr */{
+                            _0: true
+                          }, c._2)), ctx);
     case /* Cnd */10 :
         var ebs = Belt_List.map(c._0, (function (param) {
-                return string_of_eb$1(ctx, param);
+                return ebToString$1(ctx, param);
               }));
         var ob = Belt_Option.map(c._1, (function (param) {
-                return string_of_block$1(ctx, param);
+                return printBlock$1(ctx, param);
               }));
         var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
         var ebs$1 = Belt_List.map(ebs, (function (param) {
@@ -1618,136 +1581,89 @@ function string_of_expr$1(ctx, e) {
   }
 }
 
-function string_of_def$1(d) {
+function defToString(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
-    return string_of_def_var(match._0.it, string_of_expr$1(/* Expr */{
+    return defvarToString(match._0.it, expToString$1(/* Expr */{
                     _0: false
                   }, match._1));
   } else {
-    var f = string_of_identifier(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), string_of_identifier);
-    var b = string_of_block$1(/* Return */1, match._2);
-    return "function " + f + "" + string_of_list$1(xs) + " {\n  " + indent(b, 2) + "\n}";
+    var f = xToString(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
+    var b = printBlock$1(/* Return */1, match._2);
+    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
   }
 }
 
-function string_of_xe$1(xe) {
+function xeToString$1(xe) {
   return [
-          string_of_identifier(xe[0].it),
-          string_of_expr$1(/* Expr */{
+          xToString(xe[0].it),
+          expToString$1(/* Expr */{
                 _0: false
               }, xe[1])
         ];
 }
 
-function string_of_eb$1(ctx, eb) {
+function ebToString$1(ctx, eb) {
   return [
-          string_of_expr$1(/* Expr */{
+          expToString$1(/* Expr */{
                 _0: false
               }, eb[0]),
-          string_of_block$1(ctx, eb[1])
+          printBlock$1(ctx, eb[1])
         ];
 }
 
-function string_of_block$1(ctx, b) {
+function printBlock$1(ctx, b) {
   return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], string_of_term$1),
+                  Belt_List.map(b[0], printTerm$1),
                   {
-                    hd: string_of_expr$1(ctx, b[1]),
+                    hd: expToString$1(ctx, b[1]),
                     tl: /* [] */0
                   }
                 ]));
 }
 
-function string_of_term$1(t) {
+function printTerm$1(t) {
   if (t.TAG === /* Def */0) {
-    return string_of_def$1(t._0);
+    return defToString(t._0);
   } else {
-    return string_of_expr$1(/* Stat */0, t._0);
+    return expToString$1(/* Stat */0, t._0);
   }
 }
 
-function as_many_then_one$2(es) {
-  if (es) {
-    var e1 = es.hd;
-    var match = Belt_List.reverse(es.tl);
-    if (match) {
-      return [
-              {
-                hd: e1,
-                tl: Belt_List.reverse(match.tl)
-              },
-              match.hd
-            ];
+function printProgram(p) {
+  var tts = function (t) {
+    if (t.TAG === /* Def */0) {
+      return defToString(t._0);
     } else {
-      return [
-              /* [] */0,
-              e1
-            ];
+      return expToString$1(/* TopLevel */2, t._0);
     }
-  }
-  throw {
-        RE_EXN_ID: Impossible,
-        _1: "unsafe",
-        Error: new Error()
-      };
-}
-
-function translate_expressions(results) {
-  var ts = terms_of_string(results);
-  var partial_arg = /* Expr */{
-    _0: true
   };
-  return $$String.concat(" ", Belt_List.map(Belt_List.map(ts, (function (param) {
-                        return as_expr("expr", param);
-                      })), (function (param) {
-                    return string_of_expr$1(partial_arg, param);
-                  })));
+  return $$String.concat("\n", Belt_List.map(p, tts));
 }
 
-function translate_program(program) {
-  var ts = terms_of_string(program);
-  return $$String.concat("\n", Belt_List.map(ts, (function (t) {
-                    if (t.TAG === /* Def */0) {
-                      return string_of_term$1(t);
-                    }
-                    var e = t._0;
-                    var match = e.it;
-                    switch (match.TAG | 0) {
-                      case /* Set */2 :
-                          return "" + string_of_expr$1(/* Expr */{
-                                      _0: false
-                                    }, e) + ";";
-                      case /* AppPrm */6 :
-                          if (match._0 === 17) {
-                            return "" + string_of_expr$1(/* Expr */{
-                                        _0: false
-                                      }, e) + ";";
-                          }
-                          break;
-                      default:
-                        
-                    }
-                    return "console.log(" + string_of_expr$1(/* Expr */{
-                                _0: false
-                              }, e) + ");";
-                  })));
+function printBlock$2(param) {
+  var tts = function (t) {
+    if (t.TAG === /* Def */0) {
+      return defToString(t._0);
+    } else {
+      return expToString$1(/* Stat */0, t._0);
+    }
+  };
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(param[0], tts),
+                  {
+                    hd: expToString$1(/* Return */1, param[1]),
+                    tl: /* [] */0
+                  }
+                ]));
 }
 
-function translate_block(program) {
-  var ts = terms_of_string(program);
-  var match = as_many_then_one$2(ts);
-  var e = as_expr("result", match[1]);
-  return string_of_block$1(/* Return */1, [
-              match[0],
-              e
-            ]);
-}
+var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
 
 var base_env = Js_dict.fromArray(Belt_Array.map(all_primitives, (function (p) {
             return [
-                    string_of_primitive(p),
+                    primitiveToString(p),
                     /* BuiltIn */0
                   ];
           })));
@@ -1780,7 +1696,7 @@ function make_local_env(env, xs) {
                           })))));
 }
 
-function string_of_constant$2(c) {
+function constantToString$1(c) {
   if (typeof c === "number") {
     return "None";
   }
@@ -1799,11 +1715,11 @@ function string_of_constant$2(c) {
   }
 }
 
-function string_of_list$2(ss) {
+function listToString$2(ss) {
   return "(" + $$String.concat(", ", ss) + ")";
 }
 
-function string_of_identifier$1(x) {
+function xToString$1(x) {
   if (x === "-") {
     return x;
   }
@@ -1814,7 +1730,7 @@ function string_of_identifier$1(x) {
   return x.replace(re, matchFn);
 }
 
-function string_of_expr_lam$1(xs, b) {
+function exprLamToString$1(xs, b) {
   if (xs === /* [] */0) {
     return "lambda: " + b + "";
   } else {
@@ -1822,31 +1738,32 @@ function string_of_expr_lam$1(xs, b) {
   }
 }
 
-function wrap(ctx, code) {
-  var match = ctx.node;
-  if (typeof match === "number") {
-    if (match !== 0) {
-      return "return " + code + "";
-    } else {
-      return code;
-    }
-  } else if (match._0) {
-    return "(" + code + ")";
-  } else {
-    return code;
-  }
-}
-
 function ret(ctx, code) {
   var match = ctx.node;
-  if (typeof match === "number" && match !== 0) {
-    return "return " + code + "";
-  } else {
+  if (typeof match !== "number") {
     return code;
+  }
+  switch (match) {
+    case /* Stat */0 :
+        return code;
+    case /* Return */1 :
+        return "return " + code + "";
+    case /* TopLevel */2 :
+        return "print(" + code + ")";
+    
   }
 }
 
-function string_of_expr_app_prm$1(ctx, p, es) {
+function wrap(ctx, code) {
+  var match = ctx.node;
+  if (typeof match === "number" || !match._0) {
+    return ret(ctx, code);
+  } else {
+    return "(" + code + ")";
+  }
+}
+
+function exprApp_prmToString$1(ctx, p, es) {
   switch (p) {
     case /* Add */0 :
         return wrap(ctx, "" + $$String.concat(" + ", es) + "");
@@ -1857,236 +1774,236 @@ function string_of_expr_app_prm$1(ctx, p, es) {
     case /* Div */3 :
         return wrap(ctx, "" + $$String.concat(" / ", es) + "");
     case /* Lt */4 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match = es.tl;
+          if (match && !match.tl) {
+            return wrap(ctx, "" + es.hd + " < " + match.hd + "");
+          }
+          
         }
-        var match = es.tl;
-        if (match && !match.tl) {
-          return wrap(ctx, "" + es.hd + " < " + match.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Eq */5 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$1 = es.tl;
+          if (match$1 && !match$1.tl) {
+            return wrap(ctx, "" + es.hd + " == " + match$1.hd + "");
+          }
+          
         }
-        var match$1 = es.tl;
-        if (match$1 && !match$1.tl) {
-          return wrap(ctx, "" + es.hd + " == " + match$1.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Gt */6 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$2 = es.tl;
+          if (match$2 && !match$2.tl) {
+            return wrap(ctx, "" + es.hd + " > " + match$2.hd + "");
+          }
+          
         }
-        var match$2 = es.tl;
-        if (match$2 && !match$2.tl) {
-          return wrap(ctx, "" + es.hd + " > " + match$2.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Le */7 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$3 = es.tl;
+          if (match$3 && !match$3.tl) {
+            return wrap(ctx, "" + es.hd + " <= " + match$3.hd + "");
+          }
+          
         }
-        var match$3 = es.tl;
-        if (match$3 && !match$3.tl) {
-          return wrap(ctx, "" + es.hd + " <= " + match$3.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Ge */8 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$4 = es.tl;
+          if (match$4 && !match$4.tl) {
+            return wrap(ctx, "" + es.hd + " >= " + match$4.hd + "");
+          }
+          
         }
-        var match$4 = es.tl;
-        if (match$4 && !match$4.tl) {
-          return wrap(ctx, "" + es.hd + " >= " + match$4.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Ne */9 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$5 = es.tl;
+          if (match$5 && !match$5.tl) {
+            return wrap(ctx, "" + es.hd + " != " + match$5.hd + "");
+          }
+          
         }
-        var match$5 = es.tl;
-        if (match$5 && !match$5.tl) {
-          return wrap(ctx, "" + es.hd + " != " + match$5.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* PairNew */10 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$6 = es.tl;
+          if (match$6 && !match$6.tl) {
+            return ret(ctx, "[ " + es.hd + ", " + match$6.hd + " ]");
+          }
+          
         }
-        var match$6 = es.tl;
-        if (match$6 && !match$6.tl) {
-          return ret(ctx, "[ " + es.hd + ", " + match$6.hd + " ]");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* PairRefRight */11 :
         if (es && !es.tl) {
           return wrap(ctx, "" + es.hd + "[1]");
-        } else {
-          return "/* a primitive operation not supported yet */";
         }
+        break;
     case /* PairRefLeft */12 :
         if (es && !es.tl) {
           return wrap(ctx, "" + es.hd + "[0]");
-        } else {
-          return "/* a primitive operation not supported yet */";
         }
+        break;
     case /* PairSetRight */13 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$7 = es.tl;
-        if (!match$7) {
-          return "/* a primitive operation not supported yet */";
-        }
-        if (match$7.tl) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var e2 = match$7.hd;
-        var e1 = es.hd;
-        var match$8 = ctx.node;
-        if (typeof match$8 === "number") {
-          if (match$8 !== 0) {
-            return "return " + e1 + ".__setitem__(1, " + e2 + ")";
-          } else {
-            return "" + e1 + "[1] = " + e2 + "";
+        if (es) {
+          var match$7 = es.tl;
+          if (match$7 && !match$7.tl) {
+            var e2 = match$7.hd;
+            var e1 = es.hd;
+            var match$8 = ctx.node;
+            if (typeof match$8 !== "number") {
+              if (match$8._0) {
+                return "" + e1 + ".__setitem__(1, " + e2 + ")";
+              } else {
+                return "" + e1 + ".__setitem__(1, " + e2 + ")";
+              }
+            }
+            switch (match$8) {
+              case /* Return */1 :
+                  return "return " + e1 + ".__setitem__(1, " + e2 + ")";
+              case /* Stat */0 :
+              case /* TopLevel */2 :
+                  return "" + e1 + "[1] = " + e2 + "";
+              
+            }
           }
-        } else if (match$8._0) {
-          return "" + e1 + ".__setitem__(1, " + e2 + ")";
-        } else {
-          return "" + e1 + ".__setitem__(1, " + e2 + ")";
+          
         }
+        break;
     case /* PairSetLeft */14 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$9 = es.tl;
-        if (!match$9) {
-          return "/* a primitive operation not supported yet */";
-        }
-        if (match$9.tl) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var e2$1 = match$9.hd;
-        var e1$1 = es.hd;
-        var match$10 = ctx.node;
-        if (typeof match$10 === "number") {
-          if (match$10 !== 0) {
-            return "return " + e1$1 + ".__setitem__(0, " + e2$1 + ")";
-          } else {
-            return "" + e1$1 + "[0] = " + e2$1 + "";
+        if (es) {
+          var match$9 = es.tl;
+          if (match$9 && !match$9.tl) {
+            var e2$1 = match$9.hd;
+            var e1$1 = es.hd;
+            var match$10 = ctx.node;
+            if (typeof match$10 !== "number") {
+              if (match$10._0) {
+                return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+              } else {
+                return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+              }
+            }
+            switch (match$10) {
+              case /* Return */1 :
+                  return "return " + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+              case /* Stat */0 :
+              case /* TopLevel */2 :
+                  return "" + e1$1 + "[0] = " + e2$1 + "";
+              
+            }
           }
-        } else if (match$10._0) {
-          return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
-        } else {
-          return "" + e1$1 + ".__setitem__(0, " + e2$1 + ")";
+          
         }
+        break;
     case /* VecNew */15 :
         return ret(ctx, "[" + $$String.concat(", ", es) + "]");
     case /* VecRef */16 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$11 = es.tl;
-        if (match$11 && !match$11.tl) {
-          return ret(ctx, "" + es.hd + "[" + match$11.hd + "]");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* VecSet */17 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$12 = es.tl;
-        if (!match$12) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$13 = match$12.tl;
-        if (!match$13) {
-          return "/* a primitive operation not supported yet */";
-        }
-        if (match$13.tl) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var e3 = match$13.hd;
-        var e2$2 = match$12.hd;
-        var e1$2 = es.hd;
-        var match$14 = ctx.node;
-        if (typeof match$14 === "number") {
-          if (match$14 !== 0) {
-            return "return " + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
-          } else {
-            return "" + e1$2 + "[" + e2$2 + "] = " + e3 + "";
+        if (es) {
+          var match$11 = es.tl;
+          if (match$11 && !match$11.tl) {
+            return ret(ctx, "" + es.hd + "[" + match$11.hd + "]");
           }
-        } else if (match$14._0) {
-          return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
-        } else {
-          return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+          
         }
+        break;
+    case /* VecSet */17 :
+        if (es) {
+          var match$12 = es.tl;
+          if (match$12) {
+            var match$13 = match$12.tl;
+            if (match$13 && !match$13.tl) {
+              var e3 = match$13.hd;
+              var e2$2 = match$12.hd;
+              var e1$2 = es.hd;
+              var match$14 = ctx.node;
+              if (typeof match$14 !== "number") {
+                if (match$14._0) {
+                  return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+                } else {
+                  return "" + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+                }
+              }
+              switch (match$14) {
+                case /* Return */1 :
+                    return "return " + e1$2 + ".__setitem__(" + e2$2 + ", " + e3 + ")";
+                case /* Stat */0 :
+                case /* TopLevel */2 :
+                    return "" + e1$2 + "[" + e2$2 + "] = " + e3 + "";
+                
+              }
+            }
+            
+          }
+          
+        }
+        break;
     case /* VecLen */18 :
         if (es && !es.tl) {
           return ret(ctx, "len(" + es.hd + ")");
-        } else {
-          return "/* a primitive operation not supported yet */";
         }
+        break;
     case /* Eqv */19 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
+        if (es) {
+          var match$15 = es.tl;
+          if (match$15 && !match$15.tl) {
+            return wrap(ctx, "" + es.hd + " == " + match$15.hd + "");
+          }
+          
         }
-        var match$15 = es.tl;
-        if (match$15 && !match$15.tl) {
-          return wrap(ctx, "" + es.hd + " == " + match$15.hd + "");
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+        break;
     case /* Err */20 :
         if (es && !es.tl) {
           return "raise " + es.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
         }
+        break;
     case /* Not */21 :
         if (es && !es.tl) {
-          return "not " + es.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
+          return wrap(ctx, "not " + es.hd + "");
         }
+        break;
     
   }
+  throw {
+        RE_EXN_ID: PrintError,
+        _1: "found a primitive operation (" + primitiveToString(p) + ") not supported yet.",
+        Error: new Error()
+      };
 }
 
-function string_of_expr_app$1(e, es) {
-  return "" + e + "" + string_of_list$2(es) + "";
+function exprAppToString$1(e, es) {
+  return "" + e + "" + listToString$2(es) + "";
 }
 
-function consider_context$1(ctx, code) {
+function exprLetToString$1(xes, b) {
+  return exprAppToString$1(exprLamToString$1(Belt_List.map(xes, (function (param) {
+                        return "" + param[0] + "=" + param[1] + "";
+                      })), b), /* [] */0);
+}
+
+function consider_context$1(code, ctx) {
   var match = ctx.node;
-  if (typeof match === "number" && match !== 0) {
+  if (match === 1) {
     return "return " + code + "";
   } else {
     return code;
   }
 }
 
-function string_of_expr$2(ctx, e) {
+function expToString$2(ctx, e) {
   var c = e.it;
   switch (c.TAG | 0) {
     case /* Con */0 :
-        return consider_context$1(ctx, string_of_constant$2(c._0));
+        return consider_context$1(constantToString$1(c._0), ctx);
     case /* Ref */1 :
-        return consider_context$1(ctx, string_of_identifier$1(c._0.it));
+        return consider_context$1(xToString$1(c._0.it), ctx);
     case /* Set */2 :
         var x = c._0;
         Js_array.unshift(x.it, ctx.refs);
-        var x$1 = string_of_identifier$1(x.it);
-        var e$1 = string_of_expr$2({
+        var x$1 = xToString$1(x.it);
+        var e$1 = expToString$2({
               node: /* Expr */{
                 _0: false
               },
@@ -2095,50 +2012,51 @@ function string_of_expr$2(ctx, e) {
               env: ctx.env
             }, c._1);
         var match = ctx.node;
-        if (typeof match === "number") {
-          if (match !== 0) {
-            return "return (" + x$1 + " := " + e$1 + ")";
+        if (typeof match !== "number") {
+          if (match._0) {
+            return "(" + x$1 + " := " + e$1 + ")";
           } else {
-            return "" + x$1 + " = " + e$1 + "";
+            return "" + x$1 + " := " + e$1 + "";
           }
-        } else if (match._0) {
-          return "(" + x$1 + " := " + e$1 + ")";
-        } else {
-          return "" + x$1 + " := " + e$1 + "";
+        }
+        switch (match) {
+          case /* Return */1 :
+              return "return (" + x$1 + " := " + e$1 + ")";
+          case /* Stat */0 :
+          case /* TopLevel */2 :
+              return "" + x$1 + " = " + e$1 + "";
+          
         }
     case /* Lam */3 :
         var xs = c._0;
-        return consider_context$1(ctx, string_of_expr_lam$1(Belt_List.map(Belt_List.map(xs, unannotate), string_of_identifier$1), string_of_block$2({
+        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(xs, unannotate), xToString$1), printBlock$3({
                             node: /* Expr */{
                               _0: false
                             },
                             block: ctx.block,
                             refs: ctx.refs,
                             env: ctx.env
-                          }, xs, c._1)));
+                          }, xs, c._1)), ctx);
     case /* Let */4 :
         var xes = c._0;
-        string_of_block$2({
-              node: /* Return */1,
-              block: ctx.block,
-              refs: ctx.refs,
-              env: ctx.env
-            }, Belt_List.map(xes, (function (param) {
-                    return param[0];
-                  })), c._1);
-        Belt_List.map(xes, (function (param) {
-                return string_of_xe$2(ctx, param);
-              }));
-        throw {
-              RE_EXN_ID: TranslationError,
-              _1: "do not support let-expression...",
-              Error: new Error()
-            };
-        return consider_context$1(ctx, undefined);
+        return consider_context$1(exprLetToString$1(Belt_List.map(xes, (function (param) {
+                              return xeToString$2(ctx, param);
+                            })), printBlock$3({
+                            node: /* Expr */{
+                              _0: false
+                            },
+                            block: ctx.block,
+                            refs: ctx.refs,
+                            env: ctx.env
+                          }, Belt_List.map(xes, (function (param) {
+                                  return param[0];
+                                })), c._1)), ctx);
     case /* Letrec */5 :
         var xes$1 = c._0;
-        string_of_block$2({
-              node: /* Return */1,
+        printBlock$3({
+              node: /* Expr */{
+                _0: false
+              },
               block: ctx.block,
               refs: ctx.refs,
               env: ctx.env
@@ -2146,14 +2064,14 @@ function string_of_expr$2(ctx, e) {
                     return param[0];
                   })), c._1);
         Belt_List.map(xes$1, (function (param) {
-                return string_of_xe$2(ctx, param);
+                return xeToString$2(ctx, param);
               }));
         throw {
-              RE_EXN_ID: TranslationError,
-              _1: "do not support letrec-expression...",
+              RE_EXN_ID: PrintError,
+              _1: "Python translation does not support letrec-expression.",
               Error: new Error()
             };
-        return consider_context$1(ctx, undefined);
+        return consider_context$1(undefined, ctx);
     case /* AppPrm */6 :
         var p = c._0;
         if (p !== 17) {
@@ -2169,8 +2087,8 @@ function string_of_expr$2(ctx, e) {
             refs: partial_arg_refs,
             env: partial_arg_env
           };
-          return string_of_expr_app_prm$1(ctx, p, Belt_List.map(c._1, (function (param) {
-                            return string_of_expr$2(partial_arg, param);
+          return exprApp_prmToString$1(ctx, p, Belt_List.map(c._1, (function (param) {
+                            return expToString$2(partial_arg, param);
                           })));
         }
         var partial_arg_node$1 = /* Expr */{
@@ -2185,8 +2103,8 @@ function string_of_expr$2(ctx, e) {
           refs: partial_arg_refs$1,
           env: partial_arg_env$1
         };
-        return string_of_expr_app_prm$1(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
-                          return string_of_expr$2(partial_arg$1, param);
+        return exprApp_prmToString$1(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
+                          return expToString$2(partial_arg$1, param);
                         })));
     case /* App */7 :
         var partial_arg_node$2 = /* Expr */{
@@ -2201,7 +2119,7 @@ function string_of_expr$2(ctx, e) {
           refs: partial_arg_refs$2,
           env: partial_arg_env$2
         };
-        return consider_context$1(ctx, string_of_expr_app$1(string_of_expr$2({
+        return consider_context$1(exprAppToString$1(expToString$2({
                             node: /* Expr */{
                               _0: false
                             },
@@ -2209,8 +2127,8 @@ function string_of_expr$2(ctx, e) {
                             refs: ctx.refs,
                             env: ctx.env
                           }, c._0), Belt_List.map(c._1, (function (param) {
-                              return string_of_expr$2(partial_arg$2, param);
-                            }))));
+                              return expToString$2(partial_arg$2, param);
+                            }))), ctx);
     case /* Bgn */8 :
         var es = c._0;
         var e$2 = c._1;
@@ -2226,9 +2144,9 @@ function string_of_expr$2(ctx, e) {
             env: partial_arg_env$3
           };
           var es$1 = Belt_List.map(es, (function (param) {
-                  return string_of_expr$2(partial_arg$3, param);
+                  return expToString$2(partial_arg$3, param);
                 }));
-          var e$3 = string_of_expr$2(ctx, e$2);
+          var e$3 = expToString$2(ctx, e$2);
           return $$String.concat("\n", Belt_List.concatMany([
                           es$1,
                           {
@@ -2257,11 +2175,11 @@ function string_of_expr$2(ctx, e) {
           env: partial_arg_env$4
         };
         var ese$1 = Belt_List.map(ese, (function (param) {
-                return string_of_expr$2(partial_arg$4, param);
+                return expToString$2(partial_arg$4, param);
               }));
         return "[" + $$String.concat(", ", ese$1) + "][-1]";
     case /* If */9 :
-        var e_cnd = string_of_expr$2({
+        var e_cnd = expToString$2({
               node: /* Expr */{
                 _0: false
               },
@@ -2269,11 +2187,11 @@ function string_of_expr$2(ctx, e) {
               refs: ctx.refs,
               env: ctx.env
             }, c._0);
-        var e_thn = string_of_expr$2(ctx, c._1);
-        var e_els = string_of_expr$2(ctx, c._2);
+        var e_thn = expToString$2(ctx, c._1);
+        var e_els = expToString$2(ctx, c._2);
         var match$2 = ctx.node;
         if (typeof match$2 === "number") {
-          return "if " + e_cnd + ":\n    " + indent(e_thn, 4) + "\nelse:\n    " + indent(e_els, 4) + "";
+          return "if " + e_cnd + ":" + indentBlock(e_thn, 4) + "\nelse:" + indentBlock(e_els, 4) + "";
         } else {
           return "" + e_thn + " if " + e_cnd + " else " + e_els + "";
         }
@@ -2281,52 +2199,29 @@ function string_of_expr$2(ctx, e) {
         var match$3 = ctx.node;
         if (typeof match$3 === "number") {
           var ebs = Belt_List.map(c._0, (function (param) {
-                  return string_of_eb$2(ctx, param);
+                  return ebToString$2(ctx, param);
                 }));
-          var ob = string_of_ob(ctx, c._1);
-          var ob$1 = ob !== undefined ? "else:\n    " + indent(ob, 4) + "" : "";
+          var ob = obToString(ctx, c._1);
+          var ob$1 = ob !== undefined ? "else:" + indentBlock(ob, 4) + "" : "";
           var ebs$1 = Belt_List.map(ebs, (function (param) {
-                  return "if " + param[0] + ":\n    " + indent(param[1], 4) + "\n";
+                  return "if " + param[0] + ":" + indentBlock(param[1], 4) + "\n";
                 }));
           var ebs$2 = $$String.concat("el", ebs$1);
           return ebs$2 + ob$1;
-        } else {
-          return "if...";
         }
+        throw {
+              RE_EXN_ID: PrintError,
+              _1: "Python translation does not fully support `cond` yet.",
+              Error: new Error()
+            };
     
   }
 }
 
-function string_of_def$2(ctx, d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    var x = match._0.it;
-    var e = string_of_expr$2({
-          node: /* Expr */{
-            _0: false
-          },
-          block: ctx.block,
-          refs: ctx.refs,
-          env: ctx.env
-        }, match._1);
-    return "" + string_of_identifier$1(x) + " = " + e + "";
-  }
-  var xs = match._1;
-  var f = string_of_identifier$1(match._0.it);
-  var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), string_of_identifier$1);
-  var b = string_of_block$2({
-        node: /* Return */1,
-        block: ctx.block,
-        refs: ctx.refs,
-        env: ctx.env
-      }, xs, match._2);
-  return "def " + f + "" + string_of_list$2(xs$1) + ":\n    " + indent(b, 4) + "";
-}
-
-function string_of_xe$2(ctx, xe) {
+function xeToString$2(ctx, xe) {
   return [
-          string_of_identifier$1(xe[0].it),
-          string_of_expr$2({
+          xToString$1(xe[0].it),
+          expToString$2({
                 node: /* Expr */{
                   _0: false
                 },
@@ -2337,9 +2232,9 @@ function string_of_xe$2(ctx, xe) {
         ];
 }
 
-function string_of_eb$2(ctx, eb) {
+function ebToString$2(ctx, eb) {
   return [
-          string_of_expr$2({
+          expToString$2({
                 node: /* Expr */{
                   _0: false
                 },
@@ -2347,71 +2242,14 @@ function string_of_eb$2(ctx, eb) {
                 refs: ctx.refs,
                 env: ctx.env
               }, eb[0]),
-          string_of_block$2(ctx, /* [] */0, eb[1])
+          printBlock$3(ctx, /* [] */0, eb[1])
         ];
 }
 
-function string_of_ob(ctx, ob) {
+function obToString(ctx, ob) {
   return Belt_Option.map(ob, (function (param) {
-                return string_of_block$2(ctx, /* [] */0, param);
+                return printBlock$3(ctx, /* [] */0, param);
               }));
-}
-
-function block_as_expr(ctx, ts, e) {
-  if (!ts) {
-    return string_of_expr$2(ctx, e);
-  }
-  var is_exp = function (t) {
-    if (t.TAG === /* Def */0) {
-      return false;
-    } else {
-      return true;
-    }
-  };
-  var as_exp = function (t) {
-    if (t.TAG !== /* Def */0) {
-      return t._0;
-    }
-    throw {
-          RE_EXN_ID: Impossible,
-          _1: "We have checked!",
-          Error: new Error()
-        };
-  };
-  if (!Belt_List.every(ts, is_exp)) {
-    return "\nbegin\n    " + indent(string_of_block$2({
-                    node: /* Return */1,
-                    block: ctx.block,
-                    refs: ctx.refs,
-                    env: ctx.env
-                  }, /* [] */0, [
-                    ts,
-                    e
-                  ]), 4) + "\nend";
-  }
-  var es = Belt_List.concatMany([
-        Belt_List.map(ts, as_exp),
-        {
-          hd: e,
-          tl: /* [] */0
-        }
-      ]);
-  var partial_arg_node = /* Expr */{
-    _0: false
-  };
-  var partial_arg_block = ctx.block;
-  var partial_arg_refs = ctx.refs;
-  var partial_arg_env = ctx.env;
-  var partial_arg = {
-    node: partial_arg_node,
-    block: partial_arg_block,
-    refs: partial_arg_refs,
-    env: partial_arg_env
-  };
-  var es$1 = Belt_List.map(es, (function (param) {
-          return string_of_expr$2(partial_arg, param);
-        }));
-  return "(" + $$String.concat(", ", es$1) + ")[-1]";
 }
 
 function identifier_of_term(t) {
@@ -2426,7 +2264,7 @@ function xs_of_ts(ts) {
   return Belt_List.map(Belt_List.keepMap(ts, identifier_of_term), unannotate);
 }
 
-function string_of_block$2(ctx, xs, b) {
+function printBlock$3(ctx, xs, b) {
   var e = b[1];
   var ts = b[0];
   var refs = [];
@@ -2460,10 +2298,10 @@ function string_of_block$2(ctx, xs, b) {
     };
     var result = $$String.concat("\n", Belt_List.concatMany([
               Belt_List.map(ts, (function (param) {
-                      return string_of_term$2(partial_arg, param);
+                      return termToString(partial_arg, param);
                     })),
               {
-                hd: string_of_expr$2(ctx$1, e),
+                hd: expToString$2(ctx$1, e),
                 tl: /* [] */0
               }
             ]));
@@ -2483,6 +2321,58 @@ function string_of_block$2(ctx, xs, b) {
     var decl_nonlocals = nonlocals.length === 0 ? "" : "nonlocal " + $$String.concat(", ", Belt_List.fromArray(nonlocals)) + "\n";
     return "" + decl_globals + "" + decl_nonlocals + "" + result + "";
   }
+  var block_as_expr = function (ctx, ts, e) {
+    if (!ts) {
+      return expToString$2(ctx, e);
+    }
+    var is_exp = function (t) {
+      if (t.TAG === /* Def */0) {
+        return false;
+      } else {
+        return true;
+      }
+    };
+    var as_exp = function (t) {
+      if (t.TAG !== /* Def */0) {
+        return t._0;
+      }
+      throw {
+            RE_EXN_ID: Impossible,
+            _1: "We have checked!",
+            Error: new Error()
+          };
+    };
+    if (Belt_List.every(ts, is_exp)) {
+      var es = Belt_List.concatMany([
+            Belt_List.map(ts, as_exp),
+            {
+              hd: e,
+              tl: /* [] */0
+            }
+          ]);
+      var partial_arg_node = /* Expr */{
+        _0: false
+      };
+      var partial_arg_block = ctx.block;
+      var partial_arg_refs = ctx.refs;
+      var partial_arg_env = ctx.env;
+      var partial_arg = {
+        node: partial_arg_node,
+        block: partial_arg_block,
+        refs: partial_arg_refs,
+        env: partial_arg_env
+      };
+      var es$1 = Belt_List.map(es, (function (param) {
+              return expToString$2(partial_arg, param);
+            }));
+      return "(" + $$String.concat(", ", es$1) + ")[-1]";
+    }
+    throw {
+          RE_EXN_ID: PrintError,
+          _1: "Python translator can't translate block that contains definitions and appears in an expression context.",
+          Error: new Error()
+        };
+  };
   var result$1 = block_as_expr(ctx$1, ts, e);
   var refs$2 = Js_array.filter((function (x) {
           var match = Belt_Option.getWithDefault(Js_dict.get(ctx_env$2, x), /* NonLocal */2);
@@ -2495,11 +2385,34 @@ function string_of_block$2(ctx, xs, b) {
   }
 }
 
-function string_of_term$2(ctx, t) {
+function termToString(ctx, t) {
   if (t.TAG === /* Def */0) {
-    return string_of_def$2(ctx, t._0);
+    var d = t._0;
+    var match = d.it;
+    if (match.TAG === /* Var */0) {
+      var x = match._0.it;
+      var e = expToString$2({
+            node: /* Expr */{
+              _0: false
+            },
+            block: ctx.block,
+            refs: ctx.refs,
+            env: ctx.env
+          }, match._1);
+      return "" + xToString$1(x) + " = " + e + "";
+    }
+    var xs = match._1;
+    var f = xToString$1(match._0.it);
+    var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), xToString$1);
+    var b = printBlock$3({
+          node: /* Return */1,
+          block: ctx.block,
+          refs: ctx.refs,
+          env: ctx.env
+        }, xs, match._2);
+    return "def " + f + "" + listToString$2(xs$1) + ":\n    " + indent(b, 4) + "";
   } else {
-    return string_of_expr$2({
+    return expToString$2({
                 node: /* Stat */0,
                 block: ctx.block,
                 refs: ctx.refs,
@@ -2508,71 +2421,36 @@ function string_of_term$2(ctx, t) {
   }
 }
 
-function string_of_program$1(ts) {
+function printTerm$2(t) {
   var ctx_refs = [];
-  var ctx_env = make_global_env(xs_of_ts(ts));
+  var ctx_env = make_global_env(xs_of_ts({
+            hd: t,
+            tl: /* [] */0
+          }));
   var ctx = {
     node: /* Stat */0,
     block: /* Global */1,
     refs: ctx_refs,
     env: ctx_env
   };
-  return $$String.concat("\n", Belt_List.map(ts, (function (t) {
-                    if (t.TAG === /* Def */0) {
-                      return string_of_term$2(ctx, t);
-                    }
-                    var e = t._0;
-                    var match = e.it;
-                    switch (match.TAG | 0) {
-                      case /* Set */2 :
-                          return string_of_expr$2({
-                                      node: /* Stat */0,
-                                      block: /* Global */1,
-                                      refs: ctx_refs,
-                                      env: ctx_env
-                                    }, e);
-                      case /* AppPrm */6 :
-                          var match$1 = match._0;
-                          var exit = 0;
-                          if (match$1 >= 15) {
-                            if (match$1 === 17) {
-                              exit = 2;
-                            }
-                            
-                          } else if (match$1 >= 13) {
-                            exit = 2;
-                          }
-                          if (exit === 2) {
-                            return string_of_expr$2({
-                                        node: /* Stat */0,
-                                        block: /* Global */1,
-                                        refs: ctx_refs,
-                                        env: ctx_env
-                                      }, e);
-                          }
-                          break;
-                      default:
-                        
-                    }
-                    return "print(" + string_of_expr$2({
-                                node: /* Expr */{
-                                  _0: false
-                                },
-                                block: /* Global */1,
-                                refs: ctx_refs,
-                                env: ctx_env
-                              }, e) + ")";
+  return termToString(ctx, t);
+}
+
+function printProgram$1(ts) {
+  var ctx_refs = [];
+  var ctx_env = make_global_env(xs_of_ts(ts));
+  var ctx = {
+    node: /* TopLevel */2,
+    block: /* Global */1,
+    refs: ctx_refs,
+    env: ctx_env
+  };
+  return $$String.concat("\n", Belt_List.map(ts, (function (param) {
+                    return termToString(ctx, param);
                   })));
 }
 
-function translate_program$1(program) {
-  return string_of_program$1(terms_of_string(program));
-}
-
-function translate_block$1(program) {
-  var ts = terms_of_string(program);
-  var match = as_many_then_one$1(ts);
-  var e = as_expr("result", match[1]);
+function printBlock$4(param) {
   var ctx_refs = [];
   var ctx_env = {};
   var ctx = {
@@ -2581,183 +2459,45 @@ function translate_block$1(program) {
     refs: ctx_refs,
     env: ctx_env
   };
-  return string_of_block$2(ctx, /* [] */0, [
-              match[0],
-              e
+  return printBlock$3(ctx, /* [] */0, [
+              param[0],
+              param[1]
             ]);
 }
 
-function translate_expressions$1(results) {
-  var ts = terms_of_string(results);
-  var ctx_node = /* Expr */{
-    _0: false
-  };
-  var ctx_refs = [];
-  var ctx_env = {};
-  var ctx = {
-    node: ctx_node,
-    block: /* Local */3,
-    refs: ctx_refs,
-    env: ctx_env
-  };
-  return $$String.concat(" ", Belt_List.map(Belt_List.map(ts, (function (param) {
-                        return as_expr("expr", param);
-                      })), (function (param) {
-                    return string_of_expr$2(ctx, param);
-                  })));
-}
-
-var stringify = {
-  string_of_result: string_of_result,
-  string_of_expr: string_of_expr,
-  string_of_def: string_of_def,
-  string_of_term: string_of_term,
-  string_of_block: string_of_block,
-  string_of_program: string_of_program
+var SMoLPrinter = {
+  printProgram: termsToString,
+  printBlock: printBlock,
+  printTerm: printTerm
 };
 
-var partial_arg = /* Expr */{
-  _0: false
+var JSPrinter = {
+  printProgram: printProgram,
+  printBlock: printBlock$2,
+  printTerm: printTerm$1
 };
 
-function stringifyAsJS_string_of_result(r) {
-  switch (r.TAG | 0) {
-    case /* Con */0 :
-        return string_of_constant$1(r._0);
-    case /* Vec */1 :
-    case /* Fun */2 :
-        return string_of_result(r);
-    case /* PrmFun */3 :
-        return string_of_identifier(string_of_result(r));
-    
-  }
-}
-
-function stringifyAsJS_string_of_expr(param) {
-  return string_of_expr$1(partial_arg, param);
-}
-
-function stringifyAsJS_string_of_block(param) {
-  return string_of_block$1(/* Return */1, param);
-}
-
-function stringifyAsJS_string_of_program(ts) {
-  return $$String.concat("\n", Belt_List.map(ts, string_of_term$1));
-}
-
-var stringifyAsJS = {
-  string_of_result: stringifyAsJS_string_of_result,
-  string_of_expr: stringifyAsJS_string_of_expr,
-  string_of_def: string_of_def$1,
-  string_of_term: string_of_term$1,
-  string_of_block: stringifyAsJS_string_of_block,
-  string_of_program: stringifyAsJS_string_of_program
+var PYPrinter = {
+  printProgram: printProgram$1,
+  printBlock: printBlock$4,
+  printTerm: printTerm$2
 };
 
-var stat_ctx_refs = [];
-
-var stat_ctx_env = {};
-
-var stat_ctx = {
-  node: /* Stat */0,
-  block: /* Local */3,
-  refs: stat_ctx_refs,
-  env: stat_ctx_env
-};
-
-var expr_ctx_node = /* Expr */{
-  _0: false
-};
-
-var expr_ctx_refs = [];
-
-var expr_ctx_env = {};
-
-var expr_ctx = {
-  node: expr_ctx_node,
-  block: /* Local */3,
-  refs: expr_ctx_refs,
-  env: expr_ctx_env
-};
-
-var body_ctx_refs = [];
-
-var body_ctx_env = {};
-
-var body_ctx = {
-  node: /* Return */1,
-  block: /* Local */3,
-  refs: body_ctx_refs,
-  env: body_ctx_env
-};
-
-function stringifyAsPY_string_of_result(r) {
-  switch (r.TAG | 0) {
-    case /* Con */0 :
-        return string_of_constant$1(r._0);
-    case /* Vec */1 :
-    case /* Fun */2 :
-        return string_of_result(r);
-    case /* PrmFun */3 :
-        return string_of_identifier$1(string_of_result(r));
-    
-  }
-}
-
-function stringifyAsPY_string_of_expr(param) {
-  return string_of_expr$2(expr_ctx, param);
-}
-
-function stringifyAsPY_string_of_def(param) {
-  return string_of_def$2(stat_ctx, param);
-}
-
-function stringifyAsPY_string_of_term(param) {
-  return string_of_term$2(stat_ctx, param);
-}
-
-function stringifyAsPY_string_of_block(param) {
-  return string_of_block$2(body_ctx, /* [] */0, param);
-}
-
-var stringifyAsPY = {
-  string_of_result: stringifyAsPY_string_of_result,
-  string_of_expr: stringifyAsPY_string_of_expr,
-  string_of_def: stringifyAsPY_string_of_def,
-  string_of_term: stringifyAsPY_string_of_term,
-  string_of_block: stringifyAsPY_string_of_block,
-  string_of_program: string_of_program$1
-};
-
-var SMoLToJS = {
-  translate_program: translate_program,
-  translate_block: translate_block,
-  translate_expressions: translate_expressions
-};
-
-var SMoLToPY = {
-  translate_program: translate_program$1,
-  translate_block: translate_block$1,
-  translate_expressions: translate_expressions$1
+var Parser = {
+  parseTerms: parseTerms,
+  parseProgram: parseTerms
 };
 
 export {
-  stringify ,
-  stringifyAsJS ,
-  stringifyAsPY ,
-  SMoLToJS ,
-  SMoLToPY ,
+  PrintError ,
+  SMoLPrinter ,
+  JSPrinter ,
+  PYPrinter ,
+  SExprKind ,
+  Arity ,
+  TermKind ,
   ParseError ,
-  TranslationError ,
-  stringOfExprs ,
-  stringOfParseError ,
-  as_expr ,
-  constant_of_atom ,
-  value_of_sexpr ,
-  expr_of_atom ,
-  term_of_sexpr ,
-  app_prm ,
-  terms_of_sexprs ,
-  terms_of_string ,
+  SMoLParseError ,
+  Parser ,
 }
 /* base_env Not a pure module */

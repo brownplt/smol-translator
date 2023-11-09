@@ -48,6 +48,16 @@ and definition =
 and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
 
+type exn += PrintError(string)
+module type Printer = {
+  let printProgram: program => string
+  let printBlock: block => string
+  let printTerm: term => string
+}
+module SMoLPrinter: Printer
+module JSPrinter: Printer
+module PYPrinter: Printer
+
 module SExprKind: {
   type t = Atom | List
   let toString: t => string
@@ -76,22 +86,8 @@ module ParseError: {
     | TermKindError(TermKind.t, string, term)
   let toString : t => string
 }
-type exn += ParseError(ParseError.t)
+type exn += SMoLParseError(ParseError.t)
 module Parser: {
-  let parseProgram: string => program
-  let parseBlock: string => block
   let parseTerms: string => list<term>
-  let parseTerm: string => option<term>
-  let parseExp: string => expression
-  let parseDef: string => definition
-}
-
-type exn += PrintError(string)
-module type Printer = {
-  let programToString: program => string
-  let blockToString: block => string
-  let termsToString: list<term> => string
-  let termToString: option<term> => string
-  let expToString: expression => string
-  let defToString: definition => string
+  let parseProgram: string => program
 }
