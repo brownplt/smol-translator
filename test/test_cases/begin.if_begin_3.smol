@@ -1,0 +1,8 @@
+(defvar counter 0)
+(deffun (factorial n)
+  (if (equal? n 0)
+      1
+      (begin
+        (set! counter (+ counter 1))
+        (* (factorial (- n 1)) n))))
+(factorial 2)

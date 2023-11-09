@@ -1,0 +1,5 @@
+(deffun (getx)
+  x)
+(defvar y (getx))
+(defvar x 12)
+y

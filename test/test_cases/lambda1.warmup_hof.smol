@@ -1,0 +1,4 @@
+(deffun (get) 42)
+(defvar f get)
+(defvar g f)
+(g)

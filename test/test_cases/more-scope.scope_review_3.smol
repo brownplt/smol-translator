@@ -1,0 +1,6 @@
+(defvar x 1)
+(deffun (gety)
+  (defvar y x)
+  (defvar x 2)
+  y)
+(gety)

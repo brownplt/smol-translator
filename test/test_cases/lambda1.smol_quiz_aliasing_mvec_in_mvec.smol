@@ -1,0 +1,4 @@
+(defvar x (mvec 1 7 3))
+(defvar pr (mpair x x))
+(vec-set! (right pr) 0 100)
+pr

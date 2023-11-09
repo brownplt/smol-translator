@@ -1,0 +1,3 @@
+(defvar rent 100)
+(set! rent (* 100 2))
+rent

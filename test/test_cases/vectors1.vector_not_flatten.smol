@@ -1,0 +1,3 @@
+(defvar m (mvec 1 2))
+(vec-set! m 1 (mvec 3 4))
+(vec-ref m 2)

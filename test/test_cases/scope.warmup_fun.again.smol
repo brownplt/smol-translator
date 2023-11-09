@@ -1,0 +1,3 @@
+(deffun (prod x y z)
+  (* x (* y z)))
+(prod 2 1 3)
