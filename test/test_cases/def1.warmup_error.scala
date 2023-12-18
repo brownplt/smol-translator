@@ -1,2 +1,2 @@
-val xyz : Int = 42
+val xyz = 42
 println(abc)

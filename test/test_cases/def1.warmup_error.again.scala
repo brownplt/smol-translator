@@ -1,2 +1,2 @@
-val foo : Int = 77
+val foo = 77
 println(bar)

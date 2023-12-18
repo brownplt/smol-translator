@@ -1,5 +1,5 @@
-val bar : Int = 5
+val bar = 5
 def foo() =
   bar
-val bar : Int = 3
+val bar = 3
 println(foo())

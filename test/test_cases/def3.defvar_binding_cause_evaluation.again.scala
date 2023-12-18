@@ -1,2 +1,2 @@
-val b : Int = 79 / 0
+val b = 79 / 0
 println(1)

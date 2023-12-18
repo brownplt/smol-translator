@@ -1,5 +1,5 @@
-val q : Int = 5
+val q = 5
 def a() =
   q
-val q : Int = 0
+val q = 0
 println(a())

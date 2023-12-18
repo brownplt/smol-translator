@@ -1,7 +1,7 @@
-val x : Int = 1
+val x = 1
 def f() =
   x
 def g() =
-  val x : Int = 2
+  val x = 2
   f()
 println(g())

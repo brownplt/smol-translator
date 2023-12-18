@@ -1,2 +1,2 @@
-val x : Int = 12 / 0
+val x = 12 / 0
 println(3)

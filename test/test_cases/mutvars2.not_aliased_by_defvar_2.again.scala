@@ -1,5 +1,5 @@
-var zzz : Int = 1
-var abc : Int = zzz
+var zzz = 1
+var abc = zzz
 abc = 2
 println(zzz)
 println(abc)

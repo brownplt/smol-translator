@@ -1744,7 +1744,7 @@ function parameterToString(x) {
 function defvarToString$1(x, e) {
   return "" + (
           mutating.contents ? "var" : "val"
-        ) + " " + parameterToString(x) + " = " + e + "";
+        ) + " " + x + " = " + e + "";
 }
 
 function exprLamToString$1(xs, b) {
@@ -1918,19 +1918,19 @@ function expToString$2(ctx, e) {
               }
               var match$6 = es.tl;
               if (match$6 && !match$6.tl) {
-                return consider_context$1("[ " + es.hd + ", " + match$6.hd + " ]", ctx);
+                return consider_context$1("Buffer(" + es.hd + ", " + match$6.hd + ")", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
           case /* PairRefRight */11 :
               if (es && !es.tl) {
-                return consider_context$1("" + es.hd + "[1]", ctx);
+                return consider_context$1("" + es.hd + "(1)", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
           case /* PairRefLeft */12 :
               if (es && !es.tl) {
-                return consider_context$1("" + es.hd + "[0]", ctx);
+                return consider_context$1("" + es.hd + "(0)", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
@@ -1940,7 +1940,7 @@ function expToString$2(ctx, e) {
               }
               var match$7 = es.tl;
               if (match$7 && !match$7.tl) {
-                return assign_consider_context$1("" + es.hd + "[1] = " + match$7.hd + "", ctx);
+                return assign_consider_context$1("" + es.hd + "(1) = " + match$7.hd + "", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
@@ -1950,19 +1950,19 @@ function expToString$2(ctx, e) {
               }
               var match$8 = es.tl;
               if (match$8 && !match$8.tl) {
-                return assign_consider_context$1("" + es.hd + "[0] = " + match$8.hd + "", ctx);
+                return assign_consider_context$1("" + es.hd + "(0) = " + match$8.hd + "", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
           case /* VecNew */15 :
-              return consider_context$1("[ " + $$String.concat(", ", es) + " ]", ctx);
+              return consider_context$1("Buffer(" + $$String.concat(", ", es) + ")", ctx);
           case /* VecRef */16 :
               if (!es) {
                 return "/* a primitive operation not supported yet */";
               }
               var match$9 = es.tl;
               if (match$9 && !match$9.tl) {
-                return consider_context$1("" + es.hd + "[" + match$9.hd + "]", ctx);
+                return consider_context$1("" + es.hd + "(" + match$9.hd + ")", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
@@ -1976,7 +1976,7 @@ function expToString$2(ctx, e) {
               }
               var match$11 = match$10.tl;
               if (match$11 && !match$11.tl) {
-                return assign_consider_context$1("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
+                return assign_consider_context$1("" + es.hd + "(" + match$10.hd + ") = " + match$11.hd + "", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }

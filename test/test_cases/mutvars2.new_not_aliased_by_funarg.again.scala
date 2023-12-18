@@ -1,4 +1,4 @@
-var a : Int = 1
+var a = 1
 def foobar(b : Int) =
   a = 2
   b

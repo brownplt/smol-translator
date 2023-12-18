@@ -1,5 +1,5 @@
-var x : Int = 12
-var y : Int = x
+var x = 12
+var y = x
 x = 0
 println(x)
 println(y)

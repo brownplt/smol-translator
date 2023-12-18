@@ -1,7 +1,7 @@
-val s : Int = 21
+val s = 21
 def i() =
   s
 def j() =
-  val s : Int = 76
+  val s = 76
   i()
 println(j())

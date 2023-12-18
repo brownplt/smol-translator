@@ -1,4 +1,4 @@
-var o : Int = 1
+var o = 1
 def u(t : Int) =
   o + t
 o = 9

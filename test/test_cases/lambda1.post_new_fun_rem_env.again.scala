@@ -1,4 +1,4 @@
-var a : Int = 4
+var a = 4
 def h() =
   a
 def k() =

@@ -968,7 +968,7 @@ module ScalaPrinter = {
   }
 
   let defvarToString = (x: string, e) => {
-    `${mutating.contents ? "var" : "val"} ${parameterToString(x)} = ${e}`
+    `${mutating.contents ? "var" : "val"} ${x} = ${e}`
   }
 
   let deffunToString = (f, xs, b) => {
@@ -1015,14 +1015,14 @@ module ScalaPrinter = {
     | (Le, list{e1, e2}) => `${e1} <= ${e2}`->infix_consider_context(ctx)
     | (Ge, list{e1, e2}) => `${e1} >= ${e2}`->infix_consider_context(ctx)
     | (Ne, list{e1, e2}) => `${e1} != ${e2}`->infix_consider_context(ctx)
-    | (PairRefLeft, list{e1}) => `${e1}[0]`->consider_context(ctx)
-    | (PairRefRight, list{e1}) => `${e1}[1]`->consider_context(ctx)
-    | (PairSetLeft, list{e1, e2}) => `${e1}[0] = ${e2}`->assign_consider_context(ctx)
-    | (PairSetRight, list{e1, e2}) => `${e1}[1] = ${e2}`->assign_consider_context(ctx)
-    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`->consider_context(ctx)
-    | (VecNew, es) => `[ ${String.concat(", ", es)} ]`->consider_context(ctx)
-    | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`->assign_consider_context(ctx)
-    | (VecRef, list{e1, e2}) => `${e1}[${e2}]`->consider_context(ctx)
+    | (PairRefLeft, list{e1}) => `${e1}(0)`->consider_context(ctx)
+    | (PairRefRight, list{e1}) => `${e1}(1)`->consider_context(ctx)
+    | (PairSetLeft, list{e1, e2}) => `${e1}(0) = ${e2}`->assign_consider_context(ctx)
+    | (PairSetRight, list{e1, e2}) => `${e1}(1) = ${e2}`->assign_consider_context(ctx)
+    | (PairNew, list{e1, e2}) => `Buffer(${e1}, ${e2})`->consider_context(ctx)
+    | (VecNew, es) => `Buffer(${String.concat(", ", es)})`->consider_context(ctx)
+    | (VecSet, list{e1, e2, e3}) => `${e1}(${e2}) = ${e3}`->assign_consider_context(ctx)
+    | (VecRef, list{e1, e2}) => `${e1}(${e2})`->consider_context(ctx)
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
     | (Eqv, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)

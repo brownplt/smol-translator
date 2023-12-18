@@ -1,3 +1,3 @@
-var rent : Int = 10
+var rent = 10
 rent = 10 * 2
 println(rent)

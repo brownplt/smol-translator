@@ -1,5 +1,5 @@
 def f() =
   42
-val g : Int = f
-val h : Int = g
+val g = f
+val h = g
 println(h())

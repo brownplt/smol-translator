@@ -1,4 +1,4 @@
-var x : Int = 59
-var v : Int = [ 68, 57, x ]
+var x = 59
+var v = Buffer(68, 57, x)
 x = 74
 println(v)

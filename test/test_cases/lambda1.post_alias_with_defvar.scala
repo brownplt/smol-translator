@@ -1,4 +1,4 @@
-var p : Int = [ 72 ]
-var q : Int = p
-p[0] = 94
+var p = Buffer(72)
+var q = p
+p(0) = 94
 println(q)

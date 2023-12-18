@@ -1,4 +1,4 @@
 def f(x : Int) =
-  val y : Int = 1
+  val y = 1
   x + y
 println(f(2) + y)

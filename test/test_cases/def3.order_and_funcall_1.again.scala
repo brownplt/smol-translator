@@ -1,5 +1,5 @@
 def b() =
   a
-val z : Int = b()
-val a : Int = 12
+val z = b()
+val a = 12
 println(z)

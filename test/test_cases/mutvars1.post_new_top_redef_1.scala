@@ -1,5 +1,5 @@
-val n : Int = 2
+val n = 2
 def k() =
   n
-val n : Int = 4
+val n = 4
 println(k())

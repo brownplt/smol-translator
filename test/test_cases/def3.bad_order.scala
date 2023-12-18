@@ -1,4 +1,4 @@
-val x : Int = y + 1
-val y : Int = 2
+val x = y + 1
+val y = 2
 println(x)
 println(y)
