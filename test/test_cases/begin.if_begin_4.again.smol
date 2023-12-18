@@ -1,8 +1,0 @@
-(defvar x 0)
-(deffun (fib n)
-  (if (<= n 1) 1
-      (begin
-        (set! x (+ x 1))
-        (+ (fib (- n 1))
-           (fib (- n 2))))))
-(fib 2)

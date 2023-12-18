@@ -16,7 +16,7 @@ function writeProgram(tutorialName, questionName, program, outputs) {
         throw Error("WTF");
     }
     // skip the whole heap and the whole local tutorials
-    if (tutorialName == "heap" || tutorialName == "local" || outputs.includes("@") || outputs.includes("=")) {
+    if (tutorialName == "heap" || tutorialName == "local" || tutorialName == "begin" || outputs.includes("@") || outputs.includes("=")) {
         skip(tutorialName, questionName);
         return;
     }
