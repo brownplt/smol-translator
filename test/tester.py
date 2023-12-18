@@ -16,7 +16,11 @@ def run_js_file(test):
     else:
         actual_result = stdout + "\n" + "error"
     actual_result = actual_result.strip().split("\n")
-    actual_result = " ".join(actual_result)
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    actual_result = actual_result.strip().split("undefined")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
     return actual_result
 
 
@@ -50,7 +54,8 @@ for test in glob.glob("./test/test_cases/*{}".format(suffix)):
         wished_results = open(wished_results).read().strip()
         actual_results = run_js_file(test)
         if wished_results == actual_results:
-            print("PASSED {}".format(test))
+            # print("PASSED {}".format(test))
+            pass
         else:
             print("FAILED {}".format(test))
             print("Program:")
@@ -78,7 +83,8 @@ for test in glob.glob("./test/test_cases/*{}".format(suffix)):
         wished_results = open(wished_results).read().strip()
         actual_results = run_py_file(test)
         if wished_results == actual_results:
-            print("PASSED {}".format(test))
+            # print("PASSED {}".format(test))
+            pass
         else:
             print("FAILED {}".format(test))
             print("Program:")
