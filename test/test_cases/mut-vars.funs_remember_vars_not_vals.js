@@ -3,7 +3,8 @@ function getx() {
   return x;
 }
 function setx(newVal) {
-  return x = newVal;
+  x = newVal;
+  return;
 }
 console.log(getx());
 console.log(setx(2));

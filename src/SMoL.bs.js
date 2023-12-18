@@ -1226,11 +1226,7 @@ function parseTerms(src) {
 
 function consider_context(e, ctx) {
   if (typeof ctx !== "number") {
-    if (ctx._0) {
-      return "(" + e + ")";
-    } else {
-      return "" + e + "";
-    }
+    return "" + e + "";
   }
   switch (ctx) {
     case /* Stat */0 :
@@ -1238,7 +1234,7 @@ function consider_context(e, ctx) {
     case /* Return */1 :
         return "return " + e + ";";
     case /* TopLevel */2 :
-        return "console.log(" + e + ")";
+        return "console.log(" + e + ");";
     
   }
 }
@@ -1291,180 +1287,33 @@ function defvarToString(x, e) {
   return "let " + xToString(x) + " = " + e + ";";
 }
 
-function exprSetToString(x, e) {
-  return "" + x + " = " + e + "";
-}
-
 function exprLamToString(xs, b) {
   return "function " + listToString$1(xs) + " {\n  " + indent(b, 2) + "\n}";
 }
 
-function exprApp_prmToString(p, es) {
-  switch (p) {
-    case /* Add */0 :
-        return "" + $$String.concat(" + ", es) + "";
-    case /* Sub */1 :
-        return "" + $$String.concat(" - ", es) + "";
-    case /* Mul */2 :
-        return "" + $$String.concat(" * ", es) + "";
-    case /* Div */3 :
-        return "" + $$String.concat(" / ", es) + "";
-    case /* Lt */4 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match = es.tl;
-        if (match && !match.tl) {
-          return "" + es.hd + " < " + match.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Eq */5 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$1 = es.tl;
-        if (match$1 && !match$1.tl) {
-          return "" + es.hd + " === " + match$1.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Gt */6 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$2 = es.tl;
-        if (match$2 && !match$2.tl) {
-          return "" + es.hd + " > " + match$2.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Le */7 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$3 = es.tl;
-        if (match$3 && !match$3.tl) {
-          return "" + es.hd + " <= " + match$3.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Ge */8 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$4 = es.tl;
-        if (match$4 && !match$4.tl) {
-          return "" + es.hd + " >= " + match$4.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Ne */9 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$5 = es.tl;
-        if (match$5 && !match$5.tl) {
-          return "" + es.hd + " != " + match$5.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* PairNew */10 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$6 = es.tl;
-        if (match$6 && !match$6.tl) {
-          return "[ " + es.hd + ", " + match$6.hd + " ]";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* PairRefRight */11 :
-        if (es && !es.tl) {
-          return "" + es.hd + "[1]";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* PairRefLeft */12 :
-        if (es && !es.tl) {
-          return "" + es.hd + "[0]";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* PairSetRight */13 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$7 = es.tl;
-        if (match$7 && !match$7.tl) {
-          return "" + es.hd + "[1]=" + match$7.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* PairSetLeft */14 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$8 = es.tl;
-        if (match$8 && !match$8.tl) {
-          return "" + es.hd + "[0]=" + match$8.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* VecNew */15 :
-        return "[ " + $$String.concat(", ", es) + " ]";
-    case /* VecRef */16 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$9 = es.tl;
-        if (match$9 && !match$9.tl) {
-          return "" + es.hd + "[" + match$9.hd + "]";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* VecSet */17 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$10 = es.tl;
-        if (!match$10) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$11 = match$10.tl;
-        if (match$11 && !match$11.tl) {
-          return "" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* VecLen */18 :
-        if (es && !es.tl) {
-          return "" + es.hd + ".length";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Eqv */19 :
-        if (!es) {
-          return "/* a primitive operation not supported yet */";
-        }
-        var match$12 = es.tl;
-        if (match$12 && !match$12.tl) {
-          return "" + es.hd + " === " + match$12.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Err */20 :
-        if (es && !es.tl) {
-          return "throw " + es.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
-    case /* Not */21 :
-        if (es && !es.tl) {
-          return "! " + es.hd + "";
-        } else {
-          return "/* a primitive operation not supported yet */";
-        }
+function infix_consider_context(e, ctx) {
+  if (typeof ctx === "number" || !ctx._0) {
+    return consider_context(e, ctx);
+  } else {
+    return "(" + e + ")";
+  }
+}
+
+function assign_consider_context(e, ctx) {
+  if (typeof ctx !== "number") {
+    if (ctx._0) {
+      return "(" + e + ")";
+    } else {
+      return consider_context(e, ctx);
+    }
+  }
+  switch (ctx) {
+    case /* Stat */0 :
+        return consider_context(e, ctx);
+    case /* Return */1 :
+        return "" + e + ";\nreturn;";
+    case /* TopLevel */2 :
+        return "" + e + ";";
     
   }
 }
@@ -1516,9 +1365,11 @@ function expToString$1(ctx, e) {
     case /* Ref */1 :
         return consider_context(xToString(c._0.it), ctx);
     case /* Set */2 :
-        return consider_context(exprSetToString(xToString(c._0.it), expToString$1(/* Expr */{
-                            _0: false
-                          }, c._1)), ctx);
+        var x = xToString(c._0.it);
+        var e$1 = expToString$1(/* Expr */{
+              _0: false
+            }, c._1);
+        return assign_consider_context("" + x + " = " + e$1 + "", ctx);
     case /* Lam */3 :
         return consider_context(exprLamToString(Belt_List.map(Belt_List.map(c._0, unannotate), xToString), printBlock$1(/* Return */1, c._1)), ctx);
     case /* Let */4 :
@@ -1526,17 +1377,179 @@ function expToString$1(ctx, e) {
     case /* Letrec */5 :
         return consider_context(exprLetrecToString(Belt_List.map(c._0, xeToString$1), printBlock$1(/* Return */1, c._1)), ctx);
     case /* AppPrm */6 :
-        var p = c._0;
         var partial_arg = /* Expr */{
           _0: true
         };
-        var o = exprApp_prmToString(p, Belt_List.map(c._1, (function (param) {
-                    return expToString$1(partial_arg, param);
-                  })));
-        if (p !== /* Err */20) {
-          return consider_context(o, ctx);
-        } else {
-          return o;
+        var p = c._0;
+        var es = Belt_List.map(c._1, (function (param) {
+                return expToString$1(partial_arg, param);
+              }));
+        switch (p) {
+          case /* Add */0 :
+              return infix_consider_context("" + $$String.concat(" + ", es) + "", ctx);
+          case /* Sub */1 :
+              return infix_consider_context("" + $$String.concat(" - ", es) + "", ctx);
+          case /* Mul */2 :
+              return infix_consider_context("" + $$String.concat(" * ", es) + "", ctx);
+          case /* Div */3 :
+              return infix_consider_context("" + $$String.concat(" / ", es) + "", ctx);
+          case /* Lt */4 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match = es.tl;
+              if (match && !match.tl) {
+                return infix_consider_context("" + es.hd + " < " + match.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Eq */5 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$1 = es.tl;
+              if (match$1 && !match$1.tl) {
+                return infix_consider_context("" + es.hd + " === " + match$1.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Gt */6 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$2 = es.tl;
+              if (match$2 && !match$2.tl) {
+                return infix_consider_context("" + es.hd + " > " + match$2.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Le */7 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$3 = es.tl;
+              if (match$3 && !match$3.tl) {
+                return infix_consider_context("" + es.hd + " <= " + match$3.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Ge */8 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$4 = es.tl;
+              if (match$4 && !match$4.tl) {
+                return infix_consider_context("" + es.hd + " >= " + match$4.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Ne */9 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$5 = es.tl;
+              if (match$5 && !match$5.tl) {
+                return infix_consider_context("" + es.hd + " != " + match$5.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairNew */10 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$6 = es.tl;
+              if (match$6 && !match$6.tl) {
+                return consider_context("[ " + es.hd + ", " + match$6.hd + " ]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairRefRight */11 :
+              if (es && !es.tl) {
+                return consider_context("" + es.hd + "[1]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairRefLeft */12 :
+              if (es && !es.tl) {
+                return consider_context("" + es.hd + "[0]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairSetRight */13 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$7 = es.tl;
+              if (match$7 && !match$7.tl) {
+                return assign_consider_context("" + es.hd + "[1] = " + match$7.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairSetLeft */14 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$8 = es.tl;
+              if (match$8 && !match$8.tl) {
+                return assign_consider_context("" + es.hd + "[0] = " + match$8.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecNew */15 :
+              return consider_context("[ " + $$String.concat(", ", es) + " ]", ctx);
+          case /* VecRef */16 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$9 = es.tl;
+              if (match$9 && !match$9.tl) {
+                return consider_context("" + es.hd + "[" + match$9.hd + "]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecSet */17 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$10 = es.tl;
+              if (!match$10) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$11 = match$10.tl;
+              if (match$11 && !match$11.tl) {
+                return assign_consider_context("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecLen */18 :
+              if (es && !es.tl) {
+                return consider_context("" + es.hd + ".length", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Eqv */19 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$12 = es.tl;
+              if (match$12 && !match$12.tl) {
+                return infix_consider_context("" + es.hd + " === " + match$12.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Err */20 :
+              if (es && !es.tl) {
+                return "throw " + es.hd + "";
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Not */21 :
+              if (es && !es.tl) {
+                return infix_consider_context("! " + es.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          
         }
     case /* App */7 :
         var partial_arg$1 = /* Expr */{
@@ -1581,6 +1594,16 @@ function expToString$1(ctx, e) {
   }
 }
 
+function printBlock$1(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat),
+                  {
+                    hd: expToString$1(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
 function defToString(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -1595,13 +1618,12 @@ function defToString(d) {
   }
 }
 
-function xeToString$1(xe) {
-  return [
-          xToString(xe[0].it),
-          expToString$1(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
+function termAsStat(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString(t._0);
+  } else {
+    return expToString$1(/* Stat */0, t._0);
+  }
 }
 
 function ebToString$1(ctx, eb) {
@@ -1613,21 +1635,22 @@ function ebToString$1(ctx, eb) {
         ];
 }
 
-function printBlock$1(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], printTerm$1),
-                  {
-                    hd: expToString$1(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
+function xeToString$1(xe) {
+  return [
+          xToString(xe[0].it),
+          expToString$1(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function printTerm$1(t) {
   if (t.TAG === /* Def */0) {
     return defToString(t._0);
   } else {
-    return expToString$1(/* Stat */0, t._0);
+    return expToString$1(/* Expr */{
+                _0: false
+              }, t._0);
   }
 }
 
@@ -1643,15 +1666,8 @@ function printProgram(p) {
 }
 
 function printBlock$2(param) {
-  var tts = function (t) {
-    if (t.TAG === /* Def */0) {
-      return defToString(t._0);
-    } else {
-      return expToString$1(/* Stat */0, t._0);
-    }
-  };
   return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(param[0], tts),
+                  Belt_List.map(param[0], termAsStat),
                   {
                     hd: expToString$1(/* Return */1, param[1]),
                     tl: /* [] */0
@@ -1763,7 +1779,7 @@ function wrap(ctx, code) {
   }
 }
 
-function exprApp_prmToString$1(ctx, p, es) {
+function exprApp_prmToString(ctx, p, es) {
   switch (p) {
     case /* Add */0 :
         return wrap(ctx, "" + $$String.concat(" + ", es) + "");
@@ -1985,10 +2001,17 @@ function exprLetToString$1(xes, b) {
 
 function consider_context$1(code, ctx) {
   var match = ctx.node;
-  if (match === 1) {
-    return "return " + code + "";
-  } else {
+  if (typeof match !== "number") {
     return code;
+  }
+  switch (match) {
+    case /* Stat */0 :
+        return code;
+    case /* Return */1 :
+        return "return " + code + "";
+    case /* TopLevel */2 :
+        return "print(" + code + ")";
+    
   }
 }
 
@@ -2087,7 +2110,7 @@ function expToString$2(ctx, e) {
             refs: partial_arg_refs,
             env: partial_arg_env
           };
-          return exprApp_prmToString$1(ctx, p, Belt_List.map(c._1, (function (param) {
+          return exprApp_prmToString(ctx, p, Belt_List.map(c._1, (function (param) {
                             return expToString$2(partial_arg, param);
                           })));
         }
@@ -2103,7 +2126,7 @@ function expToString$2(ctx, e) {
           refs: partial_arg_refs$1,
           env: partial_arg_env$1
         };
-        return exprApp_prmToString$1(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
+        return exprApp_prmToString(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
                           return expToString$2(partial_arg$1, param);
                         })));
     case /* App */7 :
@@ -2412,12 +2435,7 @@ function termToString(ctx, t) {
         }, xs, match._2);
     return "def " + f + "" + listToString$2(xs$1) + ":\n    " + indent(b, 4) + "";
   } else {
-    return expToString$2({
-                node: /* Stat */0,
-                block: ctx.block,
-                refs: ctx.refs,
-                env: ctx.env
-              }, t._0);
+    return expToString$2(ctx, t._0);
   }
 }
 

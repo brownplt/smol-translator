@@ -1,6 +1,7 @@
 let x = 12;
 function f() {
-  return x = 0;
+  x = 0;
+  return;
 }
 console.log(f());
 console.log(x);

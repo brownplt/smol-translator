@@ -671,11 +671,10 @@ type context =
 module JSPrinter = {
   let consider_context = (e, ctx) => {
     switch ctx {
-    | Expr(true) => `(${e})`
-    | Expr(false) => `${e}`
+    | Expr(_) => `${e}`
     | Stat => `${e};`
     | Return => `return ${e};`
-    | TopLevel => `console.log(${e})`
+    | TopLevel => `console.log(${e});`
     }
   }
 
@@ -728,38 +727,58 @@ module JSPrinter = {
     `function ${f}${listToString(xs)} {${indentBlock(b, 2)}\n}`
   }
 
-  let exprSetToString = (x, e) => {
-    `${x} = ${e}`
-  }
-
   let exprLamToString = (xs, b) => {
     `function ${listToString(xs)} {\n  ${indent(b, 2)}\n}`
   }
 
-  let exprApp_prmToString = (p, es) => {
+  let infix_consider_context = (e, ctx) => {
+    switch ctx {
+    | Expr(true) => `(${e})`
+    | _ => consider_context(e, ctx)
+    }
+  }
+
+  let assign_consider_context = (e, ctx) => {
+    switch ctx {
+    | Expr(true) => `(${e})`
+    | TopLevel => `${e};`
+    | Return => `${e};\nreturn;`
+    | _ => consider_context(e, ctx)
+    }
+  }
+
+  let error_consider_context = (e, _ctx) => {
+    e
+  }
+
+  let exprSetToString = (ctx, x, e) => {
+    `${x} = ${e}`->assign_consider_context(ctx)
+  }
+
+  let exprApp_prmToString = (ctx, p, es) => {
     switch (p, es) {
-    | (Add, es) => `${String.concat(" + ", es)}`
-    | (Sub, es) => `${String.concat(" - ", es)}`
-    | (Mul, es) => `${String.concat(" * ", es)}`
-    | (Div, es) => `${String.concat(" / ", es)}`
-    | (Lt, list{e1, e2}) => `${e1} < ${e2}`
-    | (Eq, list{e1, e2}) => `${e1} === ${e2}`
-    | (Gt, list{e1, e2}) => `${e1} > ${e2}`
-    | (Le, list{e1, e2}) => `${e1} <= ${e2}`
-    | (Ge, list{e1, e2}) => `${e1} >= ${e2}`
-    | (Ne, list{e1, e2}) => `${e1} != ${e2}`
-    | (PairRefLeft, list{e1}) => `${e1}[0]`
-    | (PairRefRight, list{e1}) => `${e1}[1]`
-    | (PairSetLeft, list{e1, e2}) => `${e1}[0]=${e2}`
-    | (PairSetRight, list{e1, e2}) => `${e1}[1]=${e2}`
-    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`
-    | (VecNew, es) => `[ ${String.concat(", ", es)} ]`
-    | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`
-    | (VecRef, list{e1, e2}) => `${e1}[${e2}]`
-    | (VecLen, list{e}) => `${e}.length`
-    | (Eqv, list{e1, e2}) => `${e1} === ${e2}`
-    | (Err, list{e}) => `throw ${e}`
-    | (Not, list{e}) => `! ${e}`
+    | (Add, es) => `${String.concat(" + ", es)}`->infix_consider_context(ctx)
+    | (Sub, es) => `${String.concat(" - ", es)}`->infix_consider_context(ctx)
+    | (Mul, es) => `${String.concat(" * ", es)}`->infix_consider_context(ctx)
+    | (Div, es) => `${String.concat(" / ", es)}`->infix_consider_context(ctx)
+    | (Lt, list{e1, e2}) => `${e1} < ${e2}`->infix_consider_context(ctx)
+    | (Eq, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
+    | (Gt, list{e1, e2}) => `${e1} > ${e2}`->infix_consider_context(ctx)
+    | (Le, list{e1, e2}) => `${e1} <= ${e2}`->infix_consider_context(ctx)
+    | (Ge, list{e1, e2}) => `${e1} >= ${e2}`->infix_consider_context(ctx)
+    | (Ne, list{e1, e2}) => `${e1} != ${e2}`->infix_consider_context(ctx)
+    | (PairRefLeft, list{e1}) => `${e1}[0]`->consider_context(ctx)
+    | (PairRefRight, list{e1}) => `${e1}[1]`->consider_context(ctx)
+    | (PairSetLeft, list{e1, e2}) => `${e1}[0] = ${e2}`->assign_consider_context(ctx)
+    | (PairSetRight, list{e1, e2}) => `${e1}[1] = ${e2}`->assign_consider_context(ctx)
+    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`->consider_context(ctx)
+    | (VecNew, es) => `[ ${String.concat(", ", es)} ]`->consider_context(ctx)
+    | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`->assign_consider_context(ctx)
+    | (VecRef, list{e1, e2}) => `${e1}[${e2}]`->consider_context(ctx)
+    | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
+    | (Eqv, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
+    | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
+    | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
     | _ => "/* a primitive operation not supported yet */"
     }
   }
@@ -807,20 +826,13 @@ module JSPrinter = {
     switch e.it {
     | Con(c) => constantToString(c)->consider_context(ctx)
     | Ref(x) => xToString(x.it)->consider_context(ctx)
-    | Set(x, e) =>
-      exprSetToString(x->unannotate->xToString, expToString(Expr(false), e))->consider_context(ctx)
+    | Set(x, e) => exprSetToString(ctx, x->unannotate->xToString, expToString(Expr(false), e))
     | Lam(xs, b) =>
       exprLamToString(
         xs->List.map(unannotate)->List.map(xToString),
         printBlock(Return, b),
       )->consider_context(ctx)
-    | AppPrm(p, es) =>
-      let o = exprApp_prmToString(p, es->List.map(expToString(Expr(true))))
-      if p != Err {
-        o->consider_context(ctx)
-      } else {
-        o
-      }
+    | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(true))))
     | App(e, es) =>
       exprAppToString(
         expToString(Expr(false), e),
@@ -866,13 +878,19 @@ module JSPrinter = {
   and obToString = (ctx, ob) => {
     ob->Option.map(printBlock(ctx))
   }
+  and termAsStat = t => {
+    switch t {
+    | Exp(e) => expToString(Stat, e)
+    | Def(d) => defToString(d)
+    }
+  }
   and printBlock = (ctx, b) => {
     let (ts, e) = b
-    String.concat("\n", list{...ts->List.map(printTerm), expToString(ctx, e)})
+    String.concat("\n", list{...ts->List.map(termAsStat), expToString(ctx, e)})
   }
   and printTerm = t => {
     switch t {
-    | Exp(e) => expToString(Stat, e)
+    | Exp(e) => expToString(Expr(false), e)
     | Def(d) => defToString(d)
     }
   }
@@ -888,13 +906,7 @@ module JSPrinter = {
   }
 
   let printBlock = ((ts, e)) => {
-    let tts = t => {
-      switch t {
-      | Exp(e) => expToString(Stat, e)
-      | Def(d) => defToString(d)
-      }
-    }
-    String.concat("\n", list{...ts->List.map(tts), expToString(Return, e)})
+    String.concat("\n", list{...ts->List.map(termAsStat), expToString(Return, e)})
   }
 }
 
@@ -1101,6 +1113,7 @@ module PYPrinter = {
   let consider_context = (code: string, ctx: context) => {
     switch ctx.node {
     | Return => `return ${code}`
+    | TopLevel => `print(${code})`
     | _ => code
     }
   }
@@ -1313,7 +1326,7 @@ module PYPrinter = {
   }
   and termToString = (ctx, t) => {
     switch t {
-    | Exp(e) => expToString({...ctx, node: Stat}, e)
+    | Exp(e) => expToString(ctx, e)
     | Def(d) => defToString(ctx, d)
     }
   }
@@ -1335,7 +1348,9 @@ module PYPrinter = {
 }
 
 module type Translator = {
+  // print terms, interleaved with whitespace
   let translateTerms: string => string
+  // print runnable full programs
   let translateProgram: string => string
 }
 module TranslateError = {
@@ -1355,7 +1370,8 @@ module PYTranslator = {
   let translateTerms = src => {
     switch Parser.parseTerms(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | ts => switch String.concat(" ", ts->List.map(PYPrinter.printTerm)) {
+    | ts =>
+      switch String.concat(" ", ts->List.map(PYPrinter.printTerm)) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
@@ -1364,7 +1380,8 @@ module PYTranslator = {
   let translateProgram = src => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p => switch PYPrinter.printProgram(p) {
+    | p =>
+      switch PYPrinter.printProgram(p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
@@ -1376,7 +1393,8 @@ module JSTranslator = {
   let translateTerms = src => {
     switch Parser.parseTerms(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | ts => switch String.concat(" ", ts->List.map(JSPrinter.printTerm)) {
+    | ts =>
+      switch String.concat(" ", ts->List.map(JSPrinter.printTerm)) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
@@ -1385,7 +1403,8 @@ module JSTranslator = {
   let translateProgram = src => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p => switch JSPrinter.printProgram(p) {
+    | p =>
+      switch JSPrinter.printProgram(p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }

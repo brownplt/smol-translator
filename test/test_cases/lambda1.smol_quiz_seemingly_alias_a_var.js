@@ -1,9 +1,11 @@
 let x = 5;
 function set1(x, y) {
-  return x = y;
+  x = y;
+  return;
 }
 function set2(a, y) {
-  return x = y;
+  x = y;
+  return;
 }
 console.log(set1(x, 6));
 console.log(x);
