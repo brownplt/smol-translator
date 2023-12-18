@@ -911,6 +911,8 @@ module JSPrinter = {
 }
 
 module ScalaPrinter = {
+  let mutating = ref(false);
+
   let consider_context = (e, ctx) => {
     switch ctx {
     | Expr(_) => `${e}`
@@ -961,8 +963,12 @@ module ScalaPrinter = {
     }
   }
 
+  let parameterToString = x => {
+    `${xToString(x)} : Int`
+  }
+
   let defvarToString = (x: string, e) => {
-    `val ${xToString(x)} = ${e}`
+    `val ${parameterToString(x)} = ${e}`
   }
 
   let deffunToString = (f, xs, b) => {
@@ -1071,7 +1077,7 @@ module ScalaPrinter = {
     | Set(x, e) => exprSetToString(ctx, x->unannotate->xToString, expToString(Expr(false), e))
     | Lam(xs, b) =>
       exprLamToString(
-        xs->List.map(unannotate)->List.map(xToString),
+        xs->List.map(unannotate)->List.map(parameterToString),
         printBlock(Return, b),
       )->consider_context(ctx)
     | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(true))))
@@ -1104,7 +1110,7 @@ module ScalaPrinter = {
     | Fun(f, xs, b) =>
       deffunToString(
         f->unannotate->xToString,
-        xs->List.map(unannotate)->List.map(xToString),
+        xs->List.map(unannotate)->List.map(parameterToString),
         printBlock(Return, b),
       )
     }
@@ -1138,6 +1144,7 @@ module ScalaPrinter = {
   }
 
   let printProgram = p => {
+    mutating := String.contains(SMoLPrinter.printProgram(p), '!')
     let tts = t => {
       switch t {
       | Exp(e) => expToString(TopLevel, e)

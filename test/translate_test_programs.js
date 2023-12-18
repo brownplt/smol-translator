@@ -50,13 +50,13 @@ for (const f of fs.readdirSync(path)) {
             const outputs = fs.readFileSync(outputsFile, 'utf8');
             if (!outputs.includes("@")) {
                 try {
-                    fs.writeFileSync(`${path}/${name}.py`, SMoL.ScalaTranslator.translateProgram(program));
-                    fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.ScalaTranslator.translateTerms(outputs));
+                    fs.writeFileSync(`${path}/${name}.scala`, SMoL.ScalaTranslator.translateProgram(program));
+                    fs.writeFileSync(`${path}/${name}.scala.txt`, SMoL.ScalaTranslator.translateTerms(outputs));
                 } catch (err) {
-                    fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                    fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
                 }
             } else {
-                fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
+                fs.writeFileSync(`${path}/${name}.scala.err`, "Skipped translation because the outputs include `@`.");
             }
         } catch (err) {
             console.log(name);

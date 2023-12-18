@@ -1675,6 +1675,10 @@ function printBlock$2(param) {
                 ]));
 }
 
+var mutating = {
+  contents: false
+};
+
 function consider_context$1(e, ctx) {
   if (typeof ctx !== "number") {
     return "" + e + "";
@@ -1733,8 +1737,12 @@ function xToString$1(x) {
   }
 }
 
+function parameterToString(x) {
+  return "" + xToString$1(x) + " : Int";
+}
+
 function defvarToString$1(x, e) {
-  return "val " + xToString$1(x) + " = " + e + "";
+  return "val " + parameterToString(x) + " = " + e + "";
 }
 
 function exprLamToString$1(xs, b) {
@@ -1820,7 +1828,7 @@ function expToString$2(ctx, e) {
             }, c._1);
         return assign_consider_context$1("" + x + " = " + e$1 + "", ctx);
     case /* Lam */3 :
-        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(c._0, unannotate), xToString$1), printBlock$3(/* Return */1, c._1)), ctx);
+        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(c._0, unannotate), parameterToString), printBlock$3(/* Return */1, c._1)), ctx);
     case /* Let */4 :
         return consider_context$1(exprLetToString$1(Belt_List.map(c._0, xeToString$2), printBlock$3(/* Return */1, c._1)), ctx);
     case /* Letrec */5 :
@@ -2053,6 +2061,14 @@ function printBlock$3(ctx, b) {
                 ]));
 }
 
+function termAsStat$1(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$1(t._0);
+  } else {
+    return expToString$2(/* Stat */0, t._0);
+  }
+}
+
 function defToString$1(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -2061,7 +2077,7 @@ function defToString$1(d) {
                   }, match._1));
   } else {
     var f = xToString$1(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$1);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
     var b = printBlock$3(/* Return */1, match._2);
     return "def " + f + "" + listToString$2(xs) + " =" + indentBlock(b, 2) + "";
   }
@@ -2085,14 +2101,6 @@ function ebToString$2(ctx, eb) {
         ];
 }
 
-function termAsStat$1(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$1(t._0);
-  } else {
-    return expToString$2(/* Stat */0, t._0);
-  }
-}
-
 function printTerm$2(t) {
   if (t.TAG === /* Def */0) {
     return defToString$1(t._0);
@@ -2104,6 +2112,7 @@ function printTerm$2(t) {
 }
 
 function printProgram$1(p) {
+  mutating.contents = $$String.contains(termsToString(p), /* '!' */33);
   var tts = function (t) {
     if (t.TAG === /* Def */0) {
       return defToString$1(t._0);
