@@ -1,4 +1,4 @@
-val a : Int = 5
+var a : Int = 5
 def k(b : Int) =
   b = 3
   a

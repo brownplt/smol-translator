@@ -1,10 +1,10 @@
 def foobar() =
-  val n : Int = 0
+  var n : Int = 0
   () =>
     n = n + 1
     n
-val f : Int = foobar()
-val g : Int = foobar()
+var f : Int = foobar()
+var g : Int = foobar()
 println(f())
 println(f())
 println(g())

@@ -1,5 +1,5 @@
-val m : Int = 40
-val n : Int = m
+var m : Int = 40
+var n : Int = m
 n = 22
 println(m)
 println(n)

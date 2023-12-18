@@ -1,5 +1,5 @@
-val a : Int = 1
-val b : Int = a
+var a : Int = 1
+var b : Int = a
 a = 2
 println(a)
 println(b)

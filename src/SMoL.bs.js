@@ -1742,7 +1742,9 @@ function parameterToString(x) {
 }
 
 function defvarToString$1(x, e) {
-  return "val " + parameterToString(x) + " = " + e + "";
+  return "" + (
+          mutating.contents ? "var" : "val"
+        ) + " " + parameterToString(x) + " = " + e + "";
 }
 
 function exprLamToString$1(xs, b) {

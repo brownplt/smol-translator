@@ -1,4 +1,4 @@
-val x : Int = 1
+var x : Int = 1
 def f(n : Int) =
   x + n
 x = 2

@@ -1,4 +1,4 @@
-val n : Int = 7
+var n : Int = 7
 def foo() =
   n
 def bar() =
