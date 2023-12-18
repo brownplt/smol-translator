@@ -1,8 +1,0 @@
-(defvar a 2)
-(deffun (make-fun)
-  (deffun (add-a b)
-    (+ a b))
-  add-a)
-(defvar fun (make-fun))
-(set! a 100)
-(fun a)

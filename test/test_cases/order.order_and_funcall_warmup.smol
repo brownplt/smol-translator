@@ -1,5 +1,0 @@
-(deffun (getx)
-  x)
-(defvar x 12)
-(defvar y (getx))
-y

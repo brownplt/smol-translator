@@ -1,4 +1,4 @@
-(defvar mv (mvec 13))
-(defvar mv2 (mpair mv mv))
-(vec-set! (left mv2) 0 42)
-(right mv2)
+(defvar mv (mvec 63))
+(defvar mv2 (mvec mv mv))
+(vec-set! (vec-ref mv2 0) 0 42)
+(vec-ref mv2 1)

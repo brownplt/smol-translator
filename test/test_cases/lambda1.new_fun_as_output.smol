@@ -1,0 +1,6 @@
+(deffun (g)
+  (deffun (add1 x)
+    (+ x 1))
+  add1)
+(defvar f (g))
+(f 10)

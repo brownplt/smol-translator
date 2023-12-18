@@ -1,4 +1,4 @@
-(defvar x (mvec 3))
-(defvar v (mvec 1 2 x))
-(vec-set! x 0 4)
+(defvar x (mvec 53))
+(defvar v (mvec 72 x))
+(vec-set! x 0 72)
 v

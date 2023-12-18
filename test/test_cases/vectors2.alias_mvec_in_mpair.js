@@ -1,4 +1,4 @@
-let v = [ 1, 2, 3 ];
+let v = [ 71, 72, 73 ];
 let vv = [ v, v ];
-vv[1][0] = 10;
+vv[1][0] = 44;
 console.log(vv[0]);

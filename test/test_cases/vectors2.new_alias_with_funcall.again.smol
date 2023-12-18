@@ -1,0 +1,5 @@
+(defvar a (mvec 66 54))
+(deffun (h b)
+  (vec-set! a 0 42)
+  b)
+(h a)

@@ -1,0 +1,3 @@
+(defvar m (mvec 82 76))
+(vec-set! m 0 m)
+(vec-ref m 1)

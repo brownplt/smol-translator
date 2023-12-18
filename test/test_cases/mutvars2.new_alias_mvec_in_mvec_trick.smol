@@ -1,0 +1,4 @@
+(defvar x (mvec 55))
+(defvar v (mvec x 55 55))
+(set! x (mvec 55 55))
+v

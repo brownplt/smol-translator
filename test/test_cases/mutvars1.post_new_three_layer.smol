@@ -1,0 +1,7 @@
+(defvar n 5)
+(deffun (f1 m)
+  (deffun (f2)
+    (defvar l 4)
+    (+ n m l))
+  (f2))
+(+ (f1 1) 3)

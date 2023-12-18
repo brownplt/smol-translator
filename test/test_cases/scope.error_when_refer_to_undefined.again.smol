@@ -1,4 +1,0 @@
-(deffun (multr s)
-  (defvar r 2)
-  (* s r))
-(* (multr 5) r)

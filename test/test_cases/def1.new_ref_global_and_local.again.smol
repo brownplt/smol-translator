@@ -1,0 +1,7 @@
+(defvar a 9)
+(deffun (fun)
+  (defvar b 2)
+  (deffun (prod)
+    (* a b))
+  (prod))
+(fun)

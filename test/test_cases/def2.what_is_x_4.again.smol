@@ -1,0 +1,8 @@
+(defvar f 6)
+(deffun (x)
+  (deffun (y)
+    f)
+  (defvar f 3)
+  (y))
+
+(x)

@@ -1,0 +1,3 @@
+(defvar m 5)
+(defvar m (+ m 4))
+m

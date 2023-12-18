@@ -1,5 +1,0 @@
-(defvar s 1)
-(deffun (update-var t)
-  (set! t 2)
-  s)
-(update-var s)

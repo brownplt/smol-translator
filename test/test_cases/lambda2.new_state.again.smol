@@ -1,0 +1,8 @@
+(defvar a 2)
+(deffun (make)
+  (deffun (f b)
+    (+ a b))
+  f)
+(defvar g (make))
+(set! a 1)
+(g 1)

@@ -1,4 +1,0 @@
-(deffun (addy x)
-  (defvar y 1)
-  (+ x y))
-(addy 2)

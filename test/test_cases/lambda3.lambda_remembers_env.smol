@@ -1,6 +1,0 @@
-(defvar x 1)
-(defvar f
-  (lambda (y)
-    (+ x y)))
-(set! x 2)
-(f x)

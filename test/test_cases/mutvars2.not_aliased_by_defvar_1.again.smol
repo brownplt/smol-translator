@@ -1,0 +1,5 @@
+(defvar a 1)
+(defvar b a)
+(set! a 2)
+a
+b

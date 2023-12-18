@@ -1,0 +1,7 @@
+(deffun (f n)
+  (lambda (m)
+    (* m n)))
+(defvar fun1 (f 10))
+(defvar fun2 (f 1))
+(fun1 4)
+(fun2 4)

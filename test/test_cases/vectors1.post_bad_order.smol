@@ -1,0 +1,5 @@
+(defvar i (* j 3))
+(defvar j 2)
+
+i
+j

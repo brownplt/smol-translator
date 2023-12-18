@@ -1,6 +1,6 @@
-let x = [ 1, 0 ];
+let x = [ 71, 86 ];
 function f(y) {
-  y[0] = 173;
+  y[0] = 34;
   return;
 }
 console.log(f(x));

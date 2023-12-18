@@ -1,0 +1,5 @@
+(defvar zz (mvec 88 88))
+(deffun (f aa)
+  (vec-set! aa 0 97))
+(f zz)
+zz

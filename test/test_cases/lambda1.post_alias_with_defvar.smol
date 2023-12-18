@@ -1,0 +1,4 @@
+(defvar p (mvec 72))
+(defvar q p)
+(vec-set! p 0 94)
+q

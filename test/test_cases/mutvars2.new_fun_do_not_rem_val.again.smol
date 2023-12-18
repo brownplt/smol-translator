@@ -1,0 +1,5 @@
+(defvar o 1)
+(deffun (u t)
+  (+ o t))
+(set! o 9)
+(u 5)

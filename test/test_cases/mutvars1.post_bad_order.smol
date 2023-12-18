@@ -1,0 +1,5 @@
+(defvar n (* m 4))
+(defvar m 3)
+
+n
+m

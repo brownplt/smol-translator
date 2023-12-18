@@ -1,4 +1,0 @@
-(deffun (add1 x) (+ x 1))
-(deffun (g) add1)
-(defvar f (g))
-(f 100)

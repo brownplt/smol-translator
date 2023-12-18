@@ -1,4 +1,4 @@
-let x = [ 3 ];
-let v = [ 1, 2, x ];
-x[0] = 4;
+let x = [ 53 ];
+let v = [ 72, x ];
+x[0] = 72;
 console.log(v);

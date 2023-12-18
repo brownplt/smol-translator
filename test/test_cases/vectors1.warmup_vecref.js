@@ -1,2 +1,3 @@
-let v = [ [ 10, 20 ], [ 30, 40 ] ];
-console.log(v[1][0]);
+let v = [ [ 61, 62 ], [ 63, 64 ] ];
+let vr = v[1];
+console.log(vr[0]);

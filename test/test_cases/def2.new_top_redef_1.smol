@@ -1,0 +1,6 @@
+(defvar x 1)
+(deffun (f)
+  x)
+(defvar x 2)
+
+(f)

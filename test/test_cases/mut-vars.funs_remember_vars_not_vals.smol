@@ -1,8 +1,0 @@
-(defvar x 1)
-(deffun (getx)
-  x)
-(deffun (setx new-val)
-  (set! x new-val))
-(getx)
-(setx 2)
-(getx)

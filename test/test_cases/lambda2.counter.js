@@ -1,12 +1,13 @@
-function makeCounter(count) {
+function foobar() {
+  let n = 0;
   function counter() {
-    count = count + 1;
-    return count;
+    n = n + 1;
+    return n;
   }
   return counter;
 }
-let f = makeCounter(0);
-let g = makeCounter(0);
+let f = foobar();
+let g = foobar();
 console.log(f());
 console.log(f());
 console.log(g());

@@ -1,0 +1,6 @@
+(defvar a 1)
+(deffun (foobar b)
+  (set! a 2)
+  b)
+(foobar a)
+a

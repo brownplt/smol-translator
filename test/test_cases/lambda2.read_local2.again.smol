@@ -1,7 +1,0 @@
-(deffun (fun A)
-  (deffun (what-is-A) A)
-  what-is-A)
-(defvar what-is-A (fun 22))
-(defvar what-is-B (fun 33))
-(what-is-A)
-(what-is-B)

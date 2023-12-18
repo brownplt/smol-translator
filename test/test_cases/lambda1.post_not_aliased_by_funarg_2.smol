@@ -1,0 +1,5 @@
+(defvar a 5)
+(deffun (k b)
+  (set! b 3)
+  a)
+(k a)

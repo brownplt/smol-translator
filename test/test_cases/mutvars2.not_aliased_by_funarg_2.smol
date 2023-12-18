@@ -1,0 +1,5 @@
+(defvar x 12)
+(deffun (f y)
+  (set! y 0)
+  x)
+(f x)

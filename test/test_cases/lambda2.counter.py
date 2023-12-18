@@ -1,11 +1,12 @@
-def make_counter(count):
+def foobar():
+    n = 0
     def counter():
-        nonlocal count
-        count = count + 1
-        return count
+        nonlocal n
+        n = n + 1
+        return n
     return counter
-f = make_counter(0)
-g = make_counter(0)
+f = foobar()
+g = foobar()
 print(f())
 print(f())
 print(g())

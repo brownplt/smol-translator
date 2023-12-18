@@ -1,0 +1,7 @@
+(defvar s 21)
+(deffun (i) s)
+(deffun (j)
+  (defvar s 76)
+  (i))
+
+(j)

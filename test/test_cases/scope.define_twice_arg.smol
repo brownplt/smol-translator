@@ -1,3 +1,0 @@
-(deffun (f x x)
-  (+ x x))
-(f 1 2)

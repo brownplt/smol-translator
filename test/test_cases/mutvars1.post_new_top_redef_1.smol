@@ -1,0 +1,6 @@
+(defvar n 2)
+(deffun (k)
+  n)
+(defvar n 4)
+
+(k)

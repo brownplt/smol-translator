@@ -3,6 +3,6 @@ def f(n):
         return m * n
     return g
 fun1 = f(10)
-fun2 = f(100)
+fun2 = f(1)
 print(fun1(4))
 print(fun2(4))

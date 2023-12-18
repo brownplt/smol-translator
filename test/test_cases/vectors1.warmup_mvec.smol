@@ -1,4 +1,4 @@
-(defvar n 3)
+(defvar n 44)
 (deffun (f x)
   (+ x 1))
 (mvec n (f n))

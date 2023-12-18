@@ -3,6 +3,6 @@
     (* m n))
   g)
 (defvar fun1 (f 10))
-(defvar fun2 (f 100))
+(defvar fun2 (f 1))
 (fun1 4)
 (fun2 4)

@@ -1,4 +1,4 @@
-export const tutorial = {
+export const tutorials = {
     "def1":
     {
         "misconceptions": [

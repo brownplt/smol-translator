@@ -1,0 +1,7 @@
+(deffun (bar y)
+  (lambda (x)
+    (+ x y)))
+(defvar f (bar 2))
+(defvar g (bar 4))
+(f 2)
+(g 2)
