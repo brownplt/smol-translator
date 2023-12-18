@@ -1,7 +1,6 @@
 import subprocess
 import glob
 
-
 def run_js_file(test):
     command = [
         "node",
@@ -38,7 +37,11 @@ def run_py_file(test):
     else:
         actual_result = stdout + "\n" + "error"
     actual_result = actual_result.strip().split("\n")
-    actual_result = " ".join(actual_result)
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    actual_result = actual_result.strip().split("None")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
     return actual_result
 
 
