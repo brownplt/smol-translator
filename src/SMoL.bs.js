@@ -1675,6 +1675,455 @@ function printBlock$2(param) {
                 ]));
 }
 
+function consider_context$1(e, ctx) {
+  if (typeof ctx !== "number") {
+    return "" + e + "";
+  }
+  switch (ctx) {
+    case /* Stat */0 :
+    case /* Return */1 :
+        return "" + e + "";
+    case /* TopLevel */2 :
+        return "println(" + e + ")";
+    
+  }
+}
+
+function constantToString$1(c) {
+  if (typeof c === "number") {
+    return "null";
+  }
+  switch (c.TAG | 0) {
+    case /* Num */0 :
+        return String(c._0);
+    case /* Lgc */1 :
+        if (c._0) {
+          return "true";
+        } else {
+          return "false";
+        }
+    case /* Str */2 :
+        return "\"" + $$String.escaped(c._0) + "\"";
+    
+  }
+}
+
+function listToString$2(ss) {
+  return "(" + $$String.concat(", ", ss) + ")";
+}
+
+function xToString$1(x) {
+  var re = /-./g;
+  var matchFn = function (matchPart, _offset, _wholeString) {
+    return matchPart.substring(1).toUpperCase();
+  };
+  var x$1 = x.replace(re, matchFn);
+  if (x$1 === "var") {
+    return "$var";
+  } else if (x$1 === "+") {
+    return "(x, y) => (x + y)";
+  } else if (x$1 === "-") {
+    return "(x, y) => (x - y)";
+  } else if (x$1 === "*") {
+    return "(x, y) => (x * y)";
+  } else if (x$1 === "/") {
+    return "(x, y) => (x / y)";
+  } else {
+    return x$1;
+  }
+}
+
+function defvarToString$1(x, e) {
+  return "val " + xToString$1(x) + " = " + e + "";
+}
+
+function exprLamToString$1(xs, b) {
+  return "" + listToString$2(xs) + " =>" + indentBlock(b, 2) + "";
+}
+
+function infix_consider_context$1(e, ctx) {
+  if (typeof ctx === "number" || !ctx._0) {
+    return consider_context$1(e, ctx);
+  } else {
+    return "(" + e + ")";
+  }
+}
+
+function assign_consider_context$1(e, ctx) {
+  if (typeof ctx !== "number") {
+    if (ctx._0) {
+      return "(" + e + ")";
+    } else {
+      return consider_context$1(e, ctx);
+    }
+  }
+  switch (ctx) {
+    case /* Stat */0 :
+        return consider_context$1(e, ctx);
+    case /* Return */1 :
+    case /* TopLevel */2 :
+        return "" + e + "";
+    
+  }
+}
+
+function exprAppToString$1(e, es) {
+  return "" + e + "" + listToString$2(es) + "";
+}
+
+function exprBgnToString$1(es, e) {
+  return "(" + $$String.concat(", ", Belt_List.concatMany([
+                  es,
+                  {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                ])) + ")";
+}
+
+function exprIfToString$1(e_cnd, e_thn, e_els) {
+  return "(" + e_cnd + " ? " + e_thn + " : " + e_els + ")";
+}
+
+function exprLetToString$1(xes, b) {
+  return "((" + $$String.concat(", ", Belt_List.map(xes, (function (param) {
+                    return param[0];
+                  }))) + ")=>{" + b + "})(" + $$String.concat(", ", Belt_List.map(xes, (function (param) {
+                    return param[1];
+                  }))) + ")";
+}
+
+function exprLetrecToString$1(xes, b) {
+  var b$1 = $$String.concat("\n", Belt_List.concatMany([
+            Belt_List.map(xes, (function (param) {
+                    return defvarToString$1(param[0], param[1]);
+                  })),
+            {
+              hd: b,
+              tl: /* [] */0
+            }
+          ]));
+  return "()=>{" + b$1 + "})()";
+}
+
+function expToString$2(ctx, e) {
+  var c = e.it;
+  switch (c.TAG | 0) {
+    case /* Con */0 :
+        return consider_context$1(constantToString$1(c._0), ctx);
+    case /* Ref */1 :
+        return consider_context$1(xToString$1(c._0.it), ctx);
+    case /* Set */2 :
+        var x = xToString$1(c._0.it);
+        var e$1 = expToString$2(/* Expr */{
+              _0: false
+            }, c._1);
+        return assign_consider_context$1("" + x + " = " + e$1 + "", ctx);
+    case /* Lam */3 :
+        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(c._0, unannotate), xToString$1), printBlock$3(/* Return */1, c._1)), ctx);
+    case /* Let */4 :
+        return consider_context$1(exprLetToString$1(Belt_List.map(c._0, xeToString$2), printBlock$3(/* Return */1, c._1)), ctx);
+    case /* Letrec */5 :
+        return consider_context$1(exprLetrecToString$1(Belt_List.map(c._0, xeToString$2), printBlock$3(/* Return */1, c._1)), ctx);
+    case /* AppPrm */6 :
+        var partial_arg = /* Expr */{
+          _0: true
+        };
+        var p = c._0;
+        var es = Belt_List.map(c._1, (function (param) {
+                return expToString$2(partial_arg, param);
+              }));
+        switch (p) {
+          case /* Add */0 :
+              return infix_consider_context$1("" + $$String.concat(" + ", es) + "", ctx);
+          case /* Sub */1 :
+              return infix_consider_context$1("" + $$String.concat(" - ", es) + "", ctx);
+          case /* Mul */2 :
+              return infix_consider_context$1("" + $$String.concat(" * ", es) + "", ctx);
+          case /* Div */3 :
+              return infix_consider_context$1("" + $$String.concat(" / ", es) + "", ctx);
+          case /* Lt */4 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match = es.tl;
+              if (match && !match.tl) {
+                return infix_consider_context$1("" + es.hd + " < " + match.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Eq */5 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$1 = es.tl;
+              if (match$1 && !match$1.tl) {
+                return infix_consider_context$1("" + es.hd + " === " + match$1.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Gt */6 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$2 = es.tl;
+              if (match$2 && !match$2.tl) {
+                return infix_consider_context$1("" + es.hd + " > " + match$2.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Le */7 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$3 = es.tl;
+              if (match$3 && !match$3.tl) {
+                return infix_consider_context$1("" + es.hd + " <= " + match$3.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Ge */8 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$4 = es.tl;
+              if (match$4 && !match$4.tl) {
+                return infix_consider_context$1("" + es.hd + " >= " + match$4.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Ne */9 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$5 = es.tl;
+              if (match$5 && !match$5.tl) {
+                return infix_consider_context$1("" + es.hd + " != " + match$5.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairNew */10 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$6 = es.tl;
+              if (match$6 && !match$6.tl) {
+                return consider_context$1("[ " + es.hd + ", " + match$6.hd + " ]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairRefRight */11 :
+              if (es && !es.tl) {
+                return consider_context$1("" + es.hd + "[1]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairRefLeft */12 :
+              if (es && !es.tl) {
+                return consider_context$1("" + es.hd + "[0]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairSetRight */13 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$7 = es.tl;
+              if (match$7 && !match$7.tl) {
+                return assign_consider_context$1("" + es.hd + "[1] = " + match$7.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* PairSetLeft */14 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$8 = es.tl;
+              if (match$8 && !match$8.tl) {
+                return assign_consider_context$1("" + es.hd + "[0] = " + match$8.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecNew */15 :
+              return consider_context$1("[ " + $$String.concat(", ", es) + " ]", ctx);
+          case /* VecRef */16 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$9 = es.tl;
+              if (match$9 && !match$9.tl) {
+                return consider_context$1("" + es.hd + "[" + match$9.hd + "]", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecSet */17 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$10 = es.tl;
+              if (!match$10) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$11 = match$10.tl;
+              if (match$11 && !match$11.tl) {
+                return assign_consider_context$1("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* VecLen */18 :
+              if (es && !es.tl) {
+                return consider_context$1("" + es.hd + ".length", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Eqv */19 :
+              if (!es) {
+                return "/* a primitive operation not supported yet */";
+              }
+              var match$12 = es.tl;
+              if (match$12 && !match$12.tl) {
+                return infix_consider_context$1("" + es.hd + " === " + match$12.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Err */20 :
+              if (es && !es.tl) {
+                return "throw " + es.hd + "";
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          case /* Not */21 :
+              if (es && !es.tl) {
+                return infix_consider_context$1("! " + es.hd + "", ctx);
+              } else {
+                return "/* a primitive operation not supported yet */";
+              }
+          
+        }
+    case /* App */7 :
+        var partial_arg$1 = /* Expr */{
+          _0: false
+        };
+        return consider_context$1(exprAppToString$1(expToString$2(/* Expr */{
+                            _0: false
+                          }, c._0), Belt_List.map(c._1, (function (param) {
+                              return expToString$2(partial_arg$1, param);
+                            }))), ctx);
+    case /* Bgn */8 :
+        var partial_arg$2 = /* Expr */{
+          _0: false
+        };
+        return consider_context$1(exprBgnToString$1(Belt_List.map(c._0, (function (param) {
+                              return expToString$2(partial_arg$2, param);
+                            })), expToString$2(/* Expr */{
+                            _0: false
+                          }, c._1)), ctx);
+    case /* If */9 :
+        return consider_context$1(exprIfToString$1(expToString$2(/* Expr */{
+                            _0: true
+                          }, c._0), expToString$2(/* Expr */{
+                            _0: true
+                          }, c._1), expToString$2(/* Expr */{
+                            _0: true
+                          }, c._2)), ctx);
+    case /* Cnd */10 :
+        var ebs = Belt_List.map(c._0, (function (param) {
+                return ebToString$2(ctx, param);
+              }));
+        var ob = Belt_Option.map(c._1, (function (param) {
+                return printBlock$3(ctx, param);
+              }));
+        var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
+        var ebs$1 = Belt_List.map(ebs, (function (param) {
+                return "if (" + param[0] + ")" + indentBlock(param[1], 2) + "\n";
+              }));
+        var ebs$2 = $$String.concat(" else ", ebs$1);
+        return ebs$2 + ob$1;
+    
+  }
+}
+
+function printBlock$3(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$1),
+                  {
+                    hd: expToString$2(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
+function defToString$1(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString$1(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$1);
+    var b = printBlock$3(/* Return */1, match._2);
+    return "def " + f + "" + listToString$2(xs) + " =" + indentBlock(b, 2) + "";
+  }
+}
+
+function xeToString$2(xe) {
+  return [
+          xToString$1(xe[0].it),
+          expToString$2(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
+}
+
+function ebToString$2(ctx, eb) {
+  return [
+          expToString$2(/* Expr */{
+                _0: false
+              }, eb[0]),
+          printBlock$3(ctx, eb[1])
+        ];
+}
+
+function termAsStat$1(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$1(t._0);
+  } else {
+    return expToString$2(/* Stat */0, t._0);
+  }
+}
+
+function printTerm$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$1(t._0);
+  } else {
+    return expToString$2(/* Expr */{
+                _0: false
+              }, t._0);
+  }
+}
+
+function printProgram$1(p) {
+  var tts = function (t) {
+    if (t.TAG === /* Def */0) {
+      return defToString$1(t._0);
+    } else {
+      return expToString$2(/* TopLevel */2, t._0);
+    }
+  };
+  return $$String.concat("\n", Belt_List.map(p, tts));
+}
+
+function printBlock$4(param) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(param[0], termAsStat$1),
+                  {
+                    hd: expToString$2(/* Return */1, param[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
 var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
 
 var base_env = Js_dict.fromArray(Belt_Array.map(all_primitives, (function (p) {
@@ -1712,7 +2161,7 @@ function make_local_env(env, xs) {
                           })))));
 }
 
-function constantToString$1(c) {
+function constantToString$2(c) {
   if (typeof c === "number") {
     return "None";
   }
@@ -1731,11 +2180,11 @@ function constantToString$1(c) {
   }
 }
 
-function listToString$2(ss) {
+function listToString$3(ss) {
   return "(" + $$String.concat(", ", ss) + ")";
 }
 
-function xToString$1(x) {
+function xToString$2(x) {
   if (x === "-") {
     return x;
   }
@@ -1746,7 +2195,7 @@ function xToString$1(x) {
   return x.replace(re, matchFn);
 }
 
-function exprLamToString$1(xs, b) {
+function exprLamToString$2(xs, b) {
   if (xs === /* [] */0) {
     return "lambda: " + b + "";
   } else {
@@ -1989,17 +2438,17 @@ function exprApp_prmToString(ctx, p, es) {
       };
 }
 
-function exprAppToString$1(e, es) {
-  return "" + e + "" + listToString$2(es) + "";
+function exprAppToString$2(e, es) {
+  return "" + e + "" + listToString$3(es) + "";
 }
 
-function exprLetToString$1(xes, b) {
-  return exprAppToString$1(exprLamToString$1(Belt_List.map(xes, (function (param) {
+function exprLetToString$2(xes, b) {
+  return exprAppToString$2(exprLamToString$2(Belt_List.map(xes, (function (param) {
                         return "" + param[0] + "=" + param[1] + "";
                       })), b), /* [] */0);
 }
 
-function consider_context$1(code, ctx) {
+function consider_context$2(code, ctx) {
   var match = ctx.node;
   if (typeof match !== "number") {
     return code;
@@ -2015,18 +2464,18 @@ function consider_context$1(code, ctx) {
   }
 }
 
-function expToString$2(ctx, e) {
+function expToString$3(ctx, e) {
   var c = e.it;
   switch (c.TAG | 0) {
     case /* Con */0 :
-        return consider_context$1(constantToString$1(c._0), ctx);
+        return consider_context$2(constantToString$2(c._0), ctx);
     case /* Ref */1 :
-        return consider_context$1(xToString$1(c._0.it), ctx);
+        return consider_context$2(xToString$2(c._0.it), ctx);
     case /* Set */2 :
         var x = c._0;
         Js_array.unshift(x.it, ctx.refs);
-        var x$1 = xToString$1(x.it);
-        var e$1 = expToString$2({
+        var x$1 = xToString$2(x.it);
+        var e$1 = expToString$3({
               node: /* Expr */{
                 _0: false
               },
@@ -2052,7 +2501,7 @@ function expToString$2(ctx, e) {
         }
     case /* Lam */3 :
         var xs = c._0;
-        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(xs, unannotate), xToString$1), printBlock$3({
+        return consider_context$2(exprLamToString$2(Belt_List.map(Belt_List.map(xs, unannotate), xToString$2), printBlock$5({
                             node: /* Expr */{
                               _0: false
                             },
@@ -2062,9 +2511,9 @@ function expToString$2(ctx, e) {
                           }, xs, c._1)), ctx);
     case /* Let */4 :
         var xes = c._0;
-        return consider_context$1(exprLetToString$1(Belt_List.map(xes, (function (param) {
-                              return xeToString$2(ctx, param);
-                            })), printBlock$3({
+        return consider_context$2(exprLetToString$2(Belt_List.map(xes, (function (param) {
+                              return xeToString$3(ctx, param);
+                            })), printBlock$5({
                             node: /* Expr */{
                               _0: false
                             },
@@ -2076,7 +2525,7 @@ function expToString$2(ctx, e) {
                                 })), c._1)), ctx);
     case /* Letrec */5 :
         var xes$1 = c._0;
-        printBlock$3({
+        printBlock$5({
               node: /* Expr */{
                 _0: false
               },
@@ -2087,14 +2536,14 @@ function expToString$2(ctx, e) {
                     return param[0];
                   })), c._1);
         Belt_List.map(xes$1, (function (param) {
-                return xeToString$2(ctx, param);
+                return xeToString$3(ctx, param);
               }));
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "Python translation does not support letrec-expression.",
               Error: new Error()
             };
-        return consider_context$1(undefined, ctx);
+        return consider_context$2(undefined, ctx);
     case /* AppPrm */6 :
         var p = c._0;
         if (p !== 17) {
@@ -2111,7 +2560,7 @@ function expToString$2(ctx, e) {
             env: partial_arg_env
           };
           return exprApp_prmToString(ctx, p, Belt_List.map(c._1, (function (param) {
-                            return expToString$2(partial_arg, param);
+                            return expToString$3(partial_arg, param);
                           })));
         }
         var partial_arg_node$1 = /* Expr */{
@@ -2127,7 +2576,7 @@ function expToString$2(ctx, e) {
           env: partial_arg_env$1
         };
         return exprApp_prmToString(ctx, /* VecSet */17, Belt_List.map(c._1, (function (param) {
-                          return expToString$2(partial_arg$1, param);
+                          return expToString$3(partial_arg$1, param);
                         })));
     case /* App */7 :
         var partial_arg_node$2 = /* Expr */{
@@ -2142,7 +2591,7 @@ function expToString$2(ctx, e) {
           refs: partial_arg_refs$2,
           env: partial_arg_env$2
         };
-        return consider_context$1(exprAppToString$1(expToString$2({
+        return consider_context$2(exprAppToString$2(expToString$3({
                             node: /* Expr */{
                               _0: false
                             },
@@ -2150,7 +2599,7 @@ function expToString$2(ctx, e) {
                             refs: ctx.refs,
                             env: ctx.env
                           }, c._0), Belt_List.map(c._1, (function (param) {
-                              return expToString$2(partial_arg$2, param);
+                              return expToString$3(partial_arg$2, param);
                             }))), ctx);
     case /* Bgn */8 :
         var es = c._0;
@@ -2167,9 +2616,9 @@ function expToString$2(ctx, e) {
             env: partial_arg_env$3
           };
           var es$1 = Belt_List.map(es, (function (param) {
-                  return expToString$2(partial_arg$3, param);
+                  return expToString$3(partial_arg$3, param);
                 }));
-          var e$3 = expToString$2(ctx, e$2);
+          var e$3 = expToString$3(ctx, e$2);
           return $$String.concat("\n", Belt_List.concatMany([
                           es$1,
                           {
@@ -2198,11 +2647,11 @@ function expToString$2(ctx, e) {
           env: partial_arg_env$4
         };
         var ese$1 = Belt_List.map(ese, (function (param) {
-                return expToString$2(partial_arg$4, param);
+                return expToString$3(partial_arg$4, param);
               }));
         return "[" + $$String.concat(", ", ese$1) + "][-1]";
     case /* If */9 :
-        var e_cnd = expToString$2({
+        var e_cnd = expToString$3({
               node: /* Expr */{
                 _0: false
               },
@@ -2210,8 +2659,8 @@ function expToString$2(ctx, e) {
               refs: ctx.refs,
               env: ctx.env
             }, c._0);
-        var e_thn = expToString$2(ctx, c._1);
-        var e_els = expToString$2(ctx, c._2);
+        var e_thn = expToString$3(ctx, c._1);
+        var e_els = expToString$3(ctx, c._2);
         var match$2 = ctx.node;
         if (typeof match$2 === "number") {
           return "if " + e_cnd + ":" + indentBlock(e_thn, 4) + "\nelse:" + indentBlock(e_els, 4) + "";
@@ -2222,7 +2671,7 @@ function expToString$2(ctx, e) {
         var match$3 = ctx.node;
         if (typeof match$3 === "number") {
           var ebs = Belt_List.map(c._0, (function (param) {
-                  return ebToString$2(ctx, param);
+                  return ebToString$3(ctx, param);
                 }));
           var ob = obToString(ctx, c._1);
           var ob$1 = ob !== undefined ? "else:" + indentBlock(ob, 4) + "" : "";
@@ -2241,10 +2690,10 @@ function expToString$2(ctx, e) {
   }
 }
 
-function xeToString$2(ctx, xe) {
+function xeToString$3(ctx, xe) {
   return [
-          xToString$1(xe[0].it),
-          expToString$2({
+          xToString$2(xe[0].it),
+          expToString$3({
                 node: /* Expr */{
                   _0: false
                 },
@@ -2255,9 +2704,9 @@ function xeToString$2(ctx, xe) {
         ];
 }
 
-function ebToString$2(ctx, eb) {
+function ebToString$3(ctx, eb) {
   return [
-          expToString$2({
+          expToString$3({
                 node: /* Expr */{
                   _0: false
                 },
@@ -2265,13 +2714,13 @@ function ebToString$2(ctx, eb) {
                 refs: ctx.refs,
                 env: ctx.env
               }, eb[0]),
-          printBlock$3(ctx, /* [] */0, eb[1])
+          printBlock$5(ctx, /* [] */0, eb[1])
         ];
 }
 
 function obToString(ctx, ob) {
   return Belt_Option.map(ob, (function (param) {
-                return printBlock$3(ctx, /* [] */0, param);
+                return printBlock$5(ctx, /* [] */0, param);
               }));
 }
 
@@ -2287,7 +2736,7 @@ function xs_of_ts(ts) {
   return Belt_List.map(Belt_List.keepMap(ts, identifier_of_term), unannotate);
 }
 
-function printBlock$3(ctx, xs, b) {
+function printBlock$5(ctx, xs, b) {
   var e = b[1];
   var ts = b[0];
   var refs = [];
@@ -2324,7 +2773,7 @@ function printBlock$3(ctx, xs, b) {
                       return termToString(partial_arg, param);
                     })),
               {
-                hd: expToString$2(ctx$1, e),
+                hd: expToString$3(ctx$1, e),
                 tl: /* [] */0
               }
             ]));
@@ -2346,7 +2795,7 @@ function printBlock$3(ctx, xs, b) {
   }
   var block_as_expr = function (ctx, ts, e) {
     if (!ts) {
-      return expToString$2(ctx, e);
+      return expToString$3(ctx, e);
     }
     var is_exp = function (t) {
       if (t.TAG === /* Def */0) {
@@ -2386,7 +2835,7 @@ function printBlock$3(ctx, xs, b) {
         env: partial_arg_env
       };
       var es$1 = Belt_List.map(es, (function (param) {
-              return expToString$2(partial_arg, param);
+              return expToString$3(partial_arg, param);
             }));
       return "(" + $$String.concat(", ", es$1) + ")[-1]";
     }
@@ -2414,7 +2863,7 @@ function termToString(ctx, t) {
     var match = d.it;
     if (match.TAG === /* Var */0) {
       var x = match._0.it;
-      var e = expToString$2({
+      var e = expToString$3({
             node: /* Expr */{
               _0: false
             },
@@ -2422,24 +2871,24 @@ function termToString(ctx, t) {
             refs: ctx.refs,
             env: ctx.env
           }, match._1);
-      return "" + xToString$1(x) + " = " + e + "";
+      return "" + xToString$2(x) + " = " + e + "";
     }
     var xs = match._1;
-    var f = xToString$1(match._0.it);
-    var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), xToString$1);
-    var b = printBlock$3({
+    var f = xToString$2(match._0.it);
+    var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), xToString$2);
+    var b = printBlock$5({
           node: /* Return */1,
           block: ctx.block,
           refs: ctx.refs,
           env: ctx.env
         }, xs, match._2);
-    return "def " + f + "" + listToString$2(xs$1) + ":\n    " + indent(b, 4) + "";
+    return "def " + f + "" + listToString$3(xs$1) + ":\n    " + indent(b, 4) + "";
   } else {
-    return expToString$2(ctx, t._0);
+    return expToString$3(ctx, t._0);
   }
 }
 
-function printTerm$2(t) {
+function printTerm$3(t) {
   var ctx_refs = [];
   var ctx_env = make_global_env(xs_of_ts({
             hd: t,
@@ -2454,7 +2903,7 @@ function printTerm$2(t) {
   return termToString(ctx, t);
 }
 
-function printProgram$1(ts) {
+function printProgram$2(ts) {
   var ctx_refs = [];
   var ctx_env = make_global_env(xs_of_ts(ts));
   var ctx = {
@@ -2468,7 +2917,7 @@ function printProgram$1(ts) {
                   })));
 }
 
-function printBlock$4(param) {
+function printBlock$6(param) {
   var ctx_refs = [];
   var ctx_env = {};
   var ctx = {
@@ -2477,7 +2926,7 @@ function printBlock$4(param) {
     refs: ctx_refs,
     env: ctx_env
   };
-  return printBlock$3(ctx, /* [] */0, [
+  return printBlock$5(ctx, /* [] */0, [
               param[0],
               param[1]
             ]);
@@ -2517,7 +2966,7 @@ function translateTerms(src) {
     throw err;
   }
   try {
-    return $$String.concat(" ", Belt_List.map(ts, printTerm$2));
+    return $$String.concat(" ", Belt_List.map(ts, printTerm$3));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -2555,7 +3004,7 @@ function translateProgram(src) {
     throw err;
   }
   try {
-    return printProgram$1(p);
+    return printProgram$2(p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -2659,6 +3108,87 @@ var JSTranslator = {
   translateProgram: translateProgram$1
 };
 
+function translateTerms$2(src) {
+  var ts;
+  try {
+    ts = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return $$String.concat(" ", Belt_List.map(ts, printTerm$2));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram$2(src) {
+  var p;
+  try {
+    p = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$1(p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var ScalaTranslator = {
+  translateTerms: translateTerms$2,
+  translateProgram: translateProgram$2
+};
+
 var SMoLPrinter = {
   printProgram: termsToString,
   printBlock: printBlock,
@@ -2672,6 +3202,12 @@ var JSPrinter = {
 };
 
 var PYPrinter = {
+  printProgram: printProgram$2,
+  printBlock: printBlock$6,
+  printTerm: printTerm$3
+};
+
+var ScalaPrinter = {
   printProgram: printProgram$1,
   printBlock: printBlock$4,
   printTerm: printTerm$2
@@ -2687,6 +3223,7 @@ export {
   SMoLPrinter ,
   JSPrinter ,
   PYPrinter ,
+  ScalaPrinter ,
   SExprKind ,
   Arity ,
   TermKind ,
@@ -2697,5 +3234,6 @@ export {
   SMoLTranslateError ,
   PYTranslator ,
   JSTranslator ,
+  ScalaTranslator ,
 }
 /* base_env Not a pure module */

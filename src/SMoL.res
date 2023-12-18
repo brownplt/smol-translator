@@ -910,6 +910,248 @@ module JSPrinter = {
   }
 }
 
+module ScalaPrinter = {
+  let consider_context = (e, ctx) => {
+    switch ctx {
+    | Expr(_) => `${e}`
+    | Stat => `${e}`
+    | Return => `${e}`
+    | TopLevel => `println(${e})`
+    }
+  }
+
+  let constantToString = c => {
+    switch c {
+    | Uni => "null"
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "true"
+      } else {
+        "false"
+      }
+    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    }
+  }
+
+  let listToString = ss => {
+    "(" ++ String.concat(", ", ss) ++ ")"
+  }
+
+  let xToString = x => {
+    let re = %re("/-./g")
+    let matchFn = (matchPart, _offset, _wholeString) => {
+      Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
+    }
+    let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
+
+    // add `$` to the beginning of reserved words
+    if x == "var" {
+      "$var"
+    } else if x == "+" {
+      "(x, y) => (x + y)"
+    } else if x == "-" {
+      "(x, y) => (x - y)"
+    } else if x == "*" {
+      "(x, y) => (x * y)"
+    } else if x == "/" {
+      "(x, y) => (x / y)"
+    } else {
+      x
+    }
+  }
+
+  let defvarToString = (x: string, e) => {
+    `val ${xToString(x)} = ${e}`
+  }
+
+  let deffunToString = (f, xs, b) => {
+    `def ${f}${listToString(xs)} =${indentBlock(b, 2)}`
+  }
+
+  let exprLamToString = (xs, b) => {
+    `${listToString(xs)} =>${indentBlock(b, 2)}`
+  }
+
+  let infix_consider_context = (e, ctx) => {
+    switch ctx {
+    | Expr(true) => `(${e})`
+    | _ => consider_context(e, ctx)
+    }
+  }
+
+  let assign_consider_context = (e, ctx) => {
+    switch ctx {
+    | Expr(true) => `(${e})`
+    | TopLevel => `${e}`
+    | Return => `${e}`
+    | _ => consider_context(e, ctx)
+    }
+  }
+
+  let error_consider_context = (e, _ctx) => {
+    e
+  }
+
+  let exprSetToString = (ctx, x, e) => {
+    `${x} = ${e}`->assign_consider_context(ctx)
+  }
+
+  let exprApp_prmToString = (ctx, p, es) => {
+    switch (p, es) {
+    | (Add, es) => `${String.concat(" + ", es)}`->infix_consider_context(ctx)
+    | (Sub, es) => `${String.concat(" - ", es)}`->infix_consider_context(ctx)
+    | (Mul, es) => `${String.concat(" * ", es)}`->infix_consider_context(ctx)
+    | (Div, es) => `${String.concat(" / ", es)}`->infix_consider_context(ctx)
+    | (Lt, list{e1, e2}) => `${e1} < ${e2}`->infix_consider_context(ctx)
+    | (Eq, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
+    | (Gt, list{e1, e2}) => `${e1} > ${e2}`->infix_consider_context(ctx)
+    | (Le, list{e1, e2}) => `${e1} <= ${e2}`->infix_consider_context(ctx)
+    | (Ge, list{e1, e2}) => `${e1} >= ${e2}`->infix_consider_context(ctx)
+    | (Ne, list{e1, e2}) => `${e1} != ${e2}`->infix_consider_context(ctx)
+    | (PairRefLeft, list{e1}) => `${e1}[0]`->consider_context(ctx)
+    | (PairRefRight, list{e1}) => `${e1}[1]`->consider_context(ctx)
+    | (PairSetLeft, list{e1, e2}) => `${e1}[0] = ${e2}`->assign_consider_context(ctx)
+    | (PairSetRight, list{e1, e2}) => `${e1}[1] = ${e2}`->assign_consider_context(ctx)
+    | (PairNew, list{e1, e2}) => `[ ${e1}, ${e2} ]`->consider_context(ctx)
+    | (VecNew, es) => `[ ${String.concat(", ", es)} ]`->consider_context(ctx)
+    | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`->assign_consider_context(ctx)
+    | (VecRef, list{e1, e2}) => `${e1}[${e2}]`->consider_context(ctx)
+    | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
+    | (Eqv, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
+    | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
+    | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
+    | _ => "/* a primitive operation not supported yet */"
+    }
+  }
+
+  let exprAppToString = (e, es) => {
+    `${e}${listToString(es)}`
+  }
+
+  let exprBgnToString = (es, e) => {
+    `(${String.concat(", ", list{...es, e})})`
+  }
+
+  let exprCndToString = (ebs: list<(string, string)>, ob) => {
+    let ob = {
+      switch ob {
+      | None => ""
+      | Some(b) => ` else {\n  ${indent(b, 2)}\n}`
+      }
+    }
+    let ebs = ebs->List.map(((e, b)) => `if (${e})${indentBlock(b, 2)}\n`)
+    let ebs = String.concat(" else ", ebs)
+    ebs ++ ob
+  }
+
+  let exprIfToString = (e_cnd: string, e_thn: string, e_els: string) => {
+    `(${e_cnd} ? ${e_thn} : ${e_els})`
+  }
+
+  let exprLetToString = (xes, b) => {
+    `((${xes->List.map(((x, _e)) => x) |> String.concat(", ")})=>{${b}})(${xes->List.map(((
+        _x,
+        e,
+      )) => e) |> String.concat(", ")})`
+  }
+
+  let exprLetrecToString = (xes: list<(string, string)>, b) => {
+    let b = String.concat(
+      "\n",
+      list{...xes->List.map(((x: string, e: string)) => defvarToString(x, e)), b},
+    )
+    `()=>{${b}})()`
+  }
+
+  let rec expToString = (ctx: context, e: annotated<expression>): string => {
+    switch e.it {
+    | Con(c) => constantToString(c)->consider_context(ctx)
+    | Ref(x) => xToString(x.it)->consider_context(ctx)
+    | Set(x, e) => exprSetToString(ctx, x->unannotate->xToString, expToString(Expr(false), e))
+    | Lam(xs, b) =>
+      exprLamToString(
+        xs->List.map(unannotate)->List.map(xToString),
+        printBlock(Return, b),
+      )->consider_context(ctx)
+    | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(true))))
+    | App(e, es) =>
+      exprAppToString(
+        expToString(Expr(false), e),
+        es->List.map(expToString(Expr(false))),
+      )->consider_context(ctx)
+    | Let(xes, b) =>
+      exprLetToString(xes->List.map(xeToString), printBlock(Return, b))->consider_context(ctx)
+    | Letrec(xes, b) =>
+      exprLetrecToString(xes->List.map(xeToString), printBlock(Return, b))->consider_context(ctx)
+    | Cnd(ebs, ob) => exprCndToString(ebs->List.map(ebToString(ctx)), obToString(ctx, ob))
+    | If(e_cnd, e_thn, e_els) =>
+      exprIfToString(
+        expToString(Expr(true), e_cnd),
+        expToString(Expr(true), e_thn),
+        expToString(Expr(true), e_els),
+      )->consider_context(ctx)
+    | Bgn(es, e) =>
+      exprBgnToString(
+        es->List.map(expToString(Expr(false))),
+        expToString(Expr(false), e),
+      )->consider_context(ctx)
+    }
+  }
+  and defToString = (d: annotated<definition>): string => {
+    switch d.it {
+    | Var(x, e) => defvarToString(x.it, expToString(Expr(false), e))
+    | Fun(f, xs, b) =>
+      deffunToString(
+        f->unannotate->xToString,
+        xs->List.map(unannotate)->List.map(xToString),
+        printBlock(Return, b),
+      )
+    }
+  }
+  and xeToString = xe => {
+    let (x, e) = xe
+    (xToString(x.it), expToString(Expr(false), e))
+  }
+  and ebToString = (ctx, eb) => {
+    let (e, b) = eb
+    (expToString(Expr(false), e), printBlock(ctx, b))
+  }
+  and obToString = (ctx, ob) => {
+    ob->Option.map(printBlock(ctx))
+  }
+  and termAsStat = t => {
+    switch t {
+    | Exp(e) => expToString(Stat, e)
+    | Def(d) => defToString(d)
+    }
+  }
+  and printBlock = (ctx, b) => {
+    let (ts, e) = b
+    String.concat("\n", list{...ts->List.map(termAsStat), expToString(ctx, e)})
+  }
+  and printTerm = t => {
+    switch t {
+    | Exp(e) => expToString(Expr(false), e)
+    | Def(d) => defToString(d)
+    }
+  }
+
+  let printProgram = p => {
+    let tts = t => {
+      switch t {
+      | Exp(e) => expToString(TopLevel, e)
+      | Def(d) => defToString(d)
+      }
+    }
+    String.concat("\n", p->List.map(tts))
+  }
+
+  let printBlock = ((ts, e)) => {
+    String.concat("\n", list{...ts->List.map(termAsStat), expToString(Return, e)})
+  }
+}
+
 type js_context = context
 exception Impossible(string)
 module PYPrinter = {
@@ -1405,6 +1647,29 @@ module JSTranslator = {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch JSPrinter.printProgram(p) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
+  }
+}
+
+module ScalaTranslator = {
+  let translateTerms = src => {
+    switch Parser.parseTerms(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | ts =>
+      switch String.concat(" ", ts->List.map(ScalaPrinter.printTerm)) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | dst => dst
+      }
+    }
+  }
+  let translateProgram = src => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p =>
+      switch ScalaPrinter.printProgram(p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
