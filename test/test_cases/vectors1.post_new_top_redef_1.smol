@@ -1,6 +1,0 @@
-(defvar bar 5)
-(deffun (foo)
-  bar)
-(defvar bar 3)
-
-(foo)

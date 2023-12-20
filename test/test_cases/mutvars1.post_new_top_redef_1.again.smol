@@ -1,6 +1,0 @@
-(defvar q 5)
-(deffun (a)
-  q)
-(defvar q 0)
-
-(a)

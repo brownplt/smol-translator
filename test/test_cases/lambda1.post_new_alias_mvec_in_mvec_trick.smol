@@ -1,4 +1,4 @@
 (defvar m (mvec 66))
 (defvar z (mvec m 66 66))
-(set! m (mvec 66 66))
+(set! m (mvec 43))
 z

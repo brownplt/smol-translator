@@ -1,9 +1,10 @@
-(deffun (build-dbl n)
+(deffun (build-dbl)
+  (defvar n 1)
   (lambda ()
     (set! n (* n 2))
     n))
-(defvar dbl1 (build-dbl 1))
-(defvar dbl2 (build-dbl 1))
+(defvar dbl1 (build-dbl))
+(defvar dbl2 (build-dbl))
 
 (dbl1)
 (dbl2)

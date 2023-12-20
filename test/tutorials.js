@@ -63,8 +63,8 @@ export const tutorials = {
     "def2":
     {
         "misconceptions": [
-            "NestedDef",
-            "DefOrSet"
+            "IsolatedFun",
+            "FlatEnv"
         ],
         "order": [
             "intro_more_on_def",
@@ -336,7 +336,6 @@ export const tutorials = {
             [
                 "post_new_three_layer",
                 "post_error_when_refer_to_undefined",
-                "post_new_top_redef_1",
                 "post_bad_order"
             ],
             "intro_mvec",
@@ -401,25 +400,6 @@ export const tutorials = {
                     "error": {
                         "feedback": "You might think `(+ a b c)` can't refer to `a` and `b`.\nHowever, `(+ a b c)` appears in the body of `bar`, which is a sub-block of\nthe body of `foo`, which is a sub-block of the top-level block.\nSo, it can refer to the `a` defined in the top-level block\nand the `b` defined in `foo`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
                         "misconception": "IsolatedFun"
-                    }
-                }
-            },
-            "post_new_top_redef_1": {
-                "answer": "error",
-                "feedback": "`bar` is defined twice in the top-level block. In general, a variable cannot be defined twice in a single block.\n",
-                "program": "(defvar bar 5)\n(deffun (foo)\n  bar)\n(defvar bar 3)\n\n(foo)\n",
-                "again": {
-                    "answer": "error",
-                    "program": "(defvar q 5)\n(deffun (a)\n  q)\n(defvar q 0)\n\n(a)\n"
-                },
-                "misconceptions": {
-                    "3": {
-                        "feedback": "You might think the second definition of `bar` binds `bar` to a different value.\nHowever, it errors.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "DefOrSet"
-                    },
-                    "5": {
-                        "feedback": "You might think `foo` refers to the `bar` defined \"before\" `foo`.\nHowever, `foo` tries to refer to the `bar` defined in top-level block.\nBut the top-level defines `bar` twice.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "NestedDef"
                     }
                 }
             },
@@ -685,9 +665,7 @@ export const tutorials = {
             [
                 "mvecs_are_mvec",
                 "vector_not_flatten",
-                "alias_var_in_mvec",
                 "alias_mvec_in_mvec",
-                "alias_mvec_in_mvec_trick",
                 "new_alias_mvec_in_mvec",
                 "basic_circularity"
             ]
@@ -705,32 +683,6 @@ export const tutorials = {
                 ],
                 "feedback": "%1,2% are wrong because vectors contain values.\n`#(3)` and `#(4)` are not values, although\nthey can be some vector values printed.\n\n%3,4% are wrong because the 2-th element of the 3-element vector must be a vector.\nThe 3-element vector is created by `(mvec 1 2 x)`.\nThe value of `x` is a vector at that moment.\nThis 3-element vector is never mutated.\n\n%5% is wrong because only two vectors are created.\nThere must be at most two vectors on the heap.\n\n%6% can be the heap after the two vectors are created.\nHowever, the subsequent mutation changes the shorter vector.\nSo, %0% is the correct answer.\n",
                 "program": "(defvar x (mvec 3))\n(defvar v (mvec 1 2 x))\n(vec-set! x 0 4)\nv\n",
-                "prompt": "Which choice best describes the heap at the end of the following program?\n"
-            },
-            "alias_mvec_in_mvec_trick": {
-                "answer": "@100 = #(3); @200 = #(1 2 @100)",
-                "distractors": [
-                    "@100 = #(4); @200 = #(1 2 #(3))",
-                    "@100 = #(4); @200 = #(1 2 #(4))",
-                    "@100 = #(4); @200 = #(1 2 3)",
-                    "@100 = #(4); @200 = #(1 2 4)",
-                    "@100 = #(3); @200 = #(1 2 @300); @300 = #(4)",
-                    "@100 = #(4); @200 = #(1 2 @100)"
-                ],
-                "feedback": "%1,2% are wrong because vectors contain values.\n`#(3)` and `#(4)` are not values, although\nthey can be some vector values printed.\n\n%3,4% are wrong because the 2-th element of the 3-element vector must be a vector.\nThe 3-element vector is created by `(mvec 1 2 x)`.\nThe value of `x` is a vector at that moment.\nThis 3-element vector is not changed.\n\n%5% is wrong because two vectors are created.\nThere must be at most two vectors on the heap.\n\n%0% is the heap after the vectors are created and the correct answer.\n`(set! x 4)` mutates the value of `x`, but\nthis doesn't mutate anything on the heap.\n",
-                "program": "(defvar x (mvec 3))\n(defvar v (mvec 1 2 x))\n(set! x 4)\nv\n",
-                "prompt": "Which choice best describes the heap at the end of the following program?\n"
-            },
-            "alias_var_in_mvec": {
-                "answer": "@400 = #(1 2 3)",
-                "distractors": [
-                    "@600 = #(1 2 x)",
-                    "@100 = #(1 2 @200); @200 = 3",
-                    "@100 = #(1 2 @200); @200 = 4",
-                    "@700 = #(1 2 4)"
-                ],
-                "feedback": "%1% is wrong because vectors contain values while `x` is not a value.\n\nFor now, the heap maps addresses to only vectors.\nThis rules out %2,3%.\n\nThe heap looks like %0% after evaluating `(mvec 1 2 x)`.\nThe subsequent `set!` mutates `x` to `4`,\nbut this does not mutate anything on the heap.\nSo, the content of the vector remains unchanged.\nSo, %0% is correct, while %4% is wrong.\n(Only `(vec-set! x i e)` can mutate the content of a vector.)\n",
-                "program": "(defvar x 3)\n(defvar v (mvec 1 2 x))\n(set! x 4)\nv\n",
                 "prompt": "Which choice best describes the heap at the end of the following program?\n"
             },
             "basic_circularity": {
@@ -805,7 +757,6 @@ export const tutorials = {
             [
                 "post_new_three_layer",
                 "post_error_when_refer_to_undefined",
-                "post_new_top_redef_1",
                 "post_bad_order",
                 "post_alias_with_defvar",
                 "post_alias_with_funcall",
@@ -924,25 +875,6 @@ export const tutorials = {
                     "error": {
                         "feedback": "You might think `(+ n m l)` can't refer to `n` and `m`.\nHowever, `(+ n m l)` appears in the body of `f2`, which is a sub-block of\nthe body of `f1`, which is a sub-block of the top-level block.\nSo, it can refer to the `n` defined in the top-level block\nand the `m` defined in `f1`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
                         "misconception": "IsolatedFun"
-                    }
-                }
-            },
-            "post_new_top_redef_1": {
-                "answer": "error",
-                "feedback": "`n` is defined twice in the top-level block. In general, a variable cannot be defined twice in a single block.\n",
-                "program": "(defvar n 2)\n(deffun (k)\n  n)\n(defvar n 4)\n\n(k)\n",
-                "again": {
-                    "answer": "error",
-                    "program": "(defvar q 5)\n(deffun (a)\n  q)\n(defvar q 0)\n\n(a)\n"
-                },
-                "misconceptions": {
-                    "2": {
-                        "feedback": "You might think `k` refers to the `n` defined \"before\" `k`.\nHowever, `k` tries to refer to the `n` defined in top-level block.\nBut the top-level defines `n` twice.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "NestedDef"
-                    },
-                    "4": {
-                        "feedback": "You might think the second definition of `n` binds `n` to a different value.\nHowever, it errors.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "DefOrSet"
                     }
                 }
             },
@@ -1081,14 +1013,14 @@ export const tutorials = {
             },
             "new_alias_mvec_in_mvec_trick": {
                 "answer": "#(#(55) 55 55)",
-                "feedback": "`x` is first bound to a one-element vector.\n`v` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! x (mvec 55 55))` binds `x` to a new vector.\nThis doesn't impact `v` because\nthe 0-th element of `v` is still the one-element vector.\n",
-                "program": "(defvar x (mvec 55))\n(defvar v (mvec x 55 55))\n(set! x (mvec 55 55))\nv\n",
+                "feedback": "`x` is first bound to a one-element vector.\n`v` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! x (mvec 66))` binds `x` to a new vector.\nThis doesn't impact `v` because\nthe 0-th element of `v` is still the one-element vector.\n",
+                "program": "(defvar x (mvec 55))\n(defvar v (mvec x 55 55))\n(set! x (mvec 66))\nv\n",
                 "again": {
                     "answer": "#(2 #(0) 3)",
                     "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
                 },
                 "misconceptions": {
-                    "#(#(55 55) 55 55)": {
+                    "#(#(66) 55 55)": {
                         "feedback": "You might think the `0`-th and first element of `v` refers to `x`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `x`.\nIn general, variable assignments change *only* the mutated variables.\n",
                         "misconception": "StructByRef"
                     }
@@ -1390,14 +1322,14 @@ export const tutorials = {
             },
             "post_new_alias_mvec_in_mvec_trick": {
                 "answer": "#(#(66) 66 66)",
-                "feedback": "`m` is first bound to a one-element vector.\n`z` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! m (mvec 66 66))` binds `m` to a new vector.\nThis doesn't impact `z` because\nthe 0-th element of `z` is still the one-element vector.\n",
-                "program": "(defvar m (mvec 66))\n(defvar z (mvec m 66 66))\n(set! m (mvec 66 66))\nz\n",
+                "feedback": "`m` is first bound to a one-element vector.\n`z` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! m (mvec 43))` binds `m` to a new vector.\nThis doesn't impact `z` because\nthe 0-th element of `z` is still the one-element vector.\n",
+                "program": "(defvar m (mvec 66))\n(defvar z (mvec m 66 66))\n(set! m (mvec 43))\nz\n",
                 "again": {
                     "answer": "#(2 #(0) 3)",
                     "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
                 },
                 "misconceptions": {
-                    "#(#(66 66) 66 66)": {
+                    "#(#(43) 66 66)": {
                         "feedback": "You might think the `0`-th and first element of `z` refers to `m`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `m`.\nIn general, variable assignments change *only* the mutated variables.\n",
                         "misconception": "StructByRef"
                     }
@@ -1595,7 +1527,7 @@ export const tutorials = {
                 "program": "(deffun (foobar)\n  (defvar n 0)\n  (lambda ()\n    (set! n (+ n 1))\n    n))\n(defvar f (foobar))\n(defvar g (foobar))\n\n(f)\n(f)\n(g)\n",
                 "again": {
                     "answer": "2 2 4",
-                    "program": "(deffun (build-dbl n)\n  (lambda ()\n    (set! n (* n 2))\n    n))\n(defvar dbl1 (build-dbl 1))\n(defvar dbl2 (build-dbl 1))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
+                    "program": "(deffun (build-dbl)\n  (defvar n 1)\n  (lambda ()\n    (set! n (* n 2))\n    n))\n(defvar dbl1 (build-dbl))\n(defvar dbl2 (build-dbl))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
                 },
                 "misconceptions": {
                     "1 1 1": {
@@ -1933,14 +1865,14 @@ export const tutorials = {
             },
             "post_new_alias_mvec_in_mvec_trick": {
                 "answer": "#(#(88) 88 88)",
-                "feedback": "`a` is first bound to a one-element vector.\n`c` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! a (mvec 88 88))` binds `a` to a new vector.\nThis doesn't impact `c` because\nthe 0-th element of `c` is still the one-element vector.\n",
-                "program": "(defvar a (mvec 88))\n(defvar c (mvec a 88 88))\n(set! a (mvec 88 88))\nc\n",
+                "feedback": "`a` is first bound to a one-element vector.\n`c` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! a (mvec 76))` binds `a` to a new vector.\nThis doesn't impact `c` because\nthe 0-th element of `c` is still the one-element vector.\n",
+                "program": "(defvar a (mvec 88))\n(defvar c (mvec a 88 88))\n(set! a (mvec 76))\nc\n",
                 "again": {
                     "answer": "#(2 #(0) 3)",
                     "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
                 },
                 "misconceptions": {
-                    "#(#(88 88) 88 88)": {
+                    "#(#(76) 88 88)": {
                         "feedback": "You might think the `0`-th and first element of `c` refers to `a`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `a`.\nIn general, variable assignments change *only* the mutated variables.\n",
                         "misconception": "StructByRef"
                     }
@@ -2120,4 +2052,5 @@ export const tutorials = {
             }
         }
     }
-};
+}
+
