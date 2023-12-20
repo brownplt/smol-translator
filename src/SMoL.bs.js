@@ -1679,6 +1679,10 @@ var mutatingVariable = {
   contents: false
 };
 
+var usingBuffer = {
+  contents: false
+};
+
 function consider_context$1(e, ctx) {
   if (typeof ctx !== "number") {
     return "" + e + "";
@@ -1926,7 +1930,9 @@ function expToString$2(ctx, e) {
               }
               var match$6 = es.tl;
               if (match$6 && !match$6.tl) {
-                return consider_context$1("Buffer(" + es.hd + ", " + match$6.hd + ")", ctx);
+                return consider_context$1("" + (
+                            usingBuffer.contents ? "Buffer" : ""
+                          ) + "(" + es.hd + ", " + match$6.hd + ")", ctx);
               } else {
                 return "/* a primitive operation not supported yet */";
               }
@@ -1963,7 +1969,9 @@ function expToString$2(ctx, e) {
                 return "/* a primitive operation not supported yet */";
               }
           case /* VecNew */15 :
-              return consider_context$1("Buffer(" + $$String.concat(", ", es) + ")", ctx);
+              return consider_context$1("" + (
+                          usingBuffer.contents ? "Buffer" : ""
+                        ) + "(" + $$String.concat(", ", es) + ")", ctx);
           case /* VecRef */16 :
               if (!es) {
                 return "/* a primitive operation not supported yet */";
@@ -2071,14 +2079,6 @@ function printBlock$3(ctx, b) {
                 ]));
 }
 
-function termAsStat$1(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$1(t._0);
-  } else {
-    return expToString$2(/* Stat */0, t._0);
-  }
-}
-
 function defToString$1(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -2093,6 +2093,15 @@ function defToString$1(d) {
   }
 }
 
+function ebToString$2(ctx, eb) {
+  return [
+          expToString$2(/* Expr */{
+                _0: false
+              }, eb[0]),
+          printBlock$3(ctx, eb[1])
+        ];
+}
+
 function xeToString$2(xe) {
   return [
           xToString$1(xe[0].it),
@@ -2102,13 +2111,12 @@ function xeToString$2(xe) {
         ];
 }
 
-function ebToString$2(ctx, eb) {
-  return [
-          expToString$2(/* Expr */{
-                _0: false
-              }, eb[0]),
-          printBlock$3(ctx, eb[1])
-        ];
+function termAsStat$1(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$1(t._0);
+  } else {
+    return expToString$2(/* Stat */0, t._0);
+  }
 }
 
 function printTerm$2(t) {
@@ -2123,6 +2131,7 @@ function printTerm$2(t) {
 
 function printProgram$1(p) {
   mutatingVariable.contents = Js_string.match_(/[(]set!/, termsToString(p)) !== undefined;
+  usingBuffer.contents = Js_string.match_(/set!/, termsToString(p)) !== undefined;
   var tts = function (t) {
     if (t.TAG === /* Def */0) {
       return defToString$1(t._0);

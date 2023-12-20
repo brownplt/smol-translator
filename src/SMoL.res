@@ -911,7 +911,8 @@ module JSPrinter = {
 }
 
 module ScalaPrinter = {
-  let mutatingVariable = ref(false);
+  let mutatingVariable = ref(false)
+  let usingBuffer = ref(false)
 
   let consider_context = (e, ctx) => {
     switch ctx {
@@ -1027,8 +1028,18 @@ module ScalaPrinter = {
     | (PairRefRight, list{e1}) => `${e1}(1)`->consider_context(ctx)
     | (PairSetLeft, list{e1, e2}) => `${e1}(0) = ${e2}`->assign_consider_context(ctx)
     | (PairSetRight, list{e1, e2}) => `${e1}(1) = ${e2}`->assign_consider_context(ctx)
-    | (PairNew, list{e1, e2}) => `Buffer(${e1}, ${e2})`->consider_context(ctx)
-    | (VecNew, es) => `Buffer(${String.concat(", ", es)})`->consider_context(ctx)
+    | (PairNew, list{e1, e2}) =>
+      `${if usingBuffer.contents {
+          "Buffer"
+        } else {
+          ""
+        }}(${e1}, ${e2})`->consider_context(ctx)
+    | (VecNew, es) =>
+      `${if usingBuffer.contents {
+          "Buffer"
+        } else {
+          ""
+        }}(${String.concat(", ", es)})`->consider_context(ctx)
     | (VecSet, list{e1, e2, e3}) => `${e1}(${e2}) = ${e3}`->assign_consider_context(ctx)
     | (VecRef, list{e1, e2}) => `${e1}(${e2})`->consider_context(ctx)
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
@@ -1152,7 +1163,12 @@ module ScalaPrinter = {
   }
 
   let printProgram = p => {
+    // when no variable mutation
     mutatingVariable := Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(p)) != None
+    // when no mutation at all
+    // usingBuffer := true
+    // usingBuffer := Js.String.match_(%re("/vec-set!/"), SMoLPrinter.printProgram(p)) != None
+    usingBuffer := Js.String.match_(%re("/set!/"), SMoLPrinter.printProgram(p)) != None
     let tts = t => {
       switch t {
       | Exp(e) => expToString(TopLevel, e)
