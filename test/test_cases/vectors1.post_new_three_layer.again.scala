@@ -1,7 +1,7 @@
 val aa = 3
 def abc(bb : Int) =
-  def h() =
+  def h =
     val cc = 2
     aa * bb * cc
-  h()
+  h
 println(abc(4) * 1)

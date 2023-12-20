@@ -940,6 +940,14 @@ module ScalaPrinter = {
     "(" ++ String.concat(", ", ss) ++ ")"
   }
 
+  let paraListToString = ss => {
+    if ss == list{} {
+      ""
+    } else {
+      listToString(ss)
+    }
+  }
+
   let xToString = x => {
     let re = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) => {
@@ -972,7 +980,7 @@ module ScalaPrinter = {
   }
 
   let deffunToString = (f, xs, b) => {
-    `def ${f}${listToString(xs)} =${indentBlock(b, 2)}`
+    `def ${f}${paraListToString(xs)} =${indentBlock(b, 2)}`
   }
 
   let exprLamToString = (xs, b) => {
@@ -1032,7 +1040,7 @@ module ScalaPrinter = {
   }
 
   let exprAppToString = (e, es) => {
-    `${e}${listToString(es)}`
+    `${e}${paraListToString(es)}`
   }
 
   let exprBgnToString = (es, e) => {

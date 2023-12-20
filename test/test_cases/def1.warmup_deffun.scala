@@ -1,3 +1,3 @@
-def sum(x : Int, y : Int, z : Int) =
+def f(x : Int, y : Int, z : Int) =
   x + (y + z)
-println(sum(2, 1, 3))
+println(f(2, 1, 3))

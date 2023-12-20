@@ -1,5 +1,0 @@
-(defvar lol 6)
-(deffun (r zzZ)
-  (+ lol zzZ))
-
-(r 3)

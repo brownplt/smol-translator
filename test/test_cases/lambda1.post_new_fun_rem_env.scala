@@ -1,9 +1,9 @@
 var n = 7
-def foo() =
+def foo =
   n
-def bar() =
+def bar =
   n = 3
-  foo()
-println(bar())
+  foo
+println(bar)
 n = 5
-println(foo())
+println(foo)

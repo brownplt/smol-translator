@@ -1,7 +1,7 @@
 val x = 1
 def f(y : Int) =
-  def g() =
+  def g =
     val z = 2
     x + y + z
-  g()
+  g
 println(f(3) + 4)

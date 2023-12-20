@@ -1,3 +1,3 @@
-def prod(x : Int, y : Int, z : Int) =
+def g(x : Int, y : Int, z : Int) =
   x * (y * z)
-println(prod(2, 1, 3))
+println(g(2, 1, 3))

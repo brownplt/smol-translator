@@ -1716,6 +1716,14 @@ function listToString$2(ss) {
   return "(" + $$String.concat(", ", ss) + ")";
 }
 
+function paraListToString(ss) {
+  if (ss === /* [] */0) {
+    return "";
+  } else {
+    return listToString$2(ss);
+  }
+}
+
 function xToString$1(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
@@ -1778,7 +1786,7 @@ function assign_consider_context$1(e, ctx) {
 }
 
 function exprAppToString$1(e, es) {
-  return "" + e + "" + listToString$2(es) + "";
+  return "" + e + "" + paraListToString(es) + "";
 }
 
 function exprBgnToString$1(es, e) {
@@ -2081,7 +2089,7 @@ function defToString$1(d) {
     var f = xToString$1(match._0.it);
     var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
     var b = printBlock$3(/* Return */1, match._2);
-    return "def " + f + "" + listToString$2(xs) + " =" + indentBlock(b, 2) + "";
+    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
   }
 }
 

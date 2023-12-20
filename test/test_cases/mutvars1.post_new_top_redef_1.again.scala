@@ -1,5 +1,5 @@
 val q = 5
-def a() =
+def a =
   q
 val q = 0
-println(a())
+println(a)

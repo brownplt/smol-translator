@@ -1,5 +1,5 @@
 val bar = 5
-def foo() =
+def foo =
   bar
 val bar = 3
-println(foo())
+println(foo)

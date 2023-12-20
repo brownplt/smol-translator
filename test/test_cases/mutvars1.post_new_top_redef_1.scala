@@ -1,5 +1,5 @@
 val n = 2
-def k() =
+def k =
   n
 val n = 4
-println(k())
+println(k)

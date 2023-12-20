@@ -1,4 +1,4 @@
-function prod(x, y, z) {
+function g(x, y, z) {
   return x * (y * z);
 }
-console.log(prod(2, 1, 3));
+console.log(g(2, 1, 3));

@@ -13,51 +13,9 @@ export const tutorials = {
             "intro_block",
             "intro_error",
             "warmup_error",
-            "goal_undefined",
-            [
-                "refer_global_is_possible",
-                "new_three_layer",
-                "new_ref_global_and_local",
-                "what_is_x_2",
-                "error_when_refer_to_undefined",
-                "shadow_rather_than_overwrite"
-            ],
-            "reflect_lexical_scope",
-            "goal_lexical_scope",
-            "goal_lexical_scope_labelling_1",
-            "goal_lexical_scope_labelling_2",
-            "goal_lexical_scope_labelling_3",
-            "keyframe_lexical_scope_1",
-            "keyframe_lexical_scope_2"
+            "goal_undefined"
         ],
         "questions": {
-            "error_when_refer_to_undefined": {
-                "answer": "error",
-                "feedback": "`(+ (f 2) y)` is evaluated in the top-level block, where `y` is not defined.\nSo, this program errors.\n",
-                "program": "(deffun (f x)\n  (defvar y 1)\n  (+ x y))\n\n(+ (f 2) y)\n",
-                "again": {
-                    "answer": "error",
-                    "program": "(deffun (foo bar)\n  (defvar zzz 8)\n  (* bar zzz))\n\n(* (foo 9) zzz)\n"
-                },
-                "misconceptions": {
-                    "4": {
-                        "feedback": "`(defvar y 1)` binds `y` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `g`.\n`(+ (f 2) y)` appears in the top-level block, so it tries to refer to\na `y` defined in the top-level. But `y` is not defined in the top-level.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "FlatEnv"
-                    }
-                }
-            },
-            "goal_lexical_scope": {
-                "emphasize": "Variable references follow the hierarchical structure of blocks.\n\nIf the variable is defined in the current block, we use that declaration.\n\nOtherwise, we look up the block in which the current block appears, and so on recursively.\n(Specifically, if the current block is a function body, the next block will be the block in which the function definition is;\nif the current block is the top-level block, the next block will be the **primordial block**.)\n\nIf the current block is already the primordial block and we still haven't found a corresponding declaration,\nthe variable is unbound.\n\nThe primordial block is a non-visible block enclosing the top-level block.\nThis block defines values and functions (e.g., `+` and `/`) that are provided by the language itself.\n"
-            },
-            "goal_lexical_scope_labelling_1": {
-                "select_and_comment": "Now please scroll back and select 1-3 programs that make the point that\n\n> If the variable is declared in the current block, we use that declaration.\n\nYou don't need to select *all* such programs.\n"
-            },
-            "goal_lexical_scope_labelling_2": {
-                "select_and_comment": "Please select 1-3 programs that make the point that\n\n> Otherwise, we look up the block in which the current block appears, and so on recursively.\n\nYou don't need to select *all* such programs.\n"
-            },
-            "goal_lexical_scope_labelling_3": {
-                "select_and_comment": "Please select 1-3 programs that make the point that\n\n> If the current block is already the primordial block and we still haven't found a corresponding declaration,\n> the variable is unbound.\n\nYou don't need to select *all* such programs.\n"
-            },
             "goal_undefined": {
                 "emphasize": "It is an error to evaluate an undefined variable.\n"
             },
@@ -65,90 +23,21 @@ export const tutorials = {
                 "emphasize": "We have two kinds of places where a definition might happen: the top-level **block** and\nfunction bodies (which are also **blocks**).\nA block is a sequence of definitions and expressions.\n\nBlocks form a tree-like structure in a program.\nFor example, we have four blocks in the following program:\n\n```\n(defvar n 42)\n\n(deffun (f x)\n  (defvar y 1)\n  (+ x y))\n\n(deffun (g)\n  (deffun (h m)\n    (* 2 m))\n  (f (h 3)))\n\n(g)\n```\n\nThe blocks are:\n\n- the top-level block, where `n`, `f`, and `g` are defined\n- the body of `f`, which is a sub-block of the top-level block\n- the body of `g`, which is also a sub-block of the top-level block, and\n- the body of `h`, which is a sub-block of the body of `g`\n"
             },
             "intro_deffun": {
-                "confirm": "The following program illustrates **function definitions**.\n\n```\n(deffun (average x y)\n  (defvar n (+ x y))\n  (/ n 2))\n\n(average (* 2 3) 4)\n```\n\nThis program produces `5`. It defines a function named `average`,\nwhich has two **parameters**, `x` and `y`,\nand **calls** the function with the **arguments** `6` and `4`.\n"
+                "confirm": "The following program illustrates **function definitions**.\n\n```\n(deffun (f x y)\n  (defvar n (+ x y))\n  (/ n 2))\n\n(f (* 2 3) 4)\n```\n\nThis program produces `5`. It defines a function named `f`,\nwhich has two **formal parameters**, `x` and `y`,\nand **calls** the function with the **actual parameters** `6` and `4`.\n"
             },
             "intro_defvar": {
-                "confirm": "In this tutorial, we will learn about **definitions**.\n\nThe following program illustrates **variable definitions**.\n\n```\n(defvar x 1)\n(defvar y 2)\nx\ny\n(+ x y)\n```\n\nIn this program, the first variable definition **binds** `x` to `1`, and\nthe second variable definition binds `y` to `2`.\n\nThis program produces three values:\nthe value of `x`, the value of `y`, and the value of `(+ x y)`.\nThese values are `1`, `2`, and `3`, respectively.\nFor brevity, let's write the result of running this program on a single line as\n\n`1 2 3`\n\nrather than\n\n<code>1\n2\n3\n</code>\n"
+                "confirm": "In this tutorial, we will learn about **definitions**.\n\nThe following program illustrates **variable definitions**.\n\n```\n(defvar x 1)\n(defvar y 2)\nx\ny\n(+ x y)\n```\n\nIn this program, the first variable definition **binds** `x` to `1`, and\nthe second variable definition binds `y` to `2`.\n\nThis program produces three values:\nthe value of `x`, the value of `y`, and the value of `(+ x y)`.\nThese values are `1`, `2`, and `3`, respectively.\nIn this Tutor, we will write the result of running this program on a single line as\n\n`1 2 3`\n\nrather than\n\n<code>1\n2\n3\n</code>\n"
             },
             "intro_error": {
-                "confirm": "In addition to values (numbers, strings, booleans, etc.),\nthe result of running a program might include **errors**.\n\nFor example, the result of the following program is an `error`\nbecause you can't divide a number by 0.\n\n```\n(defvar x 23)\n(/ x 0)\n```\n\nThe result of the following program is `#t #f error`\nbecause you can't add two boolean values.\n\n```\n#t\n#f\n(+ #t #f)\n```\n"
-            },
-            "keyframe_lexical_scope_1": {
-                "prompt": "Here is a program that confused many students\n\n```\n(defvar x 1)\n(deffun (foo)\n  x)\n(deffun (bar)\n  (defvar x 2)\n  (foo))\n\n(bar)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
-            },
-            "keyframe_lexical_scope_2": {
-                "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
-            },
-            "new_ref_global_and_local": {
-                "answer": "3",
-                "feedback": "`(f)` returns the value of `(g)`. The value of `(g)` is `2`\nbecause `g` is defined in the `f`'s block, where `x` is `2`.\n",
-                "program": "(defvar x 1)\n(deffun (f)\n  (defvar y 2)\n  (deffun (g)\n    (+ x y))\n  (g))\n(f)\n",
-                "again": {
-                    "answer": "18",
-                    "program": "(defvar a 9)\n(deffun (fun)\n  (defvar b 2)\n  (deffun (prod)\n    (* a b))\n  (prod))\n(fun)\n"
-                },
-                "misconceptions": {
-                    "error": {
-                        "feedback": "You might think `(+ x y)` can't refer to `x` and `y`.\nHowever, `(+ x y)` appears in the body of `g`, which is a sub-block of\nthe body of `f`.\nSo, it can refer to the `x` defined in the top-level and\nthe `y` defined in `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "IsolatedFun"
-                    }
-                }
-            },
-            "new_three_layer": {
-                "answer": "10",
-                "feedback": "This program binds `x` to `1` and `f` to a function and then\nevaluates `(+ (f 3) 4)`.\nThe value of `(+ (f 3) 4)` is the value of `(+ (g) 4)`,\nwhich is the value of `(+ (+ x y z) 4)`,\nwhich is the value of `(+ (+ 1 3 2) 4)`,\nwhich is `10`.\n",
-                "program": "(defvar x 1)\n(deffun (f y)\n  (deffun (g)\n    (defvar z 2)\n    (+ x y z))\n  (g))\n(+ (f 3) 4)\n",
-                "again": {
-                    "answer": "24",
-                    "program": "(defvar aa 3)\n(deffun (abc bb)\n  (deffun (h)\n    (defvar cc 2)\n    (* aa bb cc))\n  (h))\n(* (abc 4) 1)\n"
-                },
-                "misconceptions": {
-                    "error": {
-                        "feedback": "You might think `(+ x y z)` can't refer to `x` and `y`.\nHowever, `(+ x y z)` appears in the body of `g`, which is a sub-block of\nthe body of `f`, which is a sub-block of the top-level block.\nSo, it can refer to the `x` defined in the top-level block\nand the `y` defined in `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "IsolatedFun"
-                    }
-                }
-            },
-            "refer_global_is_possible": {
-                "answer": "3",
-                "feedback": "This program binds `x` to `1` and `f` to a function and\nevaluates `(f 2)`. The value of `(f 2)` is the value\nof `(+ 1 2)` which is `3`.\n",
-                "program": "(defvar x 1)\n(deffun (f y)\n  (+ x y))\n\n(f 2)\n",
-                "again": {
-                    "answer": "9",
-                    "program": "(defvar lol 6)\n(deffun (r zzZ)\n  (+ lol zzZ))\n\n(r 3)\n"
-                },
-                "misconceptions": {
-                    "error": {
-                        "feedback": "You might think `(+ x y)` can't refer to `x`.\nHowever, `(+ x y)` appears in the body of `f`, which is a sub-block of\nthe top-level block. So, it can refer to the `x` defined\nin the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "IsolatedFun"
-                    }
-                }
-            },
-            "reflect_lexical_scope": {
-                "prompt": "When we see a variable reference (e.g., the `x` in `(+ x 1)`), how do we find its value, if any?\n"
-            },
-            "shadow_rather_than_overwrite": {
-                "answer": "3",
-                "feedback": "This program binds `x` to `1` and `f` to a function in the top-level. It binds `x` to `2` in the body of `f`.\nSo, `(f 0)` evaluates to `(+ 2 0)`, which is `2`, and `(+ (f 0) x)` evaluates to `(+ 2 1)`, which is `3`.\n",
-                "program": "(defvar x 1)\n(deffun (f y)\n  (defvar x 2)\n  (+ x y))\n\n(+ (f 0) x)\n",
-                "again": {
-                    "answer": "12",
-                    "program": "(defvar cat 7)\n(deffun (k dog)\n  (defvar cat 4)\n  (+ cat dog))\n\n(+ (k 1) cat)\n"
-                },
-                "misconceptions": {
-                    "4": {
-                        "feedback": "`(defvar x 2)` binds `x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `f`.\nThe `x` in `(+ (f 0) x)` appears in the top-level block, so it refers to the `x` defined in the top-level.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "FlatEnv"
-                    }
-                }
+                "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is an `error`\nbecause you can't divide a number by 0.\n\n```\n(defvar x 23)\n(/ x 0)\n```\n\nThe result of the following program is `#t #f error`\nbecause you can't add two boolean values.\n\n```\n#t\n#f\n(+ #t #f)\n```\n"
             },
             "warmup_deffun": {
                 "answer": "6",
                 "feedback": "",
-                "program": "(deffun (sum x y z)\n  (+ x (+ y z)))\n(sum 2 1 3)\n",
+                "program": "(deffun (f x y z)\n  (+ x (+ y z)))\n(f 2 1 3)\n",
                 "again": {
                     "answer": "6",
-                    "program": "(deffun (prod x y z)\n  (* x (* y z)))\n(prod 2 1 3)\n"
+                    "program": "(deffun (g x y z)\n  (* x (* y z)))\n(g 2 1 3)\n"
                 }
             },
             "warmup_defvar": {
@@ -168,25 +57,6 @@ export const tutorials = {
                     "answer": "error",
                     "program": "(defvar foo 77)\nbar\n"
                 }
-            },
-            "what_is_x_2": {
-                "answer": "1",
-                "feedback": "`(g)` evaluates to `(f)`, which evaluates to `1` because `f` is defined in the top-level.\n",
-                "program": "(defvar x 1)\n(deffun (f)\n  x)\n(deffun (g)\n  (defvar x 2)\n  (f))\n\n(g)\n",
-                "again": {
-                    "answer": "21",
-                    "program": "(defvar s 21)\n(deffun (i) s)\n(deffun (j)\n  (defvar s 76)\n  (i))\n\n(j)\n"
-                },
-                "misconceptions": {
-                    "2": {
-                        "feedback": "`(defvar x 2)` binds `x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `g`.\nThe `x` in `f` appears in the body of `f`, which is a sub-block of the top-level block,\nso it refers to the `x` defined in the top-level.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "FlatEnv"
-                    },
-                    "error": {
-                        "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block.\nSo, it can refer to the `x` defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "IsolatedFun"
-                    }
-                }
             }
         }
     },
@@ -198,19 +68,50 @@ export const tutorials = {
         ],
         "order": [
             "intro_more_on_def",
+            [
+                "new_three_layer",
+                "new_ref_global_and_local",
+                "what_is_x_2",
+                "error_when_refer_to_undefined",
+                "shadow_rather_than_overwrite"
+            ],
+            "reflect_lexical_scope",
+            "goal_lexical_scope",
+            "goal_lexical_scope_labelling_1",
+            "goal_lexical_scope_labelling_2",
+            "goal_lexical_scope_labelling_3",
             "intro_scope",
             "scope_terminology_practice",
-            [
-                "what_is_x_4",
-                "new_top_redef_1",
-                "new_top_redef_2"
-            ],
-            "reflect_define_twice",
-            "goal_define_twice"
+            "keyframe_lexical_scope_1",
+            "keyframe_lexical_scope_2"
         ],
         "questions": {
-            "goal_define_twice": {
-                "emphasize": "A variable cannot be defined twice in a single block."
+            "error_when_refer_to_undefined": {
+                "answer": "error",
+                "feedback": "`(+ (f 2) y)` is evaluated in the top-level block, where `y` is not defined.\nSo, this program errors.\n",
+                "program": "(deffun (f x)\n  (defvar y 1)\n  (+ x y))\n\n(+ (f 2) y)\n",
+                "again": {
+                    "answer": "error",
+                    "program": "(deffun (foo bar)\n  (defvar zzz 8)\n  (* bar zzz))\n\n(* (foo 9) zzz)\n"
+                },
+                "misconceptions": {
+                    "4": {
+                        "feedback": "`(defvar y 1)` binds `y` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `g`.\n`(+ (f 2) y)` appears in the top-level block, so it tries to refer to\na `y` defined in the top-level block. But `y` is not defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "misconception": "FlatEnv"
+                    }
+                }
+            },
+            "goal_lexical_scope": {
+                "emphasize": "Variable references follow the hierarchical structure of blocks.\n\nIf the variable is defined in the current block, we use that declaration.\n\nOtherwise, we look up the block in which the current block appears, and so on recursively.\n(Specifically, if the current block is a function body, the next block will be the block in which the function definition is;\nif the current block is the top-level block, the next block will be the **primordial block**.)\n\nIf the current block is already the primordial block and we still haven't found a corresponding declaration,\nthe variable reference errors.\n\nThe primordial block is a non-visible block enclosing the top-level block.\nThis block defines values and functions that are provided by the language itself.\n"
+            },
+            "goal_lexical_scope_labelling_1": {
+                "select_and_comment": "Now please scroll back and select 1-3 programs that make the point that\n\n> If the variable is declared in the current block, we use that declaration.\n\nYou don't need to select *all* such programs.\n"
+            },
+            "goal_lexical_scope_labelling_2": {
+                "select_and_comment": "Please select 1-3 programs that make the point that\n\n> Otherwise, we look up the block in which the current block appears, and so on recursively.\n\nYou don't need to select *all* such programs.\n"
+            },
+            "goal_lexical_scope_labelling_3": {
+                "select_and_comment": "Please select 1-3 programs that make the point that\n\n> If the current block is already the primordial block and we still haven't found a corresponding declaration,\n> the variable reference errors.\n\nYou don't need to select *all* such programs.\n"
             },
             "intro_more_on_def": {
                 "confirm": "In this tutorial, we will learn *more* about definitions.\n"
@@ -218,42 +119,44 @@ export const tutorials = {
             "intro_scope": {
                 "emphasize": "The **scope** of a variable is the region of a program where we can refer to the variable.\nTechnically, it includes the block in which the variable is defined (including sub-blocks)\n*except* the sub-blocks where the same name is re-defined.\nWhen the exception happens, that is, when the same name is defined in a sub-block,\nwe say that the variable in the sub-block **shadows** the variable in the outer block.\n\nWe say a variable reference (e.g., \"the `x` in `(+ x 1)`\") is **in the scope of** a declaration (e.g., \"the `x` in `(defvar x 23)`\")\nif and only if the former refers to the latter.\n"
             },
-            "new_top_redef_1": {
-                "answer": "error",
-                "feedback": "`x` is defined twice in the top-level. In general, a variable cannot be defined twice in a single block.\n",
-                "program": "(defvar x 1)\n(deffun (f)\n  x)\n(defvar x 2)\n\n(f)\n",
+            "keyframe_lexical_scope_1": {
+                "prompt": "Here is a program that confused many students\n\n```\n(defvar x 1)\n(deffun (foo)\n  x)\n(deffun (bar)\n  (defvar x 2)\n  (foo))\n\n(bar)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+            },
+            "keyframe_lexical_scope_2": {
+                "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
+            },
+            "new_ref_global_and_local": {
+                "answer": "3",
+                "feedback": "`(f)` returns the value of `(g)`.\nThe value of `(g)` is the value of `(+ x y)`,\nwhich is `(+ 1 2)`, which is `3`.\n",
+                "program": "(defvar x 1)\n(deffun (f)\n  (defvar y 2)\n  (deffun (g)\n    (+ x y))\n  (g))\n(f)\n",
                 "again": {
-                    "answer": "error",
-                    "program": "(defvar q 5)\n(deffun (a)\n  q)\n(defvar q 0)\n\n(a)\n"
+                    "answer": "18",
+                    "program": "(defvar a 9)\n(deffun (fun)\n  (defvar b 2)\n  (deffun (prod)\n    (* a b))\n  (prod))\n(fun)\n"
                 },
                 "misconceptions": {
-                    "1": {
-                        "feedback": "You might think `f` refers to the `x` defined \"before\" `f`.\nHowever, `f` tries to refer to the `x` defined in top-level block.\nBut the top-level defines `x` twice.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "NestedDef"
-                    },
-                    "2": {
-                        "feedback": "You might think the second definition of `x` binds `x` to a different value.\nHowever, it errors.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "DefOrSet"
+                    "error": {
+                        "feedback": "You might think `(+ x y)` can't refer to `x` and `y`.\nHowever, `(+ x y)` appears in the body of `g`, which is a sub-block of\nthe body of `f`.\nSo, it can refer to the `x` defined in the top-level block and\nthe `y` defined in `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "misconception": "IsolatedFun"
                     }
                 }
             },
-            "new_top_redef_2": {
-                "answer": "error",
-                "feedback": "`x` is defined twice in the top-level. In general, a variable cannot be defined twice in a single block.\n",
-                "program": "(defvar x 1)\n(defvar x (+ x 2))\nx\n",
+            "new_three_layer": {
+                "answer": "10",
+                "feedback": "This program binds `x` to `1` and `f` to a function and then\nevaluates `(+ (f 3) 4)`.\nThe value of `(+ (f 3) 4)` is the value of `(+ (g) 4)`,\nwhich is the value of `(+ (+ x y z) 4)`,\nwhich is the value of `(+ (+ 1 3 2) 4)`,\nwhich is `10`.\n",
+                "program": "(defvar x 1)\n(deffun (f y)\n  (deffun (g)\n    (defvar z 2)\n    (+ x y z))\n  (g))\n(+ (f 3) 4)\n",
                 "again": {
-                    "answer": "error",
-                    "program": "(defvar m 5)\n(defvar m (+ m 4))\nm\n"
+                    "answer": "24",
+                    "program": "(defvar aa 3)\n(deffun (abc bb)\n  (deffun (h)\n    (defvar cc 2)\n    (* aa bb cc))\n  (h))\n(* (abc 4) 1)\n"
                 },
                 "misconceptions": {
-                    "3": {
-                        "feedback": "You might think the second definition of `x` binds `x` to a different value.\nHowever, it errors.\nIn general, a variable cannot be defined twice in a single block.\n",
-                        "misconception": "DefOrSet"
+                    "error": {
+                        "feedback": "You might think `(+ x y z)` can't refer to `x` and `y`.\nHowever, `(+ x y z)` appears in the body of `g`, which is a sub-block of\nthe body of `f`, which is a sub-block of the top-level block.\nSo, it can refer to the `x` defined in the top-level block\nand the `y` defined in `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "misconception": "IsolatedFun"
                     }
                 }
             },
-            "reflect_define_twice": {
-                "prompt": "What did you learn about definitions from these programs?"
+            "reflect_lexical_scope": {
+                "prompt": "When we see a variable reference (e.g., the `x` in `(+ x 1)`), how do we find its value, if any?\n"
             },
             "scope_terminology_practice": {
                 "checkboxes": [
@@ -285,21 +188,36 @@ export const tutorials = {
                 "feedback": "The scope of the top-level `x` includes the whole program *except* the body of `f`.\nThe scope of the `x` defined in `f` is the body of `f`.\n\nThe `x` defined in `f` shadows the top-level `x` rather than the other way around.\n",
                 "prompt": "Please select all statements that apply to the following program:\n\n```\n(defvar x 45)\n(deffun (f)\n  (deffun (g)\n    (+ x 1))\n  (defvar x 67)\n  (+ x 2))\n(f)\n(+ x 3)\n```\n"
             },
-            "what_is_x_4": {
-                "answer": "2",
-                "feedback": "Because `g` is defined in `f`,\nthe `x` in `g` refers to the `x` defined in `f`.\nThe program tries to evaluate `x` before binding it to a value.\n",
-                "program": "(defvar x 1)\n(deffun (f)\n  (deffun (g)\n    x)\n  (defvar x 2)\n  (g))\n\n(f)\n",
+            "shadow_rather_than_overwrite": {
+                "answer": "3",
+                "feedback": "This program binds `x` to `1` and `f` to a function in the top-level block. It binds `x` to `2` in the body of `f`.\nSo, `(f 0)` evaluates to `(+ 2 0)`, which is `2`, and `(+ (f 0) x)` evaluates to `(+ 2 1)`, which is `3`.\n",
+                "program": "(defvar x 1)\n(deffun (f y)\n  (defvar x 2)\n  (+ x y))\n\n(+ (f 0) x)\n",
                 "again": {
-                    "answer": "3",
-                    "program": "(defvar f 6)\n(deffun (x)\n  (deffun (y)\n    f)\n  (defvar f 3)\n  (y))\n\n(x)\n"
+                    "answer": "12",
+                    "program": "(defvar cat 7)\n(deffun (k dog)\n  (defvar cat 4)\n  (+ cat dog))\n\n(+ (k 1) cat)\n"
                 },
                 "misconceptions": {
-                    "1": {
-                        "feedback": "You might think `g` refers to the `x` defined \"before\" `g`.\nHowever, `g` refers to the `x` defined in the body of `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
-                        "misconception": "NestedDef"
+                    "4": {
+                        "feedback": "`(defvar x 2)` binds `x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `f`.\nThe `x` in `(+ (f 0) x)` appears in the top-level block, so it refers to the `x` defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "misconception": "FlatEnv"
+                    }
+                }
+            },
+            "what_is_x_2": {
+                "answer": "1",
+                "feedback": "`(g)` evaluates to `(f)`, which evaluates to `1` because\n`f` and `x` are both defined in the same block, and\n`f` does *not* get the `x` defined inside `g`.\n",
+                "program": "(defvar x 1)\n(deffun (f)\n  x)\n(deffun (g)\n  (defvar x 2)\n  (f))\n\n(g)\n",
+                "again": {
+                    "answer": "21",
+                    "program": "(defvar s 21)\n(deffun (i) s)\n(deffun (j)\n  (defvar s 76)\n  (i))\n\n(j)\n"
+                },
+                "misconceptions": {
+                    "2": {
+                        "feedback": "`(defvar x 2)` binds `x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `g`.\nThe `x` in the body of `f` refers to the `x` defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "misconception": "FlatEnv"
                     },
                     "error": {
-                        "feedback": "You might think `g` can't refer to `x`.\nHowever, `g` is defined in the body of `f`.\nSo, it can refer to the `x` defined in the body of `f`.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block.\nSo, it can refer to the `x` defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
                         "misconception": "IsolatedFun"
                     }
                 }
@@ -466,7 +384,7 @@ export const tutorials = {
                 },
                 "misconceptions": {
                     "5": {
-                        "feedback": "`(defvar b 1)` binds `b` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `k`.\n`(+ (k 3) b)` appears in the top-level block, so it tries to refer to\na `b` defined in the top-level. But `b` is not defined in the top-level.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "feedback": "`(defvar b 1)` binds `b` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `k`.\n`(+ (k 3) b)` appears in the top-level block, so it tries to refer to\na `b` defined in the top-level block. But `b` is not defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
                         "misconception": "FlatEnv"
                     }
                 }
@@ -488,7 +406,7 @@ export const tutorials = {
             },
             "post_new_top_redef_1": {
                 "answer": "error",
-                "feedback": "`bar` is defined twice in the top-level. In general, a variable cannot be defined twice in a single block.\n",
+                "feedback": "`bar` is defined twice in the top-level block. In general, a variable cannot be defined twice in a single block.\n",
                 "program": "(defvar bar 5)\n(deffun (foo)\n  bar)\n(defvar bar 3)\n\n(foo)\n",
                 "again": {
                     "answer": "error",
@@ -672,7 +590,7 @@ export const tutorials = {
                     "@100 = #(3); @200 = #(@300 @100); @300 = #(42)",
                     "There is nothing in the heap."
                 ],
-                "feedback": "%2% and %3% are wrong.\nVectors contain values.\n`#(42)` and `#(3)` are not values, although some vector values are printed like them.\nSo, `@200 = #(#(42) #(42))` and `@200 = #(#(42) #(3))` can not be valid.\n\n`(mvec 3)` creates a 1-element vector, `@100`.\nThe only element is `3`.\n`(mvec mv mv)` creates a 2-element vector, `@200`.\nBoth elements of `@200` are `@100`.\nNo more vectors are created, which means %4% must be wrong.\nSo, then, the correct answer must be %1% or %0%.\n\nHowever, the subsequent mutation changes `@100` (the left element of `@200`).\nThe 0-th element of `@100` is mutated to `42`.\nSo, %0% is the correct answer.\n",
+                "feedback": "%2% and %3% are wrong.\nVectors contain values.\n`#(42)` and `#(3)` are not values, although some vector values are printed like them.\nSo, `@200 = #(#(42) #(42))` and `@200 = #(#(42) #(3))` can not be valid.\n\n`(mvec 3)` creates a 1-element vector, `@100`.\nThe only element is `3`.\n`(mvec mv mv)` creates a 2-element vector, `@200`.\nBoth elements of `@200` are `@100`.\nNo more vectors are created, which means %4% must be wrong.\nSo, then, the correct answer must be %1% or %0%.\n\nHowever, the subsequent mutation changes `@100` (the first element of `@200`).\nThe 0-th element of `@100` is mutated to `42`.\nSo, %0% is the correct answer.\n",
                 "program": "(defvar mv (mvec 3))\n(defvar mv2 (mvec mv mv))\n(vec-set! (vec-ref mv2 0) 0 42)\n",
                 "prompt": "Which choice best describes the status of the heap at the end of the following program?"
             },
@@ -849,7 +767,7 @@ export const tutorials = {
                     "@100 = #(1 2 3); @200 = #(@100 @100)",
                     "@100 = #(1 2 3); @200 = #(6 @100)"
                 ],
-                "feedback": "Vectors contain values (e.g., `1` and `@200`).\nThis rules out %1,2%.\n\nTwo vectors are created.\nSo, there must be two vectors on the heap.\nThis rules out %3,4%.\n\n`vv` is bound to a 2-element vector, and the\n`right` of the 2-element vector must be the 3-element vector.\nThe mutation replaces the 0-th element in the 3-element vector with `6`.\nSo, %0% is the correct answer, while\n%5% does not reflect the effect of the mutation, and %6% mutates the wrong vector.\n",
+                "feedback": "Vectors contain values (e.g., `1` and `@200`).\nThis rules out %1,2%.\n\nTwo vectors are created.\nSo, there must be two vectors on the heap.\nThis rules out %3,4%.\n\n`vv` is bound to a 2-element vector, and the\n1-th element of the 2-element vector must be the 3-element vector.\nThe mutation replaces the 0-th element in the 3-element vector with `6`.\nSo, %0% is the correct answer, while\n%5% does not reflect the effect of the mutation, and %6% mutates the wrong vector.\n",
                 "program": "(defvar v (mvec 1 2 3))\n(defvar vv (mvec v v))\n(vec-set! (vec-ref vv 1) 0 6)\n(vec-ref vv 0)\n",
                 "prompt": "Which choice best describes the heap at the end of the following program?\n"
             },
@@ -989,7 +907,7 @@ export const tutorials = {
                 },
                 "misconceptions": {
                     "10": {
-                        "feedback": "`(defvar m 4)` binds `m` to `4`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `foobar`.\n`(+ (foobar 2) m)` appears in the top-level block, so it tries to refer to\nan `m` defined in the top-level. But `m` is not defined in the top-level.\nIn general, variable references follow the hierarchical structure of blocks.\n",
+                        "feedback": "`(defvar m 4)` binds `m` to `4`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `foobar`.\n`(+ (foobar 2) m)` appears in the top-level block, so it tries to refer to\nan `m` defined in the top-level block. But `m` is not defined in the top-level block.\nIn general, variable references follow the hierarchical structure of blocks.\n",
                         "misconception": "FlatEnv"
                     }
                 }
@@ -1011,7 +929,7 @@ export const tutorials = {
             },
             "post_new_top_redef_1": {
                 "answer": "error",
-                "feedback": "`n` is defined twice in the top-level. In general, a variable cannot be defined twice in a single block.\n",
+                "feedback": "`n` is defined twice in the top-level block. In general, a variable cannot be defined twice in a single block.\n",
                 "program": "(defvar n 2)\n(deffun (k)\n  n)\n(defvar n 4)\n\n(k)\n",
                 "again": {
                     "answer": "error",
@@ -1374,7 +1292,7 @@ export const tutorials = {
                 "program": "(deffun (add1 n)\n  (+ n 1))\n(defvar v (mvec add1))\n((vec-ref v 0) 2)\n",
                 "again": {
                     "answer": "1",
-                    "program": "(deffun (add1 n)\n  (+ n 1))\n(deffun (sub1 n)\n  (- n 1))\n(defvar v (mpair add1 sub1))\n((right v) 2)\n"
+                    "program": "(deffun (add1 n)\n  (+ n 1))\n(deffun (sub1 n)\n  (- n 1))\n(defvar v (mvec add1 sub1))\n((vec-ref v 1) 2)\n"
                 },
                 "misconceptions": {
                     "error": {
@@ -1663,7 +1581,7 @@ export const tutorials = {
                 "emphasize": "`(deffun (f x y z) body)` is a shorthand for `(defvar f (lambda (x y z) body))`.\n"
             },
             "intro_lambda": {
-                "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function.\n\n```\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThis program program produces `3`. The top-level block contains one expression, a function call. The only argument of the function call is `2`. The function of the function call is created by\n\n```\n(lambda (n)\n  (+ n 1))\n```\n\nThis function takes only one parameter `n`, and returns (the value of) `(+ n 1)`.\nSo, the result of the whole program is the value of `(+ 2 1)`, which is `3`.\n"
+                "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function.\n\n```\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThis program program produces `3`. The top-level block contains one expression, a function call. The only (actual) parameter of the function call is `2`. The function of the function call is created by\n\n```\n(lambda (n)\n  (+ n 1))\n```\n\nThis function takes only one parameter `n`, and returns (the value of) `(+ n 1)`.\nSo, the result of the whole program is the value of `(+ 2 1)`, which is `3`.\n"
             },
             "keyframe_counter_1": {
                 "prompt": "Here is a program that confused many students\n\n```\n(deffun (foobar n)\n  (deffun (counter)\n    (set! n (+ n 1))\n    n)\n  counter)\n(defvar f (foobar 0))\n(defvar g (foobar 0))\n\n(f)\n(f)\n(g)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
@@ -2052,16 +1970,16 @@ export const tutorials = {
                 }
             },
             "post_not_aliased_by_defvar_1": {
-                "answer": "5 6",
-                "feedback": "The first definition binds `n` to `6`.\nThe second definition binds `m` to the value of `n`, which is `6`.\nThe `set!` mutates the binding of `n`, so `n` is now bound to `5`.\nBut `m` is still bound to `6`.\n",
-                "program": "(defvar n 6)\n(defvar m n)\n(set! n 5)\nn\nm\n",
+                "answer": "6 3",
+                "feedback": "The first definition binds `n` to `3`.\nThe second definition binds `m` to the value of `n`, which is `3`.\nThe `set!` mutates the binding of `n`, so `n` is now bound to `6`.\nBut `m` is still bound to `3`.\n",
+                "program": "(defvar n 3)\n(defvar m n)\n(set! n 6)\nn\nm\n",
                 "again": {
                     "answer": "2 1",
                     "program": "(defvar a 1)\n(defvar b a)\n(set! a 2)\na\nb\n"
                 },
                 "misconceptions": {
-                    "5 5": {
-                        "feedback": "You might think `(defvar m n)` binds `m` to `n`, so changing `n` will change `m`.\nHowever, `m` is bound to the `5`, i.e., *the value of* `n`.\nIn general, variable assignments change *only* the mutated variables.\n",
+                    "6 6": {
+                        "feedback": "You might think `(defvar m n)` binds `m` to `n`, so changing `n` will change `m`.\nHowever, `m` is bound to the `6`, i.e., *the value of* `n`.\nIn general, variable assignments change *only* the mutated variables.\n",
                         "misconception": "DefByRef"
                     }
                 }

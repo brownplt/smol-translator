@@ -1,9 +1,9 @@
 var a = 4
-def h() =
+def h =
   a
-def k() =
+def k =
   a = 2
-  h()
-println(k())
+  h
+println(k)
 a = 6
-println(h())
+println(h)
