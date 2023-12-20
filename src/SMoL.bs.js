@@ -2120,6 +2120,7 @@ function termAsStat$1(t) {
 }
 
 function printTerm$2(t) {
+  usingBuffer.contents = true;
   if (t.TAG === /* Def */0) {
     return defToString$1(t._0);
   } else {

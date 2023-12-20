@@ -1156,6 +1156,7 @@ module ScalaPrinter = {
     String.concat("\n", list{...ts->List.map(termAsStat), expToString(ctx, e)})
   }
   and printTerm = t => {
+    usingBuffer := true
     switch t {
     | Exp(e) => expToString(Expr(false), e)
     | Def(d) => defToString(d)
