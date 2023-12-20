@@ -1675,7 +1675,7 @@ function printBlock$2(param) {
                 ]));
 }
 
-var mutating = {
+var mutatingVariable = {
   contents: false
 };
 
@@ -1751,7 +1751,7 @@ function parameterToString(x) {
 
 function defvarToString$1(x, e) {
   return "" + (
-          mutating.contents ? "var" : "val"
+          mutatingVariable.contents ? "var" : "val"
         ) + " " + x + " = " + e + "";
 }
 
@@ -2122,7 +2122,7 @@ function printTerm$2(t) {
 }
 
 function printProgram$1(p) {
-  mutating.contents = $$String.contains(termsToString(p), /* '!' */33);
+  mutatingVariable.contents = Js_string.match_(/[(]set!/, termsToString(p)) !== undefined;
   var tts = function (t) {
     if (t.TAG === /* Def */0) {
       return defToString$1(t._0);

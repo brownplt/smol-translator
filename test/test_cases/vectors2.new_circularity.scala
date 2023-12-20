@@ -1,4 +1,4 @@
-var x = Buffer(74, 82)
-var y = Buffer(x)
+val x = Buffer(74, 82)
+val y = Buffer(x)
 x(0) = y
 println(x(1))

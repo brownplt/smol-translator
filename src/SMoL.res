@@ -911,7 +911,7 @@ module JSPrinter = {
 }
 
 module ScalaPrinter = {
-  let mutating = ref(false);
+  let mutatingVariable = ref(false);
 
   let consider_context = (e, ctx) => {
     switch ctx {
@@ -976,7 +976,7 @@ module ScalaPrinter = {
   }
 
   let defvarToString = (x: string, e) => {
-    `${mutating.contents ? "var" : "val"} ${x} = ${e}`
+    `${mutatingVariable.contents ? "var" : "val"} ${x} = ${e}`
   }
 
   let deffunToString = (f, xs, b) => {
@@ -1152,7 +1152,7 @@ module ScalaPrinter = {
   }
 
   let printProgram = p => {
-    mutating := String.contains(SMoLPrinter.printProgram(p), '!')
+    mutatingVariable := Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(p)) != None
     let tts = t => {
       switch t {
       | Exp(e) => expToString(TopLevel, e)
