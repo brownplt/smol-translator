@@ -1,0 +1,4 @@
+(deffun (f x y z)
+  (defvar p (* y z))
+  (+ x p))
+(f 2 1 3)
