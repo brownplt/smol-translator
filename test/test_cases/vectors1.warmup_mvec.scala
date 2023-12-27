@@ -1,4 +1,4 @@
 val n = 44
 def f(x : Int) =
   x + 1
-println((n, f(n)))
+println(Buffer(n, f(n)))

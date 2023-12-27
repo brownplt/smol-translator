@@ -1,4 +1,4 @@
 (deffun (inc n)
   (+ n 1))
-(defvar v (mvec inc))
+(defvar v (mvec inc inc))
 ((vec-ref v 0) 2)

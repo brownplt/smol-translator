@@ -1,4 +1,4 @@
-def ffx(f : Int, x : Int) =
+def ffx[T](f : (T => T), x : T) =
   f(f(x))
 def inc(x : Int) =
   x + 1

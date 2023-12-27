@@ -1,5 +1,5 @@
 val a = Buffer(55, 17)
-def foobar(b : Int) =
+def foobar(b : Buffer[Int]) =
   b(0) = 52
-println(foobar(a))
+foobar(a)
 println(a)

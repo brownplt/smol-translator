@@ -977,7 +977,7 @@ module ScalaPrinter = {
   }
 
   let defvarToString = (x: string, e) => {
-    `${mutatingVariable.contents ? "var" : "val"} ${x} = ${e}`
+    `${(mutatingVariable.contents) ? "var" : "val"} ${x} = ${e}`
   }
 
   let deffunToString = (f, xs, b) => {

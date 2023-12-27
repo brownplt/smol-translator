@@ -1,5 +1,5 @@
 val zz = Buffer(88, 88)
-def f(aa : Int) =
+def f(aa : Buffer[Int]) =
   aa(0) = 97
-println(f(zz))
+f(zz)
 println(zz)

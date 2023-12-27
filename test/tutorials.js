@@ -1050,7 +1050,7 @@ export const tutorials =
     "fun_in_vectors": {
       "answer": "3",
       "feedback": "`v` is bound to a vector that refers to the function `inc`.\nThe value of `(vec-ref v 0)` is the function `inc`.\nSo, the value of `((vec-ref v 0) 2)` is the value of `(inc 2)`,\nwhich is `3`.\n",
-      "program": "(deffun (inc n)\n  (+ n 1))\n(defvar v (mvec inc))\n((vec-ref v 0) 2)\n",
+      "program": "(deffun (inc n)\n  (+ n 1))\n(defvar v (mvec inc inc))\n((vec-ref v 0) 2)\n",
       "again": {
         "answer": "1",
         "program": "(deffun (inc n)\n  (+ n 1))\n(deffun (dec n)\n  (- n 1))\n(defvar v (mvec inc dec))\n((vec-ref v 1) 2)\n"
@@ -1115,7 +1115,7 @@ export const tutorials =
       "program": "(deffun (foo)\n  (defvar n 0)\n  (deffun (bar)\n    (set! n (+ n 1))\n    n)\n  bar)\n(defvar f (foo))\n(defvar g (foo))\n\n(f)\n(f)\n(g)\n",
       "again": {
         "answer": "2 2 4",
-        "program": "(deffun (f n)\n  (deffun (dbl)\n    (set! n (* n 2))\n    n)\n  dbl)\n(defvar dbl1 (f 1))\n(defvar dbl2 (f 1))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
+        "program": "(deffun (f)\n  (defvar n 1)\n  (deffun (dbl)\n    (set! n (* n 2))\n    n)\n  dbl)\n(defvar dbl1 (f))\n(defvar dbl2 (f))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
       },
       "misconceptions": {
         "1 1 1": {
