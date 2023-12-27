@@ -1,6 +1,6 @@
-def add1(n):
+def inc(n):
     return n + 1
-def sub1(n):
+def dec(n):
     return n - 1
-v = [add1, sub1]
+v = [inc, dec]
 print(v[1](2))

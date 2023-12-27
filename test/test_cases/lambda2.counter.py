@@ -1,12 +1,12 @@
-def foobar():
+def foo():
     n = 0
-    def counter():
+    def bar():
         nonlocal n
         n = n + 1
         return n
-    return counter
-f = foobar()
-g = foobar()
+    return bar
+f = foo()
+g = foo()
 print(f())
 print(f())
 print(g())

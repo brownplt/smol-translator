@@ -1,13 +1,13 @@
-function foobar() {
+function foo() {
   let n = 0;
-  function counter() {
+  function bar() {
     n = n + 1;
     return n;
   }
-  return counter;
+  return bar;
 }
-let f = foobar();
-let g = foobar();
+let f = foo();
+let g = foo();
 console.log(f());
 console.log(f());
 console.log(g());

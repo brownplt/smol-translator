@@ -1,8 +1,8 @@
+function inc(x) {
+  return x + 1;
+}
 function g() {
-  function add1(x) {
-    return x + 1;
-  }
-  return add1;
+  return inc;
 }
 let f = g();
 console.log(f(10));

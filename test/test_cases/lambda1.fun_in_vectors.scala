@@ -1,4 +1,4 @@
-def add1(n : Int) =
+def inc(n : Int) =
   n + 1
-val v = (add1)
+val v = (inc)
 println(v(0)(2))

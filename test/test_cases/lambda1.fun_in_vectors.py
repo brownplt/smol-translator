@@ -1,4 +1,4 @@
-def add1(n):
+def inc(n):
     return n + 1
-v = [add1]
+v = [inc]
 print(v[0](2))

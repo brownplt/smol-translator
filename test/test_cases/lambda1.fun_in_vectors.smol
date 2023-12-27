@@ -1,4 +1,4 @@
-(deffun (add1 n)
+(deffun (inc n)
   (+ n 1))
-(defvar v (mvec add1))
+(defvar v (mvec inc))
 ((vec-ref v 0) 2)

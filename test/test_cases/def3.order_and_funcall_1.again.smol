@@ -1,6 +1,0 @@
-(deffun (b)
-  a)
-(defvar z (b))
-(defvar a 12)
-
-z

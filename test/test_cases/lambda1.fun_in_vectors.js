@@ -1,5 +1,5 @@
-function add1(n) {
+function inc(n) {
   return n + 1;
 }
-let v = [ add1 ];
+let v = [ inc ];
 console.log(v[0](2));

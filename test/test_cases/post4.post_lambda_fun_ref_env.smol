@@ -1,0 +1,7 @@
+(deffun (k b)
+  (lambda (a)
+    (+ a b)))
+(defvar foo (k 3))
+(defvar bar (k 2))
+(foo 3)
+(bar 3)

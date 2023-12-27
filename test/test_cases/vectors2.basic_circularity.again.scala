@@ -1,3 +1,3 @@
-val x = Buffer(84, 82, 85, 86)
+val x = Buffer(84, 73, 69, 52)
 x(1) = x
 println(x(0))

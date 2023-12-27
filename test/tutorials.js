@@ -7,6 +7,7 @@ export const tutorials =
     "FlatEnv"
   ],
   "order": [
+    "intro_smol",
     "intro_defvar",
     "warmup_defvar",
     "intro_deffun_1",
@@ -36,6 +37,9 @@ export const tutorials =
     },
     "intro_error": {
       "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is an `error`\nbecause you can't divide a number by 0.\n\n```\n(defvar x 23)\n(/ x 0)\n```\n\nThe result of the following program is `#t #f error`\nbecause you can't add two boolean values.\n\n```\n#t\n#f\n(+ #t #f)\n```\n"
+    },
+    "intro_smol": {
+      "confirm": "This series of tutorials revolve around a central idea, **SMoL**, the Standard Model of Languages.\nThis is the embodiment of the computational core of many of our widely-used programming languages,\nfrom C# and Java to JavaScript, and Python to Scala and Racket. All these languages (and many others),\nto a large extent, have a common computational core:\n\n- lexical scope\n- nested scope\n- eager evaluation\n- sequential evaluation (per “thread”)\n- mutable first-order variables\n- mutable first-class structures (objects, vectors, etc.)\n- higher-order functions that close over bindings\n- automated memory management (e.g., garbage collection)\n\nWhat goes in SMoL is, of course, a judgment call:\nwhen a feature isn't present across a large number of diverse languages (like static types),\nor shows too much variation between languages that have it (like objects),\nwe do not include that in the *standard* model.\nBut it is not a value judgment:\nthe standard model is about what languages *are*, rather than what languages *should be*.\n"
     },
     "warmup_deffun_1": {
       "answer": "6",
@@ -249,8 +253,7 @@ export const tutorials =
     [
       "defvar_binding_cause_evaluation",
       "funcall_binding_cause_evaluation",
-      "bad_order",
-      "order_and_funcall_1"
+      "bad_order"
     ],
     "reflect_order_of_computation",
     "goal_order_of_computation",
@@ -270,7 +273,7 @@ export const tutorials =
       },
       "misconceptions": {
         "3 2": {
-          "feedback": "You might think `(+ y 1)` is able to refer to `y` and hence evaluate to a value.\nHowever, although it is able to refer to `y`, `y` has not been bound to a value\nat that moment.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right), so it is an error to evaluate a variable reference before binding the variable to a value.\n",
+          "feedback": "You might think `(+ y 1)` is able to refer to `y` and hence evaluate to a value.\nHowever, `y` has not been bound to a value when `(+ y 1)` is evaluated.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n",
           "misconception": "Lazy"
         }
       }
@@ -306,13 +309,13 @@ export const tutorials =
       }
     },
     "goal_order_of_computation": {
-      "emphasize": "1. Every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program.\n2. Every function call evaluates the actual parameters immediately and binds the values to formal parameters, even when the formal parameter is not used in the function.\n3. Every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n4. It is an error to evaluate a variable reference before binding the variable to a value.\n"
+      "emphasize": "- Variables are bound to values. Specifically, every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program; every function call evaluates the actual parameters immediately and binds the values to formal parameters, even if the formal parameter is not used in the function.\n- Every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n"
     },
     "goal_order_of_computation_labelling_1": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that together make these points.\n\n> 1. Every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program.\n> 2. Every function call evaluates the actual parameters immediately and binds the values to formal parameters, even when the formal parameter is not used in the function.\n\nYou don't need to select all such programs.\n"
+      "select_and_comment": "Please scroll back and select 1-3 programs that together make these points.\n\n> - Variables are bound to values. Specifically, every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program; every function call evaluates the actual parameters immediately and binds the values to formal parameters, even if the formal parameter is not used in the function.\n\nYou don't need to select all such programs.\n"
     },
     "goal_order_of_computation_labelling_2": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that together make these points.\n\n> 3. Every block evaluates in top-to-bottom, left-to-right order.\n> 4. It is an error to evaluate a variable reference before binding the variable to a value.\n\nYou don't need to select all such programs.\n"
+      "select_and_comment": "Please scroll back and select 1-3 programs that together make these points.\n\n> - Every block evaluates in top-to-bottom, left-to-right order.\n\nYou don't need to select all such programs.\n"
     },
     "intro_even_more_on_def": {
       "confirm": "In this tutorial, we will learn even more about definitions.\n"
@@ -322,21 +325,6 @@ export const tutorials =
     },
     "keyframe_order_of_computation_2": {
       "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
-    },
-    "order_and_funcall_1": {
-      "answer": "error",
-      "feedback": "The program tries to bind `y` to the value of `(f)`. To evaluate `(f)`,\nwe need to evaluate `x`. But `x` has not yet been bound to a value at that moment.\n",
-      "program": "(deffun (f)\n  x)\n(defvar y (f))\n(defvar x 12)\n\ny\n",
-      "again": {
-        "answer": "error",
-        "program": "(deffun (b)\n  a)\n(defvar z (b))\n(defvar a 12)\n\nz\n"
-      },
-      "misconceptions": {
-        "12": {
-          "feedback": "You might think `f` is able to refer to `x`, so `(f)` evaluates to a value.\nHowever, although `f` is able to refer to `x`, `x` has not been bound to a value\nwhen the function call happens.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right), so it is an error to evaluate a variable reference before binding the variable to a value.\n",
-          "misconception": "Lazy"
-        }
-      }
     },
     "reflect_order_of_computation": {
       "prompt": "In what order are definitions and expressions evaluated?\n"
@@ -348,12 +336,6 @@ export const tutorials =
   "misconceptions": [],
   "order": [
     "intro_vectors",
-    [
-      "post_new_three_layer",
-      "post_error_when_refer_to_undefined",
-      "post_bad_order"
-    ],
-    "intro_mvec",
     "warmup_mvec",
     "intro_vecref",
     "warmup_vecref",
@@ -361,9 +343,6 @@ export const tutorials =
     "warmup_vecset"
   ],
   "questions": {
-    "intro_mvec": {
-      "confirm": "In the rest of this tutorial, we will learn about **mutable values**, illustrated with\nmutable **vectors/arrays**.\n\nThe following program illustrates how to create vectors\n\n```\n(mvec (mvec 1 2) (mvec 3) (mvec))\n```\n\nThis program produces `#(#(1 2) #(3) #())`. It creates four vectors:\n\n* a two-**element** vector that refers `1` and `2`\n* a one-element vector that refers `3`\n* an empty vector\n* a three-element vector that refers all three aforementioned vectors\n"
-    },
     "intro_vecref": {
       "confirm": "The following program illustrates how to refer to vector elements.\n\n```\n(defvar v (mvec 84 75))\n(vec-ref v 0)\n(vec-ref v 1)\n(vec-ref v 2)\n```\n\nThis program produces `84 75 error`.\nIt refers to the `0`-th (i.e., first) element, the `1`-th element, and then\ntries to refer to the `2`-th element.\n"
     },
@@ -371,52 +350,7 @@ export const tutorials =
       "confirm": "The following program illustrates how to mutate vectors.\n\n```\n(defvar m (mvec 62 77))\n(vec-set! m 0 83)\n(vec-ref m 0)\n```\n\nThis program produces `83`.\nIt **mutates** the vector by **replacing** the `0`-th element with `83`\nand then refers to the `0`-th element.\n\n"
     },
     "intro_vectors": {
-      "confirm": "In this tutorial, we will review previously learned content and then learn about **mutable values**.\n"
-    },
-    "post_bad_order": {
-      "answer": "error",
-      "feedback": "The first definition tries to bind `i` to the value of `(* j 3)`.\nTo evaluate `(* j 3)`, we need the value of `j`.\nBut `j` is not bound to a value at that moment.\n",
-      "program": "(defvar i (* j 3))\n(defvar j 2)\n\ni\nj\n",
-      "again": {
-        "answer": "error",
-        "program": "(defvar baz (+ bar 1))\n(defvar bar 2)\n\nbaz\nbar\n"
-      },
-      "misconceptions": {
-        "6 2": {
-          "feedback": "You might think `(* j 3)` is able to refer to `j` and hence evaluate to a value.\nHowever, although it is able to refer to `j`, `j` has not been bound to a value\nat that moment.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right), so it is an error to evaluate a variable reference before binding the variable to a value.\n",
-          "misconception": "Lazy"
-        }
-      }
-    },
-    "post_error_when_refer_to_undefined": {
-      "answer": "error",
-      "feedback": "`(+ (k 3) b)` is evaluated in the top-level block, where `b` is not defined.\nSo, this program errors.\n",
-      "program": "(deffun (k a)\n  (defvar b 1)\n  (+ a b))\n\n(+ (k 3) b)\n",
-      "again": {
-        "answer": "error",
-        "program": "(deffun (foo bar)\n  (defvar zzz 8)\n  (* bar zzz))\n\n(* (foo 9) zzz)\n"
-      },
-      "misconceptions": {
-        "5": {
-          "feedback": "`(defvar b 1)` binds `b` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `k`.\n`(+ (k 3) b)` appears in the top-level block, so it tries to refer to\na `b` defined in the top-level block. But `b` is not defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "FlatEnv"
-        }
-      }
-    },
-    "post_new_three_layer": {
-      "answer": "15",
-      "feedback": "This program binds `a` to `3` and `foo` to a function, and then\nevaluates `(+ (foo 4) 2)`.\nThe value of `(+ (foo 4) 2)` is the value of `(+ (bar) 2)`,\nwhich is the value of `(+ (+ a b z) 2)`,\nwhich is the value of `(+ (+ 3 4 6) 2)`,\nwhich is `10`.\n",
-      "program": "(defvar a 3)\n(deffun (foo b)\n  (deffun (bar)\n    (defvar c 6)\n    (+ a b c))\n  (bar))\n(+ (foo 4) 2)\n",
-      "again": {
-        "answer": "24",
-        "program": "(defvar aa 3)\n(deffun (abc bb)\n  (deffun (h)\n    (defvar cc 2)\n    (* aa bb cc))\n  (h))\n(* (abc 4) 1)\n"
-      },
-      "misconceptions": {
-        "error": {
-          "feedback": "You might think `(+ a b c)` can't refer to `a` and `b`.\nHowever, `(+ a b c)` appears in the body of `bar`, which is a sub-block of\nthe body of `foo`, which is a sub-block of the top-level block.\nSo, it can refer to the `a` defined in the top-level block\nand the `b` defined in `foo`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
+      "confirm": "In this tutorial, we will learn about **mutable values**, illustrated with **vectors**.\n\nThe following program illustrates how to create vectors\n\n```\n(mvec (mvec 1 2) (mvec 3) (mvec))\n```\n\nThis program produces `#(#(1 2) #(3) #())`. It creates four vectors:\n\n* a two-**element** vector that refers `1` and `2`\n* a one-element vector that refers `3`\n* an empty vector\n* a three-element vector that refers all three aforementioned vectors\n"
     },
     "warmup_mvec": {
       "answer": "#(44 45)",
@@ -501,7 +435,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(51 62 73)": {
-          "feedback": "You might think the two elements of `v` refer to different vectors, so changing one doesn't change the other.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating a new vector (which is essentially a function call) does not create new copies of the elements.\n",
+          "feedback": "You might think the two elements of `v` refer to different vectors, so changing one doesn't change the other.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n",
           "misconception": "StructsCopyStructs"
         }
       }
@@ -516,7 +450,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(72 #(53))": {
-          "feedback": "You might think `x` and the 1-th element of `v` refer to different vectors, so changing `x` doesn't change the 1-th element of `v`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating a new vector (which is essentially a function call) does not create new copies of the elements.\n",
+          "feedback": "You might think `x` and the 1-th element of `v` refer to different vectors, so changing `x` doesn't change the 1-th element of `v`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n",
           "misconception": "StructsCopyStructs"
         }
       }
@@ -531,7 +465,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(77)": {
-          "feedback": "You might think `x` and `y` refer to different vectors, so changing `x` doesn't change `y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and variable definitions do not create new vectors.\n",
+          "feedback": "You might think `x` and `y` refer to different vectors, so changing `x` doesn't change `y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n",
           "misconception": "DefsCopyStructs"
         }
       }
@@ -546,7 +480,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(71 86)": {
-          "feedback": "You might think `x` and `y` refer to different vectors, so changing `y` doesn't change `x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and function calls do not create new vectors.\n",
+          "feedback": "You might think `x` and `y` refer to different vectors, so changing `y` doesn't change `x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n",
           "misconception": "CallsCopyStructs"
         }
       }
@@ -557,7 +491,7 @@ export const tutorials =
       "program": "(defvar x (mvec 43 54))\n(vec-set! x 0 x)\n(vec-ref x 1)\n",
       "again": {
         "answer": "84",
-        "program": "(defvar x (mvec 84 82 85 86))\n(vec-set! x 1 x)\n(vec-ref x 0)\n"
+        "program": "(defvar x (mvec 84 73 69 52))\n(vec-set! x 1 x)\n(vec-ref x 0)\n"
       },
       "misconceptions": {
         "error": {
@@ -596,13 +530,13 @@ export const tutorials =
       "emphasize": "- Creating a vector does not inherently create a binding.\n- Creating a binding does not necessarily alter the heap.\n"
     },
     "goal_vectors": {
-      "emphasize": "A vector can be referred to by more than one variable and even by other vectors (including itself). referring to a vector does not create a copy of the vector; rather, they share the same vector. Specifically\n* Variable definitions do not create new vectors.\n* Function calls do not create new vectors; as a special case of function calls, creating new vectors does not create new copies of its elements.\n\nThe references share the same vector. That is, vectors can be **aliased**.\n"
+      "emphasize": "A vector can be referred to by more than one variable and even by other vectors (including itself).\nReferring to a vector does not create a copy of the vector; rather, they share the same vector. Specifically\n\n- Binding a vector to a new variable does not create a copy of that vector.\n- Vectors that are passed to a function in a function call do not get copied.\n- Creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n\nThe references share the same vector. That is, vectors can be **aliased**.\n"
     },
     "goal_vectors_labelling": {
-      "select_and_comment": "Now please scroll back and select 1-3 programs that make this point.\n\nYou don't need to select *all* such programs.\n"
+      "select_and_comment": "Now please scroll back and select 1-3 programs that make the above points.\n\nYou don't need to select *all* such programs.\n"
     },
     "intro_more_on_vectors": {
-      "confirm": "In this tutorial, we will learn *more* about **mutable values**, illustrated with\nmutable **vectors** (a.k.a. arrays).\n"
+      "confirm": "In this tutorial, we will learn *more* about **mutable values**, illustrated with **vectors**.\n"
     },
     "keyframe_vector_aliasing_1": {
       "prompt": "Here is a program that confused many students\n\n```\n(defvar v (mvec 1 2 3 4))\n(defvar vv (mvec v v))\n(vec-set! (vec-ref vv 1) 0 100)\nvv\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
@@ -620,7 +554,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(62)": {
-          "feedback": "You might think `x` and `y` refer to different vectors, so changing `y` doesn't change `x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and variable definitions do not create new vectors.\n",
+          "feedback": "You might think `x` and `y` refer to different vectors, so changing `y` doesn't change `x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n",
           "misconception": "DefsCopyStructs"
         }
       }
@@ -635,7 +569,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(99 83)": {
-          "feedback": "You might think `x` and `y` refer to different vectors, so changing `x` doesn't change `y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and function calls do not create new vectors.\n",
+          "feedback": "You might think `x` and `y` refer to different vectors, so changing `x` doesn't change `y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n",
           "misconception": "CallsCopyStructs"
         },
         "error": {
@@ -712,7 +646,7 @@ export const tutorials =
       "prompt": "Which choice best describes the heap at the end of the following program?\n"
     },
     "intro_even_more_on_mvec": {
-      "confirm": "In this tutorial, we will learn even more about **mutable values**, illustrated with\nmutable **vectors** (a.k.a. arrays).\n"
+      "confirm": "In this tutorial, we will learn even more about **mutable values**, illustrated with **vectors**.\n"
     },
     "mvecs_are_mvec": {
       "answer": "@100 = #(4 5)",
@@ -758,7 +692,7 @@ export const tutorials =
         "@200 = 33",
         "@100 = #(2); @200 = #(33)"
       ],
-      "feedback": "Exactly one vector was created.\nSo, there must be at most one vector/array on the heap.\nThis rules out %3%.\n\nFor now, the heap maps addresses only to vectors.\nThis rules out %2%.\n\nThe heap looks like %1% after evaluating `(mvec 2)`.\nHowever, the subsequent mutation changes the vector.\nSo, the correct answer is %0%.\n",
+      "feedback": "Exactly one vector was created.\nSo, there must be at most one vector on the heap.\nThis rules out %3%.\n\nFor now, the heap maps addresses only to vectors.\nThis rules out %2%.\n\nThe heap looks like %1% after evaluating `(mvec 2)`.\nHowever, the subsequent mutation changes the vector.\nSo, the correct answer is %0%.\n",
       "program": "(defvar x (mvec 2))\n(vec-set! x 0 33)\nx\n",
       "prompt": "Which choice best describes the heap at the end of the following program?\n\n(**Note**: we use `@ddd` (e.g., `@123`, `@200`, and `@100`) to represent heap addresses.\nHeap addresses are *random*. The numbers don't mean anything.)\n"
     }
@@ -766,9 +700,663 @@ export const tutorials =
 },
 "mutvars1":
 {
-  "misconceptions": [],
+  "misconceptions": [
+    "DefByRef",
+    "CallByRef",
+    "StructByRef",
+    "IsolatedFun"
+  ],
   "order": [
     "intro_mutvars",
+    "warmup_set",
+    [
+      "not_aliased_by_defvar_1",
+      "not_aliased_by_defvar_2",
+      "not_aliased_by_funarg_2",
+      "new_not_aliased_by_funarg",
+      "alias_var_in_mvec",
+      "new_alias_mvec_in_mvec_trick"
+    ],
+    "reflect_mutvars_1",
+    "goal_mutvars_1",
+    "goal_mutvars_1_labelling"
+  ],
+  "questions": {
+    "alias_var_in_mvec": {
+      "answer": "#(68 57 59)",
+      "feedback": "`v` is bound to the vector created by `(mvec 68 57 x)`.\n`(mvec 68 57 x)` is a function call.\n`x` is evaluated at the point of evaluating `(mvec 68 57 x)`.\nThat is why the vector's content is `68`, `57`, and `59`.\nThe subsequent variable assignment mutates `x`.\nBut this doesn't impact the vector\nbecause the vector refers the value `59` rather than `x`.\n",
+      "program": "(defvar x 59)\n(defvar v (mvec 68 57 x))\n(set! x 74)\nv\n",
+      "again": {
+        "answer": "#(82 66 93)",
+        "program": "(defvar x 66)\n(defvar v (mvec 82 x 93))\n(set! x 1)\nv\n"
+      },
+      "misconceptions": {
+        "#(68 57 74)": {
+          "feedback": "You might think the `2`-th and last element of the vector refers to `x`.\nHowever, vectors refer to values, so it actually refers to `59`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "StructByRef"
+        }
+      }
+    },
+    "goal_mutvars_1": {
+      "emphasize": "Variable assignments change *only* the mutated variables. That is, variables are not aliased.\n\n(Note: some programming languages (e.g., C++ and Rust) allow variables to be aliased.\nHowever, even in those languages, variables are not aliased by default.)\n"
+    },
+    "goal_mutvars_1_labelling": {
+      "select_and_comment": "Please scroll back and select 1-3 programs that make the above point.\n\nYou don't need to select *all* such programs.\n"
+    },
+    "intro_mutvars": {
+      "confirm": "In this tutorial, we will learn about **variable assignments** and **mutable variables**.\n\nThe following program illustrates the new concepts.\n\n```\n(defvar x 2)\nx\n(set! x (+ x 1))\nx\n(set! x (* x 2))\nx\n```\n\nThis program produces `2 3 6`.\nIt first defines `x` and binds `x` to `2`.\nThe first variable assignment `(set! x (+ x 1))` **mutates** (the binding of) `x`.\nAfter that, `x` is bound to the value of `(+ x 1)`; this uses the new value of `x`, which is `2`, resulting in `(+ 2 1)`, which is `3`.\nThe next variable assignment again mutates `x` and binds `x` to the value of `(* 3 2)`, which is `6`.\n"
+    },
+    "new_alias_mvec_in_mvec_trick": {
+      "answer": "#(#(55) 55 55)",
+      "feedback": "`x` is first bound to a one-element vector.\n`v` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! x (mvec 66))` binds `x` to a new vector.\nThis doesn't impact `v` because\nthe 0-th element of `v` is still the one-element vector.\n",
+      "program": "(defvar x (mvec 55))\n(defvar v (mvec x 55 55))\n(set! x (mvec 66))\nv\n",
+      "again": {
+        "answer": "#(2 #(0) 3)",
+        "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
+      },
+      "misconceptions": {
+        "#(#(66) 55 55)": {
+          "feedback": "You might think the `0`-th and first element of `v` refers to `x`.\nHowever, vectors refer to values, so it actually refers to the one-element vector, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "StructByRef"
+        }
+      }
+    },
+    "new_not_aliased_by_funarg": {
+      "answer": "12",
+      "feedback": "The function call binds `y` to `12`.\nThe variable assignment mutates the value of `x` to `0`, but `y` is still bound to `12`.\n",
+      "program": "(defvar x 12)\n(deffun (f y)\n  (set! x 0)\n  y)\n(f x)\n",
+      "again": {
+        "answer": "1 2",
+        "program": "(defvar a 1)\n(deffun (foobar b)\n  (set! a 2)\n  b)\n(foobar a)\na\n"
+      },
+      "misconceptions": {
+        "0": {
+          "feedback": "You might think the function call `(f x)` binds `y` to `x`, so\nchanging `x` will change `y`.\nHowever, we learned in previous tutorials that variables are bound to values, so `y` is bound to `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "CallByRef"
+        },
+        "error": {
+          "feedback": "You might think `(set! x 0)` can't refer to `x`.\nHowever, `(set! x 0)` appears in the body of `g`, which is a sub-block of the top-level block,\nso it can mutate the top-level `x`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    },
+    "not_aliased_by_defvar_1": {
+      "answer": "0 12",
+      "feedback": "The first definition binds `x` to `12`.\nThe second definition binds `y` to the value of `x`, which is `12`.\nThe variable assignment mutates the binding of `x`, so `x` is now bound to `0`.\nBut `y` is still bound to `12`.\n",
+      "program": "(defvar x 12)\n(defvar y x)\n(set! x 0)\nx\ny\n",
+      "again": {
+        "answer": "2 1",
+        "program": "(defvar a 1)\n(defvar b a)\n(set! a 2)\na\nb\n"
+      },
+      "misconceptions": {
+        "0 0": {
+          "feedback": "You might think `(defvar y x)` binds `y` to `x`, so changing `x` will change `y`.\nHowever, we learned in previous tutorials that variables are bound to values, so `y` is bound to the `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "DefByRef"
+        }
+      }
+    },
+    "not_aliased_by_defvar_2": {
+      "answer": "40 22",
+      "feedback": "`m` and `n` are bound to `40`.\nThe variable assignment mutates the binding of `n`.\nSo, `n` is eventually bound to `22`.\n",
+      "program": "(defvar m 40)\n(defvar n m)\n(set! n 22)\nm\nn\n",
+      "again": {
+        "answer": "1 2",
+        "program": "(defvar zzz 1)\n(defvar abc zzz)\n(set! abc 2)\nzzz\nabc\n"
+      },
+      "misconceptions": {
+        "22 22": {
+          "feedback": "You might think `(defvar n m)` binds `n` to `m`, so changing `m` will change `n`.\nHowever, we learned in previous tutorials that variables are bound to values, so `n` is bound to the `40`, i.e., *the value of* `m`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "DefByRef"
+        }
+      }
+    },
+    "not_aliased_by_funarg_2": {
+      "answer": "12",
+      "feedback": "The function call binds `y` to `12`.\nThe variable assignment mutates the value of `y` to `0`, but `x` is still bound to `12`.\n",
+      "program": "(defvar x 12)\n(deffun (f y)\n  (set! y 0)\n  x)\n(f x)\n",
+      "again": {
+        "answer": "1",
+        "program": "(defvar s 1)\n(deffun (foobar t)\n  (set! t 2)\n  s)\n(foobar s)\n"
+      },
+      "misconceptions": {
+        "0": {
+          "feedback": "You might think the function call `(f x)` binds `y` to `x`, so\nchanging `y` will change `x`.\nHowever, we learned in previous tutorials that variables are bound to values, so `y` is bound to `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "CallByRef"
+        },
+        "error": {
+          "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block,\nso its body can refer to the top-level `x`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    },
+    "reflect_mutvars_1": {
+      "prompt": "What did you learn about variable assignment from these programs?\n"
+    },
+    "warmup_set": {
+      "answer": "20",
+      "feedback": "`rent` is bound to `10` initially.\nThe `set!` mutates `rent` to `20`.\nSo, when we print the value of `rent` after the `set!`,\nwe see `20`.\n",
+      "program": "(defvar rent 10)\n(set! rent (* 10 2))\nrent\n",
+      "again": {
+        "answer": "25",
+        "program": "(defvar discount 10)\n(set! discount (+ 10 15))\ndiscount\n"
+      }
+    }
+  }
+},
+"mutvars2":
+{
+  "misconceptions": [
+    "DeepClosure",
+    "DefOrSet",
+    "IsolatedFun"
+  ],
+  "order": [
+    "intro_more_on_mutvars",
+    [
+      "update_undefined",
+      "new_fun_do_not_rem_val",
+      "new_fun_rem_env"
+    ],
+    "reflect_mutvars_2",
+    "goal_mutvars_2",
+    "goal_mutvars_2_labelling_1",
+    "goal_mutvars_2_labelling_2",
+    "reflect_env",
+    "goal_env",
+    "attention_check1",
+    "attention_check2",
+    "keyframe_mutable_variables_1",
+    "keyframe_mutable_variables_2"
+  ],
+  "questions": {
+    "attention_check1": {
+      "checkboxes": [
+        [
+          true,
+          "Definitions"
+        ],
+        [
+          false,
+          "Variable mutations (e.g., `(set! x 3)`)"
+        ],
+        [
+          false,
+          "Variable references"
+        ],
+        [
+          true,
+          "Function calls"
+        ]
+      ],
+      "feedback": "Both definitions and function calls create bindings.\nVariable assignment mutates existing bindings but doesn't create new bindings.\n",
+      "prompt": "Which language construct(s) create new bindings?"
+    },
+    "attention_check2": {
+      "checkboxes": [
+        [
+          false,
+          "Definitions"
+        ],
+        [
+          true,
+          "Variable mutations (e.g., `(set! x 3)`)"
+        ],
+        [
+          false,
+          "Variable references"
+        ],
+        [
+          false,
+          "Function calls"
+        ]
+      ],
+      "feedback": "Only variable assignments mutate bindings.\nDefinitions and function calls create new bindings but don't mutate existing bindings.\n",
+      "prompt": "Which language construct(s) mutate bindings?"
+    },
+    "goal_env": {
+      "emphasize": "**Environments** (rather than blocks) bind variables to values.\n\nSimilar to vectors, environments are created as programs run.\n\nEnvironments are created from blocks.\nThey form a tree-like structure,\nrespecting the tree-like structure of their corresponding blocks.\nSo, we have a primordial environment, a top-level environment,\nand environments created from function bodies.\n\n*Every function call creates a new environment.* This is very different from\nthe block perspective: every function corresponds to exactly one block, its body.\n"
+    },
+    "goal_mutvars_2": {
+      "emphasize": "- Variable assignments mutate existing bindings and do not create new bindings.\n- Functions refer to the latest values of variables defined outside their definitions. That is, functions do not remember the values of those variables from when the functions were defined.\n"
+    },
+    "goal_mutvars_2_labelling_1": {
+      "select_and_comment": "Please scroll back and select 1-3 programs that make the following point:\n\n> Variable assignments mutate existing bindings and do not create new bindings.\n\nYou don't need to select *all* such programs.\n"
+    },
+    "goal_mutvars_2_labelling_2": {
+      "select_and_comment": "Please scroll back and select 1-3 programs that make the following point:\n\n> Functions refer to the latest values of variables defined outside their definitions. That is, functions do not remember the values of those variables from when the functions were defined.\n\nYou don't need to select *all* such programs.\n"
+    },
+    "intro_more_on_mutvars": {
+      "confirm": "In this tutorial, we will learn more about **variable assignments** and **mutable variables**.\n"
+    },
+    "keyframe_mutable_variables_1": {
+      "prompt": "Here is a program that confused many students\n\n```\n(defvar x 5)\n(deffun (f x y)\n  (set! x y))\n(f x 6)\nx\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+    },
+    "keyframe_mutable_variables_2": {
+      "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
+    },
+    "new_fun_do_not_rem_val": {
+      "answer": "32",
+      "feedback": "The program binds `x` to `1` and then defines a function `f`.\n`x` is then bound to `2`. So, `(f 30)` is `(+ x 30)`, which is `32`.s\n",
+      "program": "(defvar x 1)\n(deffun (f n)\n  (+ x n))\n(set! x 2)\n(f 30)\n",
+      "again": {
+        "answer": "14",
+        "program": "(defvar o 1)\n(deffun (u t)\n  (+ o t))\n(set! o 9)\n(u 5)\n"
+      },
+      "misconceptions": {
+        "31": {
+          "feedback": "You are right that `x` is bound to `1` when `f` is bound to a function.\nYou might think the function remembers the value `1`.\nHowever, `f` does not remember the value of `x`. Rather, it always\nrefers to the latest value of `x`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "error": {
+          "feedback": "You might think `(+ x n)` can't refer to `x`.\nHowever, `(+ x n)` appears in the body of `f`, which is a sub-block of\nthe top-level block. So, it can refer to the `x` defined\nin the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    },
+    "new_fun_rem_env": {
+      "answer": "0 1",
+      "feedback": "There is exactly one variable `x`.\nThe `x` in `(set! x 0)` refers to that variable.\nCalling `f` evaluates `(set! x 0)`, which mutates `x`.\nWhen the value of `x` is eventually printed, we see the new value.\n",
+      "program": "(defvar x 12)\n(deffun (f)\n  x)\n(deffun (g)\n  (set! x 0)\n  (f))\n(g)\n(set! x 1)\n(f)\n",
+      "again": {
+        "answer": "2 6",
+        "program": "(defvar a 4)\n(deffun (h)\n  a)\n(deffun (k)\n  (set! a 2)\n  (h))\n(k)\n(set! a 6)\n(h)\n"
+      },
+      "misconceptions": {
+        "12 1": {
+          "feedback": "You might think `(set! x 0)` defines `x`.\nHowever, it will mutate the variable defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
+          "misconception": "DefOrSet"
+        },
+        "12 12": {
+          "feedback": "You are right that `x` is bound to `12` when `f` is bound to a function.\nYou might think the function remembers the value `12`.\nHowever, `f` does not remember the value of `x`. Rather, it always\nrefers to the latest value of `x`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "error": {
+          "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block.\nSo, it can refer to the `x` defined in the top-level block.\n\nYou might think `(set! x 0)` can't refer to `x`.\nHowever, `(set! x 0)` appears in the body of `g`, which is a sub-block of\nthe top-level block. So, it can refer to the `x` defined\nin the top-level block.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    },
+    "reflect_env": {
+      "prompt": "Although we keep saying \"this variable is mutated\", the variables themselves are *not* mutated.\nWhat is actually mutated is *the binding between the variables and their values*.\n\nBlocks have been a good way to describe these bindings.\nHowever, they can't explain variable mutations: a block is a piece of source code,\nand we can't change the source code by mutating a variable. Besides,\nblocks can't explain how parameters might be bound differently in different function calls.\nConsider the following program:\n\n```\n(deffun (f n)\n  (+ n 1))\n(f 2)\n(f 3)\n```\n\nIn this program, `n` is bound to `2` in this first function call, and `3` in the second.\nBlocks can't explain how `n` is bound differently because the two calls share the same\nblock: the body of `f`.\n\nWhat is a better way to describe the binding between variables and their values?\n"
+    },
+    "reflect_mutvars_2": {
+      "prompt": "What did you learn about variable assignment from these programs?\n"
+    },
+    "update_undefined": {
+      "answer": "error",
+      "feedback": "Mutating an undefined variable (in this case, `foobar`) errors rather than defining the variable.\nSo, this program errors.\n",
+      "program": "(set! foobar 2)\nfoobar\n",
+      "again": {
+        "answer": "error",
+        "program": "(set! foo 42)\nfoo\n"
+      },
+      "misconceptions": {
+        "2": {
+          "feedback": "You might think `(set! foobar 2)` defines `foobar`.\nHowever, it errors.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
+          "misconception": "DefOrSet"
+        }
+      }
+    }
+  }
+},
+"lambda1":
+{
+  "misconceptions": [
+    "FunNotVal"
+  ],
+  "order": [
+    "intro_lambda",
+    [
+      "fun_as_val",
+      "fun_as_parameter",
+      "new_fun_as_output",
+      "fun_in_vectors"
+    ],
+    "reflect_funval",
+    "goal_funval",
+    "goal_funval_labelling"
+  ],
+  "questions": {
+    "fun_as_parameter": {
+      "answer": "4",
+      "feedback": "The value of `(twice double 1)` is the value of `(f (f x))`, where\n`f` is bound to `double` and `x` is bound to `1`.\nSo, the result is the value of `(double (double 1))`, which is `4`.\n",
+      "program": "(deffun (twice f x)\n  (f (f x)))\n(deffun (double x)\n  (+ x x))\n(twice double 1)\n",
+      "again": {
+        "answer": "3",
+        "program": "(deffun (ffx f x)\n  (f (f x)))\n(deffun (inc x)\n  (+ x 1))\n(ffx inc 1)\n"
+      },
+      "misconceptions": {
+        "error": {
+          "feedback": "You might think that `(twice double 1)` errors because `double` is bound to a function,\nand that it would not error if `double` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "fun_as_val": {
+      "answer": "42",
+      "feedback": "This program binds `f` to a function that returns `42`,\nand then binds `g` and `h` to that function.\nFinally, calling that function produces `42`.\n",
+      "program": "(deffun (f)\n  42)\n(defvar g f)\n(defvar h g)\n(h)\n",
+      "again": {
+        "answer": "50",
+        "program": "(deffun (f1)\n  5)\n(defvar f2 f1)\n(defvar f3 f2)\n(* (f3) 10)\n"
+      },
+      "misconceptions": {
+        "error": {
+          "feedback": "You might think that `(defvar g f)` errors because `f` is bound to a function,\nand that it would not error if `f` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "fun_in_vectors": {
+      "answer": "3",
+      "feedback": "`v` is bound to a vector that refers to the function `inc`.\nThe value of `(vec-ref v 0)` is the function `inc`.\nSo, the value of `((vec-ref v 0) 2)` is the value of `(inc 2)`,\nwhich is `3`.\n",
+      "program": "(deffun (inc n)\n  (+ n 1))\n(defvar v (mvec inc))\n((vec-ref v 0) 2)\n",
+      "again": {
+        "answer": "1",
+        "program": "(deffun (inc n)\n  (+ n 1))\n(deffun (dec n)\n  (- n 1))\n(defvar v (mvec inc dec))\n((vec-ref v 1) 2)\n"
+      },
+      "misconceptions": {
+        "error": {
+          "feedback": "You might think that `(mvec inc)` errors because `inc` is bound to a function,\nand that it would not error if `inc` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "goal_funval": {
+      "emphasize": "Functions are (also) *first-class* citizens of the value world. Specifically,\n\n- Variables (notably parameters) can be bound to functions,\n- Functions can return functions, and\n- Vectors can refer to functions.\n"
+    },
+    "goal_funval_labelling": {
+      "select_and_comment": "Please scroll back and select 1-3 programs that make the point above.\n\nYou don't need to select *all* such programs.\n"
+    },
+    "intro_lambda": {
+      "confirm": "In this tutorial, we will learn about using functions as values.\n\nNote: some programming languages do NOT consider functions or methods a kind of value.\nBut many programming languages, from Python to Rust, do.\n"
+    },
+    "new_fun_as_output": {
+      "answer": "11",
+      "feedback": "`inc` is bound to a function that adds 1 to its parameter.\n`g` is bound to a function that returns `inc`.\n`f` is bound to the value of `(g)`, which is `inc`.\nSo, the value of `(f 10)` is `11`.\n",
+      "program": "(deffun (inc x)\n  (+ x 1))\n(deffun (g)\n  inc)\n(defvar f (g))\n(f 10)\n",
+      "again": {
+        "answer": "30",
+        "program": "(deffun (fun1)\n  (deffun (average x y)\n    (/ (+ x y) 2))\n  average)\n(defvar x (fun1))\n(x 20 40)\n"
+      },
+      "misconceptions": {
+        "error": {
+          "feedback": "You might think that `(g)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "reflect_funval": {
+      "prompt": "What did you learn about functions from these programs?\n"
+    }
+  }
+},
+"lambda2":
+{
+  "misconceptions": [
+    "FlatEnv",
+    "DeepClosure"
+  ],
+  "order": [
+    "intro_more_funval",
+    [
+      "fun_ref_env",
+      "new_state",
+      "counter"
+    ],
+    "reflect_closure",
+    "goal_closure",
+    "label_closure"
+  ],
+  "questions": {
+    "counter": {
+      "answer": "1 2 1",
+      "feedback": "Every time `foo` is called, it creates a *new* environment frame that binds `n`.\nSo, `f` and `g` have different bindings for the `n` variable.\nWhen `f` is called the first time, it mutates its binding for the `n` variable.\nSo, the second call to `f` produces `2` rather than `1`.\n`g` has its own binding for the `n` variable, which still binds `n` to `0`.\nSo, `(g)` produces `1` rather than `3`.\n",
+      "program": "(deffun (foo)\n  (defvar n 0)\n  (deffun (bar)\n    (set! n (+ n 1))\n    n)\n  bar)\n(defvar f (foo))\n(defvar g (foo))\n\n(f)\n(f)\n(g)\n",
+      "again": {
+        "answer": "2 2 4",
+        "program": "(deffun (f n)\n  (deffun (dbl)\n    (set! n (* n 2))\n    n)\n  dbl)\n(defvar dbl1 (f 1))\n(defvar dbl2 (f 1))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
+      },
+      "misconceptions": {
+        "1 1 1": {
+          "feedback": "You are right that `n` is bound to `0` when `bar` is bound to a function.\nYou might think the function remembers the value `0`.\nHowever, `bar` does not remember the value of `n`. Rather, it remembers the environment and hence always refers to the latest value of `n`.\n`foo` is called twice, so two environments are created.\n`(f)` mutates the first, while `(g)` mutates the second.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "1 2 3": {
+          "feedback": "`foo` is called twice.\nThe first call binds `n` to `0`.\nThe second call also binds `n` to `0`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "FlatEnv"
+        },
+        "error": {
+          "misconception": "DefOrSet,FunNotVal"
+        }
+      }
+    },
+    "fun_ref_env": {
+      "answer": "4 6",
+      "feedback": "The value of `(bar 2)` is the function `addy` defined in an\nenvironment where `y` is bound to `2`.\nThe value of `(bar 4)` is *another* `addy` defined in an\nenvironment where `y` is bound to `4`.\nThe two `addy` functions are *different* values.\nSo, the value of `(f 2)` is `4`,\nwhile the value of `(g 2)` is `6`.\n",
+      "program": "(deffun (bar y)\n  (deffun (addy x)\n    (+ x y))\n  addy)\n(defvar f (bar 2))\n(defvar g (bar 4))\n(f 2)\n(g 2)\n",
+      "again": {
+        "answer": "40 4",
+        "program": "(deffun (f n)\n  (deffun (g m)\n    (* m n))\n  g)\n(defvar fun1 (f 10))\n(defvar fun2 (f 1))\n(fun1 4)\n(fun2 4)\n"
+      },
+      "misconceptions": {
+        "6 6": {
+          "feedback": "`bar` is called twice.\nThe first call binds `y` to `2`.\nThe second call binds `y` to `4`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe `addy` that `f` refers to is created in the first call, so `(f 2)` adds `2` rather than `4`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "FlatEnv"
+        },
+        "error": {
+          "feedback": "You might think that `(bar 2)` and `(bar 4)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "goal_closure": {
+      "emphasize": "Functions remember the environment in which they are defined.\nThat is, function bodies are \"enclosed\" by the environments in which the function values are created.\nSo, function values are called *closures*.\n"
+    },
+    "intro_more_funval": {
+      "confirm": "In this tutorial, we will learn *more* about using functions as values.\n"
+    },
+    "label_closure": {
+      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Functions remember the environment in which they are defined.\n\nYou don't need to select *all* such programs.\n"
+    },
+    "new_state": {
+      "answer": "2",
+      "feedback": "`x` is bound to `1`.\n`g` is bound to the function `addx`\n`(set! x 2)` binds `x` to `2`.\nSo, the value of `(g 0)` is the value of `(addx 0)`, which is the value of `(+ 2 0)`, which is `2`.\n",
+      "program": "(defvar x 1)\n(deffun (f)\n  (deffun (addx y)\n    (+ x y))\n  addx)\n(defvar g (f))\n(set! x 2)\n(g 0)\n",
+      "again": {
+        "answer": "2",
+        "program": "(defvar a 2)\n(deffun (make)\n  (deffun (f b)\n    (+ a b))\n  f)\n(defvar g (make))\n(set! a 1)\n(g 1)\n"
+      },
+      "misconceptions": {
+        "1": {
+          "feedback": "You are right that `x` is bound to `1` when `addx` is created.\nYou might think the function remembers the value `1`.\nHowever, `addx` does not remember the value of `x`.  Rather, it remembers the environment and hence always refers to the latest value of `n`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "error": {
+          "feedback": "You might think that `(f)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar g (f))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "reflect_closure": {
+      "prompt": "What did you learn about functions from these programs?"
+    }
+  }
+},
+"lambda3":
+{
+  "misconceptions": [
+    "FlatEnv",
+    "DeepClosure"
+  ],
+  "order": [
+    "intro_lambda",
+    "warmup_lambda",
+    [
+      "lambda_fun_ref_env",
+      "lambda_new_state",
+      "lambda_counter"
+    ],
+    "goal_lambda",
+    "practice_translate",
+    "keyframe_counter_1",
+    "keyframe_counter_2"
+  ],
+  "questions": {
+    "goal_lambda": {
+      "emphasize": "`(deffun (f x y z) body)` is a shorthand for `(defvar f (lambda (x y z) body))`.\n"
+    },
+    "intro_lambda": {
+      "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function.\n\n```\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThis program program produces `3`. The top-level block contains one expression, a function call. The only (actual) parameter of the function call is `2`. The function of the function call is created by\n\n```\n(lambda (n)\n  (+ n 1))\n```\n\nThis function takes only one parameter `n`, and returns (the value of) `(+ n 1)`.\nSo, the result of the whole program is the value of `(+ 2 1)`, which is `3`.\n"
+    },
+    "keyframe_counter_1": {
+      "prompt": "Here is a program that confused many students\n\n```\n(deffun (foo n)\n  (deffun (bar)\n    (set! n (+ n 1))\n    n)\n  bar)\n(defvar f (foo 0))\n(defvar g (foo 0))\n\n(f)\n(f)\n(g)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+    },
+    "keyframe_counter_2": {
+      "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
+    },
+    "lambda_counter": {
+      "answer": "1 2 1",
+      "feedback": "Every time `foobar` is called, it creates a *new* environment that binds `n`.\nSo, `f` and `g` have different bindings for the `n` variable.\nWhen `f` is called the first time, it mutates its binding for the `n` variable.\nSo, the second call to `f` produces `2` rather than `1`.\n`g` has its own binding for the `n` variable, which still binds `n` to `0`.\nSo, `(g)` produces `1` rather than `3`.\n",
+      "program": "(deffun (foobar)\n  (defvar n 0)\n  (lambda ()\n    (set! n (+ n 1))\n    n))\n(defvar f (foobar))\n(defvar g (foobar))\n\n(f)\n(f)\n(g)\n",
+      "again": {
+        "answer": "2 2 4",
+        "program": "(deffun (build-dbl)\n  (defvar n 1)\n  (lambda ()\n    (set! n (* n 2))\n    n))\n(defvar dbl1 (build-dbl))\n(defvar dbl2 (build-dbl))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
+      },
+      "misconceptions": {
+        "1 1 1": {
+          "feedback": "You are right that `n` is bound to `0` when the lambda function is created.\nYou might think the function remembers the value `0`.\nHowever, the lambda function does not remember the value of `n`. Rather, it remembers the environment and hence always refers to the latest value of `n`.\n`foobar` is called twice, so its parameter, `n`, is bound twice.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "1 2 3": {
+          "feedback": "`foobar` is called twice.\nThe first call binds `n` to `0`.\nThe second call also binds `n` to `0`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "FlatEnv"
+        },
+        "error": {
+          "misconception": "DefOrSet,FunNotVal"
+        }
+      }
+    },
+    "lambda_fun_ref_env": {
+      "answer": "4 6",
+      "feedback": "The value of `(bar 2)` is a lambda function defined in an\nenvironment where `y` is bound to `2`.\nThe value of `(bar 4)` is *another* lambda function defined in an\nenvironment where `y` is bound to `4`.\nThe two lambda functions are *different* values.\nSo, the value of `(f 2)` is `12`,\nwhile the value of `(g 2)` is `52`.\n",
+      "program": "(deffun (bar y)\n  (lambda (x)\n    (+ x y)))\n(defvar f (bar 2))\n(defvar g (bar 4))\n(f 2)\n(g 2)\n",
+      "again": {
+        "answer": "40 4",
+        "program": "(deffun (f n)\n  (lambda (m)\n    (* m n)))\n(defvar fun1 (f 10))\n(defvar fun2 (f 1))\n(fun1 4)\n(fun2 4)\n"
+      },
+      "misconceptions": {
+        "6 6": {
+          "feedback": "`bar` is called twice.\nThe first call binds `y` to `2`.\nThe second call binds `y` to `4`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe lambda function that `f` refers to is created in the first call, so `(f 2)` adds `2` rather than `4`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "FlatEnv"
+        },
+        "error": {
+          "feedback": "You might think that `(bar 2)` and `(bar 4)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "lambda_new_state": {
+      "answer": "2",
+      "feedback": "`x` is bound to `1`.\n`g` is bound to the lambda function.\n`(set! x 2)` binds `x` to `2`.\nSo, the value of `(g 0)` is the value of `(+ 2 0)`, which is `2`.\n",
+      "program": "(defvar x 1)\n(deffun (f)\n  (lambda (y)\n    (+ x y)))\n(defvar g (f))\n(set! x 2)\n(g 0)\n",
+      "again": {
+        "answer": "2",
+        "program": "(defvar a 2)\n(deffun (make)\n  (lambda (b)\n    (+ a b)))\n(defvar fun (make))\n(set! a 1)\n(fun 1)\n"
+      },
+      "misconceptions": {
+        "1": {
+          "feedback": "You are right that `x` is bound to `1` when the lambda function is created.\nYou might think the function remembers the value `1`.\nHowever, the function does not remember the value of `x`.  Rather, it remembers the environment and hence always refers to the latest value of `x`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "error": {
+          "feedback": "You might think that `(f)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar g (f))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "misconception": "FunNotVal"
+        }
+      }
+    },
+    "practice_translate": {
+      "feedback": "The correct answer is `(defvar f (lambda (x) (+ x 1)))`.\n\nThe following are common wrong answers:\n\n- `(deffun f (lambda (x) (+ x 1)))`, which didn't replace the definition keyword\n- `(defvar f (lambda (f x) (+ x 1)))`, which makes `f` a function that takes two parameters rather than one\n- `(defvar (f x) (+ x 1))`, which didn't switch to `lambda`\n",
+      "prompt": "Please rewrite this function definition with as a variable definition that binds lambda function.\n\n```\n(deffun (f x) (+ x 1))\n```\n"
+    },
+    "warmup_lambda": {
+      "answer": "3",
+      "feedback": "This program is essentially the same as\n\n```\n(deffun (f x)\n  (deffun (fun y)\n    (+ x y))\n  fun)\n(defvar x 0)\n((f 2) 1)\n```\n",
+      "program": "(deffun (f x)\n  (lambda (y) (+ x y)))\n(defvar x 0)\n((f 2) 1)\n",
+      "again": {
+        "answer": "5",
+        "program": "(deffun (g a)\n  (lambda (b) (+ a b)))\n\n((g 3) 2)\n"
+      }
+    }
+  }
+},
+"post1":
+{
+  "misconceptions": [],
+  "order": [
+    "intro_post1",
+    [
+      "post_new_three_layer",
+      "post_error_when_refer_to_undefined",
+      "post_bad_order"
+    ]
+  ],
+  "questions": {
+    "intro_post1": {
+      "confirm": "In this tutorial, we will review previously learned content.\n"
+    },
+    "post_bad_order": {
+      "answer": "error",
+      "feedback": "The first definition tries to bind `i` to the value of `(* j 3)`.\nTo evaluate `(* j 3)`, we need the value of `j`.\nBut `j` is not bound to a value at that moment.\n",
+      "program": "(defvar i (* j 3))\n(defvar j 2)\n\ni\nj\n",
+      "again": {
+        "answer": "error",
+        "program": "(defvar baz (+ bar 1))\n(defvar bar 2)\n\nbaz\nbar\n"
+      },
+      "misconceptions": {
+        "6 2": {
+          "feedback": "You might think `(* j 3)` is able to refer to `j` and hence evaluate to a value.\nHowever, `j` has not been bound to a value when `(* j 3)` is evaluated.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n",
+          "misconception": "Lazy"
+        }
+      }
+    },
+    "post_error_when_refer_to_undefined": {
+      "answer": "error",
+      "feedback": "`(+ (k 3) b)` is evaluated in the top-level block, where `b` is not defined.\nSo, this program errors.\n",
+      "program": "(deffun (k a)\n  (defvar b 1)\n  (+ a b))\n\n(+ (k 3) b)\n",
+      "again": {
+        "answer": "error",
+        "program": "(deffun (foo bar)\n  (defvar zzz 8)\n  (* bar zzz))\n\n(* (foo 9) zzz)\n"
+      },
+      "misconceptions": {
+        "5": {
+          "feedback": "`(defvar b 1)` binds `b` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of `k`.\n`(+ (k 3) b)` appears in the top-level block, so it tries to refer to\na `b` defined in the top-level block. But `b` is not defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "FlatEnv"
+        }
+      }
+    },
+    "post_new_three_layer": {
+      "answer": "15",
+      "feedback": "This program binds `a` to `3` and `foo` to a function, and then\nevaluates `(+ (foo 4) 2)`.\nThe value of `(+ (foo 4) 2)` is the value of `(+ (bar) 2)`,\nwhich is the value of `(+ (+ a b z) 2)`,\nwhich is the value of `(+ (+ 3 4 6) 2)`,\nwhich is `10`.\n",
+      "program": "(defvar a 3)\n(deffun (foo b)\n  (deffun (bar)\n    (defvar c 6)\n    (+ a b c))\n  (bar))\n(+ (foo 4) 2)\n",
+      "again": {
+        "answer": "24",
+        "program": "(defvar aa 3)\n(deffun (abc bb)\n  (deffun (h)\n    (defvar cc 2)\n    (* aa bb cc))\n  (h))\n(* (abc 4) 1)\n"
+      },
+      "misconceptions": {
+        "error": {
+          "feedback": "You might think `(+ a b c)` can't refer to `a` and `b`.\nHowever, `(+ a b c)` appears in the body of `bar`, which is a sub-block of\nthe body of `foo`, which is a sub-block of the top-level block.\nSo, it can refer to the `a` defined in the top-level block\nand the `b` defined in `foo`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    }
+  }
+},
+"post2":
+{
+  "misconceptions": [],
+  "order": [
+    "intro_post2",
     [
       "post_new_three_layer",
       "post_error_when_refer_to_undefined",
@@ -777,16 +1365,11 @@ export const tutorials =
       "post_alias_with_funcall",
       "post_alias_mvec_in_mvec",
       "post_basic_circularity"
-    ],
-    "intro_set",
-    "warmup_set"
+    ]
   ],
   "questions": {
-    "intro_mutvars": {
-      "confirm": "In this tutorial, we will review previously learned content and then learn about **variable assignments** and **mutable variables**.\n"
-    },
-    "intro_set": {
-      "confirm": "In the rest of this tutorial, we will learn about **variable assignments** and **mutable variables**.\n\nThe following program illustrates the new concepts.\n\n```\n(defvar x 2)\nx\n(set! x (+ x 1))\nx\n(set! x (* x 2))\nx\n```\n\nThis program produces `2 3 6`.\nIt first defines `x` and binds `x` to `2`.\nThe first variable assignment `(set! x (+ x 1))` **mutates** (the binding of) `x`.\nSo, after that, `x` is bound to the value of `(+ 2 1)`, which is `3`.\nThe next variable assignment again mutates `x` and binds `x` to the value of `(* 3 2)`, which is `6`.\n"
+    "intro_post2": {
+      "confirm": "In this tutorial, we will review previously learned content.\n"
     },
     "post_alias_mvec_in_mvec": {
       "answer": "#(72 #(72))",
@@ -798,7 +1381,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(72 #(53))": {
-          "feedback": "You might think `v1` and the 1-th element of `v2` refer to different vectors, so changing `v1` doesn't change the 1-th element of `v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating a new vector (which is essentially a function call) does not create new copies of the elements.\n",
+          "feedback": "You might think `v1` and the 1-th element of `v2` refer to different vectors, so changing `v1` doesn't change the 1-th element of `v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n",
           "misconception": "StructsCopyStructs"
         }
       }
@@ -813,7 +1396,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(23)": {
-          "feedback": "You might think `v1` and `v2` refer to different vectors, so changing `v1` doesn't change `v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and variable definitions do not create new vectors.\n",
+          "feedback": "You might think `v1` and `v2` refer to different vectors, so changing `v1` doesn't change `v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n",
           "misconception": "DefsCopyStructs"
         }
       }
@@ -828,7 +1411,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(77 77)": {
-          "feedback": "You might think `m1` and `m2` refer to different vectors, so changing `m2` doesn't change `m1`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and function calls do not create new vectors.\n",
+          "feedback": "You might think `m1` and `m2` refer to different vectors, so changing `m2` doesn't change `m1`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n",
           "misconception": "CallsCopyStructs"
         }
       }
@@ -843,7 +1426,7 @@ export const tutorials =
       },
       "misconceptions": {
         "12 3": {
-          "feedback": "You might think `(* m 4)` is able to refer to `m` and hence evaluate to a value.\nHowever, although it is able to refer to `m`, `m` has not been bound to a value\nat that moment.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right), so it is an error to evaluate a variable reference before binding the variable to a value.\n",
+          "feedback": "You might think `(* m 4)` is able to refer to `m` and hence evaluate to a value.\nHowever, `m` has not been bound to a value when `(* m 4)` is evaluated.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n",
           "misconception": "Lazy"
         }
       }
@@ -892,295 +1475,16 @@ export const tutorials =
           "misconception": "IsolatedFun"
         }
       }
-    },
-    "warmup_set": {
-      "answer": "20",
-      "feedback": "`rent` is bound to `10` initially.\nThe `set!` mutates `rent` to `20`.\nSo, when we print the value of `rent` after the `set!`,\nwe see `20`.\n",
-      "program": "(defvar rent 10)\n(set! rent (* 10 2))\nrent\n",
-      "again": {
-        "answer": "25",
-        "program": "(defvar discount 10)\n(set! discount (+ 10 15))\ndiscount\n"
-      }
     }
   }
 },
-"mutvars2":
-{
-  "misconceptions": [
-    "DeepClosure",
-    "DefOrSet",
-    "DefByRef",
-    "CallByRef",
-    "StructByRef",
-    "IsolatedFun"
-  ],
-  "order": [
-    "intro_more_on_mutvars",
-    [
-      "update_undefined",
-      "not_aliased_by_defvar_1",
-      "not_aliased_by_defvar_2",
-      "new_fun_rem_env",
-      "not_aliased_by_funarg_2",
-      "new_not_aliased_by_funarg",
-      "alias_var_in_mvec",
-      "new_alias_mvec_in_mvec_trick"
-    ],
-    "reflect_mutvars",
-    "goal_mutvars",
-    "goal_mutvars_labelling_1",
-    "goal_mutvars_labelling_2",
-    "goal_mutvars_labelling_3",
-    "goal_mutvars_labelling_4",
-    "reflect_env",
-    "goal_env",
-    "attention_check1",
-    "attention_check2",
-    "keyframe_mutable_variables_1",
-    "keyframe_mutable_variables_2"
-  ],
-  "questions": {
-    "alias_var_in_mvec": {
-      "answer": "#(68 57 59)",
-      "feedback": "`v` is bound to the vector created by `(mvec 68 57 x)`.\n`(mvec 68 57 x)` is a function call.\nRecall that every function call evaluates its parameters.\nTherefore, `x` is evaluated at the point of evaluating `(mvec 68 57 x)`.\nThat is why the vector's content is `68`, `57`, and `59`.\nThe subsequent variable assignment mutates `x`.\nBut this doesn't impact the vector\nbecause the vector refers the value `59` rather than `x`.\n",
-      "program": "(defvar x 59)\n(defvar v (mvec 68 57 x))\n(set! x 74)\nv\n",
-      "again": {
-        "answer": "#(82 66 93)",
-        "program": "(defvar x 66)\n(defvar v (mvec 82 x 93))\n(set! x 1)\nv\n"
-      },
-      "misconceptions": {
-        "#(68 57 74)": {
-          "feedback": "You might think the `2`-th and last element of the vector refers to `x`.\nHowever, it actually refers to `59`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "StructByRef"
-        }
-      }
-    },
-    "attention_check1": {
-      "checkboxes": [
-        [
-          true,
-          "Definitions"
-        ],
-        [
-          false,
-          "Variable mutations (e.g., `(set! x 3)`)"
-        ],
-        [
-          false,
-          "Variable references"
-        ],
-        [
-          true,
-          "Function calls"
-        ]
-      ],
-      "feedback": "Both definitions and function calls create bindings.\nVariable assignment mutates existing bindings but doesn't create new bindings.\n",
-      "prompt": "Which language construct(s) create new bindings?"
-    },
-    "attention_check2": {
-      "checkboxes": [
-        [
-          false,
-          "Definitions"
-        ],
-        [
-          true,
-          "Variable mutations (e.g., `(set! x 3)`)"
-        ],
-        [
-          false,
-          "Variable references"
-        ],
-        [
-          false,
-          "Function calls"
-        ]
-      ],
-      "feedback": "Only variable assignments mutate bindings.\nDefinitions and function calls create new bindings but don't mutate existing bindings.\n",
-      "prompt": "Which language construct(s) mutate bindings?"
-    },
-    "goal_env": {
-      "emphasize": "**Environments** (rather than blocks) bind variables to values.\n\nSimilar to vectors, environments are created as programs run.\n\nEnvironments are created from blocks. They form a tree-like structure,\nrespecting the tree-like structure of their corresponding blocks.\nSo, we have a primordial environment, a top-level environment,\nand environments created from function bodies.\n\n*Every function call creates a new environment.* This is very different from\nthe block perspective: every function corresponds to exactly one block, its body.\n"
-    },
-    "goal_mutvars": {
-      "emphasize": "- Variable assignments change *only* the mutated variables. That is, variables cannot be aliased.\n- Variable assignments mutate existing bindings and do not create new bindings.\n- Which variable (if any) a variable assignment mutates is dictated by scope.\n- Functions do not remember the values of variables defined outside.\n\nNote: some programming languages (e.g., C++ and Rust) allow variables to be aliased.\nHowever, even in those languages, variables are not aliased by default.\n"
-    },
-    "goal_mutvars_labelling_1": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Variable assignments mutate existing bindings and do not create new bindings.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "goal_mutvars_labelling_2": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Which variable (if any) a variable assignment mutates is dictated by scope.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "goal_mutvars_labelling_3": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Variable assignments change *only* the mutated variables. That is, variables cannot be aliased.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "goal_mutvars_labelling_4": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Functions do not remember the values of variables defined outside.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "intro_more_on_mutvars": {
-      "confirm": "In this tutorial, we will learn more about **variable assignments** and **mutable variables**.\n"
-    },
-    "keyframe_mutable_variables_1": {
-      "prompt": "Here is a program that confused many students\n\n```\n(defvar x 5)\n(deffun (f x y)\n  (set! x y))\n(f x 6)\nx\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
-    },
-    "keyframe_mutable_variables_2": {
-      "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
-    },
-    "new_alias_mvec_in_mvec_trick": {
-      "answer": "#(#(55) 55 55)",
-      "feedback": "`x` is first bound to a one-element vector.\n`v` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! x (mvec 66))` binds `x` to a new vector.\nThis doesn't impact `v` because\nthe 0-th element of `v` is still the one-element vector.\n",
-      "program": "(defvar x (mvec 55))\n(defvar v (mvec x 55 55))\n(set! x (mvec 66))\nv\n",
-      "again": {
-        "answer": "#(2 #(0) 3)",
-        "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
-      },
-      "misconceptions": {
-        "#(#(66) 55 55)": {
-          "feedback": "You might think the `0`-th and first element of `v` refers to `x`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "StructByRef"
-        }
-      }
-    },
-    "new_fun_do_not_rem_val": {
-      "answer": "32",
-      "feedback": "The program binds `x` to `1` and then defines a function `f`.\n`x` is then bound to `2`. So, `(f 30)` is `(+ x 30)`, which is `32`.s\n",
-      "program": "(defvar x 1)\n(deffun (f n)\n  (+ x n))\n(set! x 2)\n(f 30)\n",
-      "again": {
-        "answer": "14",
-        "program": "(defvar o 1)\n(deffun (u t)\n  (+ o t))\n(set! o 9)\n(u 5)\n"
-      },
-      "misconceptions": {
-        "31": {
-          "feedback": "You are right that `x` is bound to `1` when `f` is bound to a function.\nYou might think the function remembers the value `1`.\nHowever, `f` does not remember the value of `x`. Rather, it always\nrefers to the latest value of `x`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "error": {
-          "feedback": "You might think `(+ x n)` can't refer to `x`.\nHowever, `(+ x n)` appears in the body of `f`, which is a sub-block of\nthe top-level block. So, it can refer to the `x` defined\nin the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
-    },
-    "new_fun_rem_env": {
-      "answer": "0 1",
-      "feedback": "There is exactly one variable `x`.\nThe `x` in `(set! x 0)` refers to that variable.\nCalling `f` evaluates `(set! x 0)`, which mutates `x`.\nWhen the value of `x` is eventually printed, we see the new value.\n",
-      "program": "(defvar x 12)\n(deffun (f)\n  x)\n(deffun (g)\n  (set! x 0)\n  (f))\n(g)\n(set! x 1)\n(f)\n",
-      "again": {
-        "answer": "2 6",
-        "program": "(defvar a 4)\n(deffun (h)\n  a)\n(deffun (k)\n  (set! a 2)\n  (h))\n(k)\n(set! a 6)\n(h)\n"
-      },
-      "misconceptions": {
-        "12 1": {
-          "feedback": "You might think `(set! x 0)` defines `x`.\nHowever, it will mutate the variable defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
-          "misconception": "DefOrSet"
-        },
-        "12 12": {
-          "feedback": "You are right that `x` is bound to `12` when `f` is bound to a function.\nYou might think the function remembers the value `12`.\nHowever, `f` does not remember the value of `x`. Rather, it always\nrefers to the latest value of `x`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "error": {
-          "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block.\nSo, it can refer to the `x` defined in the top-level block.\n\nYou might think `(set! x 0)` can't refer to `x`.\nHowever, `(set! x 0)` appears in the body of `g`, which is a sub-block of\nthe top-level block. So, it can refer to the `x` defined\nin the top-level block.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
-    },
-    "new_not_aliased_by_funarg": {
-      "answer": "12",
-      "feedback": "Recall what we know about binding. The function call binds `y` to `12`.\nThe variable assignment mutates the value of `x` to `0`, but `y` is still bound to `12`.\n",
-      "program": "(defvar x 12)\n(deffun (f y)\n  (set! x 0)\n  y)\n(f x)\n",
-      "again": {
-        "answer": "1 2",
-        "program": "(defvar a 1)\n(deffun (foobar b)\n  (set! a 2)\n  b)\n(foobar a)\na\n"
-      },
-      "misconceptions": {
-        "0": {
-          "feedback": "You might think function call `(f x)` binds `y` to `x`, so\nchanging `x` will change `y`.\nHowever, `y` is bound to `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "CallByRef"
-        },
-        "error": {
-          "feedback": "You might think `(set! x 0)` can't refer to `x`.\nHowever, `(set! x 0)` appears in the body of `g`, which is a sub-block of the top-level block,\nso it can mutate the top-level `x`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
-    },
-    "not_aliased_by_defvar_1": {
-      "answer": "0 12",
-      "feedback": "The first definition binds `x` to `12`.\nThe second definition binds `y` to the value of `x`, which is `12`.\nThe variable assignment mutates the binding of `x`, so `x` is now bound to `0`.\nBut `y` is still bound to `12`.\n",
-      "program": "(defvar x 12)\n(defvar y x)\n(set! x 0)\nx\ny\n",
-      "again": {
-        "answer": "2 1",
-        "program": "(defvar a 1)\n(defvar b a)\n(set! a 2)\na\nb\n"
-      },
-      "misconceptions": {
-        "0 0": {
-          "feedback": "You might think `(defvar y x)` binds `y` to `x`, so changing `x` will change `y`.\nHowever, `y` is bound to the `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "DefByRef"
-        }
-      }
-    },
-    "not_aliased_by_defvar_2": {
-      "answer": "40 22",
-      "feedback": "We learned in previous tutorials that variable definitions evaluate the expression and bind the value to the variable.\nSo, `n` is bound to `40`, the value of `m`, rather than `m` itself.\nThe variable assignment mutates the value of `n`, but\nit won't affect `m` because `n` is bound to `40` rather than `m`.\n",
-      "program": "(defvar m 40)\n(defvar n m)\n(set! n 22)\nm\nn\n",
-      "again": {
-        "answer": "1 2",
-        "program": "(defvar zzz 1)\n(defvar abc zzz)\n(set! abc 2)\nzzz\nabc\n"
-      },
-      "misconceptions": {
-        "22 22": {
-          "feedback": "You might think `(defvar n m)` binds `n` to `m`, so changing `m` will change `n`.\nHowever, `n` is bound to the `12`, i.e., *the value of* `m`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "DefByRef"
-        }
-      }
-    },
-    "not_aliased_by_funarg_2": {
-      "answer": "12",
-      "feedback": "Recall what we know about binding. The function call binds `y` to `12`.\nThe variable assignment mutates the value of `y` to `0`, but `x` is still bound to `12`.\n",
-      "program": "(defvar x 12)\n(deffun (f y)\n  (set! y 0)\n  x)\n(f x)\n",
-      "again": {
-        "answer": "1",
-        "program": "(defvar s 1)\n(deffun (foobar t)\n  (set! t 2)\n  s)\n(foobar s)\n"
-      },
-      "misconceptions": {
-        "0": {
-          "feedback": "You might think function call `(f x)` binds `y` to `x`, so\nchanging `y` will change `x`.\nHowever, `y` is bound to `12`, i.e., *the value of* `x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "CallByRef"
-        },
-        "error": {
-          "feedback": "You might think `f` can't refer to `x`.\nHowever, `f` is defined in the top-level block,\nso its body can refer to the top-level `x`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
-    },
-    "reflect_env": {
-      "prompt": "Although we keep saying \"this variable is mutated\", the variables themselves are *not* mutated:\nwe can't make `foo` a `fu` by mutating the variable. What is actually mutated is\n*the binding between the variables and their values*.\n\nBlocks have been a good way to describe these bindings.\nHowever, they can't explain variable mutations: a block is a piece of source code,\nand we can't change the source code by mutating a variable. Besides,\nblocks can't explain how parameters might be bound different in different function calls.\nConsider the following program:\n\n```\n(deffun (f n)\n  (+ n 1))\n(f 2)\n(f 3)\n```\n\nIn this program, `n` is bound to `2` in this first function call, and `3` in the second.\nBlocks can't explain how `n` is bound differently because the two calls share the same\nblock: the body of `f`.\n\nWhat is a better way to describe the binding between variables and their values?\n"
-    },
-    "reflect_mutvars": {
-      "prompt": "What did you learn about variable assignment from these programs?\n"
-    },
-    "update_undefined": {
-      "answer": "error",
-      "feedback": "Mutating an undefined variable (in this case, `foobar`) errors rather than defining the variable.\nSo, this program errors.\n",
-      "program": "(set! foobar 2)\nfoobar\n",
-      "again": {
-        "answer": "error",
-        "program": "(set! foo 42)\nfoo\n"
-      },
-      "misconceptions": {
-        "2": {
-          "feedback": "You might think `(set! foobar 2)` defines `foobar`.\nHowever, it errors.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
-          "misconception": "DefOrSet"
-        }
-      }
-    }
-  }
-},
-"lambda1":
+"post3":
 {
   "misconceptions": [
     "FunNotVal"
   ],
   "order": [
-    "intro_lambda",
+    "intro_post3",
     [
       "post_alias_with_defvar",
       "post_alias_with_funcall",
@@ -1190,90 +1494,11 @@ export const tutorials =
       "post_not_aliased_by_defvar_1",
       "post_not_aliased_by_funarg_2",
       "post_new_alias_mvec_in_mvec_trick"
-    ],
-    "intro_funval",
-    [
-      "fun_as_val",
-      "fun_as_parameter",
-      "new_fun_as_output",
-      "fun_in_vectors"
-    ],
-    "reflect_funval",
-    "goal_funval",
-    "goal_funval_labelling"
+    ]
   ],
   "questions": {
-    "fun_as_parameter": {
-      "answer": "4",
-      "feedback": "The value of `(twice double 1)` is the value of `(f (f x))`, where\n`f` is bound to `double` and `x` is bound to `1`.\nSo, the result is the value of `(double (double 1))`, which is `4`.\n",
-      "program": "(deffun (twice f x)\n  (f (f x)))\n(deffun (double x)\n  (+ x x))\n(twice double 1)\n",
-      "again": {
-        "answer": "3",
-        "program": "(deffun (ffx f x)\n  (f (f x)))\n(deffun (add1 x)\n  (+ x 1))\n(ffx add1 1)\n"
-      },
-      "misconceptions": {
-        "error": {
-          "feedback": "You might think that `(twice double 1)` errors because `double` is bound to a function,\nand that it would not error if `double` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "fun_as_val": {
-      "answer": "42",
-      "feedback": "This program binds `f` to a function that returns `42`,\nand then binds `g` and `h` to that function.\nFinally, calling that function produces `42`.\n",
-      "program": "(deffun (f)\n  42)\n(defvar g f)\n(defvar h g)\n(h)\n",
-      "again": {
-        "answer": "50",
-        "program": "(deffun (f1)\n  5)\n(defvar f2 f1)\n(defvar f3 f2)\n(* (f3) 10)\n"
-      },
-      "misconceptions": {
-        "error": {
-          "feedback": "You might think that `(defvar g f)` errors because `f` is bound to a function,\nand that it would not error if `f` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "fun_in_vectors": {
-      "answer": "3",
-      "feedback": "`v` is bound to a vector that refers to the function `add1`.\nThe value of `(vec-ref v 0)` is the function `add1`.\nSo, the value of `((vec-ref v 0) 2)` is the value of `(add1 2)`,\nwhich is `3`.\n",
-      "program": "(deffun (add1 n)\n  (+ n 1))\n(defvar v (mvec add1))\n((vec-ref v 0) 2)\n",
-      "again": {
-        "answer": "1",
-        "program": "(deffun (add1 n)\n  (+ n 1))\n(deffun (sub1 n)\n  (- n 1))\n(defvar v (mvec add1 sub1))\n((vec-ref v 1) 2)\n"
-      },
-      "misconceptions": {
-        "error": {
-          "feedback": "You might think that `(mvec add1)` errors because `add1` is bound to a function,\nand that it would not error if `add1` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "goal_funval": {
-      "emphasize": "Functions are (also) *first-class* citizens of the value world. Specifically,\n\n- Variables (notably parameters) can be bound to functions,\n- Functions can return functions, and\n- Vectors can refer to functions.\n"
-    },
-    "goal_funval_labelling": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point above.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "intro_funval": {
-      "confirm": "In the rest of this tutorial, we will learn about using functions as values.\n\nNote: some programming languages (e.g., Java) do NOT consider functions or methods a kind of value.\nBut many programming languages, from Python to Rust, do.\n"
-    },
-    "intro_lambda": {
-      "confirm": "In this tutorial, we will review previously learned content and then learn about using functions as values.\n"
-    },
-    "new_fun_as_output": {
-      "answer": "11",
-      "feedback": "`add1` is bound to a function that adds 1 to its parameter.\n`g` is bound to a function that returns `add1`.\n`f` is bound to the value of `(g)`, which is `add1`.\nSo, the value of `(f 10)` is `11`.\n",
-      "program": "(deffun (g)\n  (deffun (add1 x)\n    (+ x 1))\n  add1)\n(defvar f (g))\n(f 10)\n",
-      "again": {
-        "answer": "30",
-        "program": "(deffun (fun1)\n  (deffun (average x y)\n    (/ (+ x y) 2))\n  average)\n(defvar x (fun1))\n(x 20 40)\n"
-      },
-      "misconceptions": {
-        "error": {
-          "feedback": "You might think that `(g)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
+    "intro_post3": {
+      "confirm": "In this tutorial, we will review previously learned content.\n"
     },
     "post_alias_mvec_in_mvec": {
       "answer": "#(77 #(77))",
@@ -1285,7 +1510,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(77 #(66))": {
-          "feedback": "You might think `nn` and the 1-th element of `mm` refer to different vectors, so changing `nn` doesn't change the 1-th element of `mm`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating a new vector (which is essentially a function call) does not create new copies of the elements.\n",
+          "feedback": "You might think `nn` and the 1-th element of `mm` refer to different vectors, so changing `nn` doesn't change the 1-th element of `mm`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n",
           "misconception": "StructsCopyStructs"
         }
       }
@@ -1300,7 +1525,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(72)": {
-          "feedback": "You might think `p` and `q` refer to different vectors, so changing `p` doesn't change `q`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and variable definitions do not create new vectors.\n",
+          "feedback": "You might think `p` and `q` refer to different vectors, so changing `p` doesn't change `q`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n",
           "misconception": "DefsCopyStructs"
         }
       }
@@ -1315,7 +1540,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(88 88)": {
-          "feedback": "You might think `zz` and `aa` refer to different vectors, so changing `aa` doesn't change `zz`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and function calls do not create new vectors.\n",
+          "feedback": "You might think `zz` and `aa` refer to different vectors, so changing `aa` doesn't change `zz`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n",
           "misconception": "CallsCopyStructs"
         }
       }
@@ -1345,7 +1570,7 @@ export const tutorials =
       },
       "misconceptions": {
         "#(#(43) 66 66)": {
-          "feedback": "You might think the `0`-th and first element of `z` refers to `m`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `m`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "feedback": "You might think the `0`-th and first element of `z` refers to `m`.\nHowever, vectors refer to values, so it actually refers to the one-element vector, i.e., *the value of* `m`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
           "misconception": "StructByRef"
         }
       }
@@ -1364,7 +1589,7 @@ export const tutorials =
           "misconception": "DefOrSet"
         },
         "7 7": {
-          "feedback": "You are right that `n` is bound to `7` when `f` is bound to a function.\nYou might think the function remembers the value `7`.\nHowever, `f` does not remember the value of `n`. Rather, it always\nrefers to the latest value of `n`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
+          "feedback": "You are right that `n` is bound to `7` when `f` is bound to a function.\nYou might think the function remembers the value `7`.\nHowever, `f` does not remember the value of `n`. Rather, it always\nrefers to the latest value of `n`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
           "misconception": "DeepClosure"
         },
         "error": {
@@ -1383,14 +1608,14 @@ export const tutorials =
       },
       "misconceptions": {
         "5 5": {
-          "feedback": "You might think `(defvar b a)` binds `b` to `a`, so changing `a` will change `b`.\nHowever, `b` is bound to the `5`, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "feedback": "You might think `(defvar b a)` binds `b` to `a`, so changing `a` will change `b`.\nHowever, we learned in previous tutorials that variables are bound to values, so `b` is bound to the `5`, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
           "misconception": "DefByRef"
         }
       }
     },
     "post_not_aliased_by_funarg_2": {
       "answer": "5",
-      "feedback": "Recall what we know about binding. The function call binds `b` to `5`.\nThe `set!` mutates the value of `b` to `3`, but `a` is still bound to `5`.\n",
+      "feedback": "The function call binds `b` to `5`.\nThe `set!` mutates the value of `b` to `3`, but `a` is still bound to `5`.\n",
       "program": "(defvar a 5)\n(deffun (k b)\n  (set! b 3)\n  a)\n(k a)\n",
       "again": {
         "answer": "1",
@@ -1398,7 +1623,7 @@ export const tutorials =
       },
       "misconceptions": {
         "3": {
-          "feedback": "You might think function call `(k a)` binds `b` to `a`, so\nchanging `b` will change `a`.\nHowever, `b` is bound to `5`, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "feedback": "You might think the function call `(k a)` binds `b` to `a`, so\nchanging `b` will change `a`.\nHowever, we learned in previous tutorials that variables are bound to values, so `b` is bound to `5`, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
           "misconception": "CallByRef"
         },
         "error": {
@@ -1406,207 +1631,137 @@ export const tutorials =
           "misconception": "IsolatedFun"
         }
       }
-    },
-    "reflect_funval": {
-      "prompt": "What did you learn about functions from these programs?\n"
     }
   }
 },
-"lambda2":
+"post4":
 {
   "misconceptions": [
-    "FlatEnv",
-    "DeepClosure"
+    "Other"
   ],
   "order": [
-    "intro_more_funval",
+    "intro_post4",
     [
-      "fun_ref_env",
-      "new_state",
-      "counter"
-    ],
-    "reflect_closure",
-    "goal_closure",
-    "label_closure"
+      "post_new_fun_rem_env",
+      "post_not_aliased_by_defvar_1",
+      "post_not_aliased_by_funarg_2",
+      "post_new_alias_mvec_in_mvec_trick",
+      "post_lambda_fun_ref_env",
+      "post_lambda_new_state"
+    ]
   ],
   "questions": {
-    "counter": {
-      "answer": "1 2 1",
-      "feedback": "Every time `foobar` is called, it creates a *new* environment frame that binds `n`.\nSo, `f` and `g` have different bindings for the `n` variable.\nWhen `f` is called the first time, it mutates its binding for the `n` variable.\nSo, the second call to `f` produces `2` rather than `1`.\n`g` has its own binding for the `n` variable, which still binds `n` to `0`.\nSo, `(g)` produces `1` rather than `3`.\n",
-      "program": "(deffun (foobar)\n  (defvar n 0)\n  (deffun (counter)\n    (set! n (+ n 1))\n    n)\n  counter)\n(defvar f (foobar))\n(defvar g (foobar))\n\n(f)\n(f)\n(g)\n",
-      "again": {
-        "answer": "2 2 4",
-        "program": "(deffun (f n)\n  (deffun (dbl)\n    (set! n (* n 2))\n    n)\n  dbl)\n(defvar dbl1 (f 1))\n(defvar dbl2 (f 1))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
-      },
-      "misconceptions": {
-        "1 1 1": {
-          "feedback": "You are right that `n` is bound to `0` when `counter` is bound to a function.\nYou might think the function remembers the value `0`.\nHowever, `counter` does not remember the value of `n`. Rather, it remembers the environment and hence always refers to the latest value of `n`.\n`foobar` is called twice, so two environments are created.\n`(f)` mutates the first, while `(g)` mutates the second.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "1 2 3": {
-          "feedback": "`foobar` is called twice.\nThe first call binds `n` to `0`.\nThe second call also binds `n` to `0`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "FlatEnv"
-        },
-        "error": {
-          "misconception": "DefOrSet,FunNotVal"
-        }
-      }
+    "intro_post4": {
+      "confirm": "In this tutorial, we will review previously learned content.\n"
     },
-    "fun_ref_env": {
-      "answer": "4 6",
-      "feedback": "The value of `(bar 2)` is the function `addy` defined in an\nenvironment where `y` is bound to `2`.\nThe value of `(bar 4)` is *another* `addy` defined in an\nenvironment where `y` is bound to `4`.\nThe two `addy` functions are *different* values.\nSo, the value of `(f 2)` is `4`,\nwhile the value of `(g 2)` is `6`.\n",
-      "program": "(deffun (bar y)\n  (deffun (addy x)\n    (+ x y))\n  addy)\n(defvar f (bar 2))\n(defvar g (bar 4))\n(f 2)\n(g 2)\n",
-      "again": {
-        "answer": "40 4",
-        "program": "(deffun (f n)\n  (deffun (g m)\n    (* m n))\n  g)\n(defvar fun1 (f 10))\n(defvar fun2 (f 1))\n(fun1 4)\n(fun2 4)\n"
-      },
-      "misconceptions": {
-        "6 6": {
-          "feedback": "`bar` is called twice.\nThe first call binds `y` to `2`.\nThe second call binds `y` to `4`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe `addy` that `f` refers to is created in the first call, so `(f 2)` adds `2` rather than `4`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "FlatEnv"
-        },
-        "error": {
-          "feedback": "You might think that `(bar 2)` and `(bar 4)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "goal_closure": {
-      "emphasize": "Functions remember the environment in which they are defined.\nThat is, function bodies are \"enclosed\" by the environments in which the function values are created.\nSo, function values are called *closures*.\n"
-    },
-    "intro_more_funval": {
-      "confirm": "In this tutorial, we will learn *more* about using functions as values.\n"
-    },
-    "label_closure": {
-      "select_and_comment": "Please scroll back and select 1-3 programs that make the point that\n\n> Functions remember the environment in which they are defined.\n\nYou don't need to select *all* such programs.\n"
-    },
-    "new_state": {
-      "answer": "2",
-      "feedback": "`x` is bound to `1`.\n`g` is bound to the function `addx`\n`(set! x 2)` binds `x` to `2`.\nSo, the value of `(g 0)` is the value of `(addx 0)`, which is the value of `(+ 2 0)`, which is `2`.\n",
-      "program": "(defvar x 1)\n(deffun (f)\n  (deffun (addx y)\n    (+ x y))\n  addx)\n(defvar g (f))\n(set! x 2)\n(g 0)\n",
-      "again": {
-        "answer": "2",
-        "program": "(defvar a 2)\n(deffun (make)\n  (deffun (f b)\n    (+ a b))\n  f)\n(defvar g (make))\n(set! a 1)\n(g 1)\n"
-      },
-      "misconceptions": {
-        "1": {
-          "feedback": "You are right that `x` is bound to `1` when `addx` is created.\nYou might think the function remembers the value `1`.\nHowever, `addx` does not remember the value of `x`.  Rather, it remembers the environment and hence always refers to the latest value of `n`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "error": {
-          "feedback": "You might think that `(f)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar g (f))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "reflect_closure": {
-      "prompt": "What did you learn about functions from these programs?"
-    }
-  }
-},
-"lambda3":
-{
-  "misconceptions": [
-    "FlatEnv",
-    "DeepClosure"
-  ],
-  "order": [
-    "intro_lambda",
-    "warmup_lambda",
-    [
-      "lambda_fun_ref_env",
-      "lambda_new_state",
-      "lambda_counter"
-    ],
-    "goal_lambda",
-    "practice_translate",
-    "keyframe_counter_1",
-    "keyframe_counter_2"
-  ],
-  "questions": {
-    "goal_lambda": {
-      "emphasize": "`(deffun (f x y z) body)` is a shorthand for `(defvar f (lambda (x y z) body))`.\n"
-    },
-    "intro_lambda": {
-      "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function.\n\n```\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThis program program produces `3`. The top-level block contains one expression, a function call. The only (actual) parameter of the function call is `2`. The function of the function call is created by\n\n```\n(lambda (n)\n  (+ n 1))\n```\n\nThis function takes only one parameter `n`, and returns (the value of) `(+ n 1)`.\nSo, the result of the whole program is the value of `(+ 2 1)`, which is `3`.\n"
-    },
-    "keyframe_counter_1": {
-      "prompt": "Here is a program that confused many students\n\n```\n(deffun (foobar n)\n  (deffun (counter)\n    (set! n (+ n 1))\n    n)\n  counter)\n(defvar f (foobar 0))\n(defvar g (foobar 0))\n\n(f)\n(f)\n(g)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
-    },
-    "keyframe_counter_2": {
-      "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
-    },
-    "lambda_counter": {
-      "answer": "1 2 1",
-      "feedback": "Every time `foobar` is called, it creates a *new* environment frame that binds `n`.\nSo, `f` and `g` have different bindings for the `n` variable.\nWhen `f` is called the first time, it mutates its binding for the `n` variable.\nSo, the second call to `f` produces `2` rather than `1`.\n`g` has its own binding for the `n` variable, which still binds `n` to `0`.\nSo, `(g)` produces `1` rather than `3`.\n",
-      "program": "(deffun (foobar)\n  (defvar n 0)\n  (lambda ()\n    (set! n (+ n 1))\n    n))\n(defvar f (foobar))\n(defvar g (foobar))\n\n(f)\n(f)\n(g)\n",
-      "again": {
-        "answer": "2 2 4",
-        "program": "(deffun (build-dbl)\n  (defvar n 1)\n  (lambda ()\n    (set! n (* n 2))\n    n))\n(defvar dbl1 (build-dbl))\n(defvar dbl2 (build-dbl))\n\n(dbl1)\n(dbl2)\n(dbl1)\n"
-      },
-      "misconceptions": {
-        "1 1 1": {
-          "feedback": "You are right that `n` is bound to `0` when `counter` is bound to a function.\nYou might think the function remembers the value `0`.\nHowever, `counter` does not remember the value of `n`. Rather, it remembers the environment and hence always refers to the latest value of `n`.\n`foobar` is called twice, so its parameter, `n`, is bound twice.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "1 2 3": {
-          "feedback": "`foobar` is called twice.\nThe first call binds `n` to `0`.\nThe second call also binds `n` to `0`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\n`(f)` mutates the first binding, while `(g)` mutates the second.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "FlatEnv"
-        },
-        "error": {
-          "misconception": "DefOrSet,FunNotVal"
-        }
-      }
-    },
-    "lambda_fun_ref_env": {
-      "answer": "4 6",
-      "feedback": "The value of `(bar 2)` is a lambda function defined in an\nenvironment where `y` is bound to `2`.\nThe value of `(bar 4)` is *another* lambda function defined in an\nenvironment where `y` is bound to `4`.\nThe two lambda functions are *different* values.\nSo, the value of `(f 2)` is `12`,\nwhile the value of `(g 2)` is `52`.\n",
-      "program": "(deffun (bar y)\n  (lambda (x)\n    (+ x y)))\n(defvar f (bar 2))\n(defvar g (bar 4))\n(f 2)\n(g 2)\n",
+    "post_lambda_fun_ref_env": {
+      "answer": "6 5",
+      "feedback": "The value of `(k 3)` is a lambda function defined in an\nenvironment where `b` is bound to `3`.\nThe value of `(k 2)` is *another* lambda function defined in an\nenvironment where `b` is bound to `2`.\nThe two lambda functions are *different* values.\nSo, the value of `(foo 3)` is `6`,\nwhile the value of `(bar 3)` is `5`.\n",
+      "program": "(deffun (k b)\n  (lambda (a)\n    (+ a b)))\n(defvar foo (k 3))\n(defvar bar (k 2))\n(foo 3)\n(bar 3)\n",
       "again": {
         "answer": "40 4",
         "program": "(deffun (f n)\n  (lambda (m)\n    (* m n)))\n(defvar fun1 (f 10))\n(defvar fun2 (f 1))\n(fun1 4)\n(fun2 4)\n"
       },
       "misconceptions": {
-        "6 6": {
-          "feedback": "`bar` is called twice.\nThe first call binds `y` to `2`.\nThe second call binds `y` to `4`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe lambda function that `f` refers to is created in the first call, so `(f 2)` adds `2` rather than `4`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+        "5 5": {
+          "feedback": "`k` is called twice.\nThe first call binds `a` to `3`.\nThe second call binds `a` to `2`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe lambda function that `foo` refers to is created in the first call, so `(foo 3)` adds `3` rather than `2`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
           "misconception": "FlatEnv"
         },
         "error": {
-          "feedback": "You might think that `(bar 2)` and `(bar 4)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "feedback": "You might think that `(k 3)` and `(k 2)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
           "misconception": "FunNotVal"
         }
       }
     },
-    "lambda_new_state": {
-      "answer": "2",
-      "feedback": "`x` is bound to `1`.\n`g` is bound to the lambda function.\n`(set! x 2)` binds `x` to `2`.\nSo, the value of `(g 0)` is the value of `(+ 2 0)`, which is `2`.\n",
-      "program": "(defvar x 1)\n(deffun (f)\n  (lambda (y)\n    (+ x y)))\n(defvar g (f))\n(set! x 2)\n(g 0)\n",
+    "post_lambda_new_state": {
+      "answer": "3",
+      "feedback": "`a` is bound to `1`.\n`bar` is bound to the lambda function.\n`(set! a 3)` binds `a` to `3`.\nSo, the value of `(bar 0)` is the value of `(+ 3 0)`, which is `3`.\n",
+      "program": "(defvar a 1)\n(deffun (foo)\n  (lambda (b)\n    (+ a b)))\n(defvar bar (foo))\n(set! a 3)\n(bar 0)\n",
       "again": {
         "answer": "2",
         "program": "(defvar a 2)\n(deffun (make)\n  (lambda (b)\n    (+ a b)))\n(defvar fun (make))\n(set! a 1)\n(fun 1)\n"
       },
       "misconceptions": {
         "1": {
-          "feedback": "You are right that `x` is bound to `1` when the lambda function is created.\nYou might think the function remembers the value `1`.\nHowever, the function does not remember the value of `x`.  Rather, it remembers the environment and hence always refers to the latest value of `x`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
+          "feedback": "You are right that `a` is bound to `1` when the lambda function is created.\nYou might think the function remembers the value `1`.\nHowever, the function does not remember the value of `a`.  Rather, it remembers the environment and hence always refers to the latest value of `a`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
           "misconception": "DeepClosure"
         },
         "error": {
-          "feedback": "You might think that `(f)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar g (f))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
+          "feedback": "You might think that `(foo)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar bar (foo))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
           "misconception": "FunNotVal"
         }
       }
     },
-    "practice_translate": {
-      "feedback": "The correct answer is `(defvar f (lambda (x) (+ x 1)))`.\n\nThe following are common wrong answers:\n\n- `(deffun f (lambda (x) (+ x 1)))`, which didn't replace the definition keyword\n- `(defvar f (lambda (f x) (+ x 1)))`, which makes `f` a function that takes two parameters rather than one\n- `(defvar (f x) (+ x 1))`, which didn't switch to `lambda`\n",
-      "prompt": "Please rewrite this function definition with as a variable definition that binds lambda function.\n\n```\n(deffun (f x) (+ x 1))\n```\n"
-    },
-    "warmup_lambda": {
-      "answer": "3",
-      "feedback": "This program is essentially the same as\n\n```\n(deffun (f x)\n  (deffun (fun y)\n    (+ x y))\n  fun)\n(defvar x 0)\n((f 2) 1)\n```\n",
-      "program": "(deffun (f x)\n  (lambda (y) (+ x y)))\n(defvar x 0)\n((f 2) 1)\n",
+    "post_new_alias_mvec_in_mvec_trick": {
+      "answer": "#(#(88) 88 88)",
+      "feedback": "`a` is first bound to a one-element vector.\n`c` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! a (mvec 76))` binds `a` to a new vector.\nThis doesn't impact `c` because\nthe 0-th element of `c` is still the one-element vector.\n",
+      "program": "(defvar a (mvec 88))\n(defvar c (mvec a 88 88))\n(set! a (mvec 76))\nc\n",
       "again": {
-        "answer": "5",
-        "program": "(deffun (g a)\n  (lambda (b) (+ a b)))\n\n((g 3) 2)\n"
+        "answer": "#(2 #(0) 3)",
+        "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
+      },
+      "misconceptions": {
+        "#(#(76) 88 88)": {
+          "feedback": "You might think the `0`-th and first element of `c` refers to `a`.\nHowever, vectors refer to values, so it actually refers to the one-element vector, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "StructByRef"
+        }
+      }
+    },
+    "post_new_fun_rem_env": {
+      "answer": "4 2",
+      "feedback": "There is exactly one variable `t`.\nThe `t` in `(set! t 4)` refers to that variable.\nCalling `f2` evaluates `(set! t 4)`, which mutates `t`.\nWhen the value of `t` is eventually printed, we see the new value.\n",
+      "program": "(defvar t 6)\n(deffun (f1)\n  t)\n(deffun (f2)\n  (set! t 4)\n  (f1))\n(f2)\n(set! t 2)\n(f1)\n",
+      "again": {
+        "answer": "2 6",
+        "program": "(defvar a 4)\n(deffun (h)\n  a)\n(deffun (k)\n  (set! a 2)\n  (h))\n(k)\n(set! a 6)\n(h)\n"
+      },
+      "misconceptions": {
+        "6 2": {
+          "feedback": "You might think `(set! t 4)` defines `t`.\nHowever, it will mutate the top-level `t` defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
+          "misconception": "DefOrSet"
+        },
+        "6 6": {
+          "feedback": "You are right that `t` is bound to `6` when `f` is bound to a function.\nYou might think the function remembers the value `6`.\nHowever, `f` does not remember the value of `t`. Rather, it always\nrefers to the latest value of `t`.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+          "misconception": "DeepClosure"
+        },
+        "error": {
+          "feedback": "You might think `f1` can't refer to `t`.\nHowever, `f1` is defined in the top-level block, so its body is allowed to refer to the top-level `t`.\n\nYou might think `(set! t 4)` can't mutate `t`.\nHowever, `(set! t 4)` appears in the body of `f2`, which is a sub-block of the top-level block,\nso it is allowed to mutate the top-level `t`.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
+      }
+    },
+    "post_not_aliased_by_defvar_1": {
+      "answer": "6 3",
+      "feedback": "The first definition binds `n` to `3`.\nThe second definition binds `m` to the value of `n`, which is `3`.\nThe `set!` mutates the binding of `n`, so `n` is now bound to `6`.\nBut `m` is still bound to `3`.\n",
+      "program": "(defvar n 3)\n(defvar m n)\n(set! n 6)\nn\nm\n",
+      "again": {
+        "answer": "2 1",
+        "program": "(defvar a 1)\n(defvar b a)\n(set! a 2)\na\nb\n"
+      },
+      "misconceptions": {
+        "6 6": {
+          "feedback": "You might think `(defvar m n)` binds `m` to `n`, so changing `n` will change `m`.\nHowever, we learned in previous tutorials that variables are bound to values, so `m` is bound to the `6`, i.e., *the value of* `n`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "DefByRef"
+        }
+      }
+    },
+    "post_not_aliased_by_funarg_2": {
+      "answer": "2",
+      "feedback": "The function call binds `m` to `2`.\nThe `set!` mutates the value of `m` to `7`, but `n` is still bound to `2`.\n",
+      "program": "(defvar n 2)\n(deffun (h m)\n  (set! m 7)\n  n)\n(h n)\n",
+      "again": {
+        "answer": "1",
+        "program": "(defvar s 1)\n(deffun (foobar t)\n  (set! t 2)\n  s)\n(foobar s)\n"
+      },
+      "misconceptions": {
+        "7": {
+          "feedback": "You might think the function call `(h n)` binds `m` to `n`, so\nchanging `m` will change `n`.\nHowever, we learned in previous tutorials that variables are bound to values, so `m` is bound to `2`, i.e., *the value of* `n`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+          "misconception": "CallByRef"
+        },
+        "error": {
+          "feedback": "You might think `h` can't refer to `n`.\nHowever, `h` is defined in the top-level block,\nso its body can refer to the top-level `n`.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+          "misconception": "IsolatedFun"
+        }
       }
     }
   }
@@ -1732,15 +1887,6 @@ export const tutorials =
   ],
   "order": [
     "intro_local",
-    [
-      "post_new_fun_rem_env",
-      "post_not_aliased_by_defvar_1",
-      "post_not_aliased_by_funarg_2",
-      "post_new_alias_mvec_in_mvec_trick",
-      "post_lambda_fun_ref_env",
-      "post_lambda_new_state"
-    ],
-    "intro_let",
     "warmup_nested",
     "warmup_local",
     "shadow",
@@ -1818,9 +1964,6 @@ export const tutorials =
     "goal_letstar": {
       "emphasize": "In a `let*`, the scope of a left-hand-side variable includes *all of the subsequent* right-hand-side expressions.\n\nIf we put it visually,\n\n<image src=\"data:image/png;base64,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\" />\n"
     },
-    "intro_let": {
-      "confirm": "In the rest of this tutorial, we will learn about *local binding forms*: `let` and `letrec` and `let*`.\n\nWe will first focus on `let`. The following program *binds* `x` to `2` and `y` to `3`, and evaluates\n`(+ x y)`. The result of running this program is `5`.\n\n```\n(let ([x 2]\n      [y (+ 2 1)])\n  (+ x y))\n```\n\nIn SMoL, `let` binds the *left-hand-side variables*\n(in this case, `x` and `y`) to\nthe values of the *right-hand-side expressions* (in this case, `2` and `(+ 2 1)`)\nsuch that the *body* (in this case, `(+ x y)`)\ncan refer to all those left-hand-side variables.\n\nFurthermore, the bindings are *local*,\nwhich means we can't refer to the `let`-bound variables outside the `let`.\n\nFor example, the following program produces `4 10`.\n\n```\n(defvar x 10)\n(let ([x 4])\n  x)\nx\n```\n"
-    },
     "intro_letrec": {
       "confirm": "`letrec` and `let*` are similar to `let`: all of them declare their left-hand-side variables such that\ntheir bodies are in the scope of all the left-hand side variables.\n\nThe following program tries to use `let` to define the factorial function.\n\n```\n(let ([f (lambda (n)\n           (if (equal? n 0)\n               1\n               (* (f (- n 1)) n)))])\n  (f 5))\n```\n\n\nThis program will NOT produce a value.\nRecall that in a `let`, the scope of a left-hand-side variable includes\nnone of the right-hand-side expressions.\nSo, the `lambda` expression can NOT refer to `f`.\n\nIf we use `letrec` rather than `let`, this program will work.\n\nYou can even use `letrec` to define mutually recursive functions. For example,\n\n```\n(letrec ([od? (lambda (n)\n                (if (equal? n 0)\n                    #f\n                    (ev? (- n 1))))]\n         [ev? (lambda (n)\n                (if (equal? n 0)\n                    #t\n                    (od? (- n 1))))])\n  (od? 2))\n```\n\nLet's summarize the scoping rules of `letrec`.\n"
     },
@@ -1828,117 +1971,7 @@ export const tutorials =
       "confirm": "The following program tries to use `let` to process `x` through a series of operations.\n\n```\n(deffun (double n)\n  (* n 2))\n(deffun (add1 n)\n  (+ n 1))\n\n(let ([x 0]\n      [x (add1 x)]\n      [x (double x)])\n  (+ 3 x))\n```\n\n\nThis program will error because none of the right-hand-side expressions can refer to `x`.\nReplacing `let` with `letrec` will NOT fix the error.\nRecall that in a `letrec`, the scope of a left-hand-side variable includes\n*all* of the right-hand-side expressions.\nTo achieve this while avoiding confusion,\n`letrec` insists that all left-hand-side variables must be distinct.\n(`let` also has this restriction, but for a different reason.)\n\nIf we replace `let` with `let*`, this program will produce `5`, the value of `(+ 3 (double (add1 0)))`.\n`let*` allows you to do a series of bindings sequentially.\n\nLet's summarize the scoping rules of `let*`.\nAfter that, we will do a handful of exercises to test your understanding of `let`, `letrec`, and `let*`.\n"
     },
     "intro_local": {
-      "confirm": "In this tutorial, we will review previously learned content and then learn about *local binding forms*.\n"
-    },
-    "post_lambda_fun_ref_env": {
-      "answer": "6 5",
-      "feedback": "The value of `(k 3)` is a lambda function defined in an\nenvironment where `b` is bound to `3`.\nThe value of `(k 2)` is *another* lambda function defined in an\nenvironment where `b` is bound to `2`.\nThe two lambda functions are *different* values.\nSo, the value of `(foo 3)` is `6`,\nwhile the value of `(bar 3)` is `5`.\n",
-      "program": "(deffun (k b)\n  (lambda (a)\n    (+ a b)))\n(defvar foo (k 3))\n(defvar bar (k 2))\n(foo 3)\n(bar 3)\n",
-      "again": {
-        "answer": "40 4",
-        "program": "(deffun (f n)\n  (lambda (m)\n    (* m n)))\n(defvar fun1 (f 10))\n(defvar fun2 (f 1))\n(fun1 4)\n(fun2 4)\n"
-      },
-      "misconceptions": {
-        "5 5": {
-          "feedback": "`k` is called twice.\nThe first call binds `a` to `3`.\nThe second call binds `a` to `2`.\nYou might think the second binding applies everywhere.\nHowever, it only applies to the second call.\nThe lambda function that `foo` refers to is created in the first call, so `(foo 3)` adds `3` rather than `2`.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "FlatEnv"
-        },
-        "error": {
-          "feedback": "You might think that `(k 3)` and `(k 2)` errors because they return functions,\nand that they would not error if they return values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nYou might think that the two variable definitions error because the variables are bound to functions,\nand that they would not error if the variables were bound to values of other kinds (e.g., numbers and vectors).\nHowever, they do not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "post_lambda_new_state": {
-      "answer": "3",
-      "feedback": "`a` is bound to `1`.\n`bar` is bound to the lambda function.\n`(set! a 3)` binds `a` to `3`.\nSo, the value of `(bar 0)` is the value of `(+ 3 0)`, which is `3`.\n",
-      "program": "(defvar a 1)\n(deffun (foo)\n  (lambda (b)\n    (+ a b)))\n(defvar bar (foo))\n(set! a 3)\n(bar 0)\n",
-      "again": {
-        "answer": "2",
-        "program": "(defvar a 2)\n(deffun (make)\n  (lambda (b)\n    (+ a b)))\n(defvar fun (make))\n(set! a 1)\n(fun 1)\n"
-      },
-      "misconceptions": {
-        "1": {
-          "feedback": "You are right that `a` is bound to `1` when the lambda function is created.\nYou might think the function remembers the value `1`.\nHowever, the function does not remember the value of `a`.  Rather, it remembers the environment and hence always refers to the latest value of `a`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "error": {
-          "feedback": "You might think that `(foo)` errors because it returns a function,\nand that it would not error if it returns a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nYou might think that `(defvar bar (foo))` errors because `g` is bound to a function,\nand that it would not error if `g` is bound to a value of other kinds (e.g., numbers and vectors).\nHowever, it does not error.\n\nIn SMoL, functions are (also) *first-class* citizens of the value world.\n",
-          "misconception": "FunNotVal"
-        }
-      }
-    },
-    "post_new_alias_mvec_in_mvec_trick": {
-      "answer": "#(#(88) 88 88)",
-      "feedback": "`a` is first bound to a one-element vector.\n`c` is bound to a three-element vector, of which the first element is the one-element vector.\n`(set! a (mvec 76))` binds `a` to a new vector.\nThis doesn't impact `c` because\nthe 0-th element of `c` is still the one-element vector.\n",
-      "program": "(defvar a (mvec 88))\n(defvar c (mvec a 88 88))\n(set! a (mvec 76))\nc\n",
-      "again": {
-        "answer": "#(2 #(0) 3)",
-        "program": "(defvar x (mvec 0))\n(defvar v (mvec 2 x 3))\n(set! x (mvec 1))\nv\n"
-      },
-      "misconceptions": {
-        "#(#(76) 88 88)": {
-          "feedback": "You might think the `0`-th and first element of `c` refers to `a`.\nHowever, it actually refers to the one-element vector, i.e., *the value of* `a`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "StructByRef"
-        }
-      }
-    },
-    "post_new_fun_rem_env": {
-      "answer": "4 2",
-      "feedback": "There is exactly one variable `t`.\nThe `t` in `(set! t 4)` refers to that variable.\nCalling `f2` evaluates `(set! t 4)`, which mutates `t`.\nWhen the value of `t` is eventually printed, we see the new value.\n",
-      "program": "(defvar t 6)\n(deffun (f1)\n  t)\n(deffun (f2)\n  (set! t 4)\n  (f1))\n(f2)\n(set! t 2)\n(f1)\n",
-      "again": {
-        "answer": "2 6",
-        "program": "(defvar a 4)\n(deffun (h)\n  a)\n(deffun (k)\n  (set! a 2)\n  (h))\n(k)\n(set! a 6)\n(h)\n"
-      },
-      "misconceptions": {
-        "6 2": {
-          "feedback": "You might think `(set! t 4)` defines `t`.\nHowever, it will mutate the top-level `t` defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
-          "misconception": "DefOrSet"
-        },
-        "6 6": {
-          "feedback": "You are right that `t` is bound to `6` when `f` is bound to a function.\nYou might think the function remembers the value `6`.\nHowever, `f` does not remember the value of `t`. Rather, it always\nrefers to the latest value of `t`.\nIn SMoL, functions do not remember the values of variables defined outside.\n",
-          "misconception": "DeepClosure"
-        },
-        "error": {
-          "feedback": "You might think `f1` can't refer to `t`.\nHowever, `f1` is defined in the top-level block, so its body is allowed to refer to the top-level `t`.\n\nYou might think `(set! t 4)` can't mutate `t`.\nHowever, `(set! t 4)` appears in the body of `f2`, which is a sub-block of the top-level block,\nso it is allowed to mutate the top-level `t`.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
-    },
-    "post_not_aliased_by_defvar_1": {
-      "answer": "6 3",
-      "feedback": "The first definition binds `n` to `3`.\nThe second definition binds `m` to the value of `n`, which is `3`.\nThe `set!` mutates the binding of `n`, so `n` is now bound to `6`.\nBut `m` is still bound to `3`.\n",
-      "program": "(defvar n 3)\n(defvar m n)\n(set! n 6)\nn\nm\n",
-      "again": {
-        "answer": "2 1",
-        "program": "(defvar a 1)\n(defvar b a)\n(set! a 2)\na\nb\n"
-      },
-      "misconceptions": {
-        "6 6": {
-          "feedback": "You might think `(defvar m n)` binds `m` to `n`, so changing `n` will change `m`.\nHowever, `m` is bound to the `6`, i.e., *the value of* `n`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "DefByRef"
-        }
-      }
-    },
-    "post_not_aliased_by_funarg_2": {
-      "answer": "2",
-      "feedback": "Recall what we know about binding. The function call binds `m` to `2`.\nThe `set!` mutates the value of `m` to `7`, but `n` is still bound to `2`.\n",
-      "program": "(defvar n 2)\n(deffun (h m)\n  (set! m 7)\n  n)\n(h n)\n",
-      "again": {
-        "answer": "1",
-        "program": "(defvar s 1)\n(deffun (foobar t)\n  (set! t 2)\n  s)\n(foobar s)\n"
-      },
-      "misconceptions": {
-        "7": {
-          "feedback": "You might think function call `(h n)` binds `m` to `n`, so\nchanging `m` will change `n`.\nHowever, `m` is bound to `2`, i.e., *the value of* `n`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
-          "misconception": "CallByRef"
-        },
-        "error": {
-          "feedback": "You might think `h` can't refer to `n`.\nHowever, `h` is defined in the top-level block,\nso its body can refer to the top-level `n`.\n\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
-          "misconception": "IsolatedFun"
-        }
-      }
+      "confirm": "In this tutorial, we will learn about *local binding forms*: `let` and `letrec` and `let*`.\n\nWe will first focus on `let`. The following program *binds* `x` to `2` and `y` to `3`, and evaluates\n`(+ x y)`. The result of running this program is `5`.\n\n```\n(let ([x 2]\n      [y (+ 2 1)])\n  (+ x y))\n```\n\nIn SMoL, `let` binds the *left-hand-side variables*\n(in this case, `x` and `y`) to\nthe values of the *right-hand-side expressions* (in this case, `2` and `(+ 2 1)`)\nsuch that the *body* (in this case, `(+ x y)`)\ncan refer to all those left-hand-side variables.\n\nFurthermore, the bindings are *local*,\nwhich means we can't refer to the `let`-bound variables outside the `let`.\n\nFor example, the following program produces `4 10`.\n\n```\n(defvar x 10)\n(let ([x 4])\n  x)\nx\n```\n"
     },
     "reflect_let": {
       "prompt": "What is the scope of a left-hand-side variable of `let`?"

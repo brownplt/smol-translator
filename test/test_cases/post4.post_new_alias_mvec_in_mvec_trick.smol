@@ -1,0 +1,4 @@
+(defvar a (mvec 88))
+(defvar c (mvec a 88 88))
+(set! a (mvec 76))
+c

@@ -1,11 +1,11 @@
-def foobar =
+def foo =
   var n = 0
-  def counter =
+  def bar =
     n = n + 1
     n
-  counter
-var f = foobar
-var g = foobar
+  bar
+var f = foo
+var g = foo
 println(f)
 println(f)
 println(g)

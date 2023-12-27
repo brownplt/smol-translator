@@ -1,5 +1,5 @@
 def ffx(f, x):
     return f(f(x))
-def add1(x):
+def inc(x):
     return x + 1
-print(ffx(add1, 1))
+print(ffx(inc, 1))

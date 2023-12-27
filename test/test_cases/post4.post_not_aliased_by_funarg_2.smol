@@ -1,0 +1,5 @@
+(defvar n 2)
+(deffun (h m)
+  (set! m 7)
+  n)
+(h n)

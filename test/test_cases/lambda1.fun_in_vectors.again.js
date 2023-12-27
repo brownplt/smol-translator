@@ -1,8 +1,8 @@
-function add1(n) {
+function inc(n) {
   return n + 1;
 }
-function sub1(n) {
+function dec(n) {
   return n - 1;
 }
-let v = [ add1, sub1 ];
+let v = [ inc, dec ];
 console.log(v[1](2));
