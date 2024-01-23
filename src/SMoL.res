@@ -22,7 +22,6 @@ module Primitive = {
     | VecRef
     | VecSet
     | VecLen
-    | Eqv
     | Err
     | Not
   let toString: t => string = t => {
@@ -32,21 +31,20 @@ module Primitive = {
     | Mul => "*"
     | Div => "/"
     | Lt => "<"
-    | Eq => "="
     | Gt => ">"
     | Le => "<="
     | Ge => ">="
     | Ne => "!="
-    | PairNew => "pair"
+    | Eq => "eq?"
+    | PairNew => "mpair"
     | PairRefLeft => "left"
     | PairRefRight => "right"
     | PairSetLeft => "set-left!"
     | PairSetRight => "set-right!"
-    | VecNew => "vec"
+    | VecNew => "mvec"
     | VecRef => "vec-ref"
     | VecSet => "vec-set!"
     | VecLen => "vec-len"
-    | Eqv => "eq?"
     | Err => "error"
     | Not => "not"
     }
@@ -74,7 +72,6 @@ let all_primitives = [
   VecRef,
   VecSet,
   VecLen,
-  Eqv,
   Err,
   Not,
 ]
@@ -622,7 +619,6 @@ module Parser = {
       app_prm(ann, PairSetLeft, es)
     | Sequence(List, _b, list{{it: Atom(Sym("set-right!")), ann: _}, ...es}) =>
       app_prm(ann, PairSetRight, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vec")), ann: _}, ...es}) => app_prm(ann, VecNew, es)
     | Sequence(List, _b, list{{it: Atom(Sym("mvec")), ann: _}, ...es}) => app_prm(ann, VecNew, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}) =>
       app_prm(ann, VecRef, es)
@@ -633,9 +629,7 @@ module Parser = {
     | Sequence(List, _b, list{{it: Atom(Sym("vec-len")), ann: _}, ...es}) =>
       app_prm(ann, VecLen, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vlen")), ann: _}, ...es}) => app_prm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => app_prm(ann, Eqv, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("eqv?")), ann: _}, ...es}) => app_prm(ann, Eqv, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("equal?")), ann: _}, ...es}) => app_prm(ann, Eqv, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => app_prm(ann, Eq, es)
     | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => app_prm(ann, Err, es)
     | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => app_prm(ann, Not, es)
     | Sequence(List, _b, es) => {
@@ -779,7 +773,6 @@ module JSPrinter = {
     | (VecSet, list{e1, e2, e3}) => `${e1}[${e2}] = ${e3}`->assign_consider_context(ctx)
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]`->consider_context(ctx)
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
-    | (Eqv, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
     | _ => "/* a primitive operation not supported yet */"
@@ -1046,7 +1039,6 @@ module ScalaPrinter = {
     | (VecSet, list{e1, e2, e3}) => `${e1}(${e2}) = ${e3}`->assign_consider_context(ctx)
     | (VecRef, list{e1, e2}) => `${e1}(${e2})`->consider_context(ctx)
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
-    | (Eqv, list{e1, e2}) => `${e1} === ${e2}`->infix_consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
     | _ => "/* a primitive operation not supported yet */"
@@ -1345,7 +1337,6 @@ module PYPrinter = {
       }
     | (VecRef, list{e1, e2}) => `${e1}[${e2}]` |> ret(ctx)
     | (VecLen, list{e}) => `len(${e})` |> ret(ctx)
-    | (Eqv, list{e1, e2}) => `${e1} == ${e2}` |> wrap(ctx)
     | (Err, list{e}) => `raise ${e}`
     | (Not, list{e}) => `not ${e}` |> wrap(ctx)
     | (p, _) =>

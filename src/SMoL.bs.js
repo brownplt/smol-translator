@@ -25,7 +25,7 @@ function toString(t) {
     case /* Lt */4 :
         return "<";
     case /* Eq */5 :
-        return "=";
+        return "eq?";
     case /* Gt */6 :
         return ">";
     case /* Le */7 :
@@ -35,7 +35,7 @@ function toString(t) {
     case /* Ne */9 :
         return "!=";
     case /* PairNew */10 :
-        return "pair";
+        return "mpair";
     case /* PairRefRight */11 :
         return "right";
     case /* PairRefLeft */12 :
@@ -45,18 +45,16 @@ function toString(t) {
     case /* PairSetLeft */14 :
         return "set-left!";
     case /* VecNew */15 :
-        return "vec";
+        return "mvec";
     case /* VecRef */16 :
         return "vec-ref";
     case /* VecSet */17 :
         return "vec-set!";
     case /* VecLen */18 :
         return "vec-len";
-    case /* Eqv */19 :
-        return "eq?";
-    case /* Err */20 :
+    case /* Err */19 :
         return "error";
-    case /* Not */21 :
+    case /* Not */20 :
         return "not";
     
   }
@@ -86,9 +84,8 @@ var all_primitives = [
   /* VecRef */16,
   /* VecSet */17,
   /* VecLen */18,
-  /* Eqv */19,
-  /* Err */20,
-  /* Not */21
+  /* Err */19,
+  /* Not */20
 ];
 
 var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
@@ -819,7 +816,6 @@ function termOfSExpr(e) {
     if (match.TAG === /* Atom */0) {
       var match$1 = match._0;
       if (match$1.TAG !== /* Str */0) {
-        var exit = 0;
         switch (match$1._0) {
           case "!=" :
               return app_prm(ann, /* Ne */9, es$1.tl);
@@ -835,8 +831,6 @@ function termOfSExpr(e) {
               return app_prm(ann, /* Lt */4, es$1.tl);
           case "<=" :
               return app_prm(ann, /* Le */7, es$1.tl);
-          case "=" :
-              return app_prm(ann, /* Eq */5, es$1.tl);
           case ">" :
               return app_prm(ann, /* Gt */6, es$1.tl);
           case ">=" :
@@ -962,13 +956,11 @@ function termOfSExpr(e) {
                         ann: ann
                       }
                     };
+          case "=" :
           case "eq?" :
-          case "equal?" :
-          case "eqv?" :
-              exit = 2;
-              break;
+              return app_prm(ann, /* Eq */5, es$1.tl);
           case "error" :
-              return app_prm(ann, /* Err */20, es$1.tl);
+              return app_prm(ann, /* Err */19, es$1.tl);
           case "if" :
               var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
               var e_cnd = as_expr("a (conditional) expression", termOfSExpr(match$9[0]));
@@ -1095,8 +1087,10 @@ function termOfSExpr(e) {
                         ann: ann
                       }
                     };
+          case "mvec" :
+              return app_prm(ann, /* VecNew */15, es$1.tl);
           case "not" :
-              return app_prm(ann, /* Not */21, es$1.tl);
+              return app_prm(ann, /* Not */20, es$1.tl);
           case "mpair" :
           case "pair" :
               return app_prm(ann, /* PairNew */10, es$1.tl);
@@ -1127,9 +1121,6 @@ function termOfSExpr(e) {
               return app_prm(ann, /* PairSetLeft */14, es$1.tl);
           case "set-right!" :
               return app_prm(ann, /* PairSetRight */13, es$1.tl);
-          case "mvec" :
-          case "vec" :
-              return app_prm(ann, /* VecNew */15, es$1.tl);
           case "vec-len" :
           case "vlen" :
               return app_prm(ann, /* VecLen */18, es$1.tl);
@@ -1163,10 +1154,6 @@ function termOfSExpr(e) {
           default:
             
         }
-        if (exit === 2) {
-          return app_prm(ann, /* Eqv */19, es$1.tl);
-        }
-        
       }
       
     }
@@ -1531,23 +1518,13 @@ function expToString$1(ctx, e) {
               } else {
                 return "/* a primitive operation not supported yet */";
               }
-          case /* Eqv */19 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
-              }
-              var match$12 = es.tl;
-              if (match$12 && !match$12.tl) {
-                return infix_consider_context("" + es.hd + " === " + match$12.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
-          case /* Err */20 :
+          case /* Err */19 :
               if (es && !es.tl) {
                 return "throw " + es.hd + "";
               } else {
                 return "/* a primitive operation not supported yet */";
               }
-          case /* Not */21 :
+          case /* Not */20 :
               if (es && !es.tl) {
                 return infix_consider_context("! " + es.hd + "", ctx);
               } else {
@@ -1598,6 +1575,20 @@ function expToString$1(ctx, e) {
   }
 }
 
+function defToString(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString(match._0.it, expToString$1(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
+    var b = printBlock$1(/* Return */1, match._2);
+    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
+  }
+}
+
 function printBlock$1(ctx, b) {
   return $$String.concat("\n", Belt_List.concatMany([
                   Belt_List.map(b[0], termAsStat),
@@ -1616,18 +1607,13 @@ function termAsStat(t) {
   }
 }
 
-function defToString(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString(match._0.it, expToString$1(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
-    var b = printBlock$1(/* Return */1, match._2);
-    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
-  }
+function xeToString$1(xe) {
+  return [
+          xToString(xe[0].it),
+          expToString$1(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function ebToString$1(ctx, eb) {
@@ -1636,15 +1622,6 @@ function ebToString$1(ctx, eb) {
                 _0: false
               }, eb[0]),
           printBlock$1(ctx, eb[1])
-        ];
-}
-
-function xeToString$1(xe) {
-  return [
-          xToString(xe[0].it),
-          expToString$1(/* Expr */{
-                _0: false
-              }, xe[1])
         ];
 }
 
@@ -2006,23 +1983,13 @@ function expToString$2(ctx, e) {
               } else {
                 return "/* a primitive operation not supported yet */";
               }
-          case /* Eqv */19 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
-              }
-              var match$12 = es.tl;
-              if (match$12 && !match$12.tl) {
-                return infix_consider_context$1("" + es.hd + " === " + match$12.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
-          case /* Err */20 :
+          case /* Err */19 :
               if (es && !es.tl) {
                 return "throw " + es.hd + "";
               } else {
                 return "/* a primitive operation not supported yet */";
               }
-          case /* Not */21 :
+          case /* Not */20 :
               if (es && !es.tl) {
                 return infix_consider_context$1("! " + es.hd + "", ctx);
               } else {
@@ -2083,6 +2050,28 @@ function printBlock$3(ctx, b) {
                 ]));
 }
 
+function defToString$1(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString$1(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
+    var b = printBlock$3(/* Return */1, match._2);
+    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
+  }
+}
+
+function termAsStat$1(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$1(t._0);
+  } else {
+    return expToString$2(/* Stat */0, t._0);
+  }
+}
+
 function xeToString$2(xe) {
   return [
           xToString$1(xe[0].it),
@@ -2099,28 +2088,6 @@ function ebToString$2(ctx, eb) {
               }, eb[0]),
           printBlock$3(ctx, eb[1])
         ];
-}
-
-function termAsStat$1(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$1(t._0);
-  } else {
-    return expToString$2(/* Stat */0, t._0);
-  }
-}
-
-function defToString$1(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString$1(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
-    var b = printBlock$3(/* Return */1, match._2);
-    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
-  }
 }
 
 function printTerm$2(t) {
@@ -2443,21 +2410,12 @@ function exprApp_prmToString(ctx, p, es) {
           return ret(ctx, "len(" + es.hd + ")");
         }
         break;
-    case /* Eqv */19 :
-        if (es) {
-          var match$15 = es.tl;
-          if (match$15 && !match$15.tl) {
-            return wrap(ctx, "" + es.hd + " == " + match$15.hd + "");
-          }
-          
-        }
-        break;
-    case /* Err */20 :
+    case /* Err */19 :
         if (es && !es.tl) {
           return "raise " + es.hd + "";
         }
         break;
-    case /* Not */21 :
+    case /* Not */20 :
         if (es && !es.tl) {
           return wrap(ctx, "not " + es.hd + "");
         }

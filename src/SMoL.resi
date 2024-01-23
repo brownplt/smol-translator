@@ -21,7 +21,6 @@ module Primitive: {
     | VecRef
     | VecSet
     | VecLen
-    | Eqv
     | Err
     | Not
   let toString: t => string
