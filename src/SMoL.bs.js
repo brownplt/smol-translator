@@ -12,52 +12,8 @@ import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
-var all_primitives = [
-  /* Add */0,
-  /* Sub */1,
-  /* Mul */2,
-  /* Div */3,
-  /* Lt */4,
-  /* Eq */5,
-  /* Gt */6,
-  /* Le */7,
-  /* Ge */8,
-  /* Ne */9,
-  /* PairNew */10,
-  /* PairRefRight */11,
-  /* PairRefLeft */12,
-  /* PairSetRight */13,
-  /* PairSetLeft */14,
-  /* VecNew */15,
-  /* VecRef */16,
-  /* VecSet */17,
-  /* VecLen */18,
-  /* Eqv */19,
-  /* Err */20,
-  /* Not */21
-];
-
-var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
-
-function unannotate(x) {
-  return x.it;
-}
-
-function indent(s, i) {
-  var pad = Js_string.repeat(i, " ");
-  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
-}
-
-function indentBlock(s, i) {
-  return indent("\n" + s, i);
-}
-
-function hcat(s1, s2) {
-  return "" + s1 + "" + indent(s2, s1.length) + "";
-}
-
-function primitiveToString(o) {
-  switch (o) {
+function toString(t) {
+  switch (t) {
     case /* Add */0 :
         return "+";
     case /* Sub */1 :
@@ -104,6 +60,54 @@ function primitiveToString(o) {
         return "not";
     
   }
+}
+
+var Primitive = {
+  toString: toString
+};
+
+var all_primitives = [
+  /* Add */0,
+  /* Sub */1,
+  /* Mul */2,
+  /* Div */3,
+  /* Lt */4,
+  /* Eq */5,
+  /* Gt */6,
+  /* Le */7,
+  /* Ge */8,
+  /* Ne */9,
+  /* PairNew */10,
+  /* PairRefRight */11,
+  /* PairRefLeft */12,
+  /* PairSetRight */13,
+  /* PairSetLeft */14,
+  /* VecNew */15,
+  /* VecRef */16,
+  /* VecSet */17,
+  /* VecLen */18,
+  /* Eqv */19,
+  /* Err */20,
+  /* Not */21
+];
+
+var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
+
+function unannotate(x) {
+  return x.it;
+}
+
+function indent(s, i) {
+  var pad = Js_string.repeat(i, " ");
+  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
+}
+
+function indentBlock(s, i) {
+  return indent("\n" + s, i);
+}
+
+function hcat(s1, s2) {
+  return "" + s1 + "" + indent(s2, s1.length) + "";
 }
 
 function listToString(ss) {
@@ -175,7 +179,7 @@ function expToString(e) {
         return letLike("letrec", Belt_List.map(e._0, xeToString), printBlock(e._1));
     case /* AppPrm */6 :
         var es = expsToString(e._1);
-        var e$1 = primitiveToString(e._0);
+        var e$1 = toString(e._0);
         return listToString({
                     hd: e$1,
                     tl: es
@@ -274,7 +278,7 @@ function termsToString(ts) {
   return $$String.concat("\n", Belt_List.map(ts, printTerm));
 }
 
-function toString(t) {
+function toString$1(t) {
   if (t) {
     return "list";
   } else {
@@ -283,10 +287,10 @@ function toString(t) {
 }
 
 var SExprKind = {
-  toString: toString
+  toString: toString$1
 };
 
-function toString$1(t) {
+function toString$2(t) {
   switch (t) {
     case /* ExactlyOne */0 :
         return "exactly one";
@@ -305,10 +309,10 @@ function toString$1(t) {
 }
 
 var Arity = {
-  toString: toString$1
+  toString: toString$2
 };
 
-function toString$2(t) {
+function toString$3(t) {
   if (t) {
     return "expression";
   } else {
@@ -317,10 +321,10 @@ function toString$2(t) {
 }
 
 var TermKind = {
-  toString: toString$2
+  toString: toString$3
 };
 
-function toString$3(t) {
+function toString$4(t) {
   switch (t.TAG | 0) {
     case /* SExprParseError */0 :
         return "expecting a (valid) s-expression, but the input is not: " + t._0 + "";
@@ -339,7 +343,7 @@ function toString$3(t) {
 }
 
 var ParseError = {
-  toString: toString$3
+  toString: toString$4
 };
 
 var SMoLParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLParseError");
@@ -1604,6 +1608,14 @@ function printBlock$1(ctx, b) {
                 ]));
 }
 
+function termAsStat(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString(t._0);
+  } else {
+    return expToString$1(/* Stat */0, t._0);
+  }
+}
+
 function defToString(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -1615,14 +1627,6 @@ function defToString(d) {
     var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
     var b = printBlock$1(/* Return */1, match._2);
     return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
-  }
-}
-
-function termAsStat(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString(t._0);
-  } else {
-    return expToString$1(/* Stat */0, t._0);
   }
 }
 
@@ -2079,18 +2083,13 @@ function printBlock$3(ctx, b) {
                 ]));
 }
 
-function defToString$1(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString$1(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
-    var b = printBlock$3(/* Return */1, match._2);
-    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
-  }
+function xeToString$2(xe) {
+  return [
+          xToString$1(xe[0].it),
+          expToString$2(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function ebToString$2(ctx, eb) {
@@ -2102,20 +2101,25 @@ function ebToString$2(ctx, eb) {
         ];
 }
 
-function xeToString$2(xe) {
-  return [
-          xToString$1(xe[0].it),
-          expToString$2(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
 function termAsStat$1(t) {
   if (t.TAG === /* Def */0) {
     return defToString$1(t._0);
   } else {
     return expToString$2(/* Stat */0, t._0);
+  }
+}
+
+function defToString$1(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString$1(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
+    var b = printBlock$3(/* Return */1, match._2);
+    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
   }
 }
 
@@ -2157,7 +2161,7 @@ var Impossible = /* @__PURE__ */Caml_exceptions.create("SMoL.Impossible");
 
 var base_env = Js_dict.fromArray(Belt_Array.map(all_primitives, (function (p) {
             return [
-                    primitiveToString(p),
+                    toString(p),
                     /* BuiltIn */0
                   ];
           })));
@@ -2462,7 +2466,7 @@ function exprApp_prmToString(ctx, p, es) {
   }
   throw {
         RE_EXN_ID: SMoLPrintError,
-        _1: "found a primitive operation (" + primitiveToString(p) + ") not supported yet.",
+        _1: "found a primitive operation (" + toString(p) + ") not supported yet.",
         Error: new Error()
       };
 }
@@ -2961,16 +2965,16 @@ function printBlock$6(param) {
             ]);
 }
 
-function toString$4(t) {
+function toString$5(t) {
   if (t.TAG === /* ParseError */0) {
-    return toString$3(t._0);
+    return toString$4(t._0);
   } else {
     return t._0;
   }
 }
 
 var TranslateError = {
-  toString: toString$4
+  toString: toString$5
 };
 
 var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
@@ -3248,6 +3252,7 @@ var Parser = {
 };
 
 export {
+  Primitive ,
   SMoLPrintError ,
   SMoLPrinter ,
   JSPrinter ,

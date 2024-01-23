@@ -1,29 +1,59 @@
 open Belt
 open SExpression
 
-type primitive =
-  | Add
-  | Sub
-  | Mul
-  | Div
-  | Lt
-  | Eq
-  | Gt
-  | Le
-  | Ge
-  | Ne
-  | PairNew
-  | PairRefRight
-  | PairRefLeft
-  | PairSetRight
-  | PairSetLeft
-  | VecNew
-  | VecRef
-  | VecSet
-  | VecLen
-  | Eqv
-  | Err
-  | Not
+module Primitive = {
+  type t =
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | Lt
+    | Eq
+    | Gt
+    | Le
+    | Ge
+    | Ne
+    | PairNew
+    | PairRefRight
+    | PairRefLeft
+    | PairSetRight
+    | PairSetLeft
+    | VecNew
+    | VecRef
+    | VecSet
+    | VecLen
+    | Eqv
+    | Err
+    | Not
+  let toString: t => string = t => {
+    switch t {
+    | Add => "+"
+    | Sub => "-"
+    | Mul => "*"
+    | Div => "/"
+    | Lt => "<"
+    | Eq => "="
+    | Gt => ">"
+    | Le => "<="
+    | Ge => ">="
+    | Ne => "!="
+    | PairNew => "pair"
+    | PairRefLeft => "left"
+    | PairRefRight => "right"
+    | PairSetLeft => "set-left!"
+    | PairSetRight => "set-right!"
+    | VecNew => "vec"
+    | VecRef => "vec-ref"
+    | VecSet => "vec-set!"
+    | VecLen => "vec-len"
+    | Eqv => "eq?"
+    | Err => "error"
+    | Not => "not"
+    }
+  }
+}
+open Primitive
+
 let all_primitives = [
   Add,
   Sub,
@@ -61,7 +91,7 @@ type rec expression =
   | Lam(list<annotated<symbol>>, block)
   | Let(list<(annotated<symbol>, annotated<expression>)>, block)
   | Letrec(list<(annotated<symbol>, annotated<expression>)>, block)
-  | AppPrm(primitive, list<annotated<expression>>)
+  | AppPrm(Primitive.t, list<annotated<expression>>)
   | App(annotated<expression>, list<annotated<expression>>)
   | Bgn(list<annotated<expression>>, annotated<expression>)
   | If(annotated<expression>, annotated<expression>, annotated<expression>)
@@ -95,33 +125,6 @@ let hcat = (s1, s2) => {
 }
 
 module SMoLPrinter = {
-  let primitiveToString = (o: primitive) => {
-    switch o {
-    | Add => "+"
-    | Sub => "-"
-    | Mul => "*"
-    | Div => "/"
-    | Lt => "<"
-    | Eq => "="
-    | Gt => ">"
-    | Le => "<="
-    | Ge => ">="
-    | Ne => "!="
-    | PairNew => "pair"
-    | PairRefLeft => "left"
-    | PairRefRight => "right"
-    | PairSetLeft => "set-left!"
-    | PairSetRight => "set-right!"
-    | VecNew => "vec"
-    | VecRef => "vec-ref"
-    | VecSet => "vec-set!"
-    | VecLen => "vec-len"
-    | Eqv => "eq?"
-    | Err => "error"
-    | Not => "not"
-    }
-  }
-
   let constantToString = c => {
     switch c {
     | Uni => "#<void>"
@@ -212,7 +215,7 @@ module SMoLPrinter = {
     | Ref(x) => x.it
     | Set(x, e) => exprSetToString(x->unannotate, expToString(e.it))
     | Lam(xs, b) => exprLamToString(xs->List.map(unannotate), printBlock(b))
-    | AppPrm(p, es) => exprAppToString(primitiveToString(p), expsToString(es))
+    | AppPrm(p, es) => exprAppToString(Primitive.toString(p), expsToString(es))
     | App(e, es) => exprAppToString(expToString(e.it), expsToString(es))
     | Let(xes, b) => exprLetToString(xes->List.map(xeToString), printBlock(b))
     | Letrec(xes, b) => exprLetrecToString(xes->List.map(xeToString), printBlock(b))
@@ -977,7 +980,7 @@ module ScalaPrinter = {
   }
 
   let defvarToString = (x: string, e) => {
-    `${(mutatingVariable.contents) ? "var" : "val"} ${x} = ${e}`
+    `${mutatingVariable.contents ? "var" : "val"} ${x} = ${e}`
   }
 
   let deffunToString = (f, xs, b) => {
@@ -1212,7 +1215,7 @@ module PYPrinter = {
   }
 
   let base_env = Js.Dict.fromArray(
-    all_primitives->Array.map(p => (SMoLPrinter.primitiveToString(p), BuiltIn)),
+    all_primitives->Array.map(p => (Primitive.toString(p), BuiltIn)),
   )
   let make_global_env = xs => {
     let env = Js.Dict.entries(base_env)
@@ -1348,7 +1351,7 @@ module PYPrinter = {
     | (p, _) =>
       raise(
         SMoLPrintError(
-          `found a primitive operation (${SMoLPrinter.primitiveToString(p)}) not supported yet.`,
+          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
         ),
       )
     }

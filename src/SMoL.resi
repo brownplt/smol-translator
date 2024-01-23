@@ -1,28 +1,31 @@
 open SExpression
 
-type primitive =
-  | Add
-  | Sub
-  | Mul
-  | Div
-  | Lt
-  | Eq
-  | Gt
-  | Le
-  | Ge
-  | Ne
-  | PairNew
-  | PairRefRight
-  | PairRefLeft
-  | PairSetRight
-  | PairSetLeft
-  | VecNew
-  | VecRef
-  | VecSet
-  | VecLen
-  | Eqv
-  | Err
-  | Not
+module Primitive: {
+  type t =
+    | Add
+    | Sub
+    | Mul
+    | Div
+    | Lt
+    | Eq
+    | Gt
+    | Le
+    | Ge
+    | Ne
+    | PairNew
+    | PairRefRight
+    | PairRefLeft
+    | PairSetRight
+    | PairSetLeft
+    | VecNew
+    | VecRef
+    | VecSet
+    | VecLen
+    | Eqv
+    | Err
+    | Not
+  let toString: t => string
+}
 type constant = Uni | Num(float) | Lgc(bool) | Str(string)
 type symbol = string
 type rec expression =
@@ -32,14 +35,10 @@ type rec expression =
   | Lam(list<annotated<symbol>>, block)
   | Let(list<(annotated<symbol>, annotated<expression>)>, block)
   | Letrec(list<(annotated<symbol>, annotated<expression>)>, block)
-  | AppPrm(primitive, list<annotated<expression>>)
+  | AppPrm(Primitive.t, list<annotated<expression>>)
   | App(annotated<expression>, list<annotated<expression>>)
   | Bgn(list<annotated<expression>>, annotated<expression>)
-  | If(
-      annotated<expression>,
-      annotated<expression>,
-      annotated<expression>,
-    )
+  | If(annotated<expression>, annotated<expression>, annotated<expression>)
   | Cnd(list<(annotated<expression>, block)>, option<block>)
 and block = (list<term>, annotated<expression>)
 and definition =
@@ -65,12 +64,12 @@ module SExprKind: {
 }
 module Arity: {
   type t =
-  | ExactlyOne
-  | ExactlyTwo
-  | ExactlyThree
-  | OneThenMany
-  | ManyThenOne
-  | OneThenManyThenOne
+    | ExactlyOne
+    | ExactlyTwo
+    | ExactlyThree
+    | OneThenMany
+    | ManyThenOne
+    | OneThenManyThenOne
   let toString: t => string
 }
 module TermKind: {
@@ -85,7 +84,7 @@ module ParseError: {
     | LiteralSymbolError(string)
     | LiteralListError(annotated<SExpression.t>)
     | TermKindError(TermKind.t, string, term)
-  let toString : t => string
+  let toString: t => string
 }
 type exn += SMoLParseError(ParseError.t)
 module Parser: {
@@ -95,8 +94,8 @@ module Parser: {
 
 module TranslateError: {
   type t =
-  | ParseError(ParseError.t)
-  | PrintError(string)
+    | ParseError(ParseError.t)
+    | PrintError(string)
   let toString: t => string
 }
 type exn += SMoLTranslateError(TranslateError.t)
