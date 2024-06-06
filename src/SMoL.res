@@ -24,6 +24,7 @@ module Primitive = {
     | VecLen
     | Err
     | Not
+    | Print
   let toString: t => string = t => {
     switch t {
     | Add => "+"
@@ -47,6 +48,7 @@ module Primitive = {
     | VecLen => "vec-len"
     | Err => "error"
     | Not => "not"
+    | Print => "print"
     }
   }
 }
@@ -74,6 +76,7 @@ let all_primitives = [
   VecLen,
   Err,
   Not,
+  Print,
 ]
 type constant =
   | Uni
@@ -104,7 +107,7 @@ and program = list<term>
 
 type exn += SMoLPrintError(string)
 module type Printer = {
-  let printProgram: program => string
+  let printProgram: (bool, program) => string
   let printBlock: block => string
   let printTerm: term => string
 }
@@ -257,7 +260,7 @@ module SMoLPrinter = {
     String.concat("\n", ts->List.map(printTerm))
   }
 
-  let printProgram = termsToString
+  let printProgram = (_, ts) => termsToString(ts)
 }
 
 module SExprKind = {
@@ -775,7 +778,13 @@ module JSPrinter = {
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
-    | _ => "/* a primitive operation not supported yet */"
+    | (Print, list{e}) => `console.log(${e})`-> consider_context(ctx)
+    | _ =>
+      raise(
+        SMoLPrintError(
+          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
+        ),
+      )
     }
   }
 
@@ -891,10 +900,10 @@ module JSPrinter = {
     }
   }
 
-  let printProgram = p => {
+  let printProgram = (printTopLevel, p) => {
     let tts = t => {
       switch t {
-      | Exp(e) => expToString(TopLevel, e)
+      | Exp(e) => expToString(if printTopLevel { TopLevel } else { Stat }, e)
       | Def(d) => defToString(d)
       }
     }
@@ -1041,7 +1050,13 @@ module ScalaPrinter = {
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
-    | _ => "/* a primitive operation not supported yet */"
+    | (Print, list{e}) => `println(${e})`->consider_context(ctx)
+    | _ =>
+      raise(
+        SMoLPrintError(
+          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
+        ),
+      )
     }
   }
 
@@ -1158,16 +1173,16 @@ module ScalaPrinter = {
     }
   }
 
-  let printProgram = p => {
+  let printProgram = (printTopLevel, p) => {
     // when no variable mutation
-    mutatingVariable := Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(p)) != None
+    mutatingVariable := Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(false, p)) != None
     // when no mutation at all
     // usingBuffer := true
     // usingBuffer := Js.String.match_(%re("/vec-set!/"), SMoLPrinter.printProgram(p)) != None
-    usingBuffer := Js.String.match_(%re("/set!/"), SMoLPrinter.printProgram(p)) != None
+    usingBuffer := Js.String.match_(%re("/set!/"), SMoLPrinter.printProgram(false, p)) != None
     let tts = t => {
       switch t {
-      | Exp(e) => expToString(TopLevel, e)
+      | Exp(e) => expToString(if printTopLevel { TopLevel } else { Stat }, e)
       | Def(d) => defToString(d)
       }
     }
@@ -1339,6 +1354,7 @@ module PYPrinter = {
     | (VecLen, list{e}) => `len(${e})` |> ret(ctx)
     | (Err, list{e}) => `raise ${e}`
     | (Not, list{e}) => `not ${e}` |> wrap(ctx)
+    | (Print, list{e}) => `print(${e})` |> wrap(ctx)
     | (p, _) =>
       raise(
         SMoLPrintError(
@@ -1604,8 +1620,8 @@ module PYPrinter = {
     termToString(ctx, t)
   }
 
-  let printProgram = ts => {
-    let ctx = {node: TopLevel, block: Global, env: make_global_env(ts->xs_of_ts), refs: []}
+  let printProgram = (printTopLevel, ts) => {
+    let ctx = {node: if printTopLevel { TopLevel } else { Stat }, block: Global, env: make_global_env(ts->xs_of_ts), refs: []}
     String.concat("\n", ts->List.map(termToString(ctx)))
   }
 
@@ -1619,7 +1635,7 @@ module type Translator = {
   // print terms, interleaved with whitespace
   let translateTerms: string => string
   // print runnable full programs
-  let translateProgram: string => string
+  let translateProgram: (bool, string) => string
 }
 module TranslateError = {
   type t =
@@ -1645,11 +1661,11 @@ module PYTranslator = {
       }
     }
   }
-  let translateProgram = src => {
+  let translateProgram = (printTopLevel, src) => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch PYPrinter.printProgram(p) {
+      switch PYPrinter.printProgram(printTopLevel, p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
@@ -1668,11 +1684,11 @@ module JSTranslator = {
       }
     }
   }
-  let translateProgram = src => {
+  let translateProgram = (printTopLevel, src) => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch JSPrinter.printProgram(p) {
+      switch JSPrinter.printProgram(printTopLevel, p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }
@@ -1691,11 +1707,11 @@ module ScalaTranslator = {
       }
     }
   }
-  let translateProgram = src => {
+  let translateProgram = (printTopLevel, src) => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch ScalaPrinter.printProgram(p) {
+      switch ScalaPrinter.printProgram(printTopLevel, p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | dst => dst
       }

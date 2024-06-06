@@ -23,6 +23,7 @@ module Primitive: {
     | VecLen
     | Err
     | Not
+    | Print
   let toString: t => string
 }
 type constant = Uni | Num(float) | Lgc(bool) | Str(string)
@@ -48,7 +49,7 @@ and program = list<term>
 
 type exn += SMoLPrintError(string)
 module type Printer = {
-  let printProgram: program => string
+  let printProgram: (bool, program) => string
   let printBlock: block => string
   let printTerm: term => string
 }
@@ -100,7 +101,7 @@ module TranslateError: {
 type exn += SMoLTranslateError(TranslateError.t)
 module type Translator = {
   let translateTerms: string => string
-  let translateProgram: string => string
+  let translateProgram: (bool, string) => string
 }
 module PYTranslator: Translator
 module JSTranslator: Translator

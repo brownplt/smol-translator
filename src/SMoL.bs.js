@@ -56,6 +56,8 @@ function toString(t) {
         return "error";
     case /* Not */20 :
         return "not";
+    case /* Print */21 :
+        return "print";
     
   }
 }
@@ -85,7 +87,8 @@ var all_primitives = [
   /* VecSet */17,
   /* VecLen */18,
   /* Err */19,
-  /* Not */20
+  /* Not */20,
+  /* Print */21
 ];
 
 var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
@@ -273,6 +276,10 @@ function printTerm(t) {
 
 function termsToString(ts) {
   return $$String.concat("\n", Belt_List.map(ts, printTerm));
+}
+
+function printProgram(param, ts) {
+  return termsToString(ts);
 }
 
 function toString$1(t) {
@@ -1385,153 +1392,147 @@ function expToString$1(ctx, e) {
           case /* Div */3 :
               return infix_consider_context("" + $$String.concat(" / ", es) + "", ctx);
           case /* Lt */4 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match = es.tl;
+                if (match && !match.tl) {
+                  return infix_consider_context("" + es.hd + " < " + match.hd + "", ctx);
+                }
+                
               }
-              var match = es.tl;
-              if (match && !match.tl) {
-                return infix_consider_context("" + es.hd + " < " + match.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Eq */5 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$1 = es.tl;
+                if (match$1 && !match$1.tl) {
+                  return infix_consider_context("" + es.hd + " === " + match$1.hd + "", ctx);
+                }
+                
               }
-              var match$1 = es.tl;
-              if (match$1 && !match$1.tl) {
-                return infix_consider_context("" + es.hd + " === " + match$1.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Gt */6 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$2 = es.tl;
+                if (match$2 && !match$2.tl) {
+                  return infix_consider_context("" + es.hd + " > " + match$2.hd + "", ctx);
+                }
+                
               }
-              var match$2 = es.tl;
-              if (match$2 && !match$2.tl) {
-                return infix_consider_context("" + es.hd + " > " + match$2.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Le */7 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$3 = es.tl;
+                if (match$3 && !match$3.tl) {
+                  return infix_consider_context("" + es.hd + " <= " + match$3.hd + "", ctx);
+                }
+                
               }
-              var match$3 = es.tl;
-              if (match$3 && !match$3.tl) {
-                return infix_consider_context("" + es.hd + " <= " + match$3.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Ge */8 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$4 = es.tl;
+                if (match$4 && !match$4.tl) {
+                  return infix_consider_context("" + es.hd + " >= " + match$4.hd + "", ctx);
+                }
+                
               }
-              var match$4 = es.tl;
-              if (match$4 && !match$4.tl) {
-                return infix_consider_context("" + es.hd + " >= " + match$4.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Ne */9 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$5 = es.tl;
+                if (match$5 && !match$5.tl) {
+                  return infix_consider_context("" + es.hd + " != " + match$5.hd + "", ctx);
+                }
+                
               }
-              var match$5 = es.tl;
-              if (match$5 && !match$5.tl) {
-                return infix_consider_context("" + es.hd + " != " + match$5.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairNew */10 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$6 = es.tl;
+                if (match$6 && !match$6.tl) {
+                  return consider_context("[ " + es.hd + ", " + match$6.hd + " ]", ctx);
+                }
+                
               }
-              var match$6 = es.tl;
-              if (match$6 && !match$6.tl) {
-                return consider_context("[ " + es.hd + ", " + match$6.hd + " ]", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairRefRight */11 :
               if (es && !es.tl) {
                 return consider_context("" + es.hd + "[1]", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* PairRefLeft */12 :
               if (es && !es.tl) {
                 return consider_context("" + es.hd + "[0]", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* PairSetRight */13 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$7 = es.tl;
+                if (match$7 && !match$7.tl) {
+                  return assign_consider_context("" + es.hd + "[1] = " + match$7.hd + "", ctx);
+                }
+                
               }
-              var match$7 = es.tl;
-              if (match$7 && !match$7.tl) {
-                return assign_consider_context("" + es.hd + "[1] = " + match$7.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairSetLeft */14 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$8 = es.tl;
+                if (match$8 && !match$8.tl) {
+                  return assign_consider_context("" + es.hd + "[0] = " + match$8.hd + "", ctx);
+                }
+                
               }
-              var match$8 = es.tl;
-              if (match$8 && !match$8.tl) {
-                return assign_consider_context("" + es.hd + "[0] = " + match$8.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecNew */15 :
               return consider_context("[ " + $$String.concat(", ", es) + " ]", ctx);
           case /* VecRef */16 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$9 = es.tl;
+                if (match$9 && !match$9.tl) {
+                  return consider_context("" + es.hd + "[" + match$9.hd + "]", ctx);
+                }
+                
               }
-              var match$9 = es.tl;
-              if (match$9 && !match$9.tl) {
-                return consider_context("" + es.hd + "[" + match$9.hd + "]", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecSet */17 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$10 = es.tl;
+                if (match$10) {
+                  var match$11 = match$10.tl;
+                  if (match$11 && !match$11.tl) {
+                    return assign_consider_context("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
+                  }
+                  
+                }
+                
               }
-              var match$10 = es.tl;
-              if (!match$10) {
-                return "/* a primitive operation not supported yet */";
-              }
-              var match$11 = match$10.tl;
-              if (match$11 && !match$11.tl) {
-                return assign_consider_context("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecLen */18 :
               if (es && !es.tl) {
                 return consider_context("" + es.hd + ".length", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* Err */19 :
               if (es && !es.tl) {
                 return "throw " + es.hd + "";
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* Not */20 :
               if (es && !es.tl) {
                 return infix_consider_context("! " + es.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
+          case /* Print */21 :
+              if (es && !es.tl) {
+                return consider_context("console.log(" + es.hd + ")", ctx);
+              }
+              break;
           
         }
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "found a primitive operation (" + toString(p) + ") not supported yet.",
+              Error: new Error()
+            };
     case /* App */7 :
         var partial_arg$1 = /* Expr */{
           _0: false
@@ -1575,20 +1576,6 @@ function expToString$1(ctx, e) {
   }
 }
 
-function defToString(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString(match._0.it, expToString$1(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
-    var b = printBlock$1(/* Return */1, match._2);
-    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
-  }
-}
-
 function printBlock$1(ctx, b) {
   return $$String.concat("\n", Belt_List.concatMany([
                   Belt_List.map(b[0], termAsStat),
@@ -1597,14 +1584,6 @@ function printBlock$1(ctx, b) {
                     tl: /* [] */0
                   }
                 ]));
-}
-
-function termAsStat(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString(t._0);
-  } else {
-    return expToString$1(/* Stat */0, t._0);
-  }
 }
 
 function xeToString$1(xe) {
@@ -1625,6 +1604,28 @@ function ebToString$1(ctx, eb) {
         ];
 }
 
+function defToString(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString(match._0.it, expToString$1(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
+    var b = printBlock$1(/* Return */1, match._2);
+    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
+  }
+}
+
+function termAsStat(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString(t._0);
+  } else {
+    return expToString$1(/* Stat */0, t._0);
+  }
+}
+
 function printTerm$1(t) {
   if (t.TAG === /* Def */0) {
     return defToString(t._0);
@@ -1635,12 +1636,12 @@ function printTerm$1(t) {
   }
 }
 
-function printProgram(p) {
+function printProgram$1(printTopLevel, p) {
   var tts = function (t) {
     if (t.TAG === /* Def */0) {
       return defToString(t._0);
     } else {
-      return expToString$1(/* TopLevel */2, t._0);
+      return expToString$1(printTopLevel ? /* TopLevel */2 : /* Stat */0, t._0);
     }
   };
   return $$String.concat("\n", Belt_List.map(p, tts));
@@ -1846,157 +1847,151 @@ function expToString$2(ctx, e) {
           case /* Div */3 :
               return infix_consider_context$1("" + $$String.concat(" / ", es) + "", ctx);
           case /* Lt */4 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match = es.tl;
+                if (match && !match.tl) {
+                  return infix_consider_context$1("" + es.hd + " < " + match.hd + "", ctx);
+                }
+                
               }
-              var match = es.tl;
-              if (match && !match.tl) {
-                return infix_consider_context$1("" + es.hd + " < " + match.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Eq */5 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$1 = es.tl;
+                if (match$1 && !match$1.tl) {
+                  return infix_consider_context$1("" + es.hd + " === " + match$1.hd + "", ctx);
+                }
+                
               }
-              var match$1 = es.tl;
-              if (match$1 && !match$1.tl) {
-                return infix_consider_context$1("" + es.hd + " === " + match$1.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Gt */6 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$2 = es.tl;
+                if (match$2 && !match$2.tl) {
+                  return infix_consider_context$1("" + es.hd + " > " + match$2.hd + "", ctx);
+                }
+                
               }
-              var match$2 = es.tl;
-              if (match$2 && !match$2.tl) {
-                return infix_consider_context$1("" + es.hd + " > " + match$2.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Le */7 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$3 = es.tl;
+                if (match$3 && !match$3.tl) {
+                  return infix_consider_context$1("" + es.hd + " <= " + match$3.hd + "", ctx);
+                }
+                
               }
-              var match$3 = es.tl;
-              if (match$3 && !match$3.tl) {
-                return infix_consider_context$1("" + es.hd + " <= " + match$3.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Ge */8 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$4 = es.tl;
+                if (match$4 && !match$4.tl) {
+                  return infix_consider_context$1("" + es.hd + " >= " + match$4.hd + "", ctx);
+                }
+                
               }
-              var match$4 = es.tl;
-              if (match$4 && !match$4.tl) {
-                return infix_consider_context$1("" + es.hd + " >= " + match$4.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* Ne */9 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$5 = es.tl;
+                if (match$5 && !match$5.tl) {
+                  return infix_consider_context$1("" + es.hd + " != " + match$5.hd + "", ctx);
+                }
+                
               }
-              var match$5 = es.tl;
-              if (match$5 && !match$5.tl) {
-                return infix_consider_context$1("" + es.hd + " != " + match$5.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairNew */10 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$6 = es.tl;
+                if (match$6 && !match$6.tl) {
+                  return consider_context$1("" + (
+                              usingBuffer.contents ? "Buffer" : ""
+                            ) + "(" + es.hd + ", " + match$6.hd + ")", ctx);
+                }
+                
               }
-              var match$6 = es.tl;
-              if (match$6 && !match$6.tl) {
-                return consider_context$1("" + (
-                            usingBuffer.contents ? "Buffer" : ""
-                          ) + "(" + es.hd + ", " + match$6.hd + ")", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairRefRight */11 :
               if (es && !es.tl) {
                 return consider_context$1("" + es.hd + "(1)", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* PairRefLeft */12 :
               if (es && !es.tl) {
                 return consider_context$1("" + es.hd + "(0)", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* PairSetRight */13 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$7 = es.tl;
+                if (match$7 && !match$7.tl) {
+                  return assign_consider_context$1("" + es.hd + "(1) = " + match$7.hd + "", ctx);
+                }
+                
               }
-              var match$7 = es.tl;
-              if (match$7 && !match$7.tl) {
-                return assign_consider_context$1("" + es.hd + "(1) = " + match$7.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* PairSetLeft */14 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$8 = es.tl;
+                if (match$8 && !match$8.tl) {
+                  return assign_consider_context$1("" + es.hd + "(0) = " + match$8.hd + "", ctx);
+                }
+                
               }
-              var match$8 = es.tl;
-              if (match$8 && !match$8.tl) {
-                return assign_consider_context$1("" + es.hd + "(0) = " + match$8.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecNew */15 :
               return consider_context$1("" + (
                           usingBuffer.contents ? "Buffer" : ""
                         ) + "(" + $$String.concat(", ", es) + ")", ctx);
           case /* VecRef */16 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$9 = es.tl;
+                if (match$9 && !match$9.tl) {
+                  return consider_context$1("" + es.hd + "(" + match$9.hd + ")", ctx);
+                }
+                
               }
-              var match$9 = es.tl;
-              if (match$9 && !match$9.tl) {
-                return consider_context$1("" + es.hd + "(" + match$9.hd + ")", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecSet */17 :
-              if (!es) {
-                return "/* a primitive operation not supported yet */";
+              if (es) {
+                var match$10 = es.tl;
+                if (match$10) {
+                  var match$11 = match$10.tl;
+                  if (match$11 && !match$11.tl) {
+                    return assign_consider_context$1("" + es.hd + "(" + match$10.hd + ") = " + match$11.hd + "", ctx);
+                  }
+                  
+                }
+                
               }
-              var match$10 = es.tl;
-              if (!match$10) {
-                return "/* a primitive operation not supported yet */";
-              }
-              var match$11 = match$10.tl;
-              if (match$11 && !match$11.tl) {
-                return assign_consider_context$1("" + es.hd + "(" + match$10.hd + ") = " + match$11.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
-              }
+              break;
           case /* VecLen */18 :
               if (es && !es.tl) {
                 return consider_context$1("" + es.hd + ".length", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* Err */19 :
               if (es && !es.tl) {
                 return "throw " + es.hd + "";
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
           case /* Not */20 :
               if (es && !es.tl) {
                 return infix_consider_context$1("! " + es.hd + "", ctx);
-              } else {
-                return "/* a primitive operation not supported yet */";
               }
+              break;
+          case /* Print */21 :
+              if (es && !es.tl) {
+                return consider_context$1("println(" + es.hd + ")", ctx);
+              }
+              break;
           
         }
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "found a primitive operation (" + toString(p) + ") not supported yet.",
+              Error: new Error()
+            };
     case /* App */7 :
         var partial_arg$1 = /* Expr */{
           _0: false
@@ -2040,16 +2035,6 @@ function expToString$2(ctx, e) {
   }
 }
 
-function printBlock$3(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], termAsStat$1),
-                  {
-                    hd: expToString$2(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
-}
-
 function defToString$1(d) {
   var match = d.it;
   if (match.TAG === /* Var */0) {
@@ -2070,6 +2055,16 @@ function termAsStat$1(t) {
   } else {
     return expToString$2(/* Stat */0, t._0);
   }
+}
+
+function printBlock$3(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$1),
+                  {
+                    hd: expToString$2(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
 }
 
 function xeToString$2(xe) {
@@ -2101,14 +2096,14 @@ function printTerm$2(t) {
   }
 }
 
-function printProgram$1(p) {
+function printProgram$2(printTopLevel, p) {
   mutatingVariable.contents = Js_string.match_(/[(]set!/, termsToString(p)) !== undefined;
   usingBuffer.contents = Js_string.match_(/set!/, termsToString(p)) !== undefined;
   var tts = function (t) {
     if (t.TAG === /* Def */0) {
       return defToString$1(t._0);
     } else {
-      return expToString$2(/* TopLevel */2, t._0);
+      return expToString$2(printTopLevel ? /* TopLevel */2 : /* Stat */0, t._0);
     }
   };
   return $$String.concat("\n", Belt_List.map(p, tts));
@@ -2418,6 +2413,11 @@ function exprApp_prmToString(ctx, p, es) {
     case /* Not */20 :
         if (es && !es.tl) {
           return wrap(ctx, "not " + es.hd + "");
+        }
+        break;
+    case /* Print */21 :
+        if (es && !es.tl) {
+          return wrap(ctx, "print(" + es.hd + ")");
         }
         break;
     
@@ -2894,11 +2894,12 @@ function printTerm$3(t) {
   return termToString(ctx, t);
 }
 
-function printProgram$2(ts) {
+function printProgram$3(printTopLevel, ts) {
+  var ctx_node = printTopLevel ? /* TopLevel */2 : /* Stat */0;
   var ctx_refs = [];
   var ctx_env = make_global_env(xs_of_ts(ts));
   var ctx = {
-    node: /* TopLevel */2,
+    node: ctx_node,
     block: /* Global */1,
     refs: ctx_refs,
     env: ctx_env
@@ -2975,7 +2976,7 @@ function translateTerms(src) {
   }
 }
 
-function translateProgram(src) {
+function translateProgram(printTopLevel, src) {
   var p;
   try {
     p = parseTerms(src);
@@ -2995,7 +2996,7 @@ function translateProgram(src) {
     throw err;
   }
   try {
-    return printProgram$2(p);
+    return printProgram$3(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -3056,7 +3057,7 @@ function translateTerms$1(src) {
   }
 }
 
-function translateProgram$1(src) {
+function translateProgram$1(printTopLevel, src) {
   var p;
   try {
     p = parseTerms(src);
@@ -3076,7 +3077,7 @@ function translateProgram$1(src) {
     throw err;
   }
   try {
-    return printProgram(p);
+    return printProgram$1(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -3137,7 +3138,7 @@ function translateTerms$2(src) {
   }
 }
 
-function translateProgram$2(src) {
+function translateProgram$2(printTopLevel, src) {
   var p;
   try {
     p = parseTerms(src);
@@ -3157,7 +3158,7 @@ function translateProgram$2(src) {
     throw err;
   }
   try {
-    return printProgram$1(p);
+    return printProgram$2(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -3181,25 +3182,25 @@ var ScalaTranslator = {
 };
 
 var SMoLPrinter = {
-  printProgram: termsToString,
+  printProgram: printProgram,
   printBlock: printBlock,
   printTerm: printTerm
 };
 
 var JSPrinter = {
-  printProgram: printProgram,
+  printProgram: printProgram$1,
   printBlock: printBlock$2,
   printTerm: printTerm$1
 };
 
 var PYPrinter = {
-  printProgram: printProgram$2,
+  printProgram: printProgram$3,
   printBlock: printBlock$6,
   printTerm: printTerm$3
 };
 
 var ScalaPrinter = {
-  printProgram: printProgram$1,
+  printProgram: printProgram$2,
   printBlock: printBlock$4,
   printTerm: printTerm$2
 };

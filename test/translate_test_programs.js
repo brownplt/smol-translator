@@ -31,7 +31,7 @@ for (const f of fs.readdirSync(path)) {
             const outputs = fs.readFileSync(outputsFile, 'utf8');
             if (!outputs.includes("@")) {
                 try {
-                    fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(program));
+                    fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(true, program));
                     fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateTerms(outputs));
                 } catch (err) {
                     fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
@@ -48,7 +48,7 @@ for (const f of fs.readdirSync(path)) {
             const outputs = fs.readFileSync(outputsFile, 'utf8');
             if (!outputs.includes("@")) {
                 try {
-                    fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(program));
+                    fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
                     fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateTerms(outputs));
                 } catch (err) {
                     fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
@@ -66,7 +66,7 @@ for (const f of fs.readdirSync(path)) {
                 const outputs = fs.readFileSync(outputsFile, 'utf8');
                 if (!outputs.includes("@")) {
                     try {
-                        fs.writeFileSync(`${path}/${name}.scala`, Scala3_actual_hard_coded_translation[name] || SMoL.ScalaTranslator.translateProgram(program));
+                        fs.writeFileSync(`${path}/${name}.scala`, Scala3_actual_hard_coded_translation[name] || SMoL.ScalaTranslator.translateProgram(true, program));
                         fs.writeFileSync(`${path}/${name}.scala.txt`, SMoL.ScalaTranslator.translateTerms(outputs));
                     } catch (err) {
                         fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
