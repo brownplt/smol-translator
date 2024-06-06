@@ -635,6 +635,7 @@ module Parser = {
     | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => app_prm(ann, Eq, es)
     | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => app_prm(ann, Err, es)
     | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => app_prm(ann, Not, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("print")), ann: _}, ...es}) => app_prm(ann, Print, es)
     | Sequence(List, _b, es) => {
         let (e, es) = as_one_then_many(
           "a function call/application, which includes a function and then zero or more arguments",
