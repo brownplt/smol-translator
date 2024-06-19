@@ -1761,8 +1761,18 @@ module CommonPrinter = {
     ebs ++ ob
   }
 
-  let exprIfToString = (e_cnd: string, e_thn: string, e_els: string) => {
-    `(${e_cnd} ? ${e_thn} : ${e_els})`
+  let exprIfToString = (ctx, e_cnd: string, e_thn: string, e_els: string) => {
+    switch ctx {
+    | Expr(in_infix) => {
+      let e = `${e_thn} ? ${e_cnd} : ${e_els}`;
+      if in_infix {
+        `${e}`
+      } else {
+        e
+      }
+    }
+    | _ => `if ${e_cnd}:${indentBlock(e_thn, 4)}\nelse:${indentBlock(e_els, 4)}\nend`
+    }
   }
 
   let exprLetToString = (xes, b) => {
@@ -1803,10 +1813,11 @@ module CommonPrinter = {
     | Cnd(ebs, ob) => exprCndToString(ebs->List.map(ebToString(ctx)), obToString(ctx, ob))
     | If(e_cnd, e_thn, e_els) =>
       exprIfToString(
+        ctx,
         expToString(Expr(true), e_cnd),
-        expToString(Expr(true), e_thn),
-        expToString(Expr(true), e_els),
-      )->consider_context(ctx)
+        expToString(ctx, e_thn),
+        expToString(ctx, e_els),
+      )
     | Bgn(es, e) =>
       exprBgnToString(
         es->List.map(expToString(Expr(false))),

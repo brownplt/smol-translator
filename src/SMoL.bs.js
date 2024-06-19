@@ -3024,10 +3024,6 @@ function exprBgnToString$2(es, e) {
                 ])) + ")";
 }
 
-function exprIfToString$2(e_cnd, e_thn, e_els) {
-  return "(" + e_cnd + " ? " + e_thn + " : " + e_els + ")";
-}
-
 function exprLetToString$3(xes, b) {
   return exprAppToString$3(exprLamToString$3(Belt_List.map(xes, (function (param) {
                         return param[0];
@@ -3246,13 +3242,20 @@ function expToString$4(ctx, e) {
                             _0: false
                           }, c._1)), ctx);
     case /* If */9 :
-        return consider_context$3(exprIfToString$2(expToString$4(/* Expr */{
-                            _0: true
-                          }, c._0), expToString$4(/* Expr */{
-                            _0: true
-                          }, c._1), expToString$4(/* Expr */{
-                            _0: true
-                          }, c._2)), ctx);
+        var e_cnd = expToString$4(/* Expr */{
+              _0: true
+            }, c._0);
+        var e_thn = expToString$4(ctx, c._1);
+        var e_els = expToString$4(ctx, c._2);
+        if (typeof ctx === "number") {
+          return "if " + e_cnd + ":" + indentBlock(e_thn, 4) + "\nelse:" + indentBlock(e_els, 4) + "\nend";
+        }
+        var e$2 = "" + e_thn + " ? " + e_cnd + " : " + e_els + "";
+        if (ctx._0) {
+          return "" + e$2 + "";
+        } else {
+          return e$2;
+        }
     case /* Cnd */10 :
         var ebs = Belt_List.map(c._0, (function (param) {
                 return ebToString$4(ctx, param);
@@ -3270,12 +3273,14 @@ function expToString$4(ctx, e) {
   }
 }
 
-function termAsStat$2(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$2(t._0);
-  } else {
-    return expToString$4(/* Stat */0, t._0);
-  }
+function printBlock$7(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$2),
+                  {
+                    hd: expToString$4(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
 }
 
 function defToString$2(d) {
@@ -3290,16 +3295,6 @@ function defToString$2(d) {
     var b = printBlock$7(/* Return */1, match._2);
     return "fun " + f + "" + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
   }
-}
-
-function printBlock$7(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], termAsStat$2),
-                  {
-                    hd: expToString$4(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
 }
 
 function ebToString$4(ctx, eb) {
@@ -3318,6 +3313,14 @@ function xeToString$4(xe) {
                 _0: false
               }, xe[1])
         ];
+}
+
+function termAsStat$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Stat */0, t._0);
+  }
 }
 
 function printTerm$4(t) {
