@@ -1,0 +1,5 @@
+fun foobar(n):
+  let m = 4
+  return n + m
+end
+print(foobar(2) + m)

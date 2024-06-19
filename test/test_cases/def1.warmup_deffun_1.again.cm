@@ -1,0 +1,4 @@
+fun g(x, y, z):
+  return x * (y * z)
+end
+print(g(2, 1, 3))

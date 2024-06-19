@@ -1,0 +1,11 @@
+let x = 12
+fun f():
+  return x
+end
+fun g():
+  x = 0
+  return f()
+end
+print(g())
+x = 1
+print(f())

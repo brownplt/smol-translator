@@ -1,0 +1,6 @@
+let x = 12
+fun f(y):
+  x = 0
+  return y
+end
+print(f(x))

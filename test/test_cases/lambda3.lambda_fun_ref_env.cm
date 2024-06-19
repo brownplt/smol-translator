@@ -1,0 +1,9 @@
+fun bar(y):
+  return lam (x):
+    return x + y
+  end
+end
+let f = bar(2)
+let g = bar(4)
+print(f(2))
+print(g(2))

@@ -1,0 +1,6 @@
+let n = 2
+fun h(m):
+  m = 7
+  return n
+end
+print(h(n))

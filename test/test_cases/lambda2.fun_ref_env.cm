@@ -1,0 +1,10 @@
+fun bar(y):
+  fun addy(x):
+    return x + y
+  end
+  return addy
+end
+let f = bar(2)
+let g = bar(4)
+print(f(2))
+print(g(2))

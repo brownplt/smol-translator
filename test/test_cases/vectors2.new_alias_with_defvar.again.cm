@@ -1,0 +1,4 @@
+let foo = vec[65, 48]
+let bar = foo
+bar[0] = 55
+print(foo)

@@ -1,0 +1,9 @@
+let a = 9
+fun fun():
+  let b = 2
+  fun prod():
+    return a * b
+  end
+  return prod()
+end
+print(fun())

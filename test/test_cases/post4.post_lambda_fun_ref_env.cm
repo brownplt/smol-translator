@@ -1,0 +1,9 @@
+fun k(b):
+  return lam (a):
+    return a + b
+  end
+end
+let foo = k(3)
+let bar = k(2)
+print(foo(3))
+print(bar(3))

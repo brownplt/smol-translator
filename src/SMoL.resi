@@ -57,6 +57,7 @@ module SMoLPrinter: Printer
 module JSPrinter: Printer
 module PYPrinter: Printer
 module ScalaPrinter: Printer
+module CommonPrinter: Printer
 
 module SExprKind: {
   type t = Atom | List
@@ -106,3 +107,4 @@ module type Translator = {
 module PYTranslator: Translator
 module JSTranslator: Translator
 module ScalaTranslator: Translator
+module CommonTranslator: Translator

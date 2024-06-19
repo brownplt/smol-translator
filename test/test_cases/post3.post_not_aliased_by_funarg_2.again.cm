@@ -1,0 +1,6 @@
+let s = 1
+fun foobar(t):
+  t = 2
+  return s
+end
+print(foobar(s))

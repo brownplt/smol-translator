@@ -1,0 +1,4 @@
+let n = m * 4
+let m = 3
+print(n)
+print(m)

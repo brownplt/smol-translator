@@ -1,0 +1,8 @@
+fun fun1():
+  fun average(x, y):
+    return (x + y) / 2
+  end
+  return average
+end
+let x = fun1()
+print(x(20, 40))

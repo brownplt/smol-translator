@@ -1,0 +1,11 @@
+let n = 7
+fun foo():
+  return n
+end
+fun bar():
+  n = 3
+  return foo()
+end
+print(bar())
+n = 5
+print(foo())

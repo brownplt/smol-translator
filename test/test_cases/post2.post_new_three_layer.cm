@@ -1,0 +1,9 @@
+let n = 5
+fun f1(m):
+  fun f2():
+    let l = 4
+    return n + m + l
+  end
+  return f2()
+end
+print(f1(1) + 3)

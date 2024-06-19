@@ -1,0 +1,4 @@
+let v1 = vec[23]
+let v2 = v1
+v1[0] = 45
+print(v2)

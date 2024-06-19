@@ -1,0 +1,10 @@
+let x = 1
+fun f():
+  fun addx(y):
+    return x + y
+  end
+  return addx
+end
+let g = f()
+x = 2
+print(g(0))

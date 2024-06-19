@@ -1,0 +1,10 @@
+let a = 2
+fun make():
+  fun f(b):
+    return a + b
+  end
+  return f
+end
+let g = make()
+a = 1
+print(g(1))

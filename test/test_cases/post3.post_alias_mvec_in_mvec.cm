@@ -1,0 +1,4 @@
+let nn = vec[66]
+let mm = vec[77, nn]
+nn[0] = 77
+print(mm)

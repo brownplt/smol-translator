@@ -1,0 +1,6 @@
+let cat = 7
+fun k(dog):
+  let cat = 4
+  return cat + dog
+end
+print(k(1) + cat)

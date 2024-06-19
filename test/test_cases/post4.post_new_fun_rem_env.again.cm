@@ -1,0 +1,11 @@
+let a = 4
+fun h():
+  return a
+end
+fun k():
+  a = 2
+  return h()
+end
+print(k())
+a = 6
+print(h())

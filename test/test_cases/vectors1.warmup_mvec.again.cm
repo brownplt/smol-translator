@@ -1,0 +1,5 @@
+let x = 7
+fun fun(n):
+  return n * 2
+end
+print(vec[fun(x), x])

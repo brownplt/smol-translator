@@ -1,0 +1,13 @@
+fun foo():
+  let n = 0
+  fun bar():
+    n = n + 1
+    return n
+  end
+  return bar
+end
+let f = foo()
+let g = foo()
+print(f())
+print(f())
+print(g())

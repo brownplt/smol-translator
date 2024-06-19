@@ -1,0 +1,9 @@
+fun f(n):
+  return lam (m):
+    return m * n
+  end
+end
+let fun1 = f(10)
+let fun2 = f(1)
+print(fun1(4))
+print(fun2(4))

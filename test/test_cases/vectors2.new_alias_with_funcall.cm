@@ -1,0 +1,6 @@
+let x = vec[99, 83]
+fun f(y):
+  x[0] = 34
+  return y
+end
+print(f(x))

@@ -1,0 +1,12 @@
+fun foobar():
+  let n = 0
+  return lam ():
+    n = n + 1
+    return n
+  end
+end
+let f = foobar()
+let g = foobar()
+print(f())
+print(f())
+print(g())

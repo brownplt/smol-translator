@@ -1,0 +1,5 @@
+fun f(a, b, c):
+  let q = b + c
+  return a * q
+end
+print(f(3, 2, 1))

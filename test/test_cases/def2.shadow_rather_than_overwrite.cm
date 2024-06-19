@@ -1,0 +1,6 @@
+let x = 1
+fun f(y):
+  let x = 2
+  return x + y
+end
+print(f(0) + x)

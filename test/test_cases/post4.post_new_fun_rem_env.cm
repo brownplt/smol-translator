@@ -1,0 +1,11 @@
+let t = 6
+fun f1():
+  return t
+end
+fun f2():
+  t = 4
+  return f1()
+end
+print(f2())
+t = 2
+print(f1())

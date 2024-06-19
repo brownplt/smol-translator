@@ -1,0 +1,6 @@
+let x = 1
+fun f(n):
+  return x + n
+end
+x = 2
+print(f(30))

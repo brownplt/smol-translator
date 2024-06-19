@@ -1,0 +1,6 @@
+let o = 1
+fun u(t):
+  return o + t
+end
+o = 9
+print(u(5))

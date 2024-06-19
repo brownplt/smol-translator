@@ -1,0 +1,5 @@
+fun f(x, y, z):
+  let p = y * z
+  return x + p
+end
+print(f(2, 1, 3))

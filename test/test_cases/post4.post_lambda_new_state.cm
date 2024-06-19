@@ -1,0 +1,9 @@
+let a = 1
+fun foo():
+  return lam (b):
+    return a + b
+  end
+end
+let bar = foo()
+a = 3
+print(bar(0))

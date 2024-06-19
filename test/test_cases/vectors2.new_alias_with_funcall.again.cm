@@ -1,0 +1,6 @@
+let a = vec[66, 54]
+fun h(b):
+  a[0] = 42
+  return b
+end
+print(h(a))

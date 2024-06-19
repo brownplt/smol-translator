@@ -1,0 +1,12 @@
+fun build_dbl():
+  let n = 1
+  return lam ():
+    n = n * 2
+    return n
+  end
+end
+let dbl1 = build_dbl()
+let dbl2 = build_dbl()
+print(dbl1())
+print(dbl2())
+print(dbl1())

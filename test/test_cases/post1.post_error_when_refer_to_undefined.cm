@@ -1,0 +1,5 @@
+fun k(a):
+  let b = 1
+  return a + b
+end
+print(k(3) + b)

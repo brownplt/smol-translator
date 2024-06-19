@@ -2926,6 +2926,431 @@ function printBlock$6(param) {
             ]);
 }
 
+function consider_context$3(e, ctx) {
+  if (typeof ctx !== "number") {
+    return "" + e + "";
+  }
+  switch (ctx) {
+    case /* Stat */0 :
+        return "" + e + "";
+    case /* Return */1 :
+        return "return " + e + "";
+    case /* TopLevel */2 :
+        return "print(" + e + ")";
+    
+  }
+}
+
+function constantToString$3(c) {
+  if (typeof c === "number") {
+    return "null";
+  }
+  switch (c.TAG | 0) {
+    case /* Num */0 :
+        return String(c._0);
+    case /* Lgc */1 :
+        if (c._0) {
+          return "true";
+        } else {
+          return "false";
+        }
+    case /* Str */2 :
+        return "\"" + $$String.escaped(c._0) + "\"";
+    
+  }
+}
+
+function listToString$4(ss) {
+  return "(" + $$String.concat(", ", ss) + ")";
+}
+
+function xToString$3(x) {
+  if (x === "-") {
+    return x;
+  }
+  var re = /-/g;
+  var matchFn = function (_matchPart, _offset, _wholeString) {
+    return "_";
+  };
+  return x.replace(re, matchFn);
+}
+
+function defvarToString$2(x, e) {
+  return "let " + xToString$3(x) + " = " + e + "";
+}
+
+function exprLamToString$3(xs, b) {
+  return "lam " + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
+}
+
+function infix_consider_context$2(e, ctx) {
+  if (typeof ctx === "number" || !ctx._0) {
+    return consider_context$3(e, ctx);
+  } else {
+    return "(" + e + ")";
+  }
+}
+
+function assign_consider_context$2(e, ctx) {
+  if (typeof ctx !== "number") {
+    if (ctx._0) {
+      return "(" + e + ")";
+    } else {
+      return consider_context$3(e, ctx);
+    }
+  }
+  switch (ctx) {
+    case /* Stat */0 :
+        return consider_context$3(e, ctx);
+    case /* Return */1 :
+        return "" + e + "\nreturn";
+    case /* TopLevel */2 :
+        return "" + e + "";
+    
+  }
+}
+
+function exprAppToString$3(e, es) {
+  return "" + e + "" + listToString$4(es) + "";
+}
+
+function exprBgnToString$2(es, e) {
+  return "(" + $$String.concat(", ", Belt_List.concatMany([
+                  es,
+                  {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                ])) + ")";
+}
+
+function exprIfToString$2(e_cnd, e_thn, e_els) {
+  return "(" + e_cnd + " ? " + e_thn + " : " + e_els + ")";
+}
+
+function exprLetToString$3(xes, b) {
+  return exprAppToString$3(exprLamToString$3(Belt_List.map(xes, (function (param) {
+                        return param[0];
+                      })), b), Belt_List.map(xes, (function (param) {
+                    return param[1];
+                  })));
+}
+
+function exprLetrecToString$2(xes, b) {
+  var b$1 = $$String.concat("\n", Belt_List.concatMany([
+            Belt_List.map(xes, (function (param) {
+                    return defvarToString$2(param[0], param[1]);
+                  })),
+            {
+              hd: b,
+              tl: /* [] */0
+            }
+          ]));
+  return exprLetToString$3(/* [] */0, b$1);
+}
+
+function expToString$4(ctx, e) {
+  var c = e.it;
+  switch (c.TAG | 0) {
+    case /* Con */0 :
+        return consider_context$3(constantToString$3(c._0), ctx);
+    case /* Ref */1 :
+        return consider_context$3(xToString$3(c._0.it), ctx);
+    case /* Set */2 :
+        var x = xToString$3(c._0.it);
+        var e$1 = expToString$4(/* Expr */{
+              _0: false
+            }, c._1);
+        return assign_consider_context$2("" + x + " = " + e$1 + "", ctx);
+    case /* Lam */3 :
+        return consider_context$3(exprLamToString$3(Belt_List.map(Belt_List.map(c._0, unannotate), xToString$3), printBlock$7(/* Return */1, c._1)), ctx);
+    case /* Let */4 :
+        return consider_context$3(exprLetToString$3(Belt_List.map(c._0, xeToString$4), printBlock$7(/* Return */1, c._1)), ctx);
+    case /* Letrec */5 :
+        return consider_context$3(exprLetrecToString$2(Belt_List.map(c._0, xeToString$4), printBlock$7(/* Return */1, c._1)), ctx);
+    case /* AppPrm */6 :
+        var partial_arg = /* Expr */{
+          _0: true
+        };
+        var p = c._0;
+        var es = Belt_List.map(c._1, (function (param) {
+                return expToString$4(partial_arg, param);
+              }));
+        switch (p) {
+          case /* Add */0 :
+              return infix_consider_context$2("" + $$String.concat(" + ", es) + "", ctx);
+          case /* Sub */1 :
+              return infix_consider_context$2("" + $$String.concat(" - ", es) + "", ctx);
+          case /* Mul */2 :
+              return infix_consider_context$2("" + $$String.concat(" * ", es) + "", ctx);
+          case /* Div */3 :
+              return infix_consider_context$2("" + $$String.concat(" / ", es) + "", ctx);
+          case /* Lt */4 :
+              if (es) {
+                var match = es.tl;
+                if (match && !match.tl) {
+                  return infix_consider_context$2("" + es.hd + " < " + match.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* Eq */5 :
+              if (es) {
+                var match$1 = es.tl;
+                if (match$1 && !match$1.tl) {
+                  return infix_consider_context$2("" + es.hd + " == " + match$1.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* Gt */6 :
+              if (es) {
+                var match$2 = es.tl;
+                if (match$2 && !match$2.tl) {
+                  return infix_consider_context$2("" + es.hd + " > " + match$2.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* Le */7 :
+              if (es) {
+                var match$3 = es.tl;
+                if (match$3 && !match$3.tl) {
+                  return infix_consider_context$2("" + es.hd + " <= " + match$3.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* Ge */8 :
+              if (es) {
+                var match$4 = es.tl;
+                if (match$4 && !match$4.tl) {
+                  return infix_consider_context$2("" + es.hd + " >= " + match$4.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* Ne */9 :
+              if (es) {
+                var match$5 = es.tl;
+                if (match$5 && !match$5.tl) {
+                  return infix_consider_context$2("" + es.hd + " != " + match$5.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* PairNew */10 :
+              if (es) {
+                var match$6 = es.tl;
+                if (match$6 && !match$6.tl) {
+                  return consider_context$3("vec[" + es.hd + ", " + match$6.hd + "]", ctx);
+                }
+                
+              }
+              break;
+          case /* PairRefRight */11 :
+              if (es && !es.tl) {
+                return consider_context$3("" + es.hd + "[1]", ctx);
+              }
+              break;
+          case /* PairRefLeft */12 :
+              if (es && !es.tl) {
+                return consider_context$3("" + es.hd + "[0]", ctx);
+              }
+              break;
+          case /* PairSetRight */13 :
+              if (es) {
+                var match$7 = es.tl;
+                if (match$7 && !match$7.tl) {
+                  return assign_consider_context$2("" + es.hd + "[1] = " + match$7.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* PairSetLeft */14 :
+              if (es) {
+                var match$8 = es.tl;
+                if (match$8 && !match$8.tl) {
+                  return assign_consider_context$2("" + es.hd + "[0] = " + match$8.hd + "", ctx);
+                }
+                
+              }
+              break;
+          case /* VecNew */15 :
+              return consider_context$3("vec[" + $$String.concat(", ", es) + "]", ctx);
+          case /* VecRef */16 :
+              if (es) {
+                var match$9 = es.tl;
+                if (match$9 && !match$9.tl) {
+                  return consider_context$3("" + es.hd + "[" + match$9.hd + "]", ctx);
+                }
+                
+              }
+              break;
+          case /* VecSet */17 :
+              if (es) {
+                var match$10 = es.tl;
+                if (match$10) {
+                  var match$11 = match$10.tl;
+                  if (match$11 && !match$11.tl) {
+                    return assign_consider_context$2("" + es.hd + "[" + match$10.hd + "] = " + match$11.hd + "", ctx);
+                  }
+                  
+                }
+                
+              }
+              break;
+          case /* VecLen */18 :
+              if (es && !es.tl) {
+                return consider_context$3("" + es.hd + ".length()", ctx);
+              }
+              break;
+          case /* Err */19 :
+              if (es && !es.tl) {
+                return "throw " + es.hd + "";
+              }
+              break;
+          case /* Not */20 :
+              if (es && !es.tl) {
+                return infix_consider_context$2("! " + es.hd + "", ctx);
+              }
+              break;
+          case /* Print */21 :
+              if (es && !es.tl) {
+                return consider_context$3("print(" + es.hd + ")", ctx);
+              }
+              break;
+          
+        }
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "found a primitive operation (" + toString(p) + ") not supported yet.",
+              Error: new Error()
+            };
+    case /* App */7 :
+        var partial_arg$1 = /* Expr */{
+          _0: false
+        };
+        return consider_context$3(exprAppToString$3(expToString$4(/* Expr */{
+                            _0: false
+                          }, c._0), Belt_List.map(c._1, (function (param) {
+                              return expToString$4(partial_arg$1, param);
+                            }))), ctx);
+    case /* Bgn */8 :
+        var partial_arg$2 = /* Expr */{
+          _0: false
+        };
+        return consider_context$3(exprBgnToString$2(Belt_List.map(c._0, (function (param) {
+                              return expToString$4(partial_arg$2, param);
+                            })), expToString$4(/* Expr */{
+                            _0: false
+                          }, c._1)), ctx);
+    case /* If */9 :
+        return consider_context$3(exprIfToString$2(expToString$4(/* Expr */{
+                            _0: true
+                          }, c._0), expToString$4(/* Expr */{
+                            _0: true
+                          }, c._1), expToString$4(/* Expr */{
+                            _0: true
+                          }, c._2)), ctx);
+    case /* Cnd */10 :
+        var ebs = Belt_List.map(c._0, (function (param) {
+                return ebToString$4(ctx, param);
+              }));
+        var ob = Belt_Option.map(c._1, (function (param) {
+                return printBlock$7(ctx, param);
+              }));
+        var ob$1 = ob !== undefined ? "else:" + indentBlock(ob, 2) + "\nend" : "";
+        var ebs$1 = Belt_List.map(ebs, (function (param) {
+                return "if " + param[0] + ":" + indentBlock(param[1], 2) + "\n";
+              }));
+        var ebs$2 = $$String.concat("else ", ebs$1);
+        return ebs$2 + ob$1;
+    
+  }
+}
+
+function termAsStat$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Stat */0, t._0);
+  }
+}
+
+function defToString$2(d) {
+  var match = d.it;
+  if (match.TAG === /* Var */0) {
+    return defvarToString$2(match._0.it, expToString$4(/* Expr */{
+                    _0: false
+                  }, match._1));
+  } else {
+    var f = xToString$3(match._0.it);
+    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$3);
+    var b = printBlock$7(/* Return */1, match._2);
+    return "fun " + f + "" + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
+  }
+}
+
+function printBlock$7(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$2),
+                  {
+                    hd: expToString$4(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
+function ebToString$4(ctx, eb) {
+  return [
+          expToString$4(/* Expr */{
+                _0: false
+              }, eb[0]),
+          printBlock$7(ctx, eb[1])
+        ];
+}
+
+function xeToString$4(xe) {
+  return [
+          xToString$3(xe[0].it),
+          expToString$4(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
+}
+
+function printTerm$4(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Expr */{
+                _0: false
+              }, t._0);
+  }
+}
+
+function printProgram$4(printTopLevel, p) {
+  var tts = function (t) {
+    if (t.TAG === /* Def */0) {
+      return defToString$2(t._0);
+    } else {
+      return expToString$4(printTopLevel ? /* TopLevel */2 : /* Stat */0, t._0);
+    }
+  };
+  return $$String.concat("\n", Belt_List.map(p, tts));
+}
+
+function printBlock$8(param) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(param[0], termAsStat$2),
+                  {
+                    hd: expToString$4(/* Return */1, param[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
 function toString$5(t) {
   if (t.TAG === /* ParseError */0) {
     return toString$4(t._0);
@@ -3183,6 +3608,87 @@ var ScalaTranslator = {
   translateProgram: translateProgram$2
 };
 
+function translateTerms$3(src) {
+  var ts;
+  try {
+    ts = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return $$String.concat(" ", Belt_List.map(ts, printTerm$4));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram$3(printTopLevel, src) {
+  var p;
+  try {
+    p = parseTerms(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$4(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var CommonTranslator = {
+  translateTerms: translateTerms$3,
+  translateProgram: translateProgram$3
+};
+
 var SMoLPrinter = {
   printProgram: printProgram,
   printBlock: printBlock,
@@ -3207,6 +3713,12 @@ var ScalaPrinter = {
   printTerm: printTerm$2
 };
 
+var CommonPrinter = {
+  printProgram: printProgram$4,
+  printBlock: printBlock$8,
+  printTerm: printTerm$4
+};
+
 var Parser = {
   parseTerms: parseTerms,
   parseProgram: parseTerms
@@ -3219,6 +3731,7 @@ export {
   JSPrinter ,
   PYPrinter ,
   ScalaPrinter ,
+  CommonPrinter ,
   SExprKind ,
   Arity ,
   TermKind ,
@@ -3230,5 +3743,6 @@ export {
   PYTranslator ,
   JSTranslator ,
   ScalaTranslator ,
+  CommonTranslator ,
 }
 /* base_env Not a pure module */

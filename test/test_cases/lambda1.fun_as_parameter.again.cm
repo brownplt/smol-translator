@@ -1,0 +1,7 @@
+fun ffx(f, x):
+  return f(f(x))
+end
+fun inc(x):
+  return x + 1
+end
+print(ffx(inc, 1))

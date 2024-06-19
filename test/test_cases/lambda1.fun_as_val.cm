@@ -1,0 +1,6 @@
+fun f():
+  return 42
+end
+let g = f
+let h = g
+print(h())

@@ -1,0 +1,9 @@
+let a = 3
+fun foo(b):
+  fun bar():
+    let c = 6
+    return a + b + c
+  end
+  return bar()
+end
+print(foo(4) + 2)

@@ -1,0 +1,9 @@
+let aa = 3
+fun abc(bb):
+  fun h():
+    let cc = 2
+    return aa * bb * cc
+  end
+  return h()
+end
+print(abc(4) * 1)

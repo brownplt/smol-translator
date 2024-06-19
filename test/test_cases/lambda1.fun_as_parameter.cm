@@ -1,0 +1,7 @@
+fun twice(f, x):
+  return f(f(x))
+end
+fun double(x):
+  return x + x
+end
+print(twice(double, 1))

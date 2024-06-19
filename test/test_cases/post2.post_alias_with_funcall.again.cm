@@ -1,0 +1,7 @@
+let a = vec[55, 17]
+fun foobar(b):
+  b[0] = 52
+  return
+end
+print(foobar(a))
+print(a)

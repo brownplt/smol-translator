@@ -1,0 +1,9 @@
+let a = 2
+fun make():
+  return lam (b):
+    return a + b
+  end
+end
+let fun = make()
+a = 1
+print(fun(1))

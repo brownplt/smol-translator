@@ -1,0 +1,9 @@
+let x = 1
+fun f():
+  return x
+end
+fun g():
+  let x = 2
+  return f()
+end
+print(g())

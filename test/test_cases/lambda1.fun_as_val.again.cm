@@ -1,0 +1,6 @@
+fun f1():
+  return 5
+end
+let f2 = f1
+let f3 = f2
+print(f3() * 10)

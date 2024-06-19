@@ -1,0 +1,4 @@
+let x = vec[74, 82]
+let y = vec[x]
+x[0] = y
+print(x[1])

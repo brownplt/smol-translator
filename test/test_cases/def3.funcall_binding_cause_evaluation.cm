@@ -1,0 +1,4 @@
+fun f(x):
+  return 3
+end
+print(f(12 / 0))
