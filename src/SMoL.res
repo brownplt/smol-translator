@@ -1771,7 +1771,7 @@ module CommonPrinter = {
         e
       }
     }
-    | _ => `if ${e_cnd}:${indentBlock(e_thn, 4)}\nelse:${indentBlock(e_els, 4)}\nend`
+    | _ => `if ${e_cnd}:${indentBlock(e_thn, 2)}\nelse:${indentBlock(e_els, 2)}\nend`
     }
   }
 

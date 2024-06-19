@@ -3248,7 +3248,7 @@ function expToString$4(ctx, e) {
         var e_thn = expToString$4(ctx, c._1);
         var e_els = expToString$4(ctx, c._2);
         if (typeof ctx === "number") {
-          return "if " + e_cnd + ":" + indentBlock(e_thn, 4) + "\nelse:" + indentBlock(e_els, 4) + "\nend";
+          return "if " + e_cnd + ":" + indentBlock(e_thn, 2) + "\nelse:" + indentBlock(e_els, 2) + "\nend";
         }
         var e$2 = "" + e_thn + " ? " + e_cnd + " : " + e_els + "";
         if (ctx._0) {

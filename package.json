@@ -1,6 +1,6 @@
 {
   "name": "@lukuangchen/smol-translator",
-  "version": "6.0.5",
+  "version": "6.0.6",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
   "main": "src/SMoL.bs.js",
