@@ -1636,9 +1636,8 @@ module CommonPrinter = {
   let consider_context = (e, ctx) => {
     switch ctx {
     | Expr(_) => `${e}`
-    | Stat => `${e}`
     | Return => `return ${e}`
-    | TopLevel => `print(${e})`
+    | Stat | TopLevel => `${e}`
     }
   }
 

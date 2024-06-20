@@ -1,5 +1,5 @@
 let zzz = 1
 let abc = zzz
 abc = 2
-print(zzz)
-print(abc)
+zzz
+abc

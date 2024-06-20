@@ -6,6 +6,6 @@ fun g():
   x = 0
   return f()
 end
-print(g())
+g()
 x = 1
-print(f())
+f()

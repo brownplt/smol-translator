@@ -1,4 +1,4 @@
 let a = vec[37, 26]
 let b = a
 a[0] = 87
-print(b)
+b

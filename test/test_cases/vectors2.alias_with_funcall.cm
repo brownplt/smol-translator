@@ -3,5 +3,5 @@ fun f(y):
   y[0] = 34
   return
 end
-print(f(x))
-print(x)
+f(x)
+x

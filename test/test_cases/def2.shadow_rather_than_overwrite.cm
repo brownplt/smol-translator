@@ -3,4 +3,4 @@ fun f(y):
   let x = 2
   return x + y
 end
-print(f(0) + x)
+f(0) + x

@@ -1,4 +1,4 @@
 let m = vec[66]
 let z = vec[m, 66, 66]
 m = vec[43]
-print(z)
+z

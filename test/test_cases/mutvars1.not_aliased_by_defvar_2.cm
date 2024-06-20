@@ -1,5 +1,5 @@
 let m = 40
 let n = m
 n = 22
-print(m)
-print(n)
+m
+n

@@ -6,5 +6,5 @@ fun bar(y):
 end
 let f = bar(2)
 let g = bar(4)
-print(f(2))
-print(g(2))
+f(2)
+g(2)

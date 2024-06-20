@@ -6,4 +6,4 @@ fun g():
   let x = 2
   return f()
 end
-print(g())
+g()

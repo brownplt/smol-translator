@@ -1,4 +1,4 @@
 let baz = bar + 1
 let bar = 2
-print(baz)
-print(bar)
+baz
+bar

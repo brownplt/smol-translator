@@ -1,4 +1,4 @@
 let mv = vec[63]
 let mv2 = vec[mv, mv]
 mv2[0][0] = 42
-print(mv2[1])
+mv2[1]

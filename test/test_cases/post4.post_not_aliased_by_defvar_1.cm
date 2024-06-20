@@ -1,5 +1,5 @@
 let n = 3
 let m = n
 n = 6
-print(n)
-print(m)
+n
+m

@@ -3,4 +3,4 @@ fun f():
 end
 let g = f
 let h = g
-print(h())
+h()

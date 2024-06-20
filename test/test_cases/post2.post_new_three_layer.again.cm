@@ -6,4 +6,4 @@ fun abc(bb):
   end
   return h()
 end
-print(abc(4) * 1)
+abc(4) * 1

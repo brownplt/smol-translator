@@ -6,4 +6,4 @@ fun foo(b):
   end
   return bar()
 end
-print(foo(4) + 2)
+foo(4) + 2

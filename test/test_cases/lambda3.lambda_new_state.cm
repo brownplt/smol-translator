@@ -6,4 +6,4 @@ fun f():
 end
 let g = f()
 x = 2
-print(g(0))
+g(0)

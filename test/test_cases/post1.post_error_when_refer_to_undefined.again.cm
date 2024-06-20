@@ -2,4 +2,4 @@ fun foo(bar):
   let zzz = 8
   return bar * zzz
 end
-print(foo(9) * zzz)
+foo(9) * zzz

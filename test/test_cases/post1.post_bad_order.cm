@@ -1,4 +1,4 @@
 let i = j * 3
 let j = 2
-print(i)
-print(j)
+i
+j

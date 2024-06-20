@@ -4,4 +4,4 @@ fun f(x):
   end
 end
 let x = 0
-print(f(2)(1))
+f(2)(1)

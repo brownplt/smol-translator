@@ -3,4 +3,4 @@ fun f(y):
   x[0] = 34
   return y
 end
-print(f(x))
+f(x)

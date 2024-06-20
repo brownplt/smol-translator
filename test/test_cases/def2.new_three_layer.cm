@@ -6,4 +6,4 @@ fun f(y):
   end
   return g()
 end
-print(f(3) + 4)
+f(3) + 4

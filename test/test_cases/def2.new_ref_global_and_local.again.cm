@@ -6,4 +6,4 @@ fun fun():
   end
   return prod()
 end
-print(fun())
+fun()

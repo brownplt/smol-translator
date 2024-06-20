@@ -3,4 +3,4 @@ fun f(y):
   y = 0
   return x
 end
-print(f(x))
+f(x)

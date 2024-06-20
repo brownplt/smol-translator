@@ -2,4 +2,4 @@ fun inc(n):
   return n + 1
 end
 let v = vec[inc, inc]
-print(v[0](2))
+v[0](2)

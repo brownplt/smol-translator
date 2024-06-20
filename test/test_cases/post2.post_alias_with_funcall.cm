@@ -3,5 +3,5 @@ fun f(m2):
   m2[0] = 43
   return
 end
-print(f(m1))
-print(m1)
+f(m1)
+m1

@@ -7,4 +7,4 @@ fun make():
 end
 let g = make()
 a = 1
-print(g(1))
+g(1)

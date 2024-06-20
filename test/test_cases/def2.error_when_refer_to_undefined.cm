@@ -2,4 +2,4 @@ fun f(x):
   let y = 1
   return x + y
 end
-print(f(2) + y)
+f(2) + y

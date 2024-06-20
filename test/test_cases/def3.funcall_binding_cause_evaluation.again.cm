@@ -1,4 +1,4 @@
 fun z(y):
   return 5
 end
-print(z(78 / 0))
+z(78 / 0)

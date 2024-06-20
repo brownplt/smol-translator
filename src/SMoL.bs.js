@@ -2927,17 +2927,10 @@ function printBlock$6(param) {
 }
 
 function consider_context$3(e, ctx) {
-  if (typeof ctx !== "number") {
+  if (ctx === 1) {
+    return "return " + e + "";
+  } else {
     return "" + e + "";
-  }
-  switch (ctx) {
-    case /* Stat */0 :
-        return "" + e + "";
-    case /* Return */1 :
-        return "return " + e + "";
-    case /* TopLevel */2 :
-        return "print(" + e + ")";
-    
   }
 }
 
