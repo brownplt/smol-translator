@@ -1815,6 +1815,7 @@ module CommonPrinter = {
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
     | (Print, list{e}) => `print(${e})`->consider_context(ctx)
+    | (Next, list{e}) => `next(${e})`->consider_context(ctx)
     | _ =>
       raise(
         SMoLPrintError(`found a primitive operation (${Primitive.toString(p)}) not supported yet.`),

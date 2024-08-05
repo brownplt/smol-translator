@@ -3380,6 +3380,9 @@ function expToString$4(ctx, e) {
               }
               break;
           case /* Next */22 :
+              if (es && !es.tl) {
+                return consider_context$3("next(" + es.hd + ")", ctx);
+              }
               break;
           
         }
@@ -3454,6 +3457,15 @@ function printBlock$7(ctx, b) {
                 ]));
 }
 
+function xeToString$4(xe) {
+  return [
+          xToString$3(xe[0].it),
+          expToString$4(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
+}
+
 function ebToString$4(ctx, eb) {
   return [
           expToString$4(/* Expr */{
@@ -3463,13 +3475,12 @@ function ebToString$4(ctx, eb) {
         ];
 }
 
-function xeToString$4(xe) {
-  return [
-          xToString$3(xe[0].it),
-          expToString$4(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
+function termAsStat$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Stat */0, t._0);
+  }
 }
 
 function defToString$2(d) {
@@ -3490,14 +3501,6 @@ function defToString$2(d) {
         var b$1 = printBlock$7(/* Return */1, match._2);
         return "gen fun " + f$1 + "" + listToString$4(xs$1) + ":" + indentBlock(b$1, 2) + "\nend";
     
-  }
-}
-
-function termAsStat$2(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$2(t._0);
-  } else {
-    return expToString$4(/* Stat */0, t._0);
   }
 }
 
