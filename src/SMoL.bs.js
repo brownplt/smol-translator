@@ -116,7 +116,7 @@ function listToString(ss) {
 
 function defvarLike(op, x, e) {
   if ($$String.contains(e, /* '\n' */10)) {
-    return hcat("(" + op + " " + x + " ", "" + e + ")");
+    return "(" + op + " " + x + "" + indentBlock(e, 2) + ")";
   } else {
     return listToString({
                 hd: op,
@@ -1202,7 +1202,7 @@ function termOfSExpr(e) {
           case "vset!" :
               return app_prm(ann, /* VecSet */17, es$1.tl);
           case "yield" :
-              var e$4 = as_one("a variable and an expression", es$1.tl);
+              var e$4 = as_one("an expression", es$1.tl);
               var e$5 = as_expr("an expression", termOfSExpr(e$4));
               return {
                       TAG: /* Exp */1,
