@@ -96,10 +96,13 @@ type rec expression =
   | Bgn(list<annotated<expression>>, annotated<expression>)
   | If(annotated<expression>, annotated<expression>, annotated<expression>)
   | Cnd(list<(annotated<expression>, block)>, option<block>)
+  | GLam(list<annotated<symbol>>, block)
+  | Yield(annotated<expression>)
 and block = (list<term>, annotated<expression>)
 and definition =
   | Var(annotated<symbol>, annotated<expression>)
   | Fun(annotated<symbol>, list<annotated<symbol>>, block)
+  | GFun(annotated<symbol>, list<annotated<symbol>>, block)
 and term =
   | Def(annotated<definition>)
   | Exp(annotated<expression>)
@@ -159,6 +162,10 @@ module SMoLPrinter = {
     defvarLike("deffun", listToString(list{f, ...xs}), b)
   }
 
+  let defgenToString = (f, xs, b) => {
+    defvarLike("defgen", listToString(list{f, ...xs}), b)
+  }
+
   let exprSetToString = (x, e) => {
     defvarLike("set!", x, e)
   }
@@ -166,6 +173,10 @@ module SMoLPrinter = {
   let exprLamToString = (xs, b) => {
     defvarLike("lambda", listToString(xs), b)
   }
+  let exprGenToString = (xs, b) => {
+    defvarLike("generator", listToString(xs), b)
+  }
+  let exprYieldToString = e => `(yield ${e})`
 
   let exprAppToString = (e, es) => {
     listToString(list{e, ...es})
@@ -215,6 +226,8 @@ module SMoLPrinter = {
     | Ref(x) => x.it
     | Set(x, e) => exprSetToString(x->unannotate, expToString(e.it))
     | Lam(xs, b) => exprLamToString(xs->List.map(unannotate), printBlock(b))
+    | GLam(xs, b) => exprGenToString(xs->List.map(unannotate), printBlock(b))
+    | Yield(e) => exprYieldToString(expToString(e.it))
     | AppPrm(p, es) => exprAppToString(Primitive.toString(p), expsToString(es))
     | App(e, es) => exprAppToString(expToString(e.it), expsToString(es))
     | Let(xes, b) => exprLetToString(xes->List.map(xeToString), printBlock(b))
@@ -229,6 +242,7 @@ module SMoLPrinter = {
     switch d {
     | Var(x, e) => defvarToString(x.it, expToString(e.it))
     | Fun(f, xs, b) => deffunToString(f->unannotate, xs->List.map(unannotate), printBlock(b))
+    | GFun(f, xs, b) => defgenToString(f->unannotate, xs->List.map(unannotate), printBlock(b))
     }
   }
   and expsToString = es => {
@@ -479,6 +493,19 @@ module Parser = {
         Def({ann, it: Fun(fun, args, (terms, result))})
       }
 
+    | Sequence(List, _b, list{{it: Atom(Sym("defgen")), ann: _}, ...rest}) => {
+        let (head, terms, result) = as_one_then_many_then_one("a generator header and a body", rest)
+        let (fun, args) = as_one_then_many(
+          "generator name followed by parameters",
+          as_list("generator name and parameters", head),
+        )
+        let fun = as_id("a generator name", fun)
+        let args = List.map(args, as_id("a parameter"))
+        let terms = Belt.List.map(terms, termOfSExpr)
+        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        Def({ann, it: GFun(fun, args, (terms, result))})
+      }
+
     | Sequence(List, _b, list{{it: Atom(Sym("lambda")), ann: _}, ...rest}) => {
         let (args, terms, result) = as_one_then_many_then_one(
           "the function signature followed by the function body",
@@ -489,6 +516,24 @@ module Parser = {
         let result = result |> termOfSExpr |> as_expr("an expression to be returned")
         Exp({ann, it: Lam(args, (terms, result))})
       }
+
+    | Sequence(List, _b, list{{it: Atom(Sym("generator")), ann: _}, ...rest}) => {
+        let (args, terms, result) = as_one_then_many_then_one(
+          "the generator signature followed by the function body",
+          rest,
+        )
+        let args = as_list("generator parameters", args)->List.map(as_id("a parameter"))
+        let terms = terms->List.map(termOfSExpr)
+        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        Exp({ann, it: GLam(args, (terms, result))})
+      }
+
+    | Sequence(List, _b, list{{it: Atom(Sym("yield")), ann: _}, ...rest}) => {
+        let (e) = as_one("a variable and an expression", rest)
+        let e = as_expr("an expression", termOfSExpr(e))
+        Exp({ann, it: Yield(e)})
+      }
+
     | Sequence(List, _b, list{{it: Atom(Sym("λ")), ann: _}, ...rest}) => {
         let (args, terms, result) = as_one_then_many_then_one(
           "the function signature followed by the function body",
@@ -779,12 +824,10 @@ module JSPrinter = {
     | (VecLen, list{e}) => `${e}.length`->consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
-    | (Print, list{e}) => `console.log(${e})`-> consider_context(ctx)
+    | (Print, list{e}) => `console.log(${e})`->consider_context(ctx)
     | _ =>
       raise(
-        SMoLPrintError(
-          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
-        ),
+        SMoLPrintError(`found a primitive operation (${Primitive.toString(p)}) not supported yet.`),
       )
     }
   }
@@ -830,6 +873,8 @@ module JSPrinter = {
 
   let rec expToString = (ctx: context, e: annotated<expression>): string => {
     switch e.it {
+    | GLam(_xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
+    | Yield(_e) => raise(SMoLPrintError("Generators not supported yet"))
     | Con(c) => constantToString(c)->consider_context(ctx)
     | Ref(x) => xToString(x.it)->consider_context(ctx)
     | Set(x, e) => exprSetToString(ctx, x->unannotate->xToString, expToString(Expr(false), e))
@@ -871,6 +916,7 @@ module JSPrinter = {
         xs->List.map(unannotate)->List.map(xToString),
         printBlock(Return, b),
       )
+    | GFun(_f, _xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
     }
   }
   and xeToString = xe => {
@@ -904,7 +950,15 @@ module JSPrinter = {
   let printProgram = (printTopLevel, p) => {
     let tts = t => {
       switch t {
-      | Exp(e) => expToString(if printTopLevel { TopLevel } else { Stat }, e)
+      | Exp(e) =>
+        expToString(
+          if printTopLevel {
+            TopLevel
+          } else {
+            Stat
+          },
+          e,
+        )
       | Def(d) => defToString(d)
       }
     }
@@ -1054,9 +1108,7 @@ module ScalaPrinter = {
     | (Print, list{e}) => `println(${e})`->consider_context(ctx)
     | _ =>
       raise(
-        SMoLPrintError(
-          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
-        ),
+        SMoLPrintError(`found a primitive operation (${Primitive.toString(p)}) not supported yet.`),
       )
     }
   }
@@ -1102,6 +1154,8 @@ module ScalaPrinter = {
 
   let rec expToString = (ctx: context, e: annotated<expression>): string => {
     switch e.it {
+    | GLam(_xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
+    | Yield(_e) => raise(SMoLPrintError("Generators not supported yet"))
     | Con(c) => constantToString(c)->consider_context(ctx)
     | Ref(x) => xToString(x.it)->consider_context(ctx)
     | Set(x, e) => exprSetToString(ctx, x->unannotate->xToString, expToString(Expr(false), e))
@@ -1143,6 +1197,7 @@ module ScalaPrinter = {
         xs->List.map(unannotate)->List.map(parameterToString),
         printBlock(Return, b),
       )
+    | GFun(_f, _xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
     }
   }
   and xeToString = xe => {
@@ -1176,14 +1231,23 @@ module ScalaPrinter = {
 
   let printProgram = (printTopLevel, p) => {
     // when no variable mutation
-    mutatingVariable := Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(false, p)) != None
+    mutatingVariable :=
+      Js.String.match_(%re("/[(]set!/"), SMoLPrinter.printProgram(false, p)) != None
     // when no mutation at all
     // usingBuffer := true
     // usingBuffer := Js.String.match_(%re("/vec-set!/"), SMoLPrinter.printProgram(p)) != None
     usingBuffer := Js.String.match_(%re("/set!/"), SMoLPrinter.printProgram(false, p)) != None
     let tts = t => {
       switch t {
-      | Exp(e) => expToString(if printTopLevel { TopLevel } else { Stat }, e)
+      | Exp(e) =>
+        expToString(
+          if printTopLevel {
+            TopLevel
+          } else {
+            Stat
+          },
+          e,
+        )
       | Def(d) => defToString(d)
       }
     }
@@ -1222,9 +1286,7 @@ module PYPrinter = {
     env: environment,
   }
 
-  let base_env = Js.Dict.fromArray(
-    all_primitives->Array.map(p => (Primitive.toString(p), BuiltIn)),
-  )
+  let base_env = Js.Dict.fromArray(all_primitives->Array.map(p => (Primitive.toString(p), BuiltIn)))
   let make_global_env = xs => {
     let env = Js.Dict.entries(base_env)
     Js.Dict.fromArray(Array.concat(env, xs->List.map(x => (x, Global))->List.toArray))
@@ -1358,9 +1420,7 @@ module PYPrinter = {
     | (Print, list{e}) => `print(${e})` |> wrap(ctx)
     | (p, _) =>
       raise(
-        SMoLPrintError(
-          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
-        ),
+        SMoLPrintError(`found a primitive operation (${Primitive.toString(p)}) not supported yet.`),
       )
     }
   }
@@ -1467,6 +1527,8 @@ module PYPrinter = {
         expToString(ctx, e_els),
       )
     | Bgn(es, e) => exprBgnToString(ctx, es, e)
+    | GLam(_xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
+    | Yield(_e) => raise(SMoLPrintError("Generators not supported yet"))
     }
   }
   and exprBgnToString = (ctx, es, e) => {
@@ -1492,6 +1554,7 @@ module PYPrinter = {
         xs->List.map(unannotate)->List.map(xToString),
         printBlock({...ctx, node: Return}, xs, b),
       )
+    | GFun(_f, _xs, _b) => raise(SMoLPrintError("Generators not supported yet"))
     }
   }
   and xeToString = (ctx: context, xe) => {
@@ -1511,6 +1574,7 @@ module PYPrinter = {
       switch d.it {
       | Var(x, _e) => Some(x)
       | Fun(f, _xs, _b) => Some(f)
+      | GFun(f, _xs, _b) => Some(f)
       }
     | Exp(_) => None
     }
@@ -1622,7 +1686,16 @@ module PYPrinter = {
   }
 
   let printProgram = (printTopLevel, ts) => {
-    let ctx = {node: if printTopLevel { TopLevel } else { Stat }, block: Global, env: make_global_env(ts->xs_of_ts), refs: []}
+    let ctx = {
+      node: if printTopLevel {
+        TopLevel
+      } else {
+        Stat
+      },
+      block: Global,
+      env: make_global_env(ts->xs_of_ts),
+      refs: [],
+    }
     String.concat("\n", ts->List.map(termToString(ctx)))
   }
 
@@ -1678,9 +1751,16 @@ module CommonPrinter = {
   let deffunToString = (f, xs, b) => {
     `fun ${f}${listToString(xs)}:${indentBlock(b, 2)}\nend`
   }
+  let defgenToString = (f, xs, b) => {
+    `gen fun ${f}${listToString(xs)}:${indentBlock(b, 2)}\nend`
+  }
 
   let exprLamToString = (xs, b) => {
     `lam ${listToString(xs)}:${indentBlock(b, 2)}\nend`
+  }
+
+  let exprGenToString = (xs, b) => {
+    `gen ${listToString(xs)}:${indentBlock(b, 2)}\nend`
   }
 
   let infix_consider_context = (e, ctx) => {
@@ -1730,12 +1810,10 @@ module CommonPrinter = {
     | (VecLen, list{e}) => `${e}.length()`->consider_context(ctx)
     | (Err, list{e}) => `throw ${e}`->error_consider_context(ctx)
     | (Not, list{e}) => `! ${e}`->infix_consider_context(ctx)
-    | (Print, list{e}) => `print(${e})`-> consider_context(ctx)
+    | (Print, list{e}) => `print(${e})`->consider_context(ctx)
     | _ =>
       raise(
-        SMoLPrintError(
-          `found a primitive operation (${Primitive.toString(p)}) not supported yet.`,
-        ),
+        SMoLPrintError(`found a primitive operation (${Primitive.toString(p)}) not supported yet.`),
       )
     }
   }
@@ -1760,16 +1838,18 @@ module CommonPrinter = {
     ebs ++ ob
   }
 
+  let exprYieldToString = e => `yield ${e}`
+
   let exprIfToString = (ctx, e_cnd: string, e_thn: string, e_els: string) => {
     switch ctx {
     | Expr(in_infix) => {
-      let e = `${e_thn} ? ${e_cnd} : ${e_els}`;
-      if in_infix {
-        `${e}`
-      } else {
-        e
+        let e = `${e_thn} ? ${e_cnd} : ${e_els}`
+        if in_infix {
+          `${e}`
+        } else {
+          e
+        }
       }
-    }
     | _ => `if ${e_cnd}:${indentBlock(e_thn, 2)}\nelse:${indentBlock(e_els, 2)}\nend`
     }
   }
@@ -1777,7 +1857,7 @@ module CommonPrinter = {
   let exprLetToString = (xes, b) => {
     exprAppToString(
       exprLamToString(xes->List.map(((x, _e)) => x), b),
-      xes->List.map(((_x, e)) => e)
+      xes->List.map(((_x, e)) => e),
     )
   }
 
@@ -1819,7 +1899,14 @@ module CommonPrinter = {
         xs->List.map(unannotate)->List.map(xToString),
         printBlock(Return, b),
       )->consider_context(ctx)
-    | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(contains_space(p)))))
+    | GLam(xs, b) =>
+      exprGenToString(
+        xs->List.map(unannotate)->List.map(xToString),
+        printBlock(Return, b),
+      )->consider_context(ctx)
+    | Yield(e) => exprYieldToString(expToString(Expr(false), e))->consider_context(ctx)
+    | AppPrm(p, es) =>
+      exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(contains_space(p)))))
     | App(e, es) =>
       exprAppToString(
         expToString(Expr(false), e),
@@ -1849,6 +1936,12 @@ module CommonPrinter = {
     | Var(x, e) => defvarToString(x.it, expToString(Expr(false), e))
     | Fun(f, xs, b) =>
       deffunToString(
+        f->unannotate->xToString,
+        xs->List.map(unannotate)->List.map(xToString),
+        printBlock(Return, b),
+      )
+    | GFun(f, xs, b) =>
+      defgenToString(
         f->unannotate->xToString,
         xs->List.map(unannotate)->List.map(xToString),
         printBlock(Return, b),
@@ -1886,7 +1979,15 @@ module CommonPrinter = {
   let printProgram = (printTopLevel, p) => {
     let tts = t => {
       switch t {
-      | Exp(e) => expToString(if printTopLevel { TopLevel } else { Stat }, e)
+      | Exp(e) =>
+        expToString(
+          if printTopLevel {
+            TopLevel
+          } else {
+            Stat
+          },
+          e,
+        )
       | Def(d) => defToString(d)
       }
     }
@@ -1985,7 +2086,6 @@ module ScalaTranslator = {
     }
   }
 }
-
 
 module CommonTranslator = {
   let translateTerms = src => {

@@ -223,6 +223,13 @@ function expToString(e) {
                 return "[" + param[0] + "" + indentBlock(param[1], 1) + "]";
               }));
         return beginLike("cond", ebs$2);
+    case /* GLam */11 :
+        var xs$1 = Belt_List.map(e._0, unannotate);
+        var b$1 = printBlock(e._1);
+        return defvarLike("generator", listToString(xs$1), b$1);
+    case /* Yield */12 :
+        var e$4 = expToString(e._0.it);
+        return "(yield " + e$4 + ")";
     
   }
 }
@@ -258,16 +265,26 @@ function printBlock(b) {
 function printTerm(t) {
   if (t.TAG === /* Def */0) {
     var d = t._0.it;
-    if (d.TAG === /* Var */0) {
-      return defvarLike("defvar", d._0.it, expToString(d._1.it));
-    } else {
-      var f = d._0.it;
-      var xs = Belt_List.map(d._1, unannotate);
-      var b = printBlock(d._2);
-      return defvarLike("deffun", listToString({
-                      hd: f,
-                      tl: xs
-                    }), b);
+    switch (d.TAG | 0) {
+      case /* Var */0 :
+          return defvarLike("defvar", d._0.it, expToString(d._1.it));
+      case /* Fun */1 :
+          var f = d._0.it;
+          var xs = Belt_List.map(d._1, unannotate);
+          var b = printBlock(d._2);
+          return defvarLike("deffun", listToString({
+                          hd: f,
+                          tl: xs
+                        }), b);
+      case /* GFun */2 :
+          var f$1 = d._0.it;
+          var xs$1 = Belt_List.map(d._1, unannotate);
+          var b$1 = printBlock(d._2);
+          return defvarLike("defgen", listToString({
+                          hd: f$1,
+                          tl: xs$1
+                        }), b$1);
+      
     }
   } else {
     return expToString(t._0.it);
@@ -948,10 +965,34 @@ function termOfSExpr(e) {
                         ann: ann
                       }
                     };
+          case "defgen" :
+              var match$8 = as_one_then_many_then_one("a generator header and a body", es$1.tl);
+              var match$9 = as_one_then_many("generator name followed by parameters", as_list("generator name and parameters", match$8[0]));
+              var fun$1 = as_id("a generator name", match$9[0]);
+              var args$1 = Belt_List.map(match$9[1], (function (param) {
+                      return as_id("a parameter", param);
+                    }));
+              var terms$4 = Belt_List.map(match$8[1], termOfSExpr);
+              var result$4 = as_expr("an expression to be returned", termOfSExpr(match$8[2]));
+              return {
+                      TAG: /* Def */0,
+                      _0: {
+                        it: {
+                          TAG: /* GFun */2,
+                          _0: fun$1,
+                          _1: args$1,
+                          _2: [
+                            terms$4,
+                            result$4
+                          ]
+                        },
+                        ann: ann
+                      }
+                    };
           case "defvar" :
-              var match$8 = as_two("a variable and an expression", es$1.tl);
-              var x = as_id("a variable name", match$8[0]);
-              var e$1 = as_expr("an expression", termOfSExpr(match$8[1]));
+              var match$10 = as_two("a variable and an expression", es$1.tl);
+              var x = as_id("a variable name", match$10[0]);
+              var e$1 = as_expr("an expression", termOfSExpr(match$10[1]));
               return {
                       TAG: /* Def */0,
                       _0: {
@@ -968,11 +1009,32 @@ function termOfSExpr(e) {
               return app_prm(ann, /* Eq */5, es$1.tl);
           case "error" :
               return app_prm(ann, /* Err */19, es$1.tl);
+          case "generator" :
+              var match$11 = as_one_then_many_then_one("the generator signature followed by the function body", es$1.tl);
+              var args$2 = Belt_List.map(as_list("generator parameters", match$11[0]), (function (param) {
+                      return as_id("a parameter", param);
+                    }));
+              var terms$5 = Belt_List.map(match$11[1], termOfSExpr);
+              var result$5 = as_expr("an expression to be returned", termOfSExpr(match$11[2]));
+              return {
+                      TAG: /* Exp */1,
+                      _0: {
+                        it: {
+                          TAG: /* GLam */11,
+                          _0: args$2,
+                          _1: [
+                            terms$5,
+                            result$5
+                          ]
+                        },
+                        ann: ann
+                      }
+                    };
           case "if" :
-              var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
-              var e_cnd = as_expr("a (conditional) expression", termOfSExpr(match$9[0]));
-              var e_thn = as_expr("an expression", termOfSExpr(match$9[1]));
-              var e_els = as_expr("an expression", termOfSExpr(match$9[2]));
+              var match$12 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es$1.tl);
+              var e_cnd = as_expr("a (conditional) expression", termOfSExpr(match$12[0]));
+              var e_thn = as_expr("an expression", termOfSExpr(match$12[1]));
+              var e_els = as_expr("an expression", termOfSExpr(match$12[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -986,21 +1048,21 @@ function termOfSExpr(e) {
                       }
                     };
           case "lambda" :
-              var match$10 = as_one_then_many_then_one("the function signature followed by the function body", es$1.tl);
-              var args$1 = Belt_List.map(as_list("function parameters", match$10[0]), (function (param) {
+              var match$13 = as_one_then_many_then_one("the function signature followed by the function body", es$1.tl);
+              var args$3 = Belt_List.map(as_list("function parameters", match$13[0]), (function (param) {
                       return as_id("a parameter", param);
                     }));
-              var terms$4 = Belt_List.map(match$10[1], termOfSExpr);
-              var result$4 = as_expr("an expression to be returned", termOfSExpr(match$10[2]));
+              var terms$6 = Belt_List.map(match$13[1], termOfSExpr);
+              var result$6 = as_expr("an expression to be returned", termOfSExpr(match$13[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
                         it: {
                           TAG: /* Lam */3,
-                          _0: args$1,
+                          _0: args$3,
                           _1: [
-                            terms$4,
-                            result$4
+                            terms$6,
+                            result$6
                           ]
                         },
                         ann: ann
@@ -1009,8 +1071,8 @@ function termOfSExpr(e) {
           case "left" :
               return app_prm(ann, /* PairRefLeft */12, es$1.tl);
           case "let" :
-              var match$11 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
-              var xes = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$11[0]), (function (param) {
+              var match$14 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
+              var xes = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$14[0]), (function (param) {
                           return as_list("a variable and an expression", param);
                         })), (function (param) {
                       return as_two("a variable and an expression", param);
@@ -1023,8 +1085,8 @@ function termOfSExpr(e) {
                               e
                             ];
                     }));
-              var ts = Belt_List.map(match$11[1], termOfSExpr);
-              var result$5 = as_expr("an expression to be return", termOfSExpr(match$11[2]));
+              var ts = Belt_List.map(match$14[1], termOfSExpr);
+              var result$7 = as_expr("an expression to be return", termOfSExpr(match$14[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1033,15 +1095,15 @@ function termOfSExpr(e) {
                           _0: xes$1,
                           _1: [
                             ts,
-                            result$5
+                            result$7
                           ]
                         },
                         ann: ann
                       }
                     };
           case "let*" :
-              var match$12 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
-              var xes$2 = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$12[0]), (function (param) {
+              var match$15 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
+              var xes$2 = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$15[0]), (function (param) {
                           return as_list("a variable and an expression", param);
                         })), (function (param) {
                       return as_two("a variable and an expression", param);
@@ -1054,18 +1116,18 @@ function termOfSExpr(e) {
                               e
                             ];
                     }));
-              var ts$1 = Belt_List.map(match$12[1], termOfSExpr);
-              var result$6 = as_expr("an expression to be return", termOfSExpr(match$12[2]));
+              var ts$1 = Belt_List.map(match$15[1], termOfSExpr);
+              var result$8 = as_expr("an expression to be return", termOfSExpr(match$15[2]));
               return {
                       TAG: /* Exp */1,
                       _0: letstar(ann, xes$3, [
                             ts$1,
-                            result$6
+                            result$8
                           ])
                     };
           case "letrec" :
-              var match$13 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
-              var xes$4 = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$13[0]), (function (param) {
+              var match$16 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
+              var xes$4 = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$16[0]), (function (param) {
                           return as_list("a variable and an expression", param);
                         })), (function (param) {
                       return as_two("a variable and an expression", param);
@@ -1078,8 +1140,8 @@ function termOfSExpr(e) {
                               e
                             ];
                     }));
-              var ts$2 = Belt_List.map(match$13[1], termOfSExpr);
-              var result$7 = as_expr("an expression to be return", termOfSExpr(match$13[2]));
+              var ts$2 = Belt_List.map(match$16[1], termOfSExpr);
+              var result$9 = as_expr("an expression to be return", termOfSExpr(match$16[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1088,7 +1150,7 @@ function termOfSExpr(e) {
                           _0: xes$5,
                           _1: [
                             ts$2,
-                            result$7
+                            result$9
                           ]
                         },
                         ann: ann
@@ -1112,9 +1174,9 @@ function termOfSExpr(e) {
           case "right" :
               return app_prm(ann, /* PairRefRight */11, es$1.tl);
           case "set!" :
-              var match$14 = as_two("a variable and an expression", es$1.tl);
-              var x$1 = as_id("a variable to be set", match$14[0]);
-              var e$3 = as_expr("an expression", termOfSExpr(match$14[1]));
+              var match$17 = as_two("a variable and an expression", es$1.tl);
+              var x$1 = as_id("a variable to be set", match$17[0]);
+              var e$3 = as_expr("an expression", termOfSExpr(match$17[1]));
               return {
                       TAG: /* Exp */1,
                       _0: {
@@ -1139,22 +1201,35 @@ function termOfSExpr(e) {
           case "vec-set!" :
           case "vset!" :
               return app_prm(ann, /* VecSet */17, es$1.tl);
+          case "yield" :
+              var e$4 = as_one("a variable and an expression", es$1.tl);
+              var e$5 = as_expr("an expression", termOfSExpr(e$4));
+              return {
+                      TAG: /* Exp */1,
+                      _0: {
+                        it: {
+                          TAG: /* Yield */12,
+                          _0: e$5
+                        },
+                        ann: ann
+                      }
+                    };
           case "λ" :
-              var match$15 = as_one_then_many_then_one("the function signature followed by the function body", es$1.tl);
-              var args$2 = Belt_List.map(as_list("function parameters", match$15[0]), (function (param) {
+              var match$18 = as_one_then_many_then_one("the function signature followed by the function body", es$1.tl);
+              var args$4 = Belt_List.map(as_list("function parameters", match$18[0]), (function (param) {
                       return as_id("a parameter", param);
                     }));
-              var terms$5 = Belt_List.map(match$15[1], termOfSExpr);
-              var result$8 = as_expr("an expression to be returned", termOfSExpr(match$15[2]));
+              var terms$7 = Belt_List.map(match$18[1], termOfSExpr);
+              var result$10 = as_expr("an expression to be returned", termOfSExpr(match$18[2]));
               return {
                       TAG: /* Exp */1,
                       _0: {
                         it: {
                           TAG: /* Lam */3,
-                          _0: args$2,
+                          _0: args$4,
                           _1: [
-                            terms$5,
-                            result$8
+                            terms$7,
+                            result$10
                           ]
                         },
                         ann: ann
@@ -1168,9 +1243,9 @@ function termOfSExpr(e) {
     }
     
   }
-  var match$16 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es$1);
-  var e$4 = as_expr("a function", termOfSExpr(match$16[0]));
-  var es$2 = Belt_List.map(Belt_List.map(match$16[1], termOfSExpr), (function (param) {
+  var match$19 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es$1);
+  var e$6 = as_expr("a function", termOfSExpr(match$19[0]));
+  var es$2 = Belt_List.map(Belt_List.map(match$19[1], termOfSExpr), (function (param) {
           return as_expr("an argument", param);
         }));
   return {
@@ -1178,7 +1253,7 @@ function termOfSExpr(e) {
           _0: {
             it: {
               TAG: /* App */7,
-              _0: e$4,
+              _0: e$6,
               _1: es$2
             },
             ann: ann
@@ -1358,30 +1433,30 @@ function exprLetrecToString(xes, b) {
 }
 
 function expToString$1(ctx, e) {
-  var c = e.it;
-  switch (c.TAG | 0) {
+  var _e = e.it;
+  switch (_e.TAG | 0) {
     case /* Con */0 :
-        return consider_context(constantToString(c._0), ctx);
+        return consider_context(constantToString(_e._0), ctx);
     case /* Ref */1 :
-        return consider_context(xToString(c._0.it), ctx);
+        return consider_context(xToString(_e._0.it), ctx);
     case /* Set */2 :
-        var x = xToString(c._0.it);
+        var x = xToString(_e._0.it);
         var e$1 = expToString$1(/* Expr */{
               _0: false
-            }, c._1);
+            }, _e._1);
         return assign_consider_context("" + x + " = " + e$1 + "", ctx);
     case /* Lam */3 :
-        return consider_context(exprLamToString(Belt_List.map(Belt_List.map(c._0, unannotate), xToString), printBlock$1(/* Return */1, c._1)), ctx);
+        return consider_context(exprLamToString(Belt_List.map(Belt_List.map(_e._0, unannotate), xToString), printBlock$1(/* Return */1, _e._1)), ctx);
     case /* Let */4 :
-        return consider_context(exprLetToString(Belt_List.map(c._0, xeToString$1), printBlock$1(/* Return */1, c._1)), ctx);
+        return consider_context(exprLetToString(Belt_List.map(_e._0, xeToString$1), printBlock$1(/* Return */1, _e._1)), ctx);
     case /* Letrec */5 :
-        return consider_context(exprLetrecToString(Belt_List.map(c._0, xeToString$1), printBlock$1(/* Return */1, c._1)), ctx);
+        return consider_context(exprLetrecToString(Belt_List.map(_e._0, xeToString$1), printBlock$1(/* Return */1, _e._1)), ctx);
     case /* AppPrm */6 :
         var partial_arg = /* Expr */{
           _0: true
         };
-        var p = c._0;
-        var es = Belt_List.map(c._1, (function (param) {
+        var p = _e._0;
+        var es = Belt_List.map(_e._1, (function (param) {
                 return expToString$1(partial_arg, param);
               }));
         switch (p) {
@@ -1541,31 +1616,31 @@ function expToString$1(ctx, e) {
         };
         return consider_context(exprAppToString(expToString$1(/* Expr */{
                             _0: false
-                          }, c._0), Belt_List.map(c._1, (function (param) {
+                          }, _e._0), Belt_List.map(_e._1, (function (param) {
                               return expToString$1(partial_arg$1, param);
                             }))), ctx);
     case /* Bgn */8 :
         var partial_arg$2 = /* Expr */{
           _0: false
         };
-        return consider_context(exprBgnToString(Belt_List.map(c._0, (function (param) {
+        return consider_context(exprBgnToString(Belt_List.map(_e._0, (function (param) {
                               return expToString$1(partial_arg$2, param);
                             })), expToString$1(/* Expr */{
                             _0: false
-                          }, c._1)), ctx);
+                          }, _e._1)), ctx);
     case /* If */9 :
         return consider_context(exprIfToString(expToString$1(/* Expr */{
                             _0: true
-                          }, c._0), expToString$1(/* Expr */{
+                          }, _e._0), expToString$1(/* Expr */{
                             _0: true
-                          }, c._1), expToString$1(/* Expr */{
+                          }, _e._1), expToString$1(/* Expr */{
                             _0: true
-                          }, c._2)), ctx);
+                          }, _e._2)), ctx);
     case /* Cnd */10 :
-        var ebs = Belt_List.map(c._0, (function (param) {
+        var ebs = Belt_List.map(_e._0, (function (param) {
                 return ebToString$1(ctx, param);
               }));
-        var ob = Belt_Option.map(c._1, (function (param) {
+        var ob = Belt_Option.map(_e._1, (function (param) {
                 return printBlock$1(ctx, param);
               }));
         var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
@@ -1574,6 +1649,13 @@ function expToString$1(ctx, e) {
               }));
         var ebs$2 = $$String.concat(" else ", ebs$1);
         return ebs$2 + ob$1;
+    case /* GLam */11 :
+    case /* Yield */12 :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators not supported yet",
+              Error: new Error()
+            };
     
   }
 }
@@ -1596,6 +1678,28 @@ function termAsStat(t) {
   }
 }
 
+function defToString(d) {
+  var match = d.it;
+  switch (match.TAG | 0) {
+    case /* Var */0 :
+        return defvarToString(match._0.it, expToString$1(/* Expr */{
+                        _0: false
+                      }, match._1));
+    case /* Fun */1 :
+        var f = xToString(match._0.it);
+        var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
+        var b = printBlock$1(/* Return */1, match._2);
+        return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
+    case /* GFun */2 :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators not supported yet",
+              Error: new Error()
+            };
+    
+  }
+}
+
 function ebToString$1(ctx, eb) {
   return [
           expToString$1(/* Expr */{
@@ -1612,20 +1716,6 @@ function xeToString$1(xe) {
                 _0: false
               }, xe[1])
         ];
-}
-
-function defToString(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString(match._0.it, expToString$1(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString);
-    var b = printBlock$1(/* Return */1, match._2);
-    return "function " + f + "" + listToString$1(xs) + " {" + indentBlock(b, 2) + "\n}";
-  }
 }
 
 function printTerm$1(t) {
@@ -1813,30 +1903,30 @@ function exprLetrecToString$1(xes, b) {
 }
 
 function expToString$2(ctx, e) {
-  var c = e.it;
-  switch (c.TAG | 0) {
+  var _e = e.it;
+  switch (_e.TAG | 0) {
     case /* Con */0 :
-        return consider_context$1(constantToString$1(c._0), ctx);
+        return consider_context$1(constantToString$1(_e._0), ctx);
     case /* Ref */1 :
-        return consider_context$1(xToString$1(c._0.it), ctx);
+        return consider_context$1(xToString$1(_e._0.it), ctx);
     case /* Set */2 :
-        var x = xToString$1(c._0.it);
+        var x = xToString$1(_e._0.it);
         var e$1 = expToString$2(/* Expr */{
               _0: false
-            }, c._1);
+            }, _e._1);
         return assign_consider_context$1("" + x + " = " + e$1 + "", ctx);
     case /* Lam */3 :
-        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(c._0, unannotate), parameterToString), printBlock$3(/* Return */1, c._1)), ctx);
+        return consider_context$1(exprLamToString$1(Belt_List.map(Belt_List.map(_e._0, unannotate), parameterToString), printBlock$3(/* Return */1, _e._1)), ctx);
     case /* Let */4 :
-        return consider_context$1(exprLetToString$1(Belt_List.map(c._0, xeToString$2), printBlock$3(/* Return */1, c._1)), ctx);
+        return consider_context$1(exprLetToString$1(Belt_List.map(_e._0, xeToString$2), printBlock$3(/* Return */1, _e._1)), ctx);
     case /* Letrec */5 :
-        return consider_context$1(exprLetrecToString$1(Belt_List.map(c._0, xeToString$2), printBlock$3(/* Return */1, c._1)), ctx);
+        return consider_context$1(exprLetrecToString$1(Belt_List.map(_e._0, xeToString$2), printBlock$3(/* Return */1, _e._1)), ctx);
     case /* AppPrm */6 :
         var partial_arg = /* Expr */{
           _0: true
         };
-        var p = c._0;
-        var es = Belt_List.map(c._1, (function (param) {
+        var p = _e._0;
+        var es = Belt_List.map(_e._1, (function (param) {
                 return expToString$2(partial_arg, param);
               }));
         switch (p) {
@@ -2000,31 +2090,31 @@ function expToString$2(ctx, e) {
         };
         return consider_context$1(exprAppToString$1(expToString$2(/* Expr */{
                             _0: false
-                          }, c._0), Belt_List.map(c._1, (function (param) {
+                          }, _e._0), Belt_List.map(_e._1, (function (param) {
                               return expToString$2(partial_arg$1, param);
                             }))), ctx);
     case /* Bgn */8 :
         var partial_arg$2 = /* Expr */{
           _0: false
         };
-        return consider_context$1(exprBgnToString$1(Belt_List.map(c._0, (function (param) {
+        return consider_context$1(exprBgnToString$1(Belt_List.map(_e._0, (function (param) {
                               return expToString$2(partial_arg$2, param);
                             })), expToString$2(/* Expr */{
                             _0: false
-                          }, c._1)), ctx);
+                          }, _e._1)), ctx);
     case /* If */9 :
         return consider_context$1(exprIfToString$1(expToString$2(/* Expr */{
                             _0: true
-                          }, c._0), expToString$2(/* Expr */{
+                          }, _e._0), expToString$2(/* Expr */{
                             _0: true
-                          }, c._1), expToString$2(/* Expr */{
+                          }, _e._1), expToString$2(/* Expr */{
                             _0: true
-                          }, c._2)), ctx);
+                          }, _e._2)), ctx);
     case /* Cnd */10 :
-        var ebs = Belt_List.map(c._0, (function (param) {
+        var ebs = Belt_List.map(_e._0, (function (param) {
                 return ebToString$2(ctx, param);
               }));
-        var ob = Belt_Option.map(c._1, (function (param) {
+        var ob = Belt_Option.map(_e._1, (function (param) {
                 return printBlock$3(ctx, param);
               }));
         var ob$1 = ob !== undefined ? " else {\n  " + indent(ob, 2) + "\n}" : "";
@@ -2033,31 +2123,14 @@ function expToString$2(ctx, e) {
               }));
         var ebs$2 = $$String.concat(" else ", ebs$1);
         return ebs$2 + ob$1;
+    case /* GLam */11 :
+    case /* Yield */12 :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators not supported yet",
+              Error: new Error()
+            };
     
-  }
-}
-
-function printBlock$3(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], termAsStat$1),
-                  {
-                    hd: expToString$2(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
-}
-
-function defToString$1(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString$1(match._0.it, expToString$2(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString$1(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
-    var b = printBlock$3(/* Return */1, match._2);
-    return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
   }
 }
 
@@ -2078,6 +2151,16 @@ function xeToString$2(xe) {
         ];
 }
 
+function printBlock$3(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$1),
+                  {
+                    hd: expToString$2(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
 function ebToString$2(ctx, eb) {
   return [
           expToString$2(/* Expr */{
@@ -2085,6 +2168,28 @@ function ebToString$2(ctx, eb) {
               }, eb[0]),
           printBlock$3(ctx, eb[1])
         ];
+}
+
+function defToString$1(d) {
+  var match = d.it;
+  switch (match.TAG | 0) {
+    case /* Var */0 :
+        return defvarToString$1(match._0.it, expToString$2(/* Expr */{
+                        _0: false
+                      }, match._1));
+    case /* Fun */1 :
+        var f = xToString$1(match._0.it);
+        var xs = Belt_List.map(Belt_List.map(match._1, unannotate), parameterToString);
+        var b = printBlock$3(/* Return */1, match._2);
+        return "def " + f + "" + paraListToString(xs) + " =" + indentBlock(b, 2) + "";
+    case /* GFun */2 :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators not supported yet",
+              Error: new Error()
+            };
+    
+  }
 }
 
 function printTerm$2(t) {
@@ -2679,6 +2784,13 @@ function expToString$3(ctx, e) {
               _1: "Python translation does not fully support `cond` yet.",
               Error: new Error()
             };
+    case /* GLam */11 :
+    case /* Yield */12 :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators not supported yet",
+              Error: new Error()
+            };
     
   }
 }
@@ -2854,28 +2966,37 @@ function termToString(ctx, t) {
   if (t.TAG === /* Def */0) {
     var d = t._0;
     var match = d.it;
-    if (match.TAG === /* Var */0) {
-      var x = match._0.it;
-      var e = expToString$3({
-            node: /* Expr */{
-              _0: false
-            },
-            block: ctx.block,
-            refs: ctx.refs,
-            env: ctx.env
-          }, match._1);
-      return "" + xToString$2(x) + " = " + e + "";
+    switch (match.TAG | 0) {
+      case /* Var */0 :
+          var x = match._0.it;
+          var e = expToString$3({
+                node: /* Expr */{
+                  _0: false
+                },
+                block: ctx.block,
+                refs: ctx.refs,
+                env: ctx.env
+              }, match._1);
+          return "" + xToString$2(x) + " = " + e + "";
+      case /* Fun */1 :
+          var xs = match._1;
+          var f = xToString$2(match._0.it);
+          var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), xToString$2);
+          var b = printBlock$5({
+                node: /* Return */1,
+                block: ctx.block,
+                refs: ctx.refs,
+                env: ctx.env
+              }, xs, match._2);
+          return "def " + f + "" + listToString$3(xs$1) + ":\n    " + indent(b, 4) + "";
+      case /* GFun */2 :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Generators not supported yet",
+                Error: new Error()
+              };
+      
     }
-    var xs = match._1;
-    var f = xToString$2(match._0.it);
-    var xs$1 = Belt_List.map(Belt_List.map(xs, unannotate), xToString$2);
-    var b = printBlock$5({
-          node: /* Return */1,
-          block: ctx.block,
-          refs: ctx.refs,
-          env: ctx.env
-        }, xs, match._2);
-    return "def " + f + "" + listToString$3(xs$1) + ":\n    " + indent(b, 4) + "";
   } else {
     return expToString$3(ctx, t._0);
   }
@@ -2976,6 +3097,10 @@ function exprLamToString$3(xs, b) {
   return "lam " + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
 }
 
+function exprGenToString(xs, b) {
+  return "gen " + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
+}
+
 function infix_consider_context$2(e, ctx) {
   if (typeof ctx === "number" || !ctx._0) {
     return consider_context$3(e, ctx);
@@ -3015,6 +3140,10 @@ function exprBgnToString$2(es, e) {
                     tl: /* [] */0
                   }
                 ])) + ")";
+}
+
+function exprYieldToString(e) {
+  return "yield " + e + "";
 }
 
 function exprLetToString$3(xes, b) {
@@ -3292,7 +3421,21 @@ function expToString$4(ctx, e) {
               }));
         var ebs$2 = $$String.concat("else ", ebs$1);
         return ebs$2 + ob$1;
+    case /* GLam */11 :
+        return consider_context$3(exprGenToString(Belt_List.map(Belt_List.map(c._0, unannotate), xToString$3), printBlock$7(/* Return */1, c._1)), ctx);
+    case /* Yield */12 :
+        return consider_context$3(exprYieldToString(expToString$4(/* Expr */{
+                            _0: false
+                          }, c._0)), ctx);
     
+  }
+}
+
+function termAsStat$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Stat */0, t._0);
   }
 }
 
@@ -3306,18 +3449,13 @@ function printBlock$7(ctx, b) {
                 ]));
 }
 
-function defToString$2(d) {
-  var match = d.it;
-  if (match.TAG === /* Var */0) {
-    return defvarToString$2(match._0.it, expToString$4(/* Expr */{
-                    _0: false
-                  }, match._1));
-  } else {
-    var f = xToString$3(match._0.it);
-    var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$3);
-    var b = printBlock$7(/* Return */1, match._2);
-    return "fun " + f + "" + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
-  }
+function xeToString$4(xe) {
+  return [
+          xToString$3(xe[0].it),
+          expToString$4(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
 }
 
 function ebToString$4(ctx, eb) {
@@ -3329,20 +3467,24 @@ function ebToString$4(ctx, eb) {
         ];
 }
 
-function xeToString$4(xe) {
-  return [
-          xToString$3(xe[0].it),
-          expToString$4(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
-function termAsStat$2(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$2(t._0);
-  } else {
-    return expToString$4(/* Stat */0, t._0);
+function defToString$2(d) {
+  var match = d.it;
+  switch (match.TAG | 0) {
+    case /* Var */0 :
+        return defvarToString$2(match._0.it, expToString$4(/* Expr */{
+                        _0: false
+                      }, match._1));
+    case /* Fun */1 :
+        var f = xToString$3(match._0.it);
+        var xs = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$3);
+        var b = printBlock$7(/* Return */1, match._2);
+        return "fun " + f + "" + listToString$4(xs) + ":" + indentBlock(b, 2) + "\nend";
+    case /* GFun */2 :
+        var f$1 = xToString$3(match._0.it);
+        var xs$1 = Belt_List.map(Belt_List.map(match._1, unannotate), xToString$3);
+        var b$1 = printBlock$7(/* Return */1, match._2);
+        return "gen fun " + f$1 + "" + listToString$4(xs$1) + ":" + indentBlock(b$1, 2) + "\nend";
+    
   }
 }
 

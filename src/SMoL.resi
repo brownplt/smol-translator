@@ -40,10 +40,13 @@ type rec expression =
   | Bgn(list<annotated<expression>>, annotated<expression>)
   | If(annotated<expression>, annotated<expression>, annotated<expression>)
   | Cnd(list<(annotated<expression>, block)>, option<block>)
+  | GLam(list<annotated<symbol>>, block)
+  | Yield(annotated<expression>)
 and block = (list<term>, annotated<expression>)
 and definition =
   | Var(annotated<symbol>, annotated<expression>)
   | Fun(annotated<symbol>, list<annotated<symbol>>, block)
+  | GFun(annotated<symbol>, list<annotated<symbol>>, block)
 and term = Def(annotated<definition>) | Exp(annotated<expression>)
 and program = list<term>
 

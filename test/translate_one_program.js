@@ -9,6 +9,6 @@ const program = fs.readFileSync(programFile, 'utf8');
 console.log("Source program:")
 console.log(program)
 console.log("===========")
-const translatedProgram = SMoL.SMoLToPY.translate_program(program);
+const translatedProgram = SMoL.CommonTranslator.translateProgram(false, program);
 console.log("Target program:")
 console.log(translatedProgram)
