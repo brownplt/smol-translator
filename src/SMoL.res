@@ -1789,6 +1789,26 @@ module CommonPrinter = {
     exprLetToString(list{}, b)
   }
 
+  let contains_space = (p: Primitive.t): bool => {
+    switch p {
+    | Add => true
+    | Sub => true
+    | Mul => true
+    | Div => true
+    | Lt => true
+    | Eq => true
+    | Gt => true
+    | Le => true
+    | Ge => true
+    | Ne => true
+    | PairSetRight => true
+    | PairSetLeft => true
+    | VecSet => true
+    | Not => true
+    | _ => false
+    }
+  }
+
   let rec expToString = (ctx: context, e: annotated<expression>): string => {
     switch e.it {
     | Con(c) => constantToString(c)->consider_context(ctx)
@@ -1799,7 +1819,7 @@ module CommonPrinter = {
         xs->List.map(unannotate)->List.map(xToString),
         printBlock(Return, b),
       )->consider_context(ctx)
-    | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(true))))
+    | AppPrm(p, es) => exprApp_prmToString(ctx, p, es->List.map(expToString(Expr(contains_space(p)))))
     | App(e, es) =>
       exprAppToString(
         expToString(Expr(false), e),

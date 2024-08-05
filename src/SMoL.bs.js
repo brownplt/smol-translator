@@ -3038,6 +3038,36 @@ function exprLetrecToString$2(xes, b) {
   return exprLetToString$3(/* [] */0, b$1);
 }
 
+function contains_space(p) {
+  switch (p) {
+    case /* Add */0 :
+    case /* Sub */1 :
+    case /* Mul */2 :
+    case /* Div */3 :
+    case /* Lt */4 :
+    case /* Eq */5 :
+    case /* Gt */6 :
+    case /* Le */7 :
+    case /* Ge */8 :
+    case /* Ne */9 :
+    case /* PairSetRight */13 :
+    case /* PairSetLeft */14 :
+    case /* VecSet */17 :
+    case /* Not */20 :
+        return true;
+    case /* PairNew */10 :
+    case /* PairRefRight */11 :
+    case /* PairRefLeft */12 :
+    case /* VecNew */15 :
+    case /* VecRef */16 :
+    case /* VecLen */18 :
+    case /* Err */19 :
+    case /* Print */21 :
+        return false;
+    
+  }
+}
+
 function expToString$4(ctx, e) {
   var c = e.it;
   switch (c.TAG | 0) {
@@ -3058,10 +3088,10 @@ function expToString$4(ctx, e) {
     case /* Letrec */5 :
         return consider_context$3(exprLetrecToString$2(Belt_List.map(c._0, xeToString$4), printBlock$7(/* Return */1, c._1)), ctx);
     case /* AppPrm */6 :
-        var partial_arg = /* Expr */{
-          _0: true
-        };
         var p = c._0;
+        var partial_arg = /* Expr */{
+          _0: contains_space(p)
+        };
         var es = Belt_List.map(c._1, (function (param) {
                 return expToString$4(partial_arg, param);
               }));
