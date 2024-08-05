@@ -6,9 +6,11 @@ import fs from "fs";
 
 const programFile = process.argv[2];
 const program = fs.readFileSync(programFile, 'utf8');
-console.log("Source program:")
-console.log(program)
-console.log("===========")
-const translatedProgram = SMoL.CommonTranslator.translateProgram(false, program);
-console.log("Target program:")
-console.log(translatedProgram)
+console.log("Source program:");
+console.log(program);
+console.log("===========");
+const parsedProgram = SMoL.Parser.parseProgram(program);
+console.log("Target program:");
+console.log(SMoL.SMoLPrinter.printProgram(false, parsedProgram));
+console.log("===========");
+console.log(SMoL.CommonPrinter.printProgram(false, parsedProgram));
