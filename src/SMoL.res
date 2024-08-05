@@ -148,7 +148,8 @@ module SMoLPrinter = {
 
   let defvarLike = (op, x, e) => {
     if String.contains(e, '\n') {
-      hcat(`(${op} ${x} `, `${e})`)
+      `(${op} ${x}${indentBlock(e, 2)})`
+      // hcat(`(${op} ${x} `, `${e})`)
     } else {
       listToString(list{op, x, e})
     }
@@ -529,7 +530,7 @@ module Parser = {
       }
 
     | Sequence(List, _b, list{{it: Atom(Sym("yield")), ann: _}, ...rest}) => {
-        let (e) = as_one("a variable and an expression", rest)
+        let (e) = as_one("an expression", rest)
         let e = as_expr("an expression", termOfSExpr(e))
         Exp({ann, it: Yield(e)})
       }
