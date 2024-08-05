@@ -25,6 +25,7 @@ module Primitive = {
     | Err
     | Not
     | Print
+    | Next
   let toString: t => string = t => {
     switch t {
     | Add => "+"
@@ -49,6 +50,7 @@ module Primitive = {
     | Err => "error"
     | Not => "not"
     | Print => "print"
+    | Next => "next"
     }
   }
 }
@@ -648,6 +650,7 @@ module Parser = {
       }
 
     | Atom(atom) => Exp({ann, it: expr_of_atom(ann, atom)})
+    | Sequence(List, _b, list{{it: Atom(Sym("next")), ann: _}, ...es}) => app_prm(ann, Next, es)
     | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) => app_prm(ann, Add, es)
     | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) => app_prm(ann, Sub, es)
     | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) => app_prm(ann, Mul, es)

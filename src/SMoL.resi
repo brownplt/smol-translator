@@ -24,6 +24,7 @@ module Primitive: {
     | Err
     | Not
     | Print
+    | Next
   let toString: t => string
 }
 type constant = Uni | Num(float) | Lgc(bool) | Str(string)

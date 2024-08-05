@@ -58,6 +58,8 @@ function toString(t) {
         return "not";
     case /* Print */21 :
         return "print";
+    case /* Next */22 :
+        return "next";
     
   }
 }
@@ -1158,6 +1160,8 @@ function termOfSExpr(e) {
                     };
           case "mvec" :
               return app_prm(ann, /* VecNew */15, es$1.tl);
+          case "next" :
+              return app_prm(ann, /* Next */22, es$1.tl);
           case "not" :
               return app_prm(ann, /* Not */20, es$1.tl);
           case "mpair" :
@@ -1603,6 +1607,8 @@ function expToString$1(ctx, e) {
                 return consider_context("console.log(" + es.hd + ")", ctx);
               }
               break;
+          case /* Next */22 :
+              break;
           
         }
         throw {
@@ -1670,14 +1676,6 @@ function printBlock$1(ctx, b) {
                 ]));
 }
 
-function termAsStat(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString(t._0);
-  } else {
-    return expToString$1(/* Stat */0, t._0);
-  }
-}
-
 function defToString(d) {
   var match = d.it;
   switch (match.TAG | 0) {
@@ -1700,13 +1698,12 @@ function defToString(d) {
   }
 }
 
-function ebToString$1(ctx, eb) {
-  return [
-          expToString$1(/* Expr */{
-                _0: false
-              }, eb[0]),
-          printBlock$1(ctx, eb[1])
-        ];
+function termAsStat(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString(t._0);
+  } else {
+    return expToString$1(/* Stat */0, t._0);
+  }
 }
 
 function xeToString$1(xe) {
@@ -1715,6 +1712,15 @@ function xeToString$1(xe) {
           expToString$1(/* Expr */{
                 _0: false
               }, xe[1])
+        ];
+}
+
+function ebToString$1(ctx, eb) {
+  return [
+          expToString$1(/* Expr */{
+                _0: false
+              }, eb[0]),
+          printBlock$1(ctx, eb[1])
         ];
 }
 
@@ -2077,6 +2083,8 @@ function expToString$2(ctx, e) {
                 return consider_context$1("println(" + es.hd + ")", ctx);
               }
               break;
+          case /* Next */22 :
+              break;
           
         }
         throw {
@@ -2142,34 +2150,6 @@ function termAsStat$1(t) {
   }
 }
 
-function xeToString$2(xe) {
-  return [
-          xToString$1(xe[0].it),
-          expToString$2(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
-function printBlock$3(ctx, b) {
-  return $$String.concat("\n", Belt_List.concatMany([
-                  Belt_List.map(b[0], termAsStat$1),
-                  {
-                    hd: expToString$2(ctx, b[1]),
-                    tl: /* [] */0
-                  }
-                ]));
-}
-
-function ebToString$2(ctx, eb) {
-  return [
-          expToString$2(/* Expr */{
-                _0: false
-              }, eb[0]),
-          printBlock$3(ctx, eb[1])
-        ];
-}
-
 function defToString$1(d) {
   var match = d.it;
   switch (match.TAG | 0) {
@@ -2190,6 +2170,34 @@ function defToString$1(d) {
             };
     
   }
+}
+
+function printBlock$3(ctx, b) {
+  return $$String.concat("\n", Belt_List.concatMany([
+                  Belt_List.map(b[0], termAsStat$1),
+                  {
+                    hd: expToString$2(ctx, b[1]),
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
+function xeToString$2(xe) {
+  return [
+          xToString$1(xe[0].it),
+          expToString$2(/* Expr */{
+                _0: false
+              }, xe[1])
+        ];
+}
+
+function ebToString$2(ctx, eb) {
+  return [
+          expToString$2(/* Expr */{
+                _0: false
+              }, eb[0]),
+          printBlock$3(ctx, eb[1])
+        ];
 }
 
 function printTerm$2(t) {
@@ -2526,6 +2534,8 @@ function exprApp_prmToString(ctx, p, es) {
         if (es && !es.tl) {
           return wrap(ctx, "print(" + es.hd + ")");
         }
+        break;
+    case /* Next */22 :
         break;
     
   }
@@ -3192,6 +3202,7 @@ function contains_space(p) {
     case /* VecLen */18 :
     case /* Err */19 :
     case /* Print */21 :
+    case /* Next */22 :
         return false;
     
   }
@@ -3368,6 +3379,8 @@ function expToString$4(ctx, e) {
                 return consider_context$3("print(" + es.hd + ")", ctx);
               }
               break;
+          case /* Next */22 :
+              break;
           
         }
         throw {
@@ -3431,14 +3444,6 @@ function expToString$4(ctx, e) {
   }
 }
 
-function termAsStat$2(t) {
-  if (t.TAG === /* Def */0) {
-    return defToString$2(t._0);
-  } else {
-    return expToString$4(/* Stat */0, t._0);
-  }
-}
-
 function printBlock$7(ctx, b) {
   return $$String.concat("\n", Belt_List.concatMany([
                   Belt_List.map(b[0], termAsStat$2),
@@ -3449,21 +3454,21 @@ function printBlock$7(ctx, b) {
                 ]));
 }
 
-function xeToString$4(xe) {
-  return [
-          xToString$3(xe[0].it),
-          expToString$4(/* Expr */{
-                _0: false
-              }, xe[1])
-        ];
-}
-
 function ebToString$4(ctx, eb) {
   return [
           expToString$4(/* Expr */{
                 _0: false
               }, eb[0]),
           printBlock$7(ctx, eb[1])
+        ];
+}
+
+function xeToString$4(xe) {
+  return [
+          xToString$3(xe[0].it),
+          expToString$4(/* Expr */{
+                _0: false
+              }, xe[1])
         ];
 }
 
@@ -3485,6 +3490,14 @@ function defToString$2(d) {
         var b$1 = printBlock$7(/* Return */1, match._2);
         return "gen fun " + f$1 + "" + listToString$4(xs$1) + ":" + indentBlock(b$1, 2) + "\nend";
     
+  }
+}
+
+function termAsStat$2(t) {
+  if (t.TAG === /* Def */0) {
+    return defToString$2(t._0);
+  } else {
+    return expToString$4(/* Stat */0, t._0);
   }
 }
 
