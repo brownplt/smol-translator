@@ -1,7 +1,7 @@
 # SMoL Translator
 
 This package defines the SMoL language and provides functions that
-translate SMoL to other languages (currently JavaScript and Python).
+translate SMoL programs and outputs to other languages (currently JavaScript and Python).
 
 See [the SMoL vs JavaScript
 section](#smol-vs-javascript) for limitations and known
