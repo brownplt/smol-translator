@@ -43,23 +43,23 @@ for (const f of fs.readdirSync(path)) {
             console.log(name);
             console.error(err);
         }
-        // try {
-        //     const program = fs.readFileSync(programFile, 'utf8');
-        //     const outputs = fs.readFileSync(outputsFile, 'utf8');
-        //     if (!outputs.includes("@")) {
-        //         try {
-        //             fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
-        //             fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateTerms(outputs));
-        //         } catch (err) {
-        //             fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
-        //         }
-        //     } else {
-        //         fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
-        //     }
-        // } catch (err) {
-        //     console.log(name);
-        //     console.error(err);
-        // }
+        try {
+            const program = fs.readFileSync(programFile, 'utf8');
+            const outputs = fs.readFileSync(outputsFile, 'utf8');
+            if (!outputs.includes("@")) {
+                try {
+                    fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
+                    fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs));
+                } catch (err) {
+                    fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                }
+            } else {
+                fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
+            }
+        } catch (err) {
+            console.log(name);
+            console.error(err);
+        }
         // try {
         //     if (! incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {
         //         const program = fs.readFileSync(programFile, 'utf8');

@@ -130,7 +130,7 @@ module type Printer = {
 
 module SMoLPrinter: Printer
 module JSPrinter: Printer
-// module PYPrinter: Printer
+module PYPrinter: Printer
 // module ScalaPrinter: Printer
 // module CommonPrinter: Printer
 
@@ -146,7 +146,7 @@ module type Translator = {
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
 }
-// module PYTranslator: Translator
 module JSTranslator: Translator
+module PYTranslator: Translator
 // module ScalaTranslator: Translator
 // module CommonTranslator: Translator
