@@ -12,22 +12,26 @@ type outputlet =
 type output = list<outputlet>
 
 module Primitive: {
-  type t =
+  type arith =
     | Add
     | Sub
     | Mul
     | Div
+  type cmp =
     | Lt
     | Eq
     | Gt
     | Le
     | Ge
     | Ne
+  type t =
+    | Arith(arith)
+    | Cmp(cmp)
     | PairNew
-    | PairRefRight
     | PairRefLeft
-    | PairSetRight
+    | PairRefRight
     | PairSetLeft
+    | PairSetRight
     | VecNew
     | VecRef
     | VecSet

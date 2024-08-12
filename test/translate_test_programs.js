@@ -32,7 +32,7 @@ for (const f of fs.readdirSync(path)) {
             if (!outputs.includes("@")) {
                 try {
                     fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(true, program));
-                    fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateTerms(outputs));
+                    fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateOutput(outputs));
                 } catch (err) {
                     fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
                 }

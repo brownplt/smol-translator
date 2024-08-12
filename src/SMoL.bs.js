@@ -11,56 +11,66 @@ import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
 function toString(t) {
-  switch (t) {
-    case /* Add */0 :
-        return "+";
-    case /* Sub */1 :
-        return "-";
-    case /* Mul */2 :
-        return "*";
-    case /* Div */3 :
-        return "/";
-    case /* Lt */4 :
-        return "<";
-    case /* Eq */5 :
-        return "eq?";
-    case /* Gt */6 :
-        return ">";
-    case /* Le */7 :
-        return "<=";
-    case /* Ge */8 :
-        return ">=";
-    case /* Ne */9 :
-        return "!=";
-    case /* PairNew */10 :
-        return "mpair";
-    case /* PairRefRight */11 :
-        return "right";
-    case /* PairRefLeft */12 :
-        return "left";
-    case /* PairSetRight */13 :
-        return "set-right!";
-    case /* PairSetLeft */14 :
-        return "set-left!";
-    case /* VecNew */15 :
-        return "mvec";
-    case /* VecRef */16 :
-        return "vec-ref";
-    case /* VecSet */17 :
-        return "vec-set!";
-    case /* VecLen */18 :
-        return "vec-len";
-    case /* Err */19 :
-        return "error";
-    case /* Not */20 :
-        return "not";
-    case /* Print */21 :
-        return "print";
-    case /* Next */22 :
-        return "next";
-    case /* Cons */23 :
-        return "cons";
-    
+  if (typeof t === "number") {
+    switch (t) {
+      case /* PairNew */0 :
+          return "mpair";
+      case /* PairRefLeft */1 :
+          return "left";
+      case /* PairRefRight */2 :
+          return "right";
+      case /* PairSetLeft */3 :
+          return "set-left!";
+      case /* PairSetRight */4 :
+          return "set-right!";
+      case /* VecNew */5 :
+          return "mvec";
+      case /* VecRef */6 :
+          return "vec-ref";
+      case /* VecSet */7 :
+          return "vec-set!";
+      case /* VecLen */8 :
+          return "vec-len";
+      case /* Err */9 :
+          return "error";
+      case /* Not */10 :
+          return "not";
+      case /* Print */11 :
+          return "print";
+      case /* Next */12 :
+          return "next";
+      case /* Cons */13 :
+          return "cons";
+      
+    }
+  } else if (t.TAG === /* Arith */0) {
+    switch (t._0) {
+      case /* Add */0 :
+          return "+";
+      case /* Sub */1 :
+          return "-";
+      case /* Mul */2 :
+          return "*";
+      case /* Div */3 :
+          return "/";
+      
+    }
+  } else {
+    switch (t._0) {
+      case /* Lt */0 :
+          return "<";
+      case /* Eq */1 :
+          return "eq?";
+      case /* Gt */2 :
+          return ">";
+      case /* Le */3 :
+          return "<=";
+      case /* Ge */4 :
+          return ">=";
+      case /* Ne */5 :
+          return "!=";
+      
+    }
   }
 }
 
@@ -249,7 +259,7 @@ function parseValue(e) {
     return {
             it: {
               TAG: /* AppPrm */6,
-              _0: /* VecNew */15,
+              _0: /* VecNew */5,
               _1: es
             },
             ann: ann
@@ -640,7 +650,7 @@ function parseTerm(e) {
               TAG: /* Exp */1,
               _0: {
                 TAG: /* AppPrm */6,
-                _0: /* VecNew */15,
+                _0: /* VecNew */5,
                 _1: es
               }
             },
@@ -655,23 +665,50 @@ function parseTerm(e) {
       if (match$1.TAG !== /* Str */0) {
         switch (match$1._0) {
           case "!=" :
-              return makeAppPrm(ann, /* Ne */9, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Ne */5
+                        }, es$1.tl);
           case "*" :
-              return makeAppPrm(ann, /* Mul */2, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Arith */0,
+                          _0: /* Mul */2
+                        }, es$1.tl);
           case "+" :
-              return makeAppPrm(ann, /* Add */0, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Arith */0,
+                          _0: /* Add */0
+                        }, es$1.tl);
           case "-" :
-              return makeAppPrm(ann, /* Sub */1, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Arith */0,
+                          _0: /* Sub */1
+                        }, es$1.tl);
           case "/" :
-              return makeAppPrm(ann, /* Div */3, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Arith */0,
+                          _0: /* Div */3
+                        }, es$1.tl);
           case "<" :
-              return makeAppPrm(ann, /* Lt */4, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Lt */0
+                        }, es$1.tl);
           case "<=" :
-              return makeAppPrm(ann, /* Le */7, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Le */3
+                        }, es$1.tl);
           case ">" :
-              return makeAppPrm(ann, /* Gt */6, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Gt */2
+                        }, es$1.tl);
           case ">=" :
-              return makeAppPrm(ann, /* Ge */8, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Ge */4
+                        }, es$1.tl);
           case "begin" :
               var match$2 = as_many_then_one("one or more expressions", es$1.tl);
               var terms = Belt_List.map(Belt_List.map(match$2[0], parseTerm), (function (param) {
@@ -807,9 +844,12 @@ function parseTerm(e) {
                     };
           case "=" :
           case "eq?" :
-              return makeAppPrm(ann, /* Eq */5, es$1.tl);
+              return makeAppPrm(ann, {
+                          TAG: /* Cmp */1,
+                          _0: /* Eq */1
+                        }, es$1.tl);
           case "error" :
-              return makeAppPrm(ann, /* Err */19, es$1.tl);
+              return makeAppPrm(ann, /* Err */9, es$1.tl);
           case "generator" :
               var match$11 = as_one_then_many_then_one("the generator signature followed by the function body", es$1.tl);
               var args$2 = Belt_List.map(as_list("generator parameters", match$11[0]).it, (function (param) {
@@ -864,7 +904,7 @@ function parseTerm(e) {
                       ann: ann
                     };
           case "left" :
-              return makeAppPrm(ann, /* PairRefLeft */12, es$1.tl);
+              return makeAppPrm(ann, /* PairRefLeft */1, es$1.tl);
           case "let" :
               var match$14 = as_one_then_many_then_one("the bindings followed by the body", es$1.tl);
               var xes = Belt_List.map(Belt_List.map(as_list("variable-expression pairs", match$14[0]).it, (function (param) {
@@ -957,16 +997,16 @@ function parseTerm(e) {
                       ann: ann
                     };
           case "mvec" :
-              return makeAppPrm(ann, /* VecNew */15, es$1.tl);
+              return makeAppPrm(ann, /* VecNew */5, es$1.tl);
           case "next" :
-              return makeAppPrm(ann, /* Next */22, es$1.tl);
+              return makeAppPrm(ann, /* Next */12, es$1.tl);
           case "not" :
-              return makeAppPrm(ann, /* Not */20, es$1.tl);
+              return makeAppPrm(ann, /* Not */10, es$1.tl);
           case "mpair" :
           case "pair" :
-              return makeAppPrm(ann, /* PairNew */10, es$1.tl);
+              return makeAppPrm(ann, /* PairNew */0, es$1.tl);
           case "print" :
-              return makeAppPrm(ann, /* Print */21, es$1.tl);
+              return makeAppPrm(ann, /* Print */11, es$1.tl);
           case "quote" :
               var e$2 = as_one("a quoted value", es$1.tl);
               return mapAnn((function (v) {
@@ -976,7 +1016,7 @@ function parseTerm(e) {
                                   };
                           }), parseValue(e$2));
           case "right" :
-              return makeAppPrm(ann, /* PairRefRight */11, es$1.tl);
+              return makeAppPrm(ann, /* PairRefRight */2, es$1.tl);
           case "set!" :
               var match$17 = as_two("a variable and an expression", es$1.tl);
               var x$1 = as_id("a variable to be set", match$17[0]);
@@ -993,18 +1033,18 @@ function parseTerm(e) {
                       ann: ann
                     };
           case "set-left!" :
-              return makeAppPrm(ann, /* PairSetLeft */14, es$1.tl);
+              return makeAppPrm(ann, /* PairSetLeft */3, es$1.tl);
           case "set-right!" :
-              return makeAppPrm(ann, /* PairSetRight */13, es$1.tl);
+              return makeAppPrm(ann, /* PairSetRight */4, es$1.tl);
           case "vec-len" :
           case "vlen" :
-              return makeAppPrm(ann, /* VecLen */18, es$1.tl);
+              return makeAppPrm(ann, /* VecLen */8, es$1.tl);
           case "vec-ref" :
           case "vref" :
-              return makeAppPrm(ann, /* VecRef */16, es$1.tl);
+              return makeAppPrm(ann, /* VecRef */6, es$1.tl);
           case "vec-set!" :
           case "vset!" :
-              return makeAppPrm(ann, /* VecSet */17, es$1.tl);
+              return makeAppPrm(ann, /* VecSet */7, es$1.tl);
           case "yield" :
               var e$4 = as_one("an expression", es$1.tl);
               var e$5 = as_expr("an expression", parseTerm(e$4));
@@ -1705,12 +1745,409 @@ function exprAppToString(e, es) {
   return "" + e + "" + listToString$1(es) + "";
 }
 
-function funLike(op, x, xs, e) {
-  if ($$String.contains(e, /* '\n' */10)) {
-    return "" + op + " " + exprAppToString(x, xs) + " {" + indentBlock(e, 2) + "}";
-  } else {
-    return "" + op + " " + exprAppToString(x, xs) + " { " + e + " }";
+var printingTopLevel = {
+  contents: false
+};
+
+function consumeContext(e, context) {
+  if (context.TAG === /* Expr */0) {
+    return e;
   }
+  switch (context._0) {
+    case /* Step */0 :
+        return "" + e + ";";
+    case /* Return */1 :
+        return "return " + e + ";";
+    case /* TopLevel */2 :
+        if (printingTopLevel.contents) {
+          return "console.log(" + e + ");";
+        } else {
+          return e;
+        }
+    
+  }
+}
+
+function consumeContextWrap(e, context) {
+  if (context.TAG === /* Expr */0 && context._0) {
+    return "(" + e + ")";
+  } else {
+    return consumeContext(e, context);
+  }
+}
+
+function consumeContextVoid(e, context) {
+  if (context.TAG === /* Expr */0) {
+    return consumeContext(e, context);
+  }
+  switch (context._0) {
+    case /* Step */0 :
+        return consumeContext(e, context);
+    case /* Return */1 :
+        return "" + e + ";\nreturn";
+    case /* TopLevel */2 :
+        return e;
+    
+  }
+}
+
+function consumeContextStat(e, context) {
+  if (context.TAG !== /* Expr */0) {
+    return consumeContextVoid(e, context);
+  }
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: "" + e + " can't be used as a expression in JavaScript",
+        Error: new Error()
+      };
+}
+
+function exprAppPrmToString(p, es, context) {
+  if (typeof p === "number") {
+    switch (p) {
+      case /* PairNew */0 :
+          if (es) {
+            var match = es.tl;
+            if (match && !match.tl) {
+              var e1 = Curry._1(es.hd, false);
+              var e2 = Curry._1(match.hd, false);
+              return {
+                      it: [
+                        /* PairNew */0,
+                        {
+                          hd: e1,
+                          tl: {
+                            hd: e2,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContext("[ " + e1.ann.print + ", " + e2.ann.print + "]", context)
+                    };
+            }
+            
+          }
+          break;
+      case /* PairRefLeft */1 :
+          if (es && !es.tl) {
+            var e1$1 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* PairRefLeft */1,
+                      {
+                        hd: e1$1,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext("" + e1$1.ann.print + "[0]", context)
+                  };
+          }
+          break;
+      case /* PairRefRight */2 :
+          if (es && !es.tl) {
+            var e1$2 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* PairRefRight */2,
+                      {
+                        hd: e1$2,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext("" + e1$2.ann.print + "[1]", context)
+                  };
+          }
+          break;
+      case /* PairSetLeft */3 :
+          if (es) {
+            var match$1 = es.tl;
+            if (match$1 && !match$1.tl) {
+              var e1$3 = Curry._1(es.hd, false);
+              var e2$1 = Curry._1(match$1.hd, false);
+              return {
+                      it: [
+                        /* PairSetLeft */3,
+                        {
+                          hd: e1$3,
+                          tl: {
+                            hd: e2$1,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContextStat("" + e1$3.ann.print + "[0] = " + e2$1.ann.print + "", context)
+                    };
+            }
+            
+          }
+          break;
+      case /* PairSetRight */4 :
+          if (es) {
+            var match$2 = es.tl;
+            if (match$2 && !match$2.tl) {
+              var e1$4 = Curry._1(es.hd, false);
+              var e2$2 = Curry._1(match$2.hd, false);
+              return {
+                      it: [
+                        /* PairSetRight */4,
+                        {
+                          hd: e1$4,
+                          tl: {
+                            hd: e2$2,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContextStat("" + e1$4.ann.print + "[1] = " + e2$2.ann.print + "", context)
+                    };
+            }
+            
+          }
+          break;
+      case /* VecNew */5 :
+          var es$1 = Belt_List.map(es, (function (e) {
+                  return Curry._1(e, false);
+                }));
+          return {
+                  it: [
+                    /* VecNew */5,
+                    es$1
+                  ],
+                  ann: "[" + consumeContext($$String.concat(", ", Belt_List.map(es$1, (function (e) {
+                                  return e.ann.print;
+                                }))), context) + "]"
+                };
+      case /* VecRef */6 :
+          if (es) {
+            var match$3 = es.tl;
+            if (match$3 && !match$3.tl) {
+              var e1$5 = Curry._1(es.hd, true);
+              var e2$3 = Curry._1(match$3.hd, false);
+              return {
+                      it: [
+                        /* VecRef */6,
+                        {
+                          hd: e1$5,
+                          tl: {
+                            hd: e2$3,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContext("" + e1$5.ann.print + "[" + e2$3.ann.print + "]", context)
+                    };
+            }
+            
+          }
+          break;
+      case /* VecSet */7 :
+          if (es) {
+            var match$4 = es.tl;
+            if (match$4) {
+              var match$5 = match$4.tl;
+              if (match$5 && !match$5.tl) {
+                var e1$6 = Curry._1(es.hd, true);
+                var e2$4 = Curry._1(match$4.hd, false);
+                var e3 = Curry._1(match$5.hd, false);
+                return {
+                        it: [
+                          /* VecSet */7,
+                          {
+                            hd: e1$6,
+                            tl: {
+                              hd: e2$4,
+                              tl: {
+                                hd: e3,
+                                tl: /* [] */0
+                              }
+                            }
+                          }
+                        ],
+                        ann: consumeContextStat("" + e1$6.ann.print + "[" + e2$4.ann.print + "] = " + e3.ann.print + "", context)
+                      };
+              }
+              
+            }
+            
+          }
+          break;
+      case /* VecLen */8 :
+          if (es && !es.tl) {
+            var e1$7 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* VecLen */8,
+                      {
+                        hd: e1$7,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext("" + e1$7.ann.print + ".length", context)
+                  };
+          }
+          break;
+      case /* Err */9 :
+          if (es && !es.tl) {
+            var e1$8 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* Err */9,
+                      {
+                        hd: e1$8,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap("throw " + e1$8.ann.print + "", context)
+                  };
+          }
+          break;
+      case /* Not */10 :
+          if (es && !es.tl) {
+            var e1$9 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* Not */10,
+                      {
+                        hd: e1$9,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap("!" + e1$9.ann.print + "", context)
+                  };
+          }
+          break;
+      case /* Print */11 :
+          if (es && !es.tl) {
+            var e1$10 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* Print */11,
+                      {
+                        hd: e1$10,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid("print(" + e1$10.ann.print + ")", context)
+                  };
+          }
+          break;
+      case /* Next */12 :
+          if (es && !es.tl) {
+            var e1$11 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* Next */12,
+                      {
+                        hd: e1$11,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid("" + e1$11.ann.print + ".next()", context)
+                  };
+          }
+          break;
+      case /* Cons */13 :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "List is not supported by JavaScript",
+                Error: new Error()
+              };
+      
+    }
+  } else {
+    if (p.TAG === /* Arith */0) {
+      var o = p._0;
+      var os;
+      switch (o) {
+        case /* Add */0 :
+            os = "+";
+            break;
+        case /* Sub */1 :
+            os = "-";
+            break;
+        case /* Mul */2 :
+            os = "*";
+            break;
+        case /* Div */3 :
+            os = "/";
+            break;
+        
+      }
+      var es$2 = Belt_List.map(es, (function (e) {
+              return Curry._1(e, true);
+            }));
+      return {
+              it: [
+                {
+                  TAG: /* Arith */0,
+                  _0: o
+                },
+                es$2
+              ],
+              ann: consumeContextWrap($$String.concat(" " + os + " ", Belt_List.map(es$2, (function (e) {
+                              return e.ann.print;
+                            }))), context)
+            };
+    }
+    if (es) {
+      var match$6 = es.tl;
+      if (match$6 && !match$6.tl) {
+        var o$1 = p._0;
+        var os$1;
+        switch (o$1) {
+          case /* Lt */0 :
+              os$1 = "<";
+              break;
+          case /* Eq */1 :
+              os$1 = "==";
+              break;
+          case /* Gt */2 :
+              os$1 = ">";
+              break;
+          case /* Le */3 :
+              os$1 = "<=";
+              break;
+          case /* Ge */4 :
+              os$1 = ">=";
+              break;
+          case /* Ne */5 :
+              os$1 = "!=";
+              break;
+          
+        }
+        var e1$12 = Curry._1(es.hd, true);
+        var e2$5 = Curry._1(match$6.hd, true);
+        return {
+                it: [
+                  {
+                    TAG: /* Cmp */1,
+                    _0: o$1
+                  },
+                  {
+                    hd: e1$12,
+                    tl: {
+                      hd: e2$5,
+                      tl: /* [] */0
+                    }
+                  }
+                ],
+                ann: consumeContextWrap("" + e1$12.ann.print + " " + os$1 + " " + e2$5.ann.print + "", context)
+              };
+      }
+      
+    }
+    
+  }
+  var err = "JavaScript doesn't let you use " + toString(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: err,
+        Error: new Error()
+      };
+}
+
+function funLike(op, x, xs, e) {
+  return "" + op + " " + exprAppToString(x, xs) + " {" + indentBlock(e, 2) + "\n}";
 }
 
 function deffunToString$1(f, xs, b) {
@@ -1775,29 +2212,6 @@ function symbolToString$1(param) {
         };
 }
 
-var printingTopLevel = {
-  contents: false
-};
-
-function consumeContext(e, context) {
-  if (context.TAG === /* Expr */0) {
-    return e;
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return e;
-    case /* Return */1 :
-        return "return " + e + "";
-    case /* TopLevel */2 :
-        if (printingTopLevel.contents) {
-          return "console.log(" + e + ")";
-        } else {
-          return e;
-        }
-    
-  }
-}
-
 function printExp$1(param, context) {
   var it = param.it;
   var e;
@@ -1819,7 +2233,7 @@ function printExp$1(param, context) {
             TAG: /* Ref */1,
             _0: x
           },
-          ann: x
+          ann: consumeContext(x, context)
         };
         break;
     case /* Set */2 :
@@ -1834,7 +2248,7 @@ function printExp$1(param, context) {
             _0: x$1,
             _1: e$1
           },
-          ann: defvarLike$1("", x$1.ann.print, e$1.ann.print)
+          ann: consumeContextStat(defvarLike$1("", x$1.ann.print, e$1.ann.print), context)
         };
         break;
     case /* Lam */3 :
@@ -1846,9 +2260,9 @@ function printExp$1(param, context) {
             _0: xs,
             _1: b
           },
-          ann: exprLamToString$1(Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
+          ann: consumeContextWrap(exprLamToString$1(Belt_List.map(xs, (function (x) {
+                          return x.ann.print;
+                        })), b.ann.print), context)
         };
         break;
     case /* Let */4 :
@@ -1873,34 +2287,33 @@ function printExp$1(param, context) {
             _0: xes,
             _1: b$1
           },
-          ann: $$String.concat("\n", Belt_List.concatMany([
-                    Belt_List.map(xes, (function (xe) {
-                            return xe.ann.print;
-                          })),
-                    {
-                      hd: b$1.ann.print,
-                      tl: /* [] */0
-                    }
-                  ]))
+          ann: "{\n" + indentBlock($$String.concat("\n", Belt_List.concatMany([
+                        Belt_List.map(xes, (function (xe) {
+                                return xe.ann.print;
+                              })),
+                        {
+                          hd: b$1.ann.print,
+                          tl: /* [] */0
+                        }
+                      ])), 2) + "\n}"
         };
         break;
     case /* AppPrm */6 :
-        var p = it._0;
-        var es = Belt_List.map(it._1, (function (e) {
+        var es = Belt_List.map(it._1, (function (e, b) {
                 return printExp$1(e, {
                             TAG: /* Expr */0,
-                            _0: false
+                            _0: b
                           });
               }));
+        var match = exprAppPrmToString(it._0, es, context);
+        var match$1 = match.it;
         e = {
           it: {
             TAG: /* AppPrm */6,
-            _0: p,
-            _1: es
+            _0: match$1[0],
+            _1: match$1[1]
           },
-          ann: exprAppToString(toString(p), Belt_List.map(es, (function (e) {
-                      return e.ann.print;
-                    })))
+          ann: match.ann
         };
         break;
     case /* App */7 :
@@ -1920,9 +2333,9 @@ function printExp$1(param, context) {
             _0: e$2,
             _1: es$1
           },
-          ann: exprAppToString(e$2.ann.print, Belt_List.map(es$1, (function (e) {
-                      return e.ann.print;
-                    })))
+          ann: consumeContext(exprAppToString(e$2.ann.print, Belt_List.map(es$1, (function (e) {
+                          return e.ann.print;
+                        }))), context)
         };
         break;
     case /* Bgn */8 :
@@ -1942,9 +2355,9 @@ function printExp$1(param, context) {
             _0: es$2,
             _1: e$3
           },
-          ann: exprBgnToString$1(Belt_List.map(es$2, (function (e) {
-                      return e.ann.print;
-                    })), e$3.ann.print)
+          ann: consumeContext(exprBgnToString$1(Belt_List.map(es$2, (function (e) {
+                          return e.ann.print;
+                        })), e$3.ann.print), context)
         };
         break;
     case /* If */9 :
@@ -1967,7 +2380,7 @@ function printExp$1(param, context) {
             _1: e_thn,
             _2: e_els
           },
-          ann: exprIfToString$1(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print)
+          ann: consumeContextWrap(exprIfToString$1(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print), context)
         };
         break;
     case /* Cnd */10 :
@@ -2014,9 +2427,9 @@ function printExp$1(param, context) {
             _0: xs$1,
             _1: b$2
           },
-          ann: exprGenToString$1(Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$2.ann.print)
+          ann: consumeContextWrap(exprGenToString$1(Belt_List.map(xs$1, (function (x) {
+                          return x.ann.print;
+                        })), b$2.ann.print), context)
         };
         break;
     case /* Yield */12 :
@@ -2029,7 +2442,7 @@ function printExp$1(param, context) {
             TAG: /* Yield */12,
             _0: e$4
           },
-          ann: exprYieldToString$1(e$4.ann.print)
+          ann: consumeContextWrap(exprYieldToString$1(e$4.ann.print), context)
         };
         break;
     

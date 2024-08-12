@@ -18,22 +18,26 @@ type outputlet =
 type output = list<outputlet>
 
 module Primitive = {
-  type t =
+  type arith =
     | Add
     | Sub
     | Mul
     | Div
+  type cmp =
     | Lt
     | Eq
     | Gt
     | Le
     | Ge
     | Ne
+  type t =
+    | Arith(arith)
+    | Cmp(cmp)
     | PairNew
-    | PairRefRight
     | PairRefLeft
-    | PairSetRight
+    | PairRefRight
     | PairSetLeft
+    | PairSetRight
     | VecNew
     | VecRef
     | VecSet
@@ -45,16 +49,16 @@ module Primitive = {
     | Cons
   let toString: t => string = t => {
     switch t {
-    | Add => "+"
-    | Sub => "-"
-    | Mul => "*"
-    | Div => "/"
-    | Lt => "<"
-    | Gt => ">"
-    | Le => "<="
-    | Ge => ">="
-    | Ne => "!="
-    | Eq => "eq?"
+    | Arith(Add) => "+"
+    | Arith(Sub) => "-"
+    | Arith(Mul) => "*"
+    | Arith(Div) => "/"
+    | Cmp(Lt) => "<"
+    | Cmp(Gt) => ">"
+    | Cmp(Le) => "<="
+    | Cmp(Ge) => ">="
+    | Cmp(Ne) => "!="
+    | Cmp(Eq) => "eq?"
     | PairNew => "mpair"
     | PairRefLeft => "left"
     | PairRefRight => "right"
@@ -546,16 +550,20 @@ module Parser = {
 
     | Atom(atom) => {ann, it: Exp(expr_of_atom(atom))}
     | Sequence(List, _b, list{{it: Atom(Sym("next")), ann: _}, ...es}) => makeAppPrm(ann, Next, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) => makeAppPrm(ann, Add, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) => makeAppPrm(ann, Sub, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) => makeAppPrm(ann, Mul, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("/")), ann: _}, ...es}) => makeAppPrm(ann, Div, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<")), ann: _}, ...es}) => makeAppPrm(ann, Lt, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("=")), ann: _}, ...es}) => makeAppPrm(ann, Eq, es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">")), ann: _}, ...es}) => makeAppPrm(ann, Gt, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => makeAppPrm(ann, Le, es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => makeAppPrm(ann, Ge, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => makeAppPrm(ann, Ne, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Arith(Add), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Arith(Sub), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Arith(Mul), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("/")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Arith(Div), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("<")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Lt), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Eq), es)
+    | Sequence(List, _b, list{{it: Atom(Sym(">")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Gt), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Le), es)
+    | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Ge), es)
+    | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Ne), es)
     | Sequence(List, _b, list{{it: Atom(Sym("pair")), ann: _}, ...es}) =>
       makeAppPrm(ann, PairNew, es)
     | Sequence(List, _b, list{{it: Atom(Sym("mpair")), ann: _}, ...es}) =>
@@ -582,7 +590,8 @@ module Parser = {
       makeAppPrm(ann, VecLen, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vlen")), ann: _}, ...es}) =>
       makeAppPrm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => makeAppPrm(ann, Eq, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Cmp(Eq), es)
     | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => makeAppPrm(ann, Err, es)
     | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => makeAppPrm(ann, Not, es)
     | Sequence(List, _b, list{{it: Atom(Sym("print")), ann: _}, ...es}) =>
@@ -993,12 +1002,197 @@ module JSPrinter = {
     `${e}${listToString(es)}`
   }
 
-  let funLike = (op, x, xs, e) => {
-    if String.contains(e, '\n') {
-      `${op} ${exprAppToString(x, xs)} {${indentBlock(e, 2)}}`
-    } else {
-      `${op} ${exprAppToString(x, xs)} { ${e} }`
+  let printingTopLevel = ref(false)
+
+  let consumeContext = (e, context) => {
+    switch context {
+    | Expr(_) => e
+    | Stat(ctx) =>
+      switch ctx {
+      | Step => `${e};`
+      | Return => `return ${e};`
+      | TopLevel =>
+        if printingTopLevel.contents {
+          `console.log(${e});`
+        } else {
+          e
+        }
+      }
     }
+  }
+
+  let consumeContextWrap = (e: string, context: context) => {
+    switch context {
+    | Expr(true) => `(${e})`
+    | _ => consumeContext(e, context)
+    }
+  }
+
+  let consumeContextVoid = (e, context) => {
+    switch context {
+    | Stat(Return) => `${e};\nreturn`
+    | Stat(TopLevel) => e
+    | _ => consumeContext(e, context)
+    }
+  }
+
+  let consumeContextStat = (e: string, context: context) => {
+    switch context {
+    | Expr(_) => raisePrintError(`${e} can't be used as a expression in JavaScript`)
+    | _ => consumeContextVoid(e, context)
+    }
+  }
+
+  let exprAppPrmToString = (
+    p: Primitive.t,
+    es: list<bool => expression<printAnn>>,
+    context: context,
+  ) => {
+    switch (p, es) {
+    | (Arith(o), es) => {
+        let os = switch o {
+        | Add => "+"
+        | Sub => "-"
+        | Mul => "*"
+        | Div => "/"
+        }
+        let es = es->List.map(e => e(true))
+        {
+          ann: String.concat(` ${os} `, es->List.map(e => e.ann.print))->consumeContextWrap(
+            context,
+          ),
+          it: (Arith(o), es),
+        }
+      }
+    | (Cmp(o), list{e1, e2}) => {
+        let os = switch o {
+        | Lt => "<"
+        | Eq => "=="
+        | Gt => ">"
+        | Le => "<="
+        | Ge => ">="
+        | Ne => "!="
+        }
+        let e1 = e1(true)
+        let e2 = e2(true)
+        {
+          ann: `${e1.ann.print} ${os} ${e2.ann.print}`->consumeContextWrap(context),
+          it: (Cmp(o), list{e1, e2}),
+        }
+      }
+    | (PairNew, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: `[ ${e1.ann.print}, ${e2.ann.print}]`->consumeContext(context),
+          it: (PairNew, list{e1, e2}),
+        }
+      }
+    | (PairRefLeft, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: `${e1.ann.print}[0]`->consumeContext(context),
+          it: (PairRefLeft, list{e1}),
+        }
+      }
+    | (PairRefRight, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: `${e1.ann.print}[1]`->consumeContext(context),
+          it: (PairRefRight, list{e1}),
+        }
+      }
+    | (PairSetLeft, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: `${e1.ann.print}[0] = ${e2.ann.print}`->consumeContextStat(context),
+          it: (PairSetLeft, list{e1, e2}),
+        }
+      }
+    | (PairSetRight, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: `${e1.ann.print}[1] = ${e2.ann.print}`->consumeContextStat(context),
+          it: (PairSetRight, list{e1, e2}),
+        }
+      }
+    | (VecNew, es) => {
+        let es = es->List.map(e => e(false))
+        {
+          ann: `[${String.concat(`, `, es->List.map(e => e.ann.print))->consumeContext(context)}]`,
+          it: (VecNew, es),
+        }
+      }
+    | (VecRef, list{e1, e2}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        {
+          ann: `${e1.ann.print}[${e2.ann.print}]`->consumeContext(context),
+          it: (VecRef, list{e1, e2}),
+        }
+      }
+    | (VecSet, list{e1, e2, e3}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        let e3 = e3(false)
+        {
+          ann: `${e1.ann.print}[${e2.ann.print}] = ${e3.ann.print}`->consumeContextStat(context),
+          it: (VecSet, list{e1, e2, e3}),
+        }
+      }
+    | (VecLen, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: `${e1.ann.print}.length`->consumeContext(context),
+          it: (VecLen, list{e1}),
+        }
+      }
+    | (Err, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: `throw ${e1.ann.print}`->consumeContextWrap(context),
+          it: (Err, list{e1}),
+        }
+      }
+    | (Not, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: `!${e1.ann.print}`->consumeContextWrap(context),
+          it: (Not, list{e1}),
+        }
+      }
+    | (Print, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: `print(${e1.ann.print})`->consumeContextVoid(context),
+          it: (Print, list{e1}),
+        }
+      }
+    | (Next, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: `${e1.ann.print}.next()`->consumeContextVoid(context),
+          it: (Next, list{e1}),
+        }
+      }
+    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | _ =>
+      raisePrintError(
+        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${List.length(
+            es,
+          ) |> Int.toString} parameter(s).`,
+      )
+    }
+  }
+
+  let funLike = (op, x, xs, e) => {
+    // if String.contains(e, '\n') {
+      `${op} ${exprAppToString(x, xs)} {${indentBlock(e, 2)}\n}`
+    // } else {
+    //   `${op} ${exprAppToString(x, xs)} { ${e} }`
+    // }
   }
 
   let defvarToString = (x, e) => {
@@ -1056,25 +1250,6 @@ module JSPrinter = {
     }
   }
 
-  let printingTopLevel = ref(false)
-
-  let consumeContext = (e, context) => {
-    switch context {
-    | Expr(_) => e
-    | Stat(ctx) =>
-      switch ctx {
-      | Step => e
-      | Return => `return ${e}`
-      | TopLevel =>
-        if printingTopLevel.contents {
-          `console.log(${e})`
-        } else {
-          e
-        }
-      }
-    }
-  }
-
   let rec printExp = ({it, ann: srcrange}, context) => {
     let e: annotated<expressionNode<printAnn>, string> = switch it {
     | Con(c) => {
@@ -1083,13 +1258,13 @@ module JSPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: x,
+        ann: x->consumeContext(context),
       }
     | Set(x, e) => {
         let x = symbolToString(x)
         let e: expression<printAnn> = e->printExp(Expr(false))
         {
-          ann: exprSetToString(x.ann.print, e.ann.print),
+          ann: exprSetToString(x.ann.print, e.ann.print)->consumeContextStat(context),
           it: Set(x, e),
         }
       }
@@ -1097,7 +1272,7 @@ module JSPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print),
+          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(context),
           it: Lam(xs, b),
         }
       }
@@ -1105,29 +1280,30 @@ module JSPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print),
+          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(context),
           it: Lam(xs, b),
         }
       }
     | Yield(e) => {
         let e = e->printExp(Expr(false))
         {
-          ann: exprYieldToString(e.ann.print),
+          ann: exprYieldToString(e.ann.print)->consumeContextWrap(context),
           it: Yield(e),
         }
       }
     | AppPrm(p, es) => {
-        let es = es->List.map(e => e->printExp(Expr(false)))
+        let es = es->List.map((e, b) => e->printExp(Expr(b)))
+        let { ann: print, it: (p, es) } = exprAppPrmToString(p, es, context)
         {
-          ann: exprAppToString(Primitive.toString(p), es->List.map(e => e.ann.print)),
           it: AppPrm(p, es),
+          ann: print
         }
       }
     | App(e, es) => {
         let e = e->printExp(Expr(false))
         let es = es->List.map(e => e->printExp(Expr(false)))
         {
-          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print)),
+          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print))->consumeContext(context),
           it: App(e, es),
         }
       }
@@ -1139,7 +1315,7 @@ module JSPrinter = {
           let xes = xes->List.map(xeToString)
           let b = b->printBlock(ctx)
           {
-            ann: String.concat("\n", list{...xes->List.map(xe => xe.ann.print), b.ann.print}),
+            ann: `{\n${indentBlock(String.concat("\n", list{...xes->List.map(xe => xe.ann.print), b.ann.print}), 2)}\n}`,
             it: Letrec(xes, b),
           }
         }
@@ -1168,7 +1344,7 @@ module JSPrinter = {
         let e_thn = e_thn->printExp(Expr(true))
         let e_els = e_els->printExp(Expr(true))
         {
-          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print),
+          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print)->consumeContextWrap(context),
           it: If(e_cnd, e_thn, e_els),
         }
       }
@@ -1176,7 +1352,7 @@ module JSPrinter = {
         let es = es->List.map(e => e->printExp(Expr(false)))
         let e = e->printExp(Expr(false))
         {
-          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print),
+          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print)->consumeContext(context),
           it: Bgn(es, e),
         }
       }
@@ -1245,9 +1421,7 @@ module JSPrinter = {
       it: (ts, e),
     }
   }
-  and printTerm = ({ann: srcrange, it: t}: term<srcrange>, ctx): term<
-    printAnn,
-  > => {
+  and printTerm = ({ann: srcrange, it: t}: term<srcrange>, ctx): term<printAnn> => {
     switch t {
     | Exp(it) => printExp({ann: srcrange, it}, Stat(ctx)) |> mapAnn(v => Exp(v))
     | Def(it) => defToString({ann: srcrange, it}) |> mapAnn(v => Def(v))
@@ -1272,7 +1446,7 @@ module JSPrinter = {
 
   let printProgramFull = (insertPrintTopLevel, {ann: srcrange, it: ts}) => {
     printingTopLevel := insertPrintTopLevel
-    let ts = ts->List.map(t=> t->printTerm(TopLevel))
+    let ts = ts->List.map(t => t->printTerm(TopLevel))
     let print = String.concat("\n", ts->List.map(t => t.ann.print))
     {
       ann: {print, srcrange},
