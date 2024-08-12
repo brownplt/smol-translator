@@ -1656,6 +1656,10 @@ function printProgramFull(_insertPrintTopLevel, param) {
         };
 }
 
+function printProgram(insertPrintTopLevel, p) {
+  return printProgramFull(insertPrintTopLevel, p).ann.print;
+}
+
 function constantToString$1(c) {
   if (typeof c === "number") {
     if (c === /* Uni */0) {
@@ -2224,6 +2228,144 @@ function printProgramFull$1(insertPrintTopLevel, param) {
         };
 }
 
+function printProgram$1(insertPrintTopLevel, p) {
+  return printProgramFull$1(insertPrintTopLevel, p).ann.print;
+}
+
+function toString$5(t) {
+  if (t.TAG === /* ParseError */0) {
+    return toString$4(t._0);
+  } else {
+    return t._0;
+  }
+}
+
+var TranslateError = {
+  toString: toString$5
+};
+
+var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
+
+function translateOutput(src) {
+  var output;
+  try {
+    output = parseOutput(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printOutput$1(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram(printTopLevel, src) {
+  var p;
+  try {
+    p = parseProgram(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$1(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgramFull(printTopLevel, src) {
+  var p;
+  try {
+    p = parseProgram(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgramFull$1(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var JSTranslator = {
+  translateOutput: translateOutput,
+  translateProgram: translateProgram,
+  translateProgramFull: translateProgramFull
+};
+
 var Parser = {
   parseOutput: parseOutput,
   parseProgram: parseProgram
@@ -2231,12 +2373,14 @@ var Parser = {
 
 var SMoLPrinter = {
   printOutput: printOutput,
-  printProgramFull: printProgramFull
+  printProgramFull: printProgramFull,
+  printProgram: printProgram
 };
 
 var JSPrinter = {
   printOutput: printOutput$1,
-  printProgramFull: printProgramFull$1
+  printProgramFull: printProgramFull$1,
+  printProgram: printProgram$1
 };
 
 export {
@@ -2250,5 +2394,8 @@ export {
   SMoLPrintError ,
   SMoLPrinter ,
   JSPrinter ,
+  TranslateError ,
+  SMoLTranslateError ,
+  JSTranslator ,
 }
 /* No side effect */

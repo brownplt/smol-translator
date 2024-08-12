@@ -121,6 +121,7 @@ type printAnn = {srcrange: srcrange, print: string}
 module type Printer = {
   let printOutput: output => string
   let printProgramFull: (bool, program<srcrange>) => program<printAnn>
+  let printProgram: (bool, program<srcrange>) => string
 }
 
 module SMoLPrinter: Printer
@@ -129,19 +130,19 @@ module JSPrinter: Printer
 // module ScalaPrinter: Printer
 // module CommonPrinter: Printer
 
-// module TranslateError: {
-//   type t =
-//     | ParseError(ParseError.t)
-//     | PrintError(string)
-//   let toString: t => string
-// }
-// type exn += SMoLTranslateError(TranslateError.t)
-// module type Translator = {
-//   let translateOutput: string => string
-//   let translateProgram: (bool, string) => string
-//   let translateProgramFull: (bool, string) => program<printAnn>
-// }
+module TranslateError: {
+  type t =
+    | ParseError(ParseError.t)
+    | PrintError(string)
+  let toString: t => string
+}
+type exn += SMoLTranslateError(TranslateError.t)
+module type Translator = {
+  let translateOutput: string => string
+  let translateProgram: (bool, string) => string
+  let translateProgramFull: (bool, string) => program<printAnn>
+}
 // module PYTranslator: Translator
-// module JSTranslator: Translator
+module JSTranslator: Translator
 // module ScalaTranslator: Translator
 // module CommonTranslator: Translator

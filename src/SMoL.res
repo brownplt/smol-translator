@@ -638,6 +638,7 @@ type printAnn = {srcrange: srcrange, print: string}
 module type Printer = {
   let printOutput: output => string
   let printProgramFull: (bool, program<srcrange>) => program<printAnn>
+  let printProgram: (bool, program<srcrange>) => string
 }
 
 let indent = (s, i) => {
@@ -944,6 +945,10 @@ module SMoLPrinter = {
       ann: {print, srcrange},
       it: ts,
     }
+  }
+
+  let printProgram = (insertPrintTopLevel, p) => {
+    printProgramFull(insertPrintTopLevel, p).ann.print
   }
 }
 
@@ -1273,6 +1278,10 @@ module JSPrinter = {
       ann: {print, srcrange},
       it: ts,
     }
+  }
+
+  let printProgram = (insertPrintTopLevel, p) => {
+    printProgramFull(insertPrintTopLevel, p).ann.print
   }
 }
 
@@ -2562,24 +2571,25 @@ module JSPrinter = {
 //   }
 // }
 
-// module type Translator = {
-//   // print terms, interleaved with whitespace
-//   let translateTerms: string => string
-//   // print runnable full programs
-//   let translateProgram: (bool, string) => string
-// }
-// module TranslateError = {
-//   type t =
-//     | ParseError(ParseError.t)
-//     | PrintError(string)
-//   let toString = t => {
-//     switch t {
-//     | ParseError(err) => ParseError.toString(err)
-//     | PrintError(err) => err
-//     }
-//   }
-// }
-// exception SMoLTranslateError(TranslateError.t)
+module type Translator = {
+  // print terms, interleaved with whitespace
+  let translateOutput: string => string
+  // print runnable full programs
+  let translateProgram: (bool, string) => string
+  let translateProgramFull: (bool, string) => program<printAnn>
+}
+module TranslateError = {
+  type t =
+    | ParseError(ParseError.t)
+    | PrintError(string)
+  let toString = t => {
+    switch t {
+    | ParseError(err) => ParseError.toString(err)
+    | PrintError(err) => err
+    }
+  }
+}
+exception SMoLTranslateError(TranslateError.t)
 
 // module PYTranslator = {
 //   let translateTerms = src => {
@@ -2604,28 +2614,38 @@ module JSPrinter = {
 //   }
 // }
 
-// module JSTranslator = {
-//   let translateTerms = src => {
-//     switch Parser.parseTerms(src) {
-//     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-//     | ts =>
-//       switch String.concat(" ", ts->List.map(JSPrinter.printTerm)) {
-//       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-//       | dst => dst
-//       }
-//     }
-//   }
-//   let translateProgram = (printTopLevel, src) => {
-//     switch Parser.parseProgram(src) {
-//     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-//     | p =>
-//       switch JSPrinter.printProgram(printTopLevel, p) {
-//       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-//       | dst => dst
-//       }
-//     }
-//   }
-// }
+module JSTranslator = {
+  let translateOutput = src => {
+    switch Parser.parseOutput(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | output =>
+      switch JSPrinter.printOutput(output) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | output => output
+      }
+    }
+  }
+  let translateProgram = (printTopLevel, src) => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p =>
+      switch JSPrinter.printProgram(printTopLevel, p) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | p => p
+      }
+    }
+  }
+  let translateProgramFull = (printTopLevel, src) => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p =>
+      switch JSPrinter.printProgramFull(printTopLevel, p) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | p => p
+      }
+    }
+  }
+}
 
 // module ScalaTranslator = {
 //   let translateTerms = src => {
