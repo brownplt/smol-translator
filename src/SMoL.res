@@ -1499,47 +1499,46 @@ module PYPrinter = {
   // - If the variable is global, we need to declare it global
   // - If the variable is built-in, we proceed normally
 
+  module RefDecl = {
+    type t =
+      | Nonlocal
+      | Global
+    let toString = x => {
+      switch x {
+      | Nonlocal => "nonlocal"
+      | Global => "global"
+      }
+    }
+  }
+  open RefDecl
+
   type stringSet = HashSet.String.t
+  type stringMap = HashMap.String.t<RefDecl.t>
 
   type rec env =
     | G(stringSet)
-    | E(stringSet, env)
+    | E(stringSet, env, stringMap)
 
-  type refKind =
-    | Local
-    | Nonlocal
-    | Global
-    | Unknown
-
-  let kindOfRef = (env: env, x: string) => {
+  let refMut = (env: env, x: string) => {
     switch env {
-    | G(ss) =>
-      if HashSet.String.has(ss, x) {
-        Local
-      } else {
-        Unknown
-      }
-    | E(ss, env) => {
+    | G(_ss) => ()
+    | E(ss, env, decl) => {
         let rec k = (env, x) => {
           switch env {
           | G(ss) =>
             if HashSet.String.has(ss, x) {
-              Global
-            } else {
-              Unknown
+              HashMap.String.set(decl, x, Global)
             }
-          | E(ss, env) =>
+          | E(ss, env, _decl) =>
             if HashSet.String.has(ss, x) {
-              Nonlocal
+              HashMap.String.set(decl, x, Nonlocal)
             } else {
               k(env, x)
             }
           }
         }
 
-        if HashSet.String.has(ss, x) {
-          Local
-        } else {
+        if !HashSet.String.has(ss, x) {
           k(env, x)
         }
       }
@@ -1547,7 +1546,8 @@ module PYPrinter = {
   }
 
   let extend = (ss, env) => {
-    E(ss->List.toArray->HashSet.String.fromArray, env)
+    let refs = HashMap.String.make(~hintSize=0)
+    (refs, E(ss->List.toArray->HashSet.String.fromArray, env, refs))
   }
 
   let xsOfTerm = t => {
@@ -1848,6 +1848,7 @@ module PYPrinter = {
         ann: x->escapeName->consumeContext(context),
       }
     | Set(x, e) => {
+        refMut(env, x.it)
         let x = symbolToString(x)
         let e: expression<printAnn> = e->printExp(Expr(false), env)
         {
@@ -1855,24 +1856,26 @@ module PYPrinter = {
           it: Set(x, e),
         }
       }
-    | Lam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        switch b.it {
-        | (list{}, e) => {
-            let e = e->printExp(Expr(false), env)
+    | Lam(xs, b) =>
+      switch b.it {
+      | (list{}, e) => {
+          let xs = xs->List.map(symbolToString)
+          let (refs, env) = extend(xs->List.map(x => x.it), env)
+          let e = e->printExp(Expr(false), env)
+          if HashMap.String.isEmpty(refs) {
             {
               ann: exprLamToString(xs->List.map(x => x.ann.print), e.ann.print)->consumeContextWrap(
                 context,
               ),
               it: Lam(xs, {ann: {print: e.ann.print, srcrange: b.ann}, it: (list{}, e)}),
             }
+          } else {
+            raisePrintError("Can't mutate variable inside Python lambda")
           }
-        | _ => raisePrintError("In Python, a lambda body must contains exactly one expression")
         }
+      | _ => raisePrintError("In Python, a lambda body must contains exactly one expression")
       }
-    | GLam(_xs, _b) => {
-        raisePrintError("In Python, lambdas can't be generators.")
-      }
+    | GLam(_xs, _b) => raisePrintError("In Python, lambdas can't be generators.")
     | Yield(e) => {
         let e = e->printExp(Expr(false), env)
         {
@@ -1959,7 +1962,7 @@ module PYPrinter = {
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(Return, env)
+        let b = b->printBody(Return, xs->List.map(x => x.it), env)
         {
           ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
           it: Fun(f, xs, b),
@@ -1968,7 +1971,7 @@ module PYPrinter = {
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(Return, env)
+        let b = b->printBody(Return, xs->List.map(x => x.it), env)
         {
           ann: defgenToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
           it: GFun(f, xs, b),
@@ -2001,11 +2004,17 @@ module PYPrinter = {
   }
   and printBody = ({ann: srcrange, it: b}, context: statContext, args, env) => {
     let (ts, e) = b
-    let xs = list{...args, ...ts->List.map(xsOfTerm)->List.flatten}
-    let env = E(HashSet.String.fromArray(List.toArray(xs)), env)
+    let (refs, env) = extend(list{...args, ...ts->List.map(xsOfTerm)->List.flatten}, env)
     let ts = ts->List.map(t => t->printTerm(Step, env))
     let e = e->printExp(Stat(context), env)
-    let print = String.concat("\n", list{...ts->List.map(t => t.ann.print), e.ann.print})
+    let print = String.concat(
+      "\n",
+      list{
+        ...refs->HashMap.String.toArray->Js.Array2.map(((x, r)) => `${r -> RefDecl.toString} ${x}`)->List.fromArray,
+        ...ts->List.map(t => t.ann.print),
+        e.ann.print,
+      },
+    )
     {
       ann: {print, srcrange},
       it: (ts, e),

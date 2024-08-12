@@ -8,6 +8,7 @@ import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
+import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
@@ -2667,6 +2668,45 @@ function printProgram$1(insertPrintTopLevel, p) {
   return printProgramFull$1(insertPrintTopLevel, p).ann.print;
 }
 
+function refMut(env, x) {
+  if (env.TAG === /* G */0) {
+    return ;
+  }
+  var decl = env._2;
+  if (!Belt_HashSetString.has(env._0, x)) {
+    var _env = env._1;
+    while(true) {
+      var env$1 = _env;
+      if (env$1.TAG === /* G */0) {
+        if (Belt_HashSetString.has(env$1._0, x)) {
+          return Belt_HashMapString.set(decl, x, /* Global */1);
+        } else {
+          return ;
+        }
+      }
+      if (Belt_HashSetString.has(env$1._0, x)) {
+        return Belt_HashMapString.set(decl, x, /* Nonlocal */0);
+      }
+      _env = env$1._1;
+      continue ;
+    };
+  }
+  
+}
+
+function extend(ss, env) {
+  var refs = Belt_HashMapString.make(0);
+  return [
+          refs,
+          {
+            TAG: /* E */1,
+            _0: Belt_HashSetString.fromArray(Belt_List.toArray(ss)),
+            _1: env,
+            _2: refs
+          }
+        ];
+}
+
 function xsOfTerm(t) {
   var match = t.it;
   if (match.TAG === /* Def */0) {
@@ -3224,7 +3264,9 @@ function printExp$2(param, context, env) {
         };
         break;
     case /* Set */2 :
-        var x$1 = symbolToString$2(it._0);
+        var x$1 = it._0;
+        refMut(env, x$1.it);
+        var x$2 = symbolToString$2(x$1);
         var e$1 = printExp$2(it._1, {
               TAG: /* Expr */0,
               _0: false
@@ -3232,15 +3274,14 @@ function printExp$2(param, context, env) {
         e = {
           it: {
             TAG: /* Set */2,
-            _0: x$1,
+            _0: x$2,
             _1: e$1
           },
-          ann: consumeContextStat$1(defvarLike$2("", x$1.ann.print, e$1.ann.print), context)
+          ann: consumeContextStat$1(defvarLike$2("", x$2.ann.print, e$1.ann.print), context)
         };
         break;
     case /* Lam */3 :
         var b = it._1;
-        var xs = Belt_List.map(it._0, symbolToString$2);
         var match = b.it;
         if (match[0]) {
           throw {
@@ -3249,29 +3290,41 @@ function printExp$2(param, context, env) {
                 Error: new Error()
               };
         }
+        var xs = Belt_List.map(it._0, symbolToString$2);
+        var match$1 = extend(Belt_List.map(xs, (function (x) {
+                    return x.it;
+                  })), env);
         var e$2 = printExp$2(match[1], {
               TAG: /* Expr */0,
               _0: false
-            }, env);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs,
-            _1: {
-              it: [
-                /* [] */0,
-                e$2
-              ],
-              ann: {
-                srcrange: b.ann,
-                print: e$2.ann.print
+            }, match$1[1]);
+        if (Belt_HashMapString.isEmpty(match$1[0])) {
+          e = {
+            it: {
+              TAG: /* Lam */3,
+              _0: xs,
+              _1: {
+                it: [
+                  /* [] */0,
+                  e$2
+                ],
+                ann: {
+                  srcrange: b.ann,
+                  print: e$2.ann.print
+                }
               }
-            }
-          },
-          ann: consumeContextWrap$1(exprLamToString$2(Belt_List.map(xs, (function (x) {
-                          return x.ann.print;
-                        })), e$2.ann.print), context)
-        };
+            },
+            ann: consumeContextWrap$1(exprLamToString$2(Belt_List.map(xs, (function (x) {
+                            return x.ann.print;
+                          })), e$2.ann.print), context)
+          };
+        } else {
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Can't mutate variable inside Python lambda",
+                Error: new Error()
+              };
+        }
         break;
     case /* Let */4 :
         throw {
@@ -3292,15 +3345,15 @@ function printExp$2(param, context, env) {
                             _0: b
                           }, env);
               }));
-        var match$1 = exprAppPrmToString$1(it._0, es, context);
-        var match$2 = match$1.it;
+        var match$2 = exprAppPrmToString$1(it._0, es, context);
+        var match$3 = match$2.it;
         e = {
           it: {
             TAG: /* AppPrm */6,
-            _0: match$2[0],
-            _1: match$2[1]
+            _0: match$3[0],
+            _1: match$3[1]
           },
-          ann: match$1.ann
+          ann: match$2.ann
         };
         break;
     case /* App */7 :
@@ -3435,6 +3488,78 @@ function printExp$2(param, context, env) {
         };
 }
 
+function defToString$1(param, env) {
+  var d = param.it;
+  var d$1;
+  switch (d.TAG | 0) {
+    case /* Var */0 :
+        var x = symbolToString$2(d._0);
+        var e = printExp$2(d._1, {
+              TAG: /* Expr */0,
+              _0: false
+            }, env);
+        d$1 = {
+          it: {
+            TAG: /* Var */0,
+            _0: x,
+            _1: e
+          },
+          ann: defvarToString$1(x.ann.print, e.ann.print)
+        };
+        break;
+    case /* Fun */1 :
+        var f = symbolToString$2(d._0);
+        var xs = Belt_List.map(d._1, symbolToString$2);
+        var b = printBody(d._2, /* Return */1, Belt_List.map(xs, (function (x) {
+                    return x.it;
+                  })), env);
+        d$1 = {
+          it: {
+            TAG: /* Fun */1,
+            _0: f,
+            _1: xs,
+            _2: b
+          },
+          ann: deffunToString$2(f.ann.print, Belt_List.map(xs, (function (x) {
+                      return x.ann.print;
+                    })), b.ann.print)
+        };
+        break;
+    case /* GFun */2 :
+        var f$1 = symbolToString$2(d._0);
+        var xs$1 = Belt_List.map(d._1, symbolToString$2);
+        var b$1 = printBody(d._2, /* Return */1, Belt_List.map(xs$1, (function (x) {
+                    return x.it;
+                  })), env);
+        d$1 = {
+          it: {
+            TAG: /* GFun */2,
+            _0: f$1,
+            _1: xs$1,
+            _2: b$1
+          },
+          ann: defgenToString$2(f$1.ann.print, Belt_List.map(xs$1, (function (x) {
+                      return x.ann.print;
+                    })), b$1.ann.print)
+        };
+        break;
+    
+  }
+  return {
+          it: d$1.it,
+          ann: {
+            srcrange: param.ann,
+            print: d$1.ann
+          }
+        };
+}
+
+function obToString$1(ob, ctx, env) {
+  return Belt_Option.map(ob, (function (b) {
+                return printBlock$2(b, ctx, env);
+              }));
+}
+
 function printBlock$2(param, context, env) {
   var b = param.it;
   var ts = b[0];
@@ -3474,10 +3599,45 @@ function printBlock$2(param, context, env) {
         };
 }
 
-function obToString$1(ob, ctx, env) {
-  return Belt_Option.map(ob, (function (b) {
-                return printBlock$2(b, ctx, env);
-              }));
+function printBody(param, context, args, env) {
+  var b = param.it;
+  var ts = b[0];
+  var match = extend(Belt_List.concatMany([
+            args,
+            Belt_List.flatten(Belt_List.map(ts, xsOfTerm))
+          ]), env);
+  var env$1 = match[1];
+  var ts$1 = Belt_List.map(ts, (function (t) {
+          return printTerm$2(t, /* Step */0, env$1);
+        }));
+  var e = printExp$2(b[1], {
+        TAG: /* Stat */1,
+        _0: context
+      }, env$1);
+  var print = $$String.concat("\n", Belt_List.concatMany([
+            Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
+                      return "" + (
+                              param[1] ? "global" : "nonlocal"
+                            ) + " " + param[0] + "";
+                    })),
+            Belt_List.map(ts$1, (function (t) {
+                    return t.ann.print;
+                  })),
+            {
+              hd: e.ann.print,
+              tl: /* [] */0
+            }
+          ]));
+  return {
+          it: [
+            ts$1,
+            e
+          ],
+          ann: {
+            srcrange: param.ann,
+            print: print
+          }
+        };
 }
 
 function printTerm$2(param, ctx, env) {
@@ -3507,68 +3667,6 @@ function printTerm$2(param, ctx, env) {
                     _0: ctx
                   }, env));
   }
-}
-
-function defToString$1(param, env) {
-  var d = param.it;
-  var d$1;
-  switch (d.TAG | 0) {
-    case /* Var */0 :
-        var x = symbolToString$2(d._0);
-        var e = printExp$2(d._1, {
-              TAG: /* Expr */0,
-              _0: false
-            }, env);
-        d$1 = {
-          it: {
-            TAG: /* Var */0,
-            _0: x,
-            _1: e
-          },
-          ann: defvarToString$1(x.ann.print, e.ann.print)
-        };
-        break;
-    case /* Fun */1 :
-        var f = symbolToString$2(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$2);
-        var b = printBlock$2(d._2, /* Return */1, env);
-        d$1 = {
-          it: {
-            TAG: /* Fun */1,
-            _0: f,
-            _1: xs,
-            _2: b
-          },
-          ann: deffunToString$2(f.ann.print, Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
-        };
-        break;
-    case /* GFun */2 :
-        var f$1 = symbolToString$2(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$2);
-        var b$1 = printBlock$2(d._2, /* Return */1, env);
-        d$1 = {
-          it: {
-            TAG: /* GFun */2,
-            _0: f$1,
-            _1: xs$1,
-            _2: b$1
-          },
-          ann: defgenToString$2(f$1.ann.print, Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$1.ann.print)
-        };
-        break;
-    
-  }
-  return {
-          it: d$1.it,
-          ann: {
-            srcrange: param.ann,
-            print: d$1.ann
-          }
-        };
 }
 
 function printOutput$2(os) {
