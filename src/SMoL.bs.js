@@ -1700,6 +1700,19 @@ function printProgram(insertPrintTopLevel, p) {
   return printProgramFull(insertPrintTopLevel, p).ann.print;
 }
 
+function escapeName(x) {
+  var re = /-./g;
+  var matchFn = function (matchPart, _offset, _wholeString) {
+    return matchPart.substring(1).toUpperCase();
+  };
+  var x$1 = x.replace(re, matchFn);
+  if (x$1 === "var") {
+    return "$var";
+  } else {
+    return x$1;
+  }
+}
+
 function constantToString$1(c) {
   if (typeof c === "number") {
     if (c === /* Uni */0) {
@@ -1762,7 +1775,7 @@ function consumeContext(e, context) {
         if (printingTopLevel.contents) {
           return "console.log(" + e + ");";
         } else {
-          return e;
+          return "" + e + ";";
         }
     
   }
@@ -1784,9 +1797,9 @@ function consumeContextVoid(e, context) {
     case /* Step */0 :
         return consumeContext(e, context);
     case /* Return */1 :
-        return "" + e + ";\nreturn";
+        return "" + e + ";\nreturn;";
     case /* TopLevel */2 :
-        return e;
+        return "" + e + ";";
     
   }
 }
@@ -1822,7 +1835,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext("[ " + e1.ann.print + ", " + e2.ann.print + "]", context)
+                      ann: consumeContext("[ " + e1.ann.print + ", " + e2.ann.print + " ]", context)
                     };
             }
             
@@ -1913,9 +1926,9 @@ function exprAppPrmToString(p, es, context) {
                     /* VecNew */5,
                     es$1
                   ],
-                  ann: "[" + consumeContext($$String.concat(", ", Belt_List.map(es$1, (function (e) {
+                  ann: consumeContext("[ " + $$String.concat(", ", Belt_List.map(es$1, (function (e) {
                                   return e.ann.print;
-                                }))), context) + "]"
+                                }))) + " ]", context)
                 };
       case /* VecRef */6 :
           if (es) {
@@ -2150,12 +2163,16 @@ function funLike(op, x, xs, e) {
   return "" + op + " " + exprAppToString(x, xs) + " {" + indentBlock(e, 2) + "\n}";
 }
 
+function defvarToString(x, e) {
+  return "" + defvarLike$1("let ", x, e) + ";";
+}
+
 function deffunToString$1(f, xs, b) {
-  return funLike("function", f, xs, b);
+  return "" + funLike("function", f, xs, b) + "";
 }
 
 function defgenToString$1(f, xs, b) {
-  return funLike("function*", f, xs, b);
+  return "" + funLike("function*", f, xs, b) + "";
 }
 
 function exprLamToString$1(xs, b) {
@@ -2207,7 +2224,7 @@ function symbolToString$1(param) {
           it: it,
           ann: {
             srcrange: param.ann,
-            print: it
+            print: escapeName(it)
           }
         };
 }
@@ -2233,7 +2250,7 @@ function printExp$1(param, context) {
             TAG: /* Ref */1,
             _0: x
           },
-          ann: consumeContext(x, context)
+          ann: consumeContext(escapeName(x), context)
         };
         break;
     case /* Set */2 :
@@ -2472,7 +2489,7 @@ function defToString(param) {
             _0: x,
             _1: e
           },
-          ann: defvarLike$1("let ", x.ann.print, e.ann.print)
+          ann: defvarToString(x.ann.print, e.ann.print)
         };
         break;
     case /* Fun */1 :
@@ -2525,7 +2542,7 @@ function xeToString$1(param) {
         TAG: /* Expr */0,
         _0: false
       });
-  var print = defvarLike$1("let ", x.ann.print, e.ann.print);
+  var print = defvarToString(x.ann.print, e.ann.print);
   return {
           it: [
             x,
@@ -2609,9 +2626,13 @@ function printOutput$1(os) {
       case /* Con */0 :
           return constantToString$1(v._0);
       case /* Lst */1 :
-          return "(" + $$String.concat(" ", Belt_List.map(v._0, p)) + ")";
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Lists are not supported in JavaScript",
+                Error: new Error()
+              };
       case /* Vec */2 :
-          return "#(" + $$String.concat(" ", Belt_List.map(v._0, p)) + ")";
+          return "[ " + $$String.concat(", ", Belt_List.map(v._0, p)) + " ]";
       
     }
   };

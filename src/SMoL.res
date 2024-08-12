@@ -971,6 +971,23 @@ type context =
   | Stat(statContext)
 
 module JSPrinter = {
+
+
+  let escapeName = x => {
+    let re = %re("/-./g")
+    let matchFn = (matchPart, _offset, _wholeString) => {
+      Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
+    }
+    let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
+
+    // add `$` to the beginning of reserved words
+    if x == "var" {
+      "$var"
+    } else {
+      x
+    }
+  }
+
   let constantToString = c => {
     switch c {
     | Uni => "null"
@@ -1015,7 +1032,7 @@ module JSPrinter = {
         if printingTopLevel.contents {
           `console.log(${e});`
         } else {
-          e
+          `${e};`
         }
       }
     }
@@ -1030,8 +1047,8 @@ module JSPrinter = {
 
   let consumeContextVoid = (e, context) => {
     switch context {
-    | Stat(Return) => `${e};\nreturn`
-    | Stat(TopLevel) => e
+    | Stat(Return) => `${e};\nreturn;`
+    | Stat(TopLevel) => `${e};`
     | _ => consumeContext(e, context)
     }
   }
@@ -1084,7 +1101,7 @@ module JSPrinter = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: `[ ${e1.ann.print}, ${e2.ann.print}]`->consumeContext(context),
+          ann: `[ ${e1.ann.print}, ${e2.ann.print} ]`->consumeContext(context),
           it: (PairNew, list{e1, e2}),
         }
       }
@@ -1121,7 +1138,9 @@ module JSPrinter = {
     | (VecNew, es) => {
         let es = es->List.map(e => e(false))
         {
-          ann: `[${String.concat(`, `, es->List.map(e => e.ann.print))->consumeContext(context)}]`,
+          ann: `[ ${String.concat(`, `, es->List.map(e => e.ann.print))} ]`->consumeContext(
+            context,
+          ),
           it: (VecNew, es),
         }
       }
@@ -1189,22 +1208,22 @@ module JSPrinter = {
 
   let funLike = (op, x, xs, e) => {
     // if String.contains(e, '\n') {
-      `${op} ${exprAppToString(x, xs)} {${indentBlock(e, 2)}\n}`
+    `${op} ${exprAppToString(x, xs)} {${indentBlock(e, 2)}\n}`
     // } else {
     //   `${op} ${exprAppToString(x, xs)} { ${e} }`
     // }
   }
 
   let defvarToString = (x, e) => {
-    defvarLike("let ", x, e)
+    `${defvarLike("let ", x, e)};`
   }
 
   let deffunToString = (f, xs, b) => {
-    funLike("function", f, xs, b)
+    `${funLike("function", f, xs, b)}`
   }
 
   let defgenToString = (f, xs, b) => {
-    funLike("function*", f, xs, b)
+    `${funLike("function*", f, xs, b)}`
   }
 
   let exprSetToString = (x, e) => {
@@ -1245,7 +1264,7 @@ module JSPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: it,
+        print: escapeName(it),
       },
     }
   }
@@ -1258,7 +1277,7 @@ module JSPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: x->consumeContext(context),
+        ann: x->escapeName->consumeContext(context),
       }
     | Set(x, e) => {
         let x = symbolToString(x)
@@ -1272,7 +1291,9 @@ module JSPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(context),
+          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(
+            context,
+          ),
           it: Lam(xs, b),
         }
       }
@@ -1280,7 +1301,9 @@ module JSPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(context),
+          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(
+            context,
+          ),
           it: Lam(xs, b),
         }
       }
@@ -1293,17 +1316,19 @@ module JSPrinter = {
       }
     | AppPrm(p, es) => {
         let es = es->List.map((e, b) => e->printExp(Expr(b)))
-        let { ann: print, it: (p, es) } = exprAppPrmToString(p, es, context)
+        let {ann: print, it: (p, es)} = exprAppPrmToString(p, es, context)
         {
           it: AppPrm(p, es),
-          ann: print
+          ann: print,
         }
       }
     | App(e, es) => {
         let e = e->printExp(Expr(false))
         let es = es->List.map(e => e->printExp(Expr(false)))
         {
-          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print))->consumeContext(context),
+          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print))->consumeContext(
+            context,
+          ),
           it: App(e, es),
         }
       }
@@ -1315,7 +1340,10 @@ module JSPrinter = {
           let xes = xes->List.map(xeToString)
           let b = b->printBlock(ctx)
           {
-            ann: `{\n${indentBlock(String.concat("\n", list{...xes->List.map(xe => xe.ann.print), b.ann.print}), 2)}\n}`,
+            ann: `{\n${indentBlock(
+                String.concat("\n", list{...xes->List.map(xe => xe.ann.print), b.ann.print}),
+                2,
+              )}\n}`,
             it: Letrec(xes, b),
           }
         }
@@ -1344,7 +1372,11 @@ module JSPrinter = {
         let e_thn = e_thn->printExp(Expr(true))
         let e_els = e_els->printExp(Expr(true))
         {
-          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print)->consumeContextWrap(context),
+          ann: exprIfToString(
+            e_cnd.ann.print,
+            e_thn.ann.print,
+            e_els.ann.print,
+          )->consumeContextWrap(context),
           it: If(e_cnd, e_thn, e_els),
         }
       }
@@ -1352,7 +1384,9 @@ module JSPrinter = {
         let es = es->List.map(e => e->printExp(Expr(false)))
         let e = e->printExp(Expr(false))
         {
-          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print)->consumeContext(context),
+          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print)->consumeContext(
+            context,
+          ),
           it: Bgn(es, e),
         }
       }
@@ -1363,7 +1397,7 @@ module JSPrinter = {
   and defToString = ({ann: srcrange, it: d}: definition<srcrange>): definition<printAnn> => {
     let d = switch d {
     | Var(x, e) => {
-        let x = symbolToString(x)
+        let x = x->symbolToString
         let e = e->printExp(Expr(false))
         {
           ann: defvarToString(x.ann.print, e.ann.print),
@@ -1432,8 +1466,8 @@ module JSPrinter = {
     let rec p = (v: val): string => {
       switch v {
       | Con(c) => constantToString(c)
-      | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
-      | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+      | Lst(_es) => raisePrintError("Lists are not supported in JavaScript")
+      | Vec(es) => `[ ${String.concat(", ", es->List.map(p))} ]`
       }
     }
     os->List.map(o => {
@@ -1485,29 +1519,6 @@ module JSPrinter = {
 
 //   let listToString = ss => {
 //     "(" ++ String.concat(", ", ss) ++ ")"
-//   }
-
-//   let xToString = x => {
-//     let re = %re("/-./g")
-//     let matchFn = (matchPart, _offset, _wholeString) => {
-//       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
-//     }
-//     let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
-
-//     // add `$` to the beginning of reserved words
-//     if x == "var" {
-//       "$var"
-//     } else if x == "+" {
-//       "(function(x, y) { return x + y; })"
-//     } else if x == "-" {
-//       "(function(x, y) { return x - y; })"
-//     } else if x == "*" {
-//       "(function(x, y) { return x * y; })"
-//     } else if x == "/" {
-//       "(function(x, y) { return x / y; })"
-//     } else {
-//       x
-//     }
 //   }
 
 //   let defvarToString = (x: string, e) => {
