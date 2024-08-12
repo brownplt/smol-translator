@@ -8,6 +8,7 @@ import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@lukuangchen/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
+import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
 function toString(t) {
@@ -2666,6 +2667,18 @@ function printProgram$1(insertPrintTopLevel, p) {
   return printProgramFull$1(insertPrintTopLevel, p).ann.print;
 }
 
+function xsOfTerm(t) {
+  var match = t.it;
+  if (match.TAG === /* Def */0) {
+    return {
+            hd: match._0._0.it,
+            tl: /* [] */0
+          };
+  } else {
+    return /* [] */0;
+  }
+}
+
 function escapeName$1(x) {
   var re = /-/g;
   var matchFn = function (_matchPart, _offset, _wholeString) {
@@ -3186,7 +3199,7 @@ function symbolToString$2(param) {
         };
 }
 
-function printExp$2(param, context) {
+function printExp$2(param, context, env) {
   var it = param.it;
   var e;
   switch (it.TAG | 0) {
@@ -3215,7 +3228,7 @@ function printExp$2(param, context) {
         var e$1 = printExp$2(it._1, {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         e = {
           it: {
             TAG: /* Set */2,
@@ -3239,7 +3252,7 @@ function printExp$2(param, context) {
         var e$2 = printExp$2(match[1], {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         e = {
           it: {
             TAG: /* Lam */3,
@@ -3277,7 +3290,7 @@ function printExp$2(param, context) {
                 return printExp$2(e, {
                             TAG: /* Expr */0,
                             _0: b
-                          });
+                          }, env);
               }));
         var match$1 = exprAppPrmToString$1(it._0, es, context);
         var match$2 = match$1.it;
@@ -3294,12 +3307,12 @@ function printExp$2(param, context) {
         var e$3 = printExp$2(it._0, {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         var es$1 = Belt_List.map(it._1, (function (e) {
                 return printExp$2(e, {
                             TAG: /* Expr */0,
                             _0: false
-                          });
+                          }, env);
               }));
         e = {
           it: {
@@ -3317,12 +3330,12 @@ function printExp$2(param, context) {
                 return printExp$2(e, {
                             TAG: /* Expr */0,
                             _0: false
-                          });
+                          }, env);
               }));
         var e$4 = printExp$2(it._1, {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         e = {
           it: {
             TAG: /* Bgn */8,
@@ -3338,15 +3351,15 @@ function printExp$2(param, context) {
         var e_cnd = printExp$2(it._0, {
               TAG: /* Expr */0,
               _0: true
-            });
+            }, env);
         var e_thn = printExp$2(it._1, {
               TAG: /* Expr */0,
               _0: true
-            });
+            }, env);
         var e_els = printExp$2(it._2, {
               TAG: /* Expr */0,
               _0: true
-            });
+            }, env);
         e = {
           it: {
             TAG: /* If */9,
@@ -3371,11 +3384,11 @@ function printExp$2(param, context) {
                         printExp$2(eb[0], {
                               TAG: /* Expr */0,
                               _0: false
-                            }),
-                        printBlock$2(eb[1], context$1)
+                            }, env),
+                        printBlock$2(eb[1], context$1, env)
                       ];
               }));
-        var ob = obToString$1(it._1, context$1);
+        var ob = obToString$1(it._1, context$1, env);
         e = {
           it: {
             TAG: /* Cnd */10,
@@ -3393,30 +3406,16 @@ function printExp$2(param, context) {
         };
         break;
     case /* GLam */11 :
-        var xs$1 = Belt_List.map(it._0, symbolToString$2);
-        var b$1 = printBlock$2(it._1, /* Return */1);
-        Belt_List.map(xs$1, (function (x) {
-                return x.ann.print;
-              }));
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "In Python, lambdas can't be generators.",
               Error: new Error()
             };
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs$1,
-            _1: b$1
-          },
-          ann: consumeContextWrap$1(undefined, context)
-        };
-        break;
     case /* Yield */12 :
         var e$5 = printExp$2(it._0, {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         e = {
           it: {
             TAG: /* Yield */12,
@@ -3436,7 +3435,81 @@ function printExp$2(param, context) {
         };
 }
 
-function defToString$1(param) {
+function printBlock$2(param, context, env) {
+  var b = param.it;
+  var ts = b[0];
+  var xs = Belt_List.flatten(Belt_List.map(ts, xsOfTerm));
+  if (xs !== /* [] */0) {
+    throw {
+          RE_EXN_ID: SMoLPrintError,
+          _1: "Python blocks can't declair local variables",
+          Error: new Error()
+        };
+  }
+  var ts$1 = Belt_List.map(ts, (function (t) {
+          return printTerm$2(t, /* Step */0, env);
+        }));
+  var e = printExp$2(b[1], {
+        TAG: /* Stat */1,
+        _0: context
+      }, env);
+  var print = $$String.concat("\n", Belt_List.concatMany([
+            Belt_List.map(ts$1, (function (t) {
+                    return t.ann.print;
+                  })),
+            {
+              hd: e.ann.print,
+              tl: /* [] */0
+            }
+          ]));
+  return {
+          it: [
+            ts$1,
+            e
+          ],
+          ann: {
+            srcrange: param.ann,
+            print: print
+          }
+        };
+}
+
+function obToString$1(ob, ctx, env) {
+  return Belt_Option.map(ob, (function (b) {
+                return printBlock$2(b, ctx, env);
+              }));
+}
+
+function printTerm$2(param, ctx, env) {
+  var srcrange = param.ann;
+  var t = param.it;
+  if (t.TAG === /* Def */0) {
+    return mapAnn((function (v) {
+                  return {
+                          TAG: /* Def */0,
+                          _0: v
+                        };
+                }), defToString$1({
+                    it: t._0,
+                    ann: srcrange
+                  }, env));
+  } else {
+    return mapAnn((function (v) {
+                  return {
+                          TAG: /* Exp */1,
+                          _0: v
+                        };
+                }), printExp$2({
+                    it: t._0,
+                    ann: srcrange
+                  }, {
+                    TAG: /* Stat */1,
+                    _0: ctx
+                  }, env));
+  }
+}
+
+function defToString$1(param, env) {
   var d = param.it;
   var d$1;
   switch (d.TAG | 0) {
@@ -3445,7 +3518,7 @@ function defToString$1(param) {
         var e = printExp$2(d._1, {
               TAG: /* Expr */0,
               _0: false
-            });
+            }, env);
         d$1 = {
           it: {
             TAG: /* Var */0,
@@ -3458,7 +3531,7 @@ function defToString$1(param) {
     case /* Fun */1 :
         var f = symbolToString$2(d._0);
         var xs = Belt_List.map(d._1, symbolToString$2);
-        var b = printBlock$2(d._2, /* Return */1);
+        var b = printBlock$2(d._2, /* Return */1, env);
         d$1 = {
           it: {
             TAG: /* Fun */1,
@@ -3474,7 +3547,7 @@ function defToString$1(param) {
     case /* GFun */2 :
         var f$1 = symbolToString$2(d._0);
         var xs$1 = Belt_List.map(d._1, symbolToString$2);
-        var b$1 = printBlock$2(d._2, /* Return */1);
+        var b$1 = printBlock$2(d._2, /* Return */1, env);
         d$1 = {
           it: {
             TAG: /* GFun */2,
@@ -3496,71 +3569,6 @@ function defToString$1(param) {
             print: d$1.ann
           }
         };
-}
-
-function obToString$1(ob, ctx) {
-  return Belt_Option.map(ob, (function (b) {
-                return printBlock$2(b, ctx);
-              }));
-}
-
-function printBlock$2(param, context) {
-  var b = param.it;
-  var ts = Belt_List.map(b[0], (function (t) {
-          return printTerm$2(t, /* Step */0);
-        }));
-  var e = printExp$2(b[1], {
-        TAG: /* Stat */1,
-        _0: context
-      });
-  var print = $$String.concat("\n", Belt_List.concatMany([
-            Belt_List.map(ts, (function (t) {
-                    return t.ann.print;
-                  })),
-            {
-              hd: e.ann.print,
-              tl: /* [] */0
-            }
-          ]));
-  return {
-          it: [
-            ts,
-            e
-          ],
-          ann: {
-            srcrange: param.ann,
-            print: print
-          }
-        };
-}
-
-function printTerm$2(param, ctx) {
-  var srcrange = param.ann;
-  var t = param.it;
-  if (t.TAG === /* Def */0) {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Def */0,
-                          _0: v
-                        };
-                }), defToString$1({
-                    it: t._0,
-                    ann: srcrange
-                  }));
-  } else {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Exp */1,
-                          _0: v
-                        };
-                }), printExp$2({
-                    it: t._0,
-                    ann: srcrange
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: ctx
-                  }));
-  }
 }
 
 function printOutput$2(os) {
@@ -3589,15 +3597,20 @@ function printOutput$2(os) {
 }
 
 function printProgramFull$2(insertPrintTopLevel, param) {
+  var ts = param.it;
   printingTopLevel$1.contents = insertPrintTopLevel;
-  var ts = Belt_List.map(param.it, (function (t) {
-          return printTerm$2(t, /* TopLevel */2);
+  var env = {
+    TAG: /* G */0,
+    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.flatten(Belt_List.map(ts, xsOfTerm))))
+  };
+  var ts$1 = Belt_List.map(ts, (function (t) {
+          return printTerm$2(t, /* TopLevel */2, env);
         }));
-  var print = $$String.concat("\n", Belt_List.map(ts, (function (t) {
+  var print = $$String.concat("\n", Belt_List.map(ts$1, (function (t) {
               return t.ann.print;
             })));
   return {
-          it: ts,
+          it: ts$1,
           ann: {
             srcrange: param.ann,
             print: print

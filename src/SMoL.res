@@ -1492,6 +1492,73 @@ module JSPrinter = {
 }
 
 module PYPrinter = {
+  // Python translation is tricky because we need to know whether a variable
+  // reference is pointing to non-local variable.
+  // - If the variable is local, we proceed normally.
+  // - If the variable is external but neither global nor built-in, we need to declare it nonlocal in the local scope
+  // - If the variable is global, we need to declare it global
+  // - If the variable is built-in, we proceed normally
+
+  type stringSet = HashSet.String.t
+
+  type rec env =
+    | G(stringSet)
+    | E(stringSet, env)
+
+  type refKind =
+    | Local
+    | Nonlocal
+    | Global
+    | Unknown
+
+  let kindOfRef = (env: env, x: string) => {
+    switch env {
+    | G(ss) =>
+      if HashSet.String.has(ss, x) {
+        Local
+      } else {
+        Unknown
+      }
+    | E(ss, env) => {
+        let rec k = (env, x) => {
+          switch env {
+          | G(ss) =>
+            if HashSet.String.has(ss, x) {
+              Global
+            } else {
+              Unknown
+            }
+          | E(ss, env) =>
+            if HashSet.String.has(ss, x) {
+              Nonlocal
+            } else {
+              k(env, x)
+            }
+          }
+        }
+
+        if HashSet.String.has(ss, x) {
+          Local
+        } else {
+          k(env, x)
+        }
+      }
+    }
+  }
+
+  let extend = (ss, env) => {
+    E(ss->List.toArray->HashSet.String.fromArray, env)
+  }
+
+  let xsOfTerm = t => {
+    switch t.it {
+    | Exp(_) => list{}
+    | Def(Var(x, _)) => list{x.it}
+    | Def(Fun(f, _xs, _b)) => list{f.it}
+    | Def(GFun(f, _xs, _b)) => list{f.it}
+    }
+  }
+
   let escapeName = x => {
     let re = %re("/-/g")
     let matchFn = (_matchPart, _offset, _wholeString) => {
@@ -1650,9 +1717,7 @@ module PYPrinter = {
     | (VecNew, es) => {
         let es = es->List.map(e => e(false))
         {
-          ann: `[${String.concat(`, `, es->List.map(e => e.ann.print))}]`->consumeContext(
-            context,
-          ),
+          ann: `[${String.concat(`, `, es->List.map(e => e.ann.print))}]`->consumeContext(context),
           it: (VecNew, es),
         }
       }
@@ -1739,10 +1804,7 @@ module PYPrinter = {
   }
 
   let exprLamToString = (xs, b) => {
-    `lambda ${xs|>String.concat(",")}: ${b}`
-  }
-  let exprGenToString = (_xs, _b) => {
-    raisePrintError("In Python, lambdas can't be generators.")
+    `lambda ${xs |> String.concat(",")}: ${b}`
   }
   let exprYieldToString = e => `yield ${e}`
 
@@ -1775,7 +1837,7 @@ module PYPrinter = {
     }
   }
 
-  let rec printExp = ({it, ann: srcrange}, context) => {
+  let rec printExp = ({it, ann: srcrange}, context, env) => {
     let e: annotated<expressionNode<printAnn>, string> = switch it {
     | Con(c) => {
         it: Con(c),
@@ -1787,7 +1849,7 @@ module PYPrinter = {
       }
     | Set(x, e) => {
         let x = symbolToString(x)
-        let e: expression<printAnn> = e->printExp(Expr(false))
+        let e: expression<printAnn> = e->printExp(Expr(false), env)
         {
           ann: exprSetToString(x.ann.print, e.ann.print)->consumeContextStat(context),
           it: Set(x, e),
@@ -1797,7 +1859,7 @@ module PYPrinter = {
         let xs = xs->List.map(symbolToString)
         switch b.it {
         | (list{}, e) => {
-            let e = e->printExp(Expr(false))
+            let e = e->printExp(Expr(false), env)
             {
               ann: exprLamToString(xs->List.map(x => x.ann.print), e.ann.print)->consumeContextWrap(
                 context,
@@ -1808,25 +1870,18 @@ module PYPrinter = {
         | _ => raisePrintError("In Python, a lambda body must contains exactly one expression")
         }
       }
-    | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
-        {
-          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print)->consumeContextWrap(
-            context,
-          ),
-          it: Lam(xs, b),
-        }
+    | GLam(_xs, _b) => {
+        raisePrintError("In Python, lambdas can't be generators.")
       }
     | Yield(e) => {
-        let e = e->printExp(Expr(false))
+        let e = e->printExp(Expr(false), env)
         {
           ann: exprYieldToString(e.ann.print)->consumeContextWrap(context),
           it: Yield(e),
         }
       }
     | AppPrm(p, es) => {
-        let es = es->List.map((e, b) => e->printExp(Expr(b)))
+        let es = es->List.map((e, b) => e->printExp(Expr(b), env))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es, context)
         {
           it: AppPrm(p, es),
@@ -1834,8 +1889,8 @@ module PYPrinter = {
         }
       }
     | App(e, es) => {
-        let e = e->printExp(Expr(false))
-        let es = es->List.map(e => e->printExp(Expr(false)))
+        let e = e->printExp(Expr(false), env)
+        let es = es->List.map(e => e->printExp(Expr(false), env))
         {
           ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print))->consumeContext(
             context,
@@ -1853,8 +1908,8 @@ module PYPrinter = {
         )
       | Stat(context) => {
           let ebs: list<(expression<printAnn>, block<printAnn>)> =
-            ebs->List.map(eb => eb->ebToString(context))
-          let ob = ob->obToString(context)
+            ebs->List.map(eb => eb->ebToString(context, env))
+          let ob = ob->obToString(context, env)
           {
             ann: exprCndToString(
               ebs->List.map(((e, b)) => (e.ann.print, b.ann.print)),
@@ -1865,9 +1920,9 @@ module PYPrinter = {
         }
       }
     | If(e_cnd, e_thn, e_els) => {
-        let e_cnd = e_cnd->printExp(Expr(true))
-        let e_thn = e_thn->printExp(Expr(true))
-        let e_els = e_els->printExp(Expr(true))
+        let e_cnd = e_cnd->printExp(Expr(true), env)
+        let e_thn = e_thn->printExp(Expr(true), env)
+        let e_els = e_els->printExp(Expr(true), env)
         {
           ann: exprIfToString(
             e_cnd.ann.print,
@@ -1878,8 +1933,8 @@ module PYPrinter = {
         }
       }
     | Bgn(es, e) => {
-        let es = es->List.map(e => e->printExp(Expr(false)))
-        let e = e->printExp(Expr(false))
+        let es = es->List.map(e => e->printExp(Expr(false), env))
+        let e = e->printExp(Expr(false), env)
         {
           ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print)->consumeContext(
             context,
@@ -1891,11 +1946,11 @@ module PYPrinter = {
     let {ann: print, it} = e
     {ann: {print, srcrange}, it}
   }
-  and defToString = ({ann: srcrange, it: d}: definition<srcrange>): definition<printAnn> => {
+  and defToString = ({ann: srcrange, it: d}: definition<srcrange>, env): definition<printAnn> => {
     let d = switch d {
     | Var(x, e) => {
         let x = x->symbolToString
-        let e = e->printExp(Expr(false))
+        let e = e->printExp(Expr(false), env)
         {
           ann: defvarToString(x.ann.print, e.ann.print),
           it: Var(x, e),
@@ -1904,7 +1959,7 @@ module PYPrinter = {
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
+        let b = b->printBody(Return, env)
         {
           ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
           it: Fun(f, xs, b),
@@ -1913,7 +1968,7 @@ module PYPrinter = {
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
+        let b = b->printBody(Return, env)
         {
           ann: defgenToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
           it: GFun(f, xs, b),
@@ -1923,27 +1978,43 @@ module PYPrinter = {
     let {ann: print, it} = d
     {ann: {print, srcrange}, it}
   }
-  and ebToString = (eb, ctx: statContext) => {
+  and ebToString = (eb, ctx: statContext, env) => {
     let (e, b) = eb
-    (e->printExp(Expr(false)), b->printBlock(ctx))
+    (e->printExp(Expr(false), env), b->printBlock(ctx, env))
   }
-  and obToString = (ob, ctx: statContext) => {
-    ob->Option.map(b => b->printBlock(ctx))
+  and obToString = (ob, ctx: statContext, env) => {
+    ob->Option.map(b => b->printBlock(ctx, env))
   }
-  and printBlock = ({ann: srcrange, it: b}, context: statContext) => {
+  and printBlock = ({ann: srcrange, it: b}, context: statContext, env) => {
     let (ts, e) = b
-    let ts = ts->List.map(t => t->printTerm(Step))
-    let e = e->printExp(Stat(context))
+    let xs = ts->List.map(xsOfTerm)->List.flatten
+    if xs != list{} {
+      raisePrintError("Python blocks can't declair local variables")
+    }
+    let ts = ts->List.map(t => t->printTerm(Step, env))
+    let e = e->printExp(Stat(context), env)
     let print = String.concat("\n", list{...ts->List.map(t => t.ann.print), e.ann.print})
     {
       ann: {print, srcrange},
       it: (ts, e),
     }
   }
-  and printTerm = ({ann: srcrange, it: t}: term<srcrange>, ctx): term<printAnn> => {
+  and printBody = ({ann: srcrange, it: b}, context: statContext, args, env) => {
+    let (ts, e) = b
+    let xs = list{...args, ...ts->List.map(xsOfTerm)->List.flatten}
+    let env = E(HashSet.String.fromArray(List.toArray(xs)), env)
+    let ts = ts->List.map(t => t->printTerm(Step, env))
+    let e = e->printExp(Stat(context), env)
+    let print = String.concat("\n", list{...ts->List.map(t => t.ann.print), e.ann.print})
+    {
+      ann: {print, srcrange},
+      it: (ts, e),
+    }
+  }
+  and printTerm = ({ann: srcrange, it: t}: term<srcrange>, ctx, env: env): term<printAnn> => {
     switch t {
-    | Exp(it) => printExp({ann: srcrange, it}, Stat(ctx)) |> mapAnn(v => Exp(v))
-    | Def(it) => defToString({ann: srcrange, it}) |> mapAnn(v => Def(v))
+    | Exp(it) => printExp({ann: srcrange, it}, Stat(ctx), env) |> mapAnn(v => Exp(v))
+    | Def(it) => defToString({ann: srcrange, it}, env) |> mapAnn(v => Def(v))
     }
   }
 
@@ -1963,9 +2034,10 @@ module PYPrinter = {
     }) |> String.concat(" ")
   }
 
-  let printProgramFull = (insertPrintTopLevel, {ann: srcrange, it: ts}) => {
+  let printProgramFull = (insertPrintTopLevel, {ann: srcrange, it: ts}: program<srcrange>) => {
     printingTopLevel := insertPrintTopLevel
-    let ts = ts->List.map(t => t->printTerm(TopLevel))
+    let env = G(ts->List.map(xsOfTerm)->List.flatten->List.toArray->HashSet.String.fromArray)
+    let ts = ts->List.map(t => t->printTerm(TopLevel, env))
     let print = String.concat("\n", ts->List.map(t => t.ann.print))
     {
       ann: {print, srcrange},
@@ -2270,12 +2342,6 @@ module PYPrinter = {
 // type js_context = context
 // exception Impossible(string)
 // module PYPrinter = {
-//   // Python translation is tricky because we need to know whether a variable
-//   // reference is pointing to non-local variable.
-//   // - If the variable is local, we proceed normally.
-//   // - If the variable is external but neither global nor built-in, we need to declare it local in the local scope
-//   // - If the variable is global, we need to declare it global
-//   // - If the variable is built-in, we proceed normally
 
 //   type placeOfDef =
 //     | BuiltIn
