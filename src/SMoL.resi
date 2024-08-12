@@ -46,11 +46,11 @@ type symbol = string
 
 type rec expressionNode<'ann> =
   | Con(constant)
-  | Ref(annotated<symbol, 'ann>)
+  | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<(annotated<symbol, 'ann>, expression<'ann>)>, block<'ann>)
-  | Letrec(list<(annotated<symbol, 'ann>, expression<'ann>)>, block<'ann>)
+  | Let(list<bind<'ann>>, block<'ann>)
+  | Letrec(list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
@@ -59,6 +59,9 @@ type rec expressionNode<'ann> =
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
+
+and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
+and bind<'ann> = annotated<bindNode<'ann>, 'ann>
 
 and blockNode<'ann> = (list<term<'ann>>, expression<'ann>)
 and block<'ann> = annotated<blockNode<'ann>, 'ann>
@@ -111,17 +114,17 @@ module Parser: {
   let parseProgram: string => program<srcrange>
 }
 
-// // Print
+// Print
 
-// type exn += SMoLPrintError(string)
-// type printAnn = {srcrange: srcrange, print: string}
-// module type Printer = {
-//   let printOutput: Output.t => string
-//   // let printProgram: (bool, program<srcrange>) => string
-//   let printProgramFull: (bool, program<srcrange>) => program<printAnn>
-// }
-// module SMoLPrinter: Printer
-// module JSPrinter: Printer
+type exn += SMoLPrintError(string)
+type printAnn = {srcrange: srcrange, print: string}
+module type Printer = {
+  let printOutput: output => string
+  let printProgramFull: (bool, program<srcrange>) => program<printAnn>
+}
+
+module SMoLPrinter: Printer
+module JSPrinter: Printer
 // module PYPrinter: Printer
 // module ScalaPrinter: Printer
 // module CommonPrinter: Printer

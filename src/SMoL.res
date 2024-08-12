@@ -75,7 +75,7 @@ module Primitive = {
 open Primitive
 
 type annotated<'it, 'ann> = {it: 'it, ann: 'ann}
-let mapAnn = ({ann, it}: annotated<_, _>, f): annotated<_, _> => {
+let mapAnn = (f, {ann, it}: annotated<_, _>): annotated<_, _> => {
   {
     ann,
     it: f(it),
@@ -86,11 +86,11 @@ type symbol = string
 
 type rec expressionNode<'ann> =
   | Con(constant)
-  | Ref(annotated<symbol, 'ann>)
+  | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<(annotated<symbol, 'ann>, expression<'ann>)>, block<'ann>)
-  | Letrec(list<(annotated<symbol, 'ann>, expression<'ann>)>, block<'ann>)
+  | Let(list<bind<'ann>>, block<'ann>)
+  | Letrec(list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
@@ -99,7 +99,8 @@ type rec expressionNode<'ann> =
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
-
+and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
+and bind<'ann> = annotated<bindNode<'ann>, 'ann>
 and blockNode<'ann> = (list<term<'ann>>, expression<'ann>)
 and block<'ann> = annotated<blockNode<'ann>, 'ann>
 
@@ -181,6 +182,15 @@ module ParseError = {
 exception SMoLParseError(ParseError.t)
 let raiseParseError = err => raise(SMoLParseError(err))
 
+let makeBlock = (ts, e) => {
+  {
+    ann: {
+      begin: ts->List.head->Option.map(t => t.ann.begin)->Option.getWithDefault(e.ann.begin),
+      end: e.ann.end,
+    },
+    it: (ts, e),
+  }
+}
 module Parser = {
   let constant_of_atom = atom => {
     switch atom {
@@ -201,16 +211,13 @@ module Parser = {
     let {ann: _, it} = e
     switch it {
     | Atom(Sym("error")) => OErr
-    | _ => OVal({
+    | _ =>
+      OVal({
         let rec p = (e: SExpression.annotated<SExpression.t>): val => {
           switch e.it {
           | Atom(atom) => Con(constant_of_atom(atom))
-          | Sequence(Vector, _b, es) => {
-              Vec(es->List.map(p))
-            }
-          | Sequence(List, _b, es) => {
-              Lst(es->List.map(p))
-            }
+          | Sequence(Vector, _b, es) => Vec(es->List.map(p))
+          | Sequence(List, _b, es) => Lst(es->List.map(p))
           }
         }
         p(e)
@@ -218,12 +225,12 @@ module Parser = {
     }
   }
 
-  let rec value_of_sexpr = (e: SExpression.annotated<SExpression.t>) => {
+  let rec parseValue = (e: SExpression.annotated<SExpression.t>) => {
     let {ann, it} = e
     switch it {
     | Atom(atom) => {ann, it: Con(constant_of_atom(atom))}
     | Sequence(Vector, _b, es) => {
-        let es = es->List.map(value_of_sexpr)
+        let es = es->List.map(parseValue)
         {ann, it: AppPrm(VecNew, es)}
       }
     | Sequence(List, _, _) => raiseParseError(LiteralListError(e))
@@ -301,7 +308,7 @@ module Parser = {
     }
   }
 
-  let expr_of_atom = (ann, atom) => {
+  let expr_of_atom = atom => {
     switch atom {
     | SExpression.Atom.Str(s) => Con(Str(s))
     | Sym("#t") => Con(Lgc(true))
@@ -309,16 +316,9 @@ module Parser = {
     | Sym(x) =>
       let e = {
         let tryNum = x->Float.fromString->Option.map(n => Con(Num(n)))
-        tryNum->Option.getWithDefault(Ref({ann, it: x}))
+        tryNum->Option.getWithDefault(Ref(x))
       }
       e
-    }
-  }
-
-  let expr_as_block = e => {
-    {
-      ann: e.ann,
-      it: (list{}, e),
     }
   }
 
@@ -329,12 +329,13 @@ module Parser = {
       | (list{}, e) => e
       | _ => {ann, it: Let(list{}, body)}
       }
-    | list{{it: (x, e)}} => {ann, it: Let(list{(x, e)}, body)}
-    | list{{it: (x, e)}, ...xes} => {
+    | list{xe} => {ann, it: Let(list{xe}, body)}
+    | list{xe, ...xes} => {
         ann,
         it: Let(
-          list{(x, e)},
-          expr_as_block(
+          list{xe},
+          makeBlock(
+            list{},
             letstar(
               {
                 begin: xes
@@ -352,31 +353,21 @@ module Parser = {
     }
   }
 
-  let makeBlock = (ts, e) => {
-    {
-      ann: {
-        begin: ts->List.head->Option.map(t => t.ann.begin)->Option.getWithDefault(e.ann.begin),
-        end: e.ann.end,
-      },
-      it: (ts, e),
-    }
-  }
-
-  let rec termOfSExpr = (e: SExpression.annotated<SExpression.t>): term<srcrange> => {
+  let rec parseTerm = (e: SExpression.annotated<SExpression.t>): term<srcrange> => {
     let ann = e.ann
     switch e.it {
     | Sequence(Vector, _b, es) => {
-        let es = es->List.map(value_of_sexpr)
+        let es = es->List.map(parseValue)
         {ann, it: Exp(AppPrm(VecNew, es))}
       }
     | Sequence(List, _b, list{{it: Atom(Sym("quote")), ann: _}, ...rest}) => {
         let e = as_one("a quoted value", rest)
-        value_of_sexpr(e)->mapAnn(v => Exp(v))
+        parseValue(e) |> mapAnn(v => Exp(v))
       }
     | Sequence(List, _b, list{{it: Atom(Sym("defvar")), ann: _}, ...rest}) => {
         let (x, e) = as_two("a variable and an expression", rest)
         let x = as_id("a variable name", x)
-        let e = as_expr("an expression", termOfSExpr(e))
+        let e = as_expr("an expression", parseTerm(e))
         {ann, it: Def(Var(x, e))}
       }
 
@@ -388,8 +379,8 @@ module Parser = {
         )
         let fun = as_id("a function name", fun)
         let args = List.map(args, as_id("a parameter"))
-        let terms = Belt.List.map(terms, termOfSExpr)
-        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        let terms = Belt.List.map(terms, parseTerm)
+        let result = result |> parseTerm |> as_expr("an expression to be returned")
         {ann, it: Def(Fun(fun, args, makeBlock(terms, result)))}
       }
 
@@ -401,8 +392,8 @@ module Parser = {
         )
         let fun = as_id("a generator name", fun)
         let args = List.map(args, as_id("a parameter"))
-        let terms = Belt.List.map(terms, termOfSExpr)
-        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        let terms = Belt.List.map(terms, parseTerm)
+        let result = result |> parseTerm |> as_expr("an expression to be returned")
         {ann, it: Def(GFun(fun, args, makeBlock(terms, result)))}
       }
 
@@ -412,8 +403,8 @@ module Parser = {
           rest,
         )
         let args = as_list("function parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(termOfSExpr)
-        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        let terms = terms->List.map(parseTerm)
+        let result = result |> parseTerm |> as_expr("an expression to be returned")
         {ann, it: Exp(Lam(args, makeBlock(terms, result)))}
       }
 
@@ -423,14 +414,14 @@ module Parser = {
           rest,
         )
         let args = as_list("generator parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(termOfSExpr)
-        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        let terms = terms->List.map(parseTerm)
+        let result = result |> parseTerm |> as_expr("an expression to be returned")
         {ann, it: Exp(GLam(args, makeBlock(terms, result)))}
       }
 
     | Sequence(List, _b, list{{it: Atom(Sym("yield")), ann: _}, ...rest}) => {
         let e = as_one("an expression", rest)
-        let e = as_expr("an expression", termOfSExpr(e))
+        let e = as_expr("an expression", parseTerm(e))
         {ann, it: Exp(Yield(e))}
       }
 
@@ -440,22 +431,22 @@ module Parser = {
           rest,
         )
         let args = as_list("function parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(termOfSExpr)
-        let result = result |> termOfSExpr |> as_expr("an expression to be returned")
+        let terms = terms->List.map(parseTerm)
+        let result = result |> parseTerm |> as_expr("an expression to be returned")
         {ann, it: Exp(Lam(args, makeBlock(terms, result)))}
       }
 
     | Sequence(List, _b, list{{it: Atom(Sym("begin")), ann: _}, ...rest}) => {
         let (terms, result) = as_many_then_one("one or more expressions", rest)
-        let terms = terms->List.map(termOfSExpr)->List.map(as_expr("an expression"))
-        let result = result->termOfSExpr |> as_expr("an expression")
+        let terms = terms->List.map(parseTerm)->List.map(as_expr("an expression"))
+        let result = result->parseTerm |> as_expr("an expression")
         {ann, it: Exp(Bgn(terms, result))}
       }
 
     | Sequence(List, _b, list{{it: Atom(Sym("set!")), ann: _}, ...rest}) => {
         let (x, e) = as_two("a variable and an expression", rest)
         let x = as_id("a variable to be set", x)
-        let e = as_expr("an expression", termOfSExpr(e))
+        let e = as_expr("an expression", parseTerm(e))
         {ann, it: Exp(Set(x, e))}
       }
 
@@ -464,9 +455,9 @@ module Parser = {
           "three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)",
           rest,
         )
-        let e_cnd = as_expr("a (conditional) expression", termOfSExpr(e_cnd))
-        let e_thn = as_expr("an expression", termOfSExpr(e_thn))
-        let e_els = as_expr("an expression", termOfSExpr(e_els))
+        let e_cnd = as_expr("a (conditional) expression", parseTerm(e_cnd))
+        let e_thn = as_expr("an expression", parseTerm(e_thn))
+        let e_els = as_expr("an expression", parseTerm(e_els))
         {ann, it: Exp(If(e_cnd, e_thn, e_els))}
       }
 
@@ -483,15 +474,15 @@ module Parser = {
               terms,
               result,
             )} => {
-              let terms = terms->List.map(termOfSExpr)
-              let result = result |> termOfSExpr |> as_expr("an expression")
+              let terms = terms->List.map(parseTerm)
+              let result = result |> parseTerm |> as_expr("an expression")
               {ann, it: Exp(Cnd(List.reverse(parsed), Some(makeBlock(terms, result))))}
             }
 
           | list{(case, terms, result), ...branches} => {
-              let case = case->termOfSExpr |> as_expr("a (conditional) expression")
-              let terms = terms->List.map(termOfSExpr)
-              let result = result |> termOfSExpr |> as_expr("an expression")
+              let case = case->parseTerm |> as_expr("a (conditional) expression")
+              let terms = terms->List.map(parseTerm)
+              let result = result |> parseTerm |> as_expr("an expression")
               loop(list{(case, makeBlock(terms, result)), ...parsed}, branches)
             }
           }
@@ -504,15 +495,16 @@ module Parser = {
         let xes =
           as_list("variable-expression pairs", xes).it
           ->List.map(as_list("a variable and an expression"))
-          ->List.map(v => v.it)
-          ->List.map(as_two("a variable and an expression"))
-        let xes = xes->List.map(((x, e)) => {
-          let x = as_id("a variable to be bound", x)
-          let e = termOfSExpr(e) |> as_expr("an expression")
-          (x, e)
-        })
-        let ts = ts->List.map(termOfSExpr)
-        let result = termOfSExpr(result) |> as_expr("an expression to be return")
+          ->List.map(mapAnn(xe => xe |> as_two("a variable and an expression")))
+        let xes = xes->List.map(
+          mapAnn(((x, e)) => {
+            let x = as_id("a variable to be bound", x)
+            let e = parseTerm(e) |> as_expr("an expression")
+            (x, e)
+          }),
+        )
+        let ts = ts->List.map(parseTerm)
+        let result = parseTerm(result) |> as_expr("an expression to be return")
         {ann, it: Exp(Let(xes, makeBlock(ts, result)))}
       }
 
@@ -521,17 +513,17 @@ module Parser = {
         let xes =
           as_list("variable-expression pairs", xes).it
           ->List.map(as_list("a variable and an expression"))
-          ->List.map(v => mapAnn(v, as_two("a variable and an expression")))
-        let xes = xes->List.map(v =>
-          v->mapAnn(((x, e)) => {
+          ->List.map(mapAnn(as_two("a variable and an expression")))
+        let xes = xes->List.map(
+          mapAnn(((x, e)) => {
             let x = as_id("a variable to be bound", x)
-            let e = termOfSExpr(e) |> as_expr("an expression")
+            let e = parseTerm(e) |> as_expr("an expression")
             (x, e)
-          })
+          }),
         )
-        let ts = ts->List.map(termOfSExpr)
-        let result = termOfSExpr(result) |> as_expr("an expression to be return")
-        letstar(ann, xes, makeBlock(ts, result))->mapAnn(v => Exp(v))
+        let ts = ts->List.map(parseTerm)
+        let result = parseTerm(result) |> as_expr("an expression to be return")
+        letstar(ann, xes, makeBlock(ts, result)) |> mapAnn(v => Exp(v))
       }
 
     | Sequence(List, _b, list{{it: Atom(Sym("letrec")), ann: _}, ...rest}) => {
@@ -539,72 +531,80 @@ module Parser = {
         let xes =
           as_list("variable-expression pairs", xes).it
           ->List.map(as_list("a variable and an expression"))
-          ->List.map(v => v.it)
-          ->List.map(as_two("a variable and an expression"))
-        let xes = xes->List.map(((x, e)) => {
-          let x = as_id("a variable to be bound", x)
-          let e = termOfSExpr(e) |> as_expr("an expression")
-          (x, e)
-        })
-        let ts = ts->List.map(termOfSExpr)
-        let result = termOfSExpr(result) |> as_expr("an expression to be return")
+          ->List.map(mapAnn(as_two("a variable and an expression")))
+        let xes = xes->List.map(
+          mapAnn(((x, e)) => {
+            let x = as_id("a variable to be bound", x)
+            let e = parseTerm(e) |> as_expr("an expression")
+            (x, e)
+          }),
+        )
+        let ts = ts->List.map(parseTerm)
+        let result = parseTerm(result) |> as_expr("an expression to be return")
         {ann, it: Exp(Letrec(xes, makeBlock(ts, result)))}
       }
 
-    | Atom(atom) => {ann, it: Exp(expr_of_atom(ann, atom))}
-    | Sequence(List, _b, list{{it: Atom(Sym("next")), ann: _}, ...es}) => app_prm(ann, Next, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) => app_prm(ann, Add, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) => app_prm(ann, Sub, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) => app_prm(ann, Mul, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("/")), ann: _}, ...es}) => app_prm(ann, Div, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<")), ann: _}, ...es}) => app_prm(ann, Lt, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("=")), ann: _}, ...es}) => app_prm(ann, Eq, es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">")), ann: _}, ...es}) => app_prm(ann, Gt, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => app_prm(ann, Le, es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => app_prm(ann, Ge, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => app_prm(ann, Ne, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("pair")), ann: _}, ...es}) => app_prm(ann, PairNew, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("mpair")), ann: _}, ...es}) => app_prm(ann, PairNew, es)
+    | Atom(atom) => {ann, it: Exp(expr_of_atom(atom))}
+    | Sequence(List, _b, list{{it: Atom(Sym("next")), ann: _}, ...es}) => makeAppPrm(ann, Next, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) => makeAppPrm(ann, Add, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) => makeAppPrm(ann, Sub, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) => makeAppPrm(ann, Mul, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("/")), ann: _}, ...es}) => makeAppPrm(ann, Div, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("<")), ann: _}, ...es}) => makeAppPrm(ann, Lt, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("=")), ann: _}, ...es}) => makeAppPrm(ann, Eq, es)
+    | Sequence(List, _b, list{{it: Atom(Sym(">")), ann: _}, ...es}) => makeAppPrm(ann, Gt, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => makeAppPrm(ann, Le, es)
+    | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => makeAppPrm(ann, Ge, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => makeAppPrm(ann, Ne, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("pair")), ann: _}, ...es}) =>
+      makeAppPrm(ann, PairNew, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("mpair")), ann: _}, ...es}) =>
+      makeAppPrm(ann, PairNew, es)
     | Sequence(List, _b, list{{it: Atom(Sym("left")), ann: _}, ...es}) =>
-      app_prm(ann, PairRefLeft, es)
+      makeAppPrm(ann, PairRefLeft, es)
     | Sequence(List, _b, list{{it: Atom(Sym("right")), ann: _}, ...es}) =>
-      app_prm(ann, PairRefRight, es)
+      makeAppPrm(ann, PairRefRight, es)
     | Sequence(List, _b, list{{it: Atom(Sym("set-left!")), ann: _}, ...es}) =>
-      app_prm(ann, PairSetLeft, es)
+      makeAppPrm(ann, PairSetLeft, es)
     | Sequence(List, _b, list{{it: Atom(Sym("set-right!")), ann: _}, ...es}) =>
-      app_prm(ann, PairSetRight, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("mvec")), ann: _}, ...es}) => app_prm(ann, VecNew, es)
+      makeAppPrm(ann, PairSetRight, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("mvec")), ann: _}, ...es}) =>
+      makeAppPrm(ann, VecNew, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}) =>
-      app_prm(ann, VecRef, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vref")), ann: _}, ...es}) => app_prm(ann, VecRef, es)
+      makeAppPrm(ann, VecRef, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("vref")), ann: _}, ...es}) =>
+      makeAppPrm(ann, VecRef, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vec-set!")), ann: _}, ...es}) =>
-      app_prm(ann, VecSet, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vset!")), ann: _}, ...es}) => app_prm(ann, VecSet, es)
+      makeAppPrm(ann, VecSet, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("vset!")), ann: _}, ...es}) =>
+      makeAppPrm(ann, VecSet, es)
     | Sequence(List, _b, list{{it: Atom(Sym("vec-len")), ann: _}, ...es}) =>
-      app_prm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vlen")), ann: _}, ...es}) => app_prm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => app_prm(ann, Eq, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => app_prm(ann, Err, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => app_prm(ann, Not, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("print")), ann: _}, ...es}) => app_prm(ann, Print, es)
+      makeAppPrm(ann, VecLen, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("vlen")), ann: _}, ...es}) =>
+      makeAppPrm(ann, VecLen, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) => makeAppPrm(ann, Eq, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => makeAppPrm(ann, Err, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => makeAppPrm(ann, Not, es)
+    | Sequence(List, _b, list{{it: Atom(Sym("print")), ann: _}, ...es}) =>
+      makeAppPrm(ann, Print, es)
     | Sequence(List, _b, es) => {
         let (e, es) = as_one_then_many(
           "a function call/application, which includes a function and then zero or more arguments",
           es,
         )
-        let e = e->termOfSExpr |> as_expr("a function")
-        let es = es->List.map(termOfSExpr)->List.map(as_expr("an argument"))
+        let e = e->parseTerm |> as_expr("a function")
+        let es = es->List.map(parseTerm)->List.map(as_expr("an argument"))
         {ann, it: Exp(App(e, es))}
       }
     }
   }
-  and app_prm = (ann, p, es) => {
-    let es = es->List.map(termOfSExpr)->List.map(as_expr("an argument"))
+  and makeAppPrm = (ann, p, es) => {
+    let es = es->List.map(parseTerm)->List.map(as_expr("an argument"))
     {ann, it: Exp(AppPrm(p, es))}
   }
 
   let parseTerms = (src: string) => {
-    switch src->SExpression.fromString->List.map(termOfSExpr) {
+    switch src->SExpression.fromString->List.map(parseTerm) {
     | terms => terms
     | exception SExpression.SExpressionError(err) =>
       raiseParseError(SExprParseError(SExpression.Error.toString(err)))
@@ -631,181 +631,650 @@ module Parser = {
   }
 }
 
-// type exn += SMoLPrintError(string)
-// module type Printer = {
-//   let printProgram: (bool, program<srcrange>) => string
-//   let printBlock: block<srcrange> => string
-//   let printTerm: term<srcrange> => string
-// }
+type exn += SMoLPrintError(string)
+let raisePrintError = err => raise(SMoLPrintError(err))
 
-// let unannotate = (x: annotated<_>) => x.it
+type printAnn = {srcrange: srcrange, print: string}
+module type Printer = {
+  let printOutput: output => string
+  let printProgramFull: (bool, program<srcrange>) => program<printAnn>
+}
 
-// let indent = (s, i) => {
-//   let pad = Js.String.repeat(i, " ")
-//   Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)
-// }
-// let indentBlock = (s, i) => indent("\n" ++ s, i)
+let indent = (s, i) => {
+  let pad = Js.String.repeat(i, " ")
+  Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)
+}
+let indentBlock = (s, i) => indent("\n" ++ s, i)
+let hcat = (s1, s2) => {
+  `${s1}${indent(s2, String.length(s1))}`
+}
 
-// let hcat = (s1, s2) => {
-//   `${s1}${indent(s2, String.length(s1))}`
-// }
+module SMoLPrinter = {
+  let constantToString = c => {
+    switch c {
+    | Uni => "#<void>"
+    | Nil => "#<empty>"
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "#t"
+      } else {
+        "#f"
+      }
+    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    }
+  }
 
-// module SMoLPrinter = {
-//   let constantToString = c => {
-//     switch c {
-//     | Uni => "#<void>"
-//     | Num(n) => Float.toString(n)
-//     | Lgc(l) =>
-//       if l {
-//         "#t"
-//       } else {
-//         "#f"
-//       }
-//     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
-//     }
-//   }
+  let listToString = ss => {
+    "(" ++ String.concat(" ", ss) ++ ")"
+  }
 
-//   let listToString = ss => {
-//     "(" ++ String.concat(" ", ss) ++ ")"
-//   }
+  let defvarLike = (op, x, e) => {
+    if String.contains(e, '\n') {
+      `(${op} ${x}${indentBlock(e, 2)})`
+    } else {
+      listToString(list{op, x, e})
+    }
+  }
 
-//   let defvarLike = (op, x, e) => {
-//     if String.contains(e, '\n') {
-//       `(${op} ${x}${indentBlock(e, 2)})`
-//       // hcat(`(${op} ${x} `, `${e})`)
-//     } else {
-//       listToString(list{op, x, e})
-//     }
-//   }
+  let defvarToString = (x, e) => {
+    defvarLike("defvar", x, e)
+  }
 
-//   let defvarToString = (x, e) => {
-//     defvarLike("defvar", x, e)
-//   }
+  let deffunToString = (f, xs, b) => {
+    defvarLike("deffun", listToString(list{f, ...xs}), b)
+  }
 
-//   let deffunToString = (f, xs, b) => {
-//     defvarLike("deffun", listToString(list{f, ...xs}), b)
-//   }
+  let defgenToString = (f, xs, b) => {
+    defvarLike("defgen", listToString(list{f, ...xs}), b)
+  }
 
-//   let defgenToString = (f, xs, b) => {
-//     defvarLike("defgen", listToString(list{f, ...xs}), b)
-//   }
+  let exprSetToString = (x, e) => {
+    defvarLike("set!", x, e)
+  }
 
-//   let exprSetToString = (x, e) => {
-//     defvarLike("set!", x, e)
-//   }
+  let exprLamToString = (xs, b) => {
+    defvarLike("lambda", listToString(xs), b)
+  }
+  let exprGenToString = (xs, b) => {
+    defvarLike("generator", listToString(xs), b)
+  }
+  let exprYieldToString = e => `(yield ${e})`
 
-//   let exprLamToString = (xs, b) => {
-//     defvarLike("lambda", listToString(xs), b)
-//   }
-//   let exprGenToString = (xs, b) => {
-//     defvarLike("generator", listToString(xs), b)
-//   }
-//   let exprYieldToString = e => `(yield ${e})`
+  let exprAppToString = (e, es) => {
+    listToString(list{e, ...es})
+  }
 
-//   let exprAppToString = (e, es) => {
-//     listToString(list{e, ...es})
-//   }
+  let beginLike = (op, ts) => {
+    `(${op}${indentBlock(String.concat("\n", ts), 2)})`
+  }
+  let exprBgnToString = (es, e) => {
+    beginLike("begin", list{...es, e})
+  }
 
-//   let beginLike = (op, ts) => {
-//     `(${op}${indentBlock(String.concat("\n", ts), 2)})`
-//   }
-//   let exprBgnToString = (es, e) => {
-//     beginLike("begin", list{...es, e})
-//   }
+  let exprCndToString = (ebs: list<(string, string)>, ob) => {
+    let ebs = {
+      switch ob {
+      | None => ebs
+      | Some(b) => list{...ebs, ("else", b)}
+      }
+    }
+    let ebs = ebs->List.map(((e, b)) => `[${e}${indentBlock(b, 1)}]`)
+    beginLike("cond", ebs)
+  }
 
-//   let exprCndToString = (ebs: list<(string, string)>, ob) => {
-//     let ebs = {
-//       switch ob {
-//       | None => ebs
-//       | Some(b) => list{...ebs, ("else", b)}
-//       }
-//     }
-//     let ebs = ebs->List.map(((e, b)) => `[${e}${indentBlock(b, 1)}]`)
-//     beginLike("cond", ebs)
-//   }
+  let exprIfToString = (e_cnd: string, e_thn: string, e_els: string) => {
+    hcat(`(if `, `${String.concat("\n", list{e_cnd, e_thn, e_els})})`)
+  }
 
-//   let exprIfToString = (e_cnd: string, e_thn: string, e_els: string) => {
-//     `(if ${indent(e_cnd, 4)}${indentBlock(e_thn, 4)}${indentBlock(e_els, 4)})`
-//   }
+  let letLike = (op: string, xes: list<string>, b: string) => {
+    let xes = String.concat("\n", xes)
+    let xes = `(${indent(xes, 1)})`
+    hcat(`(${op} `, `${xes}`) ++ `${indentBlock(b, 2)})`
+  }
+  let exprLetToString = (xes, b) => {
+    letLike("let", xes, b)
+  }
+  let exprLetrecToString = (xes, b) => {
+    letLike("letrec", xes, b)
+  }
 
-//   let letLike = (op, xes, b) => {
-//     let xes = xes->List.map(((x, e)) => {
-//       let x = unannotate(x)
-//       hcat(`[${x} `, `${e}]`)
-//     })
-//     let xes = String.concat("\n", xes)
-//     let xes = `(${indent(xes, 1)})`
-//     hcat(`(${op} `, `${xes}`) ++ `${indentBlock(b, 2)})`
-//   }
-//   let exprLetToString = (xes, b) => {
-//     letLike("let", xes, b)
-//   }
-//   let exprLetrecToString = (xes, b) => {
-//     letLike("letrec", xes, b)
-//   }
+  let symbolToString = ({it, ann}) => {
+    {
+      it,
+      ann: {
+        srcrange: ann,
+        print: it,
+      },
+    }
+  }
 
-//   let rec expToString = (e: expression<srcrange>): string => {
-//     switch e {
-//     | Con(c) => constantToString(c)
-//     | Ref(x) => x.it
-//     | Set(x, e) => exprSetToString(x->unannotate, expToString(e.it))
-//     | Lam(xs, b) => exprLamToString(xs->List.map(unannotate), printBlock(b))
-//     | GLam(xs, b) => exprGenToString(xs->List.map(unannotate), printBlock(b))
-//     | Yield(e) => exprYieldToString(expToString(e.it))
-//     | AppPrm(p, es) => exprAppToString(Primitive.toString(p), expsToString(es))
-//     | App(e, es) => exprAppToString(expToString(e.it), expsToString(es))
-//     | Let(xes, b) => exprLetToString(xes->List.map(xeToString), printBlock(b))
-//     | Letrec(xes, b) => exprLetrecToString(xes->List.map(xeToString), printBlock(b))
-//     | Cnd(ebs, ob) => exprCndToString(ebs->List.map(ebToString), obToString(ob))
-//     | If(e_cnd, e_thn, e_els) =>
-//       exprIfToString(expToString(e_cnd.it), expToString(e_thn.it), expToString(e_els.it))
-//     | Bgn(es, e) => exprBgnToString(expsToString(es), expToString(e.it))
-//     }
-//   }
-//   and defToString = (d): string => {
-//     switch d {
-//     | Var(x, e) => defvarToString(x.it, expToString(e.it))
-//     | Fun(f, xs, b) => deffunToString(f->unannotate, xs->List.map(unannotate), printBlock(b))
-//     | GFun(f, xs, b) => defgenToString(f->unannotate, xs->List.map(unannotate), printBlock(b))
-//     }
-//   }
-//   and expsToString = es => {
-//     es->List.map(unannotate)->List.map(expToString)
-//   }
-//   and xeToString = xe => {
-//     let (x, e) = xe
-//     (x, expToString(e.it))
-//   }
-//   and ebToString = eb => {
-//     let (e, b) = eb
-//     (expToString(e.it), printBlock(b))
-//   }
-//   and obToString = ob => {
-//     ob->Option.map(printBlock)
-//   }
-//   and printBlock = b => {
-//     let (ts, e) = b
-//     String.concat("\n", list{...ts->List.map(printTerm), expToString(e.it)})
-//   }
-//   and printTerm = t => {
-//     switch t {
-//     | Exp(e) => expToString(e.it)
-//     | Def(d) => defToString(d.it)
-//     }
-//   }
+  let rec printExp = ({it, ann: srcrange}: expression<srcrange>): expression<printAnn> => {
+    let e: annotated<expressionNode<printAnn>, string> = switch it {
+    | Con(c) => {
+        it: Con(c),
+        ann: constantToString(c),
+      }
+    | Ref(x) => {
+        it: Ref(x),
+        ann: x,
+      }
+    | Set(x, e) => {
+        let x = symbolToString(x)
+        let e = e->printExp
+        {
+          ann: exprSetToString(x.ann.print, e.ann.print),
+          it: Set(x, e),
+        }
+      }
+    | Lam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print),
+          it: Lam(xs, b),
+        }
+      }
+    | GLam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print),
+          it: Lam(xs, b),
+        }
+      }
+    | Yield(e) => {
+        let e = e->printExp
+        {
+          ann: exprYieldToString(e.ann.print),
+          it: Yield(e),
+        }
+      }
+    | AppPrm(p, es) => {
+        let es = es->List.map(printExp)
+        {
+          ann: exprAppToString(Primitive.toString(p), es->List.map(e => e.ann.print)),
+          it: AppPrm(p, es),
+        }
+      }
+    | App(e, es) => {
+        let e = e->printExp
+        let es = es->List.map(printExp)
+        {
+          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print)),
+          it: App(e, es),
+        }
+      }
+    | Let(xes, b) => {
+        let xes = xes->List.map(xeToString)
+        let b = b->printBlock
+        {
+          ann: exprLetToString(xes->List.map(xe => xe.ann.print), b.ann.print),
+          it: Let(xes, b),
+        }
+      }
+    | Letrec(xes, b) => {
+        let xes = xes->List.map(xeToString)
+        let b = b->printBlock
+        {
+          ann: exprLetrecToString(xes->List.map(xe => xe.ann.print), b.ann.print),
+          it: Letrec(xes, b),
+        }
+      }
+    | Cnd(ebs, ob) => {
+        let ebs = ebs->List.map(ebToString)
+        let ob = ob->obToString
+        {
+          ann: exprCndToString(
+            ebs->List.map(((e, b)) => (e.ann.print, b.ann.print)),
+            ob->Option.map(b => b.ann.print),
+          ),
+          it: Cnd(ebs, ob),
+        }
+      }
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp
+        let e_thn = e_thn->printExp
+        let e_els = e_els->printExp
+        {
+          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print),
+          it: If(e_cnd, e_thn, e_els),
+        }
+      }
+    | Bgn(es, e) => {
+        let es = es->List.map(printExp)
+        let e = e->printExp
+        {
+          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print),
+          it: Bgn(es, e),
+        }
+      }
+    }
+    let {ann: print, it} = e
+    {ann: {print, srcrange}, it}
+  }
+  and printDef = ({ann: srcrange, it: d}: definition<srcrange>): definition<printAnn> => {
+    let d = switch d {
+    | Var(x, e) => {
+        let x = symbolToString(x)
+        let e = e->printExp
+        {
+          ann: defvarToString(x.ann.print, e.ann.print),
+          it: Var(x, e),
+        }
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: Fun(f, xs, b),
+        }
+      }
+    | GFun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: defgenToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: GFun(f, xs, b),
+        }
+      }
+    }
+    let {ann: print, it} = d
+    {ann: {print, srcrange}, it}
+  }
+  and xeToString = ({it: xe, ann: srcrange}: bind<srcrange>): bind<printAnn> => {
+    let (x, e) = xe
+    let (x, e) = (symbolToString(x), printExp(e))
+    let print = hcat(`[${x.ann.print}`, `${e.ann.print}]`)
+    {
+      it: (x, e),
+      ann: {
+        print,
+        srcrange,
+      },
+    }
+  }
+  and ebToString = eb => {
+    let (e, b) = eb
+    (printExp(e), printBlock(b))
+  }
+  and obToString = ob => {
+    ob->Option.map(printBlock)
+  }
+  and printBlock = ({ann: srcrange, it: b}) => {
+    let (ts, e) = b
+    let ts: list<term<printAnn>> = ts->List.map(printTerm)
+    let e = e->printExp
+    let print = String.concat("\n", list{...ts->List.map(t => t.ann.print), e.ann.print})
+    {
+      ann: {print, srcrange},
+      it: (ts, e),
+    }
+  }
+  and printTerm = ({ann: srcrange, it: t}: term<srcrange>): term<printAnn> => {
+    switch t {
+    | Exp(it) => printExp({ann: srcrange, it}) |> mapAnn(v => Exp(v))
+    | Def(it) => printDef({ann: srcrange, it}) |> mapAnn(v => Def(v))
+    }
+  }
 
-//   let termsToString = ts => {
-//     String.concat("\n", ts->List.map(printTerm))
-//   }
+  let printOutput = (os): string => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Con(c) => constantToString(c)
+      | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
+      | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+      }
+    }
+    os->List.map(o => {
+      switch o {
+      | OErr => "error"
+      | OVal(v) => p(v)
+      }
+    }) |> String.concat(" ")
+  }
 
-//   let printProgram = (_, ts) => termsToString(ts.it)
-// }
+  let printProgramFull = (_insertPrintTopLevel, {ann: srcrange, it: ts}) => {
+    let ts = ts->List.map(printTerm)
+    let print = String.concat("\n", ts->List.map(t => t.ann.print))
+    {
+      ann: {print, srcrange},
+      it: ts,
+    }
+  }
+}
 
-// type context =
-//   | Expr(bool) // the bool indicates whether we are in an infix operation
-//   | Stat
-//   | Return
-//   | TopLevel
+type statContext =
+  | Step
+  | Return
+  | TopLevel
+
+type context =
+  | Expr(bool) // the bool indicates whether we are in an infix operation
+  | Stat(statContext)
+
+module JSPrinter = {
+  let constantToString = c => {
+    switch c {
+    | Uni => "null"
+    | Nil => raisePrintError("Lists are not supported in JavaScript")
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "true"
+      } else {
+        "false"
+      }
+    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    }
+  }
+
+  let listToString = es => {
+    if es->List.some(e => String.contains(e, '\n')) {
+      `(${indentBlock(String.concat(",\n", es), 2)}\n)`
+    } else {
+      `(${String.concat(", ", es)})`
+    }
+  }
+
+  let defvarLike = (op, x, e) => {
+    `${op}${x} = ${indent(e, 2)}`
+  }
+
+  let exprAppToString = (e, es) => {
+    `${e}${listToString(es)}`
+  }
+
+  let funLike = (op, x, xs, e) => {
+    if String.contains(e, '\n') {
+      `${op} ${exprAppToString(x, xs)} {${indentBlock(e, 2)}}`
+    } else {
+      `${op} ${exprAppToString(x, xs)} { ${e} }`
+    }
+  }
+
+  let defvarToString = (x, e) => {
+    defvarLike("let ", x, e)
+  }
+
+  let deffunToString = (f, xs, b) => {
+    funLike("function", f, xs, b)
+  }
+
+  let defgenToString = (f, xs, b) => {
+    funLike("function*", f, xs, b)
+  }
+
+  let exprSetToString = (x, e) => {
+    defvarLike("", x, e)
+  }
+
+  let exprLamToString = (xs, b) => {
+    funLike("function", "", xs, b)
+  }
+  let exprGenToString = (xs, b) => {
+    funLike("function*", "", xs, b)
+  }
+  let exprYieldToString = e => `yield ${e}`
+
+  let exprBgnToString = (es, e) => {
+    listToString(list{...es, e})
+    // `{${indentBlock(String.concat(", ", es), 2)}\n}`
+    // beginLike("begin", list{...es, e})
+  }
+
+  let exprCndToString = (ebs: list<(string, string)>, ob) => {
+    let ebs = {
+      switch ob {
+      | None => ebs
+      | Some(b) => list{...ebs, ("", b)}
+      }
+    }
+    let ebs = ebs->List.map(((e, b)) => `if ${e} {${indentBlock(b, 2)}\n}`)
+    String.concat(" else ", ebs)
+  }
+
+  let exprIfToString = (e_cnd: string, e_thn: string, e_els: string) => {
+    `${e_cnd} ? ${e_thn} : ${e_els}`
+  }
+
+  let symbolToString = ({it, ann}) => {
+    {
+      it,
+      ann: {
+        srcrange: ann,
+        print: it,
+      },
+    }
+  }
+
+  let printingTopLevel = ref(false)
+
+  let consumeContext = (e, context) => {
+    switch context {
+    | Expr(_) => e
+    | Stat(ctx) =>
+      switch ctx {
+      | Step => e
+      | Return => `return ${e}`
+      | TopLevel =>
+        if printingTopLevel.contents {
+          `console.log(${e})`
+        } else {
+          e
+        }
+      }
+    }
+  }
+
+  let rec printExp = ({it, ann: srcrange}, context) => {
+    let e: annotated<expressionNode<printAnn>, string> = switch it {
+    | Con(c) => {
+        it: Con(c),
+        ann: constantToString(c)->consumeContext(context),
+      }
+    | Ref(x) => {
+        it: Ref(x),
+        ann: x,
+      }
+    | Set(x, e) => {
+        let x = symbolToString(x)
+        let e: expression<printAnn> = e->printExp(Expr(false))
+        {
+          ann: exprSetToString(x.ann.print, e.ann.print),
+          it: Set(x, e),
+        }
+      }
+    | Lam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: exprLamToString(xs->List.map(x => x.ann.print), b.ann.print),
+          it: Lam(xs, b),
+        }
+      }
+    | GLam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: exprGenToString(xs->List.map(x => x.ann.print), b.ann.print),
+          it: Lam(xs, b),
+        }
+      }
+    | Yield(e) => {
+        let e = e->printExp(Expr(false))
+        {
+          ann: exprYieldToString(e.ann.print),
+          it: Yield(e),
+        }
+      }
+    | AppPrm(p, es) => {
+        let es = es->List.map(e => e->printExp(Expr(false)))
+        {
+          ann: exprAppToString(Primitive.toString(p), es->List.map(e => e.ann.print)),
+          it: AppPrm(p, es),
+        }
+      }
+    | App(e, es) => {
+        let e = e->printExp(Expr(false))
+        let es = es->List.map(e => e->printExp(Expr(false)))
+        {
+          ann: exprAppToString(e.ann.print, es->List.map(e => e.ann.print)),
+          it: App(e, es),
+        }
+      }
+    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
+    | Letrec(xes, b) =>
+      switch context {
+      | Expr(_) => raisePrintError("letrec-expressions are not supported by JavaScript")
+      | Stat(ctx) => {
+          let xes = xes->List.map(xeToString)
+          let b = b->printBlock(ctx)
+          {
+            ann: String.concat("\n", list{...xes->List.map(xe => xe.ann.print), b.ann.print}),
+            it: Letrec(xes, b),
+          }
+        }
+      }
+    | Cnd(ebs, ob) =>
+      switch context {
+      | Expr(_) =>
+        raisePrintError(
+          "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+        )
+      | Stat(context) => {
+          let ebs: list<(expression<printAnn>, block<printAnn>)> =
+            ebs->List.map(eb => eb->ebToString(context))
+          let ob = ob->obToString(context)
+          {
+            ann: exprCndToString(
+              ebs->List.map(((e, b)) => (e.ann.print, b.ann.print)),
+              ob->Option.map(b => b.ann.print),
+            ),
+            it: Cnd(ebs, ob),
+          }
+        }
+      }
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp(Expr(true))
+        let e_thn = e_thn->printExp(Expr(true))
+        let e_els = e_els->printExp(Expr(true))
+        {
+          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print),
+          it: If(e_cnd, e_thn, e_els),
+        }
+      }
+    | Bgn(es, e) => {
+        let es = es->List.map(e => e->printExp(Expr(false)))
+        let e = e->printExp(Expr(false))
+        {
+          ann: exprBgnToString(es->List.map(e => e.ann.print), e.ann.print),
+          it: Bgn(es, e),
+        }
+      }
+    }
+    let {ann: print, it} = e
+    {ann: {print, srcrange}, it}
+  }
+  and defToString = ({ann: srcrange, it: d}: definition<srcrange>): definition<printAnn> => {
+    let d = switch d {
+    | Var(x, e) => {
+        let x = symbolToString(x)
+        let e = e->printExp(Expr(false))
+        {
+          ann: defvarToString(x.ann.print, e.ann.print),
+          it: Var(x, e),
+        }
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: Fun(f, xs, b),
+        }
+      }
+    | GFun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: defgenToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: GFun(f, xs, b),
+        }
+      }
+    }
+    let {ann: print, it} = d
+    {ann: {print, srcrange}, it}
+  }
+  and xeToString = ({it: xe, ann: srcrange}: bind<srcrange>): bind<printAnn> => {
+    let (x, e) = xe
+    let (x, e) = (symbolToString(x), e->printExp(Expr(false)))
+    let print = defvarToString(x.ann.print, e.ann.print)
+    {
+      it: (x, e),
+      ann: {
+        print,
+        srcrange,
+      },
+    }
+  }
+  and ebToString = (eb, ctx: statContext) => {
+    let (e, b) = eb
+    (e->printExp(Expr(false)), b->printBlock(ctx))
+  }
+  and obToString = (ob, ctx: statContext) => {
+    ob->Option.map(b => b->printBlock(ctx))
+  }
+  and printBlock = ({ann: srcrange, it: b}, context: statContext) => {
+    let (ts, e) = b
+    let ts = ts->List.map(t => t->printTerm(Step))
+    let e = e->printExp(Stat(context))
+    let print = String.concat("\n", list{...ts->List.map(t => t.ann.print), e.ann.print})
+    {
+      ann: {print, srcrange},
+      it: (ts, e),
+    }
+  }
+  and printTerm = ({ann: srcrange, it: t}: term<srcrange>, ctx): term<
+    printAnn,
+  > => {
+    switch t {
+    | Exp(it) => printExp({ann: srcrange, it}, Stat(ctx)) |> mapAnn(v => Exp(v))
+    | Def(it) => defToString({ann: srcrange, it}) |> mapAnn(v => Def(v))
+    }
+  }
+
+  let printOutput = (os): string => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Con(c) => constantToString(c)
+      | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
+      | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+      }
+    }
+    os->List.map(o => {
+      switch o {
+      | OErr => "error"
+      | OVal(v) => p(v)
+      }
+    }) |> String.concat(" ")
+  }
+
+  let printProgramFull = (insertPrintTopLevel, {ann: srcrange, it: ts}) => {
+    printingTopLevel := insertPrintTopLevel
+    let ts = ts->List.map(t=> t->printTerm(TopLevel))
+    let print = String.concat("\n", ts->List.map(t => t.ann.print))
+    {
+      ann: {print, srcrange},
+      it: ts,
+    }
+  }
+}
 
 // module JSPrinter = {
 //   let consider_context = (e, ctx) => {
