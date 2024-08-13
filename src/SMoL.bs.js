@@ -12,7 +12,144 @@ import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
-function toString(t) {
+function mapAnn(f, param) {
+  return {
+          it: Curry._1(f, param.it),
+          ann: param.ann
+        };
+}
+
+function toString(it) {
+  if (it.TAG === /* Plain */0) {
+    return it._0;
+  } else {
+    return $$String.concat("", Belt_List.map(it._0, (function (param) {
+                      return toString(param.it);
+                    })));
+  }
+}
+
+function map(f, it) {
+  if (it.TAG === /* Plain */0) {
+    return {
+            TAG: /* Plain */0,
+            _0: Curry._1(f, it._0)
+          };
+  } else {
+    return {
+            TAG: /* Group */1,
+            _0: Belt_List.map(it._0, (function (param) {
+                    return mapAnn((function (param) {
+                                  return map(f, param);
+                                }), param);
+                  }))
+          };
+  }
+}
+
+var Print = {
+  toString: toString,
+  map: map
+};
+
+function printConcat(t, ss) {
+  var intersperse = function (x, ys) {
+    if (!ys) {
+      return /* [] */0;
+    }
+    var ys$1 = ys.tl;
+    var y = ys.hd;
+    if (!ys$1) {
+      return {
+              hd: y,
+              tl: /* [] */0
+            };
+    }
+    var loop = function (ys) {
+      if (ys) {
+        return {
+                hd: x,
+                tl: {
+                  hd: ys.hd,
+                  tl: loop(ys.tl)
+                }
+              };
+      } else {
+        return /* [] */0;
+      }
+    };
+    return {
+            hd: y,
+            tl: loop(ys$1)
+          };
+  };
+  return {
+          TAG: /* Group */1,
+          _0: intersperse({
+                it: {
+                  TAG: /* Plain */0,
+                  _0: t
+                },
+                ann: undefined
+              }, ss)
+        };
+}
+
+function containsNL(it) {
+  if (it.TAG === /* Plain */0) {
+    return $$String.contains(it._0, /* '\n' */10);
+  } else {
+    return Belt_List.some(it._0, (function (param) {
+                  return containsNL(param.it);
+                }));
+  }
+}
+
+function group2(s1, s2) {
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: {
+              hd: s1,
+              tl: {
+                hd: s2,
+                tl: /* [] */0
+              }
+            }
+          },
+          ann: undefined
+        };
+}
+
+function surround(prefix, s, suffix) {
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: prefix
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: s,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: suffix
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
+}
+
+function toString$1(t) {
   if (typeof t === "number") {
     switch (t) {
       case /* PairNew */0 :
@@ -77,17 +214,10 @@ function toString(t) {
 }
 
 var Primitive = {
-  toString: toString
+  toString: toString$1
 };
 
-function mapAnn(f, param) {
-  return {
-          it: Curry._1(f, param.it),
-          ann: param.ann
-        };
-}
-
-function toString$1(t) {
+function toString$2(t) {
   if (t) {
     return "list";
   } else {
@@ -96,10 +226,10 @@ function toString$1(t) {
 }
 
 var SExprKind = {
-  toString: toString$1
+  toString: toString$2
 };
 
-function toString$2(t) {
+function toString$3(t) {
   switch (t) {
     case /* ExactlyOne */0 :
         return "exactly one";
@@ -118,10 +248,10 @@ function toString$2(t) {
 }
 
 var Arity = {
-  toString: toString$2
+  toString: toString$3
 };
 
-function toString$3(t) {
+function toString$4(t) {
   if (t) {
     return "expression";
   } else {
@@ -130,10 +260,10 @@ function toString$3(t) {
 }
 
 var TermKind = {
-  toString: toString$3
+  toString: toString$4
 };
 
-function toString$4(t) {
+function toString$5(t) {
   switch (t.TAG | 0) {
     case /* SExprParseError */0 :
         return "expecting a (valid) s-expression, but the input is not: " + t._0 + "";
@@ -153,7 +283,7 @@ function toString$4(t) {
 }
 
 var ParseError = {
-  toString: toString$4
+  toString: toString$5
 };
 
 var SMoLParseError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLParseError");
@@ -1188,17 +1318,56 @@ function parseOutput(src) {
 
 var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
 
-function indent(s, i) {
+function getPrint(param) {
+  var match = param.ann;
+  return {
+          it: match.print,
+          ann: match.srcrange
+        };
+}
+
+function indent(t, i) {
   var pad = Js_string.repeat(i, " ");
-  return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
+  return mapAnn((function (param) {
+                return map((function (s) {
+                              return Js_string.replaceByRe(/\n/g, "\n" + pad, s);
+                            }), param);
+              }), t);
 }
 
 function indentBlock(s, i) {
-  return indent("\n" + s, i);
+  return indent({
+              it: {
+                TAG: /* Group */1,
+                _0: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: "\n"
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: s,
+                    tl: /* [] */0
+                  }
+                }
+              },
+              ann: undefined
+            }, i);
 }
 
 function hcat(s1, s2) {
-  return "" + s1 + "" + indent(s2, s1.length) + "";
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: s1,
+            tl: {
+              hd: indent(s2, toString(s1.it).length),
+              tl: /* [] */0
+            }
+          }
+        };
 }
 
 function constantToString(c) {
@@ -1225,15 +1394,93 @@ function constantToString(c) {
 }
 
 function listToString(ss) {
-  return "(" + $$String.concat(" ", ss) + ")";
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: "("
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: {
+                it: printConcat(" ", ss),
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
 }
 
 function defvarLike(op, x, e) {
-  if ($$String.contains(e, /* '\n' */10)) {
-    return "(" + op + " " + x + "" + indentBlock(e, 2) + ")";
+  if (containsNL(e.it)) {
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: op
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: " "
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: x,
+                    tl: {
+                      hd: indentBlock(e, 2),
+                      tl: {
+                        hd: {
+                          it: {
+                            TAG: /* Plain */0,
+                            _0: ")"
+                          },
+                          ann: undefined
+                        },
+                        tl: /* [] */0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          };
   } else {
     return listToString({
-                hd: op,
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: op
+                  },
+                  ann: undefined
+                },
                 tl: {
                   hd: x,
                   tl: {
@@ -1246,33 +1493,87 @@ function defvarLike(op, x, e) {
 }
 
 function deffunToString(f, xs, b) {
-  return defvarLike("deffun", listToString({
-                  hd: f,
-                  tl: xs
-                }), b);
+  return defvarLike("deffun", {
+              it: listToString({
+                    hd: f,
+                    tl: xs
+                  }),
+              ann: undefined
+            }, b);
 }
 
 function defgenToString(f, xs, b) {
-  return defvarLike("defgen", listToString({
-                  hd: f,
-                  tl: xs
-                }), b);
+  return defvarLike("defgen", {
+              it: listToString({
+                    hd: f,
+                    tl: xs
+                  }),
+              ann: undefined
+            }, b);
 }
 
 function exprLamToString(xs, b) {
-  return defvarLike("lambda", listToString(xs), b);
+  return defvarLike("lambda", {
+              it: listToString(xs),
+              ann: undefined
+            }, b);
 }
 
 function exprGenToString(xs, b) {
-  return defvarLike("generator", listToString(xs), b);
+  return defvarLike("generator", {
+              it: listToString(xs),
+              ann: undefined
+            }, b);
 }
 
 function exprYieldToString(e) {
-  return "(yield " + e + ")";
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: "(yield "
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: e,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
 }
 
 function beginLike(op, ts) {
-  return "(" + op + "" + indentBlock($$String.concat("\n", ts), 2) + ")";
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: op
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: indentBlock({
+                    it: printConcat("\n", ts),
+                    ann: undefined
+                  }, 2),
+              tl: /* [] */0
+            }
+          }
+        };
 }
 
 function exprBgnToString(es, e) {
@@ -1290,35 +1591,178 @@ function exprCndToString(ebs, ob) {
           ebs,
           {
             hd: [
-              "else",
+              {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "else"
+                },
+                ann: undefined
+              },
               ob
             ],
             tl: /* [] */0
           }
         ]) : ebs;
   var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return "[" + param[0] + "" + indentBlock(param[1], 1) + "]";
+          var ss_0 = {
+            it: {
+              TAG: /* Plain */0,
+              _0: "["
+            },
+            ann: undefined
+          };
+          var ss_1 = {
+            hd: param[0],
+            tl: {
+              hd: indentBlock(param[1], 1),
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: "]"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          };
+          var ss = {
+            hd: ss_0,
+            tl: ss_1
+          };
+          return {
+                  it: {
+                    TAG: /* Group */1,
+                    _0: ss
+                  },
+                  ann: undefined
+                };
         }));
   return beginLike("cond", ebs$2);
 }
 
 function exprIfToString(e_cnd, e_thn, e_els) {
-  return hcat("(if ", "" + $$String.concat("\n", {
-                  hd: e_cnd,
-                  tl: {
-                    hd: e_thn,
-                    tl: {
-                      hd: e_els,
-                      tl: /* [] */0
-                    }
-                  }
-                }) + ")");
+  return hcat({
+              it: {
+                TAG: /* Plain */0,
+                _0: "(if "
+              },
+              ann: undefined
+            }, group2({
+                  it: printConcat("\n", {
+                        hd: e_cnd,
+                        tl: {
+                          hd: e_thn,
+                          tl: {
+                            hd: e_els,
+                            tl: /* [] */0
+                          }
+                        }
+                      }),
+                  ann: undefined
+                }, {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: ")"
+                  },
+                  ann: undefined
+                }));
 }
 
 function letLike(op, xes, b) {
-  var xes$1 = $$String.concat("\n", xes);
-  var xes$2 = "(" + indent(xes$1, 1) + ")";
-  return hcat("(" + op + " ", "" + xes$2 + "") + ("" + indentBlock(b, 2) + ")");
+  var xes_it = printConcat("\n", xes);
+  var xes$1 = {
+    it: xes_it,
+    ann: undefined
+  };
+  var ss_0 = {
+    it: {
+      TAG: /* Plain */0,
+      _0: "("
+    },
+    ann: undefined
+  };
+  var ss_1 = {
+    hd: indent(xes$1, 1),
+    tl: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: ")"
+        },
+        ann: undefined
+      },
+      tl: /* [] */0
+    }
+  };
+  var ss = {
+    hd: ss_0,
+    tl: ss_1
+  };
+  var xes_it$1 = {
+    TAG: /* Group */1,
+    _0: ss
+  };
+  var xes$2 = {
+    it: xes_it$1,
+    ann: undefined
+  };
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: hcat({
+                    it: {
+                      TAG: /* Group */1,
+                      _0: {
+                        hd: {
+                          it: {
+                            TAG: /* Plain */0,
+                            _0: "("
+                          },
+                          ann: undefined
+                        },
+                        tl: {
+                          hd: {
+                            it: {
+                              TAG: /* Plain */0,
+                              _0: op
+                            },
+                            ann: undefined
+                          },
+                          tl: {
+                            hd: {
+                              it: {
+                                TAG: /* Plain */0,
+                                _0: " "
+                              },
+                              ann: undefined
+                            },
+                            tl: /* [] */0
+                          }
+                        }
+                      }
+                    },
+                    ann: undefined
+                  }, xes$2),
+              ann: undefined
+            },
+            tl: {
+              hd: indentBlock(b, 2),
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
 }
 
 function symbolToString(param) {
@@ -1327,7 +1771,10 @@ function symbolToString(param) {
           it: it,
           ann: {
             srcrange: param.ann,
-            print: it
+            print: {
+              TAG: /* Plain */0,
+              _0: it
+            }
           }
         };
 }
@@ -1343,7 +1790,10 @@ function printExp(param) {
             TAG: /* Con */0,
             _0: c
           },
-          ann: constantToString(c)
+          ann: {
+            TAG: /* Plain */0,
+            _0: constantToString(c)
+          }
         };
         break;
     case /* Ref */1 :
@@ -1353,7 +1803,10 @@ function printExp(param) {
             TAG: /* Ref */1,
             _0: x
           },
-          ann: x
+          ann: {
+            TAG: /* Plain */0,
+            _0: x
+          }
         };
         break;
     case /* Set */2 :
@@ -1365,7 +1818,7 @@ function printExp(param) {
             _0: x$1,
             _1: e$1
           },
-          ann: defvarLike("set!", x$1.ann.print, e$1.ann.print)
+          ann: defvarLike("set!", getPrint(x$1), getPrint(e$1))
         };
         break;
     case /* Lam */3 :
@@ -1377,9 +1830,7 @@ function printExp(param) {
             _0: xs,
             _1: b
           },
-          ann: exprLamToString(Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
+          ann: exprLamToString(Belt_List.map(xs, getPrint), getPrint(b))
         };
         break;
     case /* Let */4 :
@@ -1391,9 +1842,7 @@ function printExp(param) {
             _0: xes,
             _1: b$1
           },
-          ann: letLike("let", Belt_List.map(xes, (function (xe) {
-                      return xe.ann.print;
-                    })), b$1.ann.print)
+          ann: letLike("let", Belt_List.map(xes, getPrint), getPrint(b$1))
         };
         break;
     case /* Letrec */5 :
@@ -1405,18 +1854,22 @@ function printExp(param) {
             _0: xes$1,
             _1: b$2
           },
-          ann: letLike("letrec", Belt_List.map(xes$1, (function (xe) {
-                      return xe.ann.print;
-                    })), b$2.ann.print)
+          ann: letLike("letrec", Belt_List.map(xes$1, getPrint), getPrint(b$2))
         };
         break;
     case /* AppPrm */6 :
         var p = it._0;
         var es = Belt_List.map(it._1, printExp);
-        var es$1 = Belt_List.map(es, (function (e) {
-                return e.ann.print;
-              }));
-        var e$2 = toString(p);
+        var es$1 = Belt_List.map(es, getPrint);
+        var s = toString$1(p);
+        var e_it = {
+          TAG: /* Plain */0,
+          _0: s
+        };
+        var e$2 = {
+          it: e_it,
+          ann: undefined
+        };
         e = {
           it: {
             TAG: /* AppPrm */6,
@@ -1432,9 +1885,8 @@ function printExp(param) {
     case /* App */7 :
         var e$3 = printExp(it._0);
         var es$2 = Belt_List.map(it._1, printExp);
-        var es$3 = Belt_List.map(es$2, (function (e) {
-                return e.ann.print;
-              }));
+        var es$3 = Belt_List.map(es$2, getPrint);
+        var e$4 = getPrint(e$3);
         e = {
           it: {
             TAG: /* App */7,
@@ -1442,23 +1894,21 @@ function printExp(param) {
             _1: es$2
           },
           ann: listToString({
-                hd: e$3.ann.print,
+                hd: e$4,
                 tl: es$3
               })
         };
         break;
     case /* Bgn */8 :
         var es$4 = Belt_List.map(it._0, printExp);
-        var e$4 = printExp(it._1);
+        var e$5 = printExp(it._1);
         e = {
           it: {
             TAG: /* Bgn */8,
             _0: es$4,
-            _1: e$4
+            _1: e$5
           },
-          ann: exprBgnToString(Belt_List.map(es$4, (function (e) {
-                      return e.ann.print;
-                    })), e$4.ann.print)
+          ann: exprBgnToString(Belt_List.map(es$4, getPrint), getPrint(e$5))
         };
         break;
     case /* If */9 :
@@ -1472,7 +1922,7 @@ function printExp(param) {
             _1: e_thn,
             _2: e_els
           },
-          ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print)
+          ann: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
         };
         break;
     case /* Cnd */10 :
@@ -1486,12 +1936,10 @@ function printExp(param) {
           },
           ann: exprCndToString(Belt_List.map(ebs, (function (param) {
                       return [
-                              param[0].ann.print,
-                              param[1].ann.print
+                              getPrint(param[0]),
+                              getPrint(param[1])
                             ];
-                    })), Belt_Option.map(ob, (function (b) {
-                      return b.ann.print;
-                    })))
+                    })), Belt_Option.map(ob, getPrint))
         };
         break;
     case /* GLam */11 :
@@ -1503,19 +1951,17 @@ function printExp(param) {
             _0: xs$1,
             _1: b$3
           },
-          ann: exprGenToString(Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$3.ann.print)
+          ann: exprGenToString(Belt_List.map(xs$1, getPrint), getPrint(b$3))
         };
         break;
     case /* Yield */12 :
-        var e$5 = printExp(it._0);
+        var e$6 = printExp(it._0);
         e = {
           it: {
             TAG: /* Yield */12,
-            _0: e$5
+            _0: e$6
           },
-          ann: exprYieldToString(e$5.ann.print)
+          ann: exprYieldToString(getPrint(e$6))
         };
         break;
     
@@ -1542,7 +1988,7 @@ function printDef(param) {
             _0: x,
             _1: e
           },
-          ann: defvarLike("defvar", x.ann.print, e.ann.print)
+          ann: defvarLike("defvar", getPrint(x), getPrint(e))
         };
         break;
     case /* Fun */1 :
@@ -1556,9 +2002,7 @@ function printDef(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString(f.ann.print, Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
+          ann: deffunToString(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
         };
         break;
     case /* GFun */2 :
@@ -1572,9 +2016,7 @@ function printDef(param) {
             _1: xs$1,
             _2: b$1
           },
-          ann: defgenToString(f$1.ann.print, Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$1.ann.print)
+          ann: defgenToString(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
         };
         break;
     
@@ -1592,7 +2034,19 @@ function xeToString(param) {
   var xe = param.it;
   var x = symbolToString(xe[0]);
   var e = printExp(xe[1]);
-  var print = hcat("[" + x.ann.print + "", "" + e.ann.print + "]");
+  var print = hcat(group2({
+            it: {
+              TAG: /* Plain */0,
+              _0: "["
+            },
+            ann: undefined
+          }, getPrint(x)), group2(getPrint(e), {
+            it: {
+              TAG: /* Plain */0,
+              _0: "]"
+            },
+            ann: undefined
+          }));
   return {
           it: [
             x,
@@ -1616,12 +2070,10 @@ function printBlock(param) {
   var b = param.it;
   var ts = Belt_List.map(b[0], printTerm);
   var e = printExp(b[1]);
-  var print = $$String.concat("\n", Belt_List.concatMany([
-            Belt_List.map(ts, (function (t) {
-                    return t.ann.print;
-                  })),
+  var print = printConcat("\n", Belt_List.concatMany([
+            Belt_List.map(ts, getPrint),
             {
-              hd: e.ann.print,
+              hd: getPrint(e),
               tl: /* [] */0
             }
           ]));
@@ -1686,9 +2138,7 @@ function printOutput(os) {
 
 function printProgramFull(_insertPrintTopLevel, param) {
   var ts = Belt_List.map(param.it, printTerm);
-  var print = $$String.concat("\n", Belt_List.map(ts, (function (t) {
-              return t.ann.print;
-            })));
+  var print = printConcat("\n", Belt_List.map(ts, getPrint));
   return {
           it: ts,
           ann: {
@@ -1699,7 +2149,136 @@ function printProgramFull(_insertPrintTopLevel, param) {
 }
 
 function printProgram(insertPrintTopLevel, p) {
-  return printProgramFull(insertPrintTopLevel, p).ann.print;
+  return toString(printProgramFull(insertPrintTopLevel, p).ann.print);
+}
+
+function op1(s1, p1, s2) {
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s1
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: p1,
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: s2
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          },
+          ann: undefined
+        };
+}
+
+function op2(s1, p1, s2, p2, s3) {
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s1
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: p1,
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: s2
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: p2,
+                    tl: {
+                      hd: {
+                        it: {
+                          TAG: /* Plain */0,
+                          _0: s3
+                        },
+                        ann: undefined
+                      },
+                      tl: /* [] */0
+                    }
+                  }
+                }
+              }
+            }
+          },
+          ann: undefined
+        };
+}
+
+function op3(s1, p1, s2, p2, s3, p3, s4) {
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s1
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: p1,
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: s2
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: p2,
+                    tl: {
+                      hd: {
+                        it: {
+                          TAG: /* Plain */0,
+                          _0: s3
+                        },
+                        ann: undefined
+                      },
+                      tl: {
+                        hd: p3,
+                        tl: {
+                          hd: {
+                            it: {
+                              TAG: /* Plain */0,
+                              _0: s4
+                            },
+                            ann: undefined
+                          },
+                          tl: /* [] */0
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          ann: undefined
+        };
 }
 
 function escapeName(x) {
@@ -1744,20 +2323,110 @@ function constantToString$1(c) {
 
 function listToString$1(es) {
   if (Belt_List.some(es, (function (e) {
-            return $$String.contains(e, /* '\n' */10);
+            return containsNL(e.it);
           }))) {
-    return "(" + indentBlock($$String.concat(",\n", es), 2) + "\n)";
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: printConcat(",\n", es),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
   } else {
-    return "(" + $$String.concat(", ", es) + ")";
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: printConcat(", ", es),
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
   }
 }
 
 function defvarLike$1(op, x, e) {
-  return "" + op + "" + x + " = " + indent(e, 2) + "";
+  var ss_0 = {
+    it: {
+      TAG: /* Plain */0,
+      _0: op
+    },
+    ann: undefined
+  };
+  var ss_1 = {
+    hd: x,
+    tl: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: " = "
+        },
+        ann: undefined
+      },
+      tl: {
+        hd: indent(e, 2),
+        tl: /* [] */0
+      }
+    }
+  };
+  var ss = {
+    hd: ss_0,
+    tl: ss_1
+  };
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: ss
+          },
+          ann: undefined
+        };
 }
 
 function exprAppToString(e, es) {
-  return "" + e + "" + listToString$1(es) + "";
+  return group2(e, {
+              it: listToString$1(es),
+              ann: undefined
+            });
 }
 
 var printingTopLevel = {
@@ -1766,18 +2435,18 @@ var printingTopLevel = {
 
 function consumeContext(e, context) {
   if (context.TAG === /* Expr */0) {
-    return e;
+    return surround("", e, "");
   }
   switch (context._0) {
     case /* Step */0 :
-        return "" + e + ";";
+        return surround("", e, ";");
     case /* Return */1 :
-        return "return " + e + ";";
+        return surround("return ", e, ";");
     case /* TopLevel */2 :
         if (printingTopLevel.contents) {
-          return "console.log(" + e + ");";
+          return surround("console.log(", e, ");");
         } else {
-          return "" + e + ";";
+          return surround("", e, ";");
         }
     
   }
@@ -1785,7 +2454,7 @@ function consumeContext(e, context) {
 
 function consumeContextWrap(e, context) {
   if (context.TAG === /* Expr */0 && context._0) {
-    return "(" + e + ")";
+    return surround("(", e, ")");
   } else {
     return consumeContext(e, context);
   }
@@ -1799,9 +2468,9 @@ function consumeContextVoid(e, context) {
     case /* Step */0 :
         return consumeContext(e, context);
     case /* Return */1 :
-        return "" + e + ";\nreturn;";
+        return surround("", e, ";\nreturn;");
     case /* TopLevel */2 :
-        return "" + e + ";";
+        return surround("", e, ";");
     
   }
 }
@@ -1810,9 +2479,10 @@ function consumeContextStat(e, context) {
   if (context.TAG !== /* Expr */0) {
     return consumeContextVoid(e, context);
   }
+  var err = "" + toString(e.it) + " can't be used as a expression in JavaScript";
   throw {
         RE_EXN_ID: SMoLPrintError,
-        _1: "" + e + " can't be used as a expression in JavaScript",
+        _1: err,
         Error: new Error()
       };
 }
@@ -1837,7 +2507,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext("[ " + e1.ann.print + ", " + e2.ann.print + " ]", context)
+                      ann: consumeContext(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"), context)
                     };
             }
             
@@ -1854,7 +2524,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext("" + e1$1.ann.print + "[0]", context)
+                    ann: consumeContext(op1("", getPrint(e1$1), "[0]"), context)
                   };
           }
           break;
@@ -1869,7 +2539,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext("" + e1$2.ann.print + "[1]", context)
+                    ann: consumeContext(op1("", getPrint(e1$2), "[1]"), context)
                   };
           }
           break;
@@ -1890,7 +2560,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat("" + e1$3.ann.print + "[0] = " + e2$1.ann.print + "", context)
+                      ann: consumeContextStat(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
                     };
             }
             
@@ -1913,7 +2583,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat("" + e1$4.ann.print + "[1] = " + e2$2.ann.print + "", context)
+                      ann: consumeContextStat(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
                     };
             }
             
@@ -1928,9 +2598,10 @@ function exprAppPrmToString(p, es, context) {
                     /* VecNew */5,
                     es$1
                   ],
-                  ann: consumeContext("[ " + $$String.concat(", ", Belt_List.map(es$1, (function (e) {
-                                  return e.ann.print;
-                                }))) + " ]", context)
+                  ann: consumeContext(op1("[ ", {
+                            it: printConcat(", ", Belt_List.map(es$1, getPrint)),
+                            ann: undefined
+                          }, " ]"), context)
                 };
       case /* VecRef */6 :
           if (es) {
@@ -1949,7 +2620,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext("" + e1$5.ann.print + "[" + e2$3.ann.print + "]", context)
+                      ann: consumeContext(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"), context)
                     };
             }
             
@@ -1978,7 +2649,7 @@ function exprAppPrmToString(p, es, context) {
                             }
                           }
                         ],
-                        ann: consumeContextStat("" + e1$6.ann.print + "[" + e2$4.ann.print + "] = " + e3.ann.print + "", context)
+                        ann: consumeContextStat(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
                       };
               }
               
@@ -1997,7 +2668,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext("" + e1$7.ann.print + ".length", context)
+                    ann: consumeContext(op1("", getPrint(e1$7), ".length"), context)
                   };
           }
           break;
@@ -2012,7 +2683,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap("throw " + e1$8.ann.print + "", context)
+                    ann: consumeContextWrap(op1("throw ", getPrint(e1$8), ""), context)
                   };
           }
           break;
@@ -2027,7 +2698,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap("!" + e1$9.ann.print + "", context)
+                    ann: consumeContextWrap(op1("! ", getPrint(e1$9), ""), context)
                   };
           }
           break;
@@ -2042,7 +2713,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid("print(" + e1$10.ann.print + ")", context)
+                    ann: consumeContextVoid(op1("console.log(", getPrint(e1$10), ")"), context)
                   };
           }
           break;
@@ -2057,7 +2728,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid("" + e1$11.ann.print + ".next()", context)
+                    ann: consumeContextVoid(op1("", getPrint(e1$11), ".next()"), context)
                   };
           }
           break;
@@ -2099,9 +2770,10 @@ function exprAppPrmToString(p, es, context) {
                 },
                 es$2
               ],
-              ann: consumeContextWrap($$String.concat(" " + os + " ", Belt_List.map(es$2, (function (e) {
-                              return e.ann.print;
-                            }))), context)
+              ann: consumeContextWrap({
+                    it: printConcat(" " + os + " ", Belt_List.map(es$2, getPrint)),
+                    ann: undefined
+                  }, context)
             };
     }
     if (es) {
@@ -2146,14 +2818,14 @@ function exprAppPrmToString(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContextWrap("" + e1$12.ann.print + " " + os$1 + " " + e2$5.ann.print + "", context)
+                ann: consumeContext(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
               };
       }
       
     }
     
   }
-  var err = "JavaScript doesn't let you use " + toString(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  var err = "JavaScript doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -2162,41 +2834,52 @@ function exprAppPrmToString(p, es, context) {
 }
 
 function funLike(op, x, xs, e) {
-  return "" + op + " " + exprAppToString(x, xs) + " {" + indentBlock(e, 2) + "\n}";
+  return op2("" + op + " ", exprAppToString(x, xs), " {", indentBlock(e, 2), "\n}");
 }
 
 function defvarToString(x, e) {
-  return "" + defvarLike$1("let ", x, e) + ";";
+  return op1("", defvarLike$1("let ", x, e), ";");
 }
 
 function deffunToString$1(f, xs, b) {
-  return "" + funLike("function", f, xs, b) + "";
+  return funLike("function", f, xs, b);
 }
 
 function defgenToString$1(f, xs, b) {
-  return "" + funLike("function*", f, xs, b) + "";
+  return funLike("function*", f, xs, b);
 }
 
 function exprLamToString$1(xs, b) {
-  return funLike("function", "", xs, b);
+  return funLike("function", {
+              it: {
+                TAG: /* Plain */0,
+                _0: ""
+              },
+              ann: undefined
+            }, xs, b);
 }
 
 function exprGenToString$1(xs, b) {
-  return funLike("function*", "", xs, b);
-}
-
-function exprYieldToString$1(e) {
-  return "yield " + e + "";
+  return funLike("function*", {
+              it: {
+                TAG: /* Plain */0,
+                _0: ""
+              },
+              ann: undefined
+            }, xs, b);
 }
 
 function exprBgnToString$1(es, e) {
-  return listToString$1(Belt_List.concatMany([
-                  es,
-                  {
-                    hd: e,
-                    tl: /* [] */0
-                  }
-                ]));
+  return {
+          it: listToString$1(Belt_List.concatMany([
+                    es,
+                    {
+                      hd: e,
+                      tl: /* [] */0
+                    }
+                  ])),
+          ann: undefined
+        };
 }
 
 function exprCndToString$1(ebs, ob) {
@@ -2204,20 +2887,26 @@ function exprCndToString$1(ebs, ob) {
           ebs,
           {
             hd: [
-              "",
+              {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: ""
+                },
+                ann: undefined
+              },
               ob
             ],
             tl: /* [] */0
           }
         ]) : ebs;
   var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return "if " + param[0] + " {" + indentBlock(param[1], 2) + "\n}";
+          return op2("if (", param[0], ") {", indentBlock(param[1], 2), "\n}");
         }));
-  return $$String.concat(" else ", ebs$2);
+  return printConcat(" else ", ebs$2);
 }
 
 function exprIfToString$1(e_cnd, e_thn, e_els) {
-  return "" + e_cnd + " ? " + e_thn + " : " + e_els + "";
+  return op3("", e_cnd, " ? ", e_thn, " : ", e_els, "");
 }
 
 function symbolToString$1(param) {
@@ -2226,7 +2915,10 @@ function symbolToString$1(param) {
           it: it,
           ann: {
             srcrange: param.ann,
-            print: escapeName(it)
+            print: {
+              TAG: /* Plain */0,
+              _0: escapeName(it)
+            }
           }
         };
 }
@@ -2237,22 +2929,36 @@ function printExp$1(param, context) {
   switch (it.TAG | 0) {
     case /* Con */0 :
         var c = it._0;
+        var s = constantToString$1(c);
         e = {
           it: {
             TAG: /* Con */0,
             _0: c
           },
-          ann: consumeContext(constantToString$1(c), context)
+          ann: consumeContext({
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s
+                },
+                ann: undefined
+              }, context)
         };
         break;
     case /* Ref */1 :
         var x = it._0;
+        var s$1 = escapeName(x);
         e = {
           it: {
             TAG: /* Ref */1,
             _0: x
           },
-          ann: consumeContext(escapeName(x), context)
+          ann: consumeContext({
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s$1
+                },
+                ann: undefined
+              }, context)
         };
         break;
     case /* Set */2 :
@@ -2267,7 +2973,7 @@ function printExp$1(param, context) {
             _0: x$1,
             _1: e$1
           },
-          ann: consumeContextStat(defvarLike$1("", x$1.ann.print, e$1.ann.print), context)
+          ann: consumeContextStat(defvarLike$1("", getPrint(x$1), getPrint(e$1)), context)
         };
         break;
     case /* Lam */3 :
@@ -2279,9 +2985,7 @@ function printExp$1(param, context) {
             _0: xs,
             _1: b
           },
-          ann: consumeContextWrap(exprLamToString$1(Belt_List.map(xs, (function (x) {
-                          return x.ann.print;
-                        })), b.ann.print), context)
+          ann: consumeContextWrap(exprLamToString$1(Belt_List.map(xs, getPrint), getPrint(b)), context)
         };
         break;
     case /* Let */4 :
@@ -2306,15 +3010,40 @@ function printExp$1(param, context) {
             _0: xes,
             _1: b$1
           },
-          ann: "{\n" + indentBlock($$String.concat("\n", Belt_List.concatMany([
-                        Belt_List.map(xes, (function (xe) {
-                                return xe.ann.print;
-                              })),
-                        {
-                          hd: b$1.ann.print,
-                          tl: /* [] */0
-                        }
-                      ])), 2) + "\n}"
+          ann: {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "{\n"
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: printConcat("\n", Belt_List.concatMany([
+                                Belt_List.map(xes, getPrint),
+                                {
+                                  hd: getPrint(b$1),
+                                  tl: /* [] */0
+                                }
+                              ])),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: "\n}"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          }
         };
         break;
     case /* AppPrm */6 :
@@ -2352,9 +3081,7 @@ function printExp$1(param, context) {
             _0: e$2,
             _1: es$1
           },
-          ann: consumeContext(exprAppToString(e$2.ann.print, Belt_List.map(es$1, (function (e) {
-                          return e.ann.print;
-                        }))), context)
+          ann: consumeContext(exprAppToString(getPrint(e$2), Belt_List.map(es$1, getPrint)), context)
         };
         break;
     case /* Bgn */8 :
@@ -2374,9 +3101,7 @@ function printExp$1(param, context) {
             _0: es$2,
             _1: e$3
           },
-          ann: consumeContext(exprBgnToString$1(Belt_List.map(es$2, (function (e) {
-                          return e.ann.print;
-                        })), e$3.ann.print), context)
+          ann: consumeContext(exprBgnToString$1(Belt_List.map(es$2, getPrint), getPrint(e$3)), context)
         };
         break;
     case /* If */9 :
@@ -2399,7 +3124,7 @@ function printExp$1(param, context) {
             _1: e_thn,
             _2: e_els
           },
-          ann: consumeContextWrap(exprIfToString$1(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print), context)
+          ann: consumeContextWrap(exprIfToString$1(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
         };
         break;
     case /* Cnd */10 :
@@ -2429,12 +3154,10 @@ function printExp$1(param, context) {
           },
           ann: exprCndToString$1(Belt_List.map(ebs, (function (param) {
                       return [
-                              param[0].ann.print,
-                              param[1].ann.print
+                              getPrint(param[0]),
+                              getPrint(param[1])
                             ];
-                    })), Belt_Option.map(ob, (function (b) {
-                      return b.ann.print;
-                    })))
+                    })), Belt_Option.map(ob, getPrint))
         };
         break;
     case /* GLam */11 :
@@ -2446,9 +3169,7 @@ function printExp$1(param, context) {
             _0: xs$1,
             _1: b$2
           },
-          ann: consumeContextWrap(exprGenToString$1(Belt_List.map(xs$1, (function (x) {
-                          return x.ann.print;
-                        })), b$2.ann.print), context)
+          ann: consumeContextWrap(exprGenToString$1(Belt_List.map(xs$1, getPrint), getPrint(b$2)), context)
         };
         break;
     case /* Yield */12 :
@@ -2461,7 +3182,7 @@ function printExp$1(param, context) {
             TAG: /* Yield */12,
             _0: e$4
           },
-          ann: consumeContextWrap(exprYieldToString$1(e$4.ann.print), context)
+          ann: consumeContextWrap(op1("yield ", getPrint(e$4), ""), context)
         };
         break;
     
@@ -2491,7 +3212,7 @@ function defToString(param) {
             _0: x,
             _1: e
           },
-          ann: defvarToString(x.ann.print, e.ann.print)
+          ann: defvarToString(getPrint(x), getPrint(e))
         };
         break;
     case /* Fun */1 :
@@ -2505,9 +3226,7 @@ function defToString(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$1(f.ann.print, Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
+          ann: deffunToString$1(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
         };
         break;
     case /* GFun */2 :
@@ -2521,9 +3240,7 @@ function defToString(param) {
             _1: xs$1,
             _2: b$1
           },
-          ann: defgenToString$1(f$1.ann.print, Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$1.ann.print)
+          ann: defgenToString$1(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
         };
         break;
     
@@ -2532,7 +3249,7 @@ function defToString(param) {
           it: d$1.it,
           ann: {
             srcrange: param.ann,
-            print: d$1.ann
+            print: d$1.ann.it
           }
         };
 }
@@ -2544,7 +3261,7 @@ function xeToString$1(param) {
         TAG: /* Expr */0,
         _0: false
       });
-  var print = defvarToString(x.ann.print, e.ann.print);
+  var print = defvarToString(getPrint(x), getPrint(e)).it;
   return {
           it: [
             x,
@@ -2572,12 +3289,10 @@ function printBlock$1(param, context) {
         TAG: /* Stat */1,
         _0: context
       });
-  var print = $$String.concat("\n", Belt_List.concatMany([
-            Belt_List.map(ts, (function (t) {
-                    return t.ann.print;
-                  })),
+  var print = printConcat("\n", Belt_List.concatMany([
+            Belt_List.map(ts, getPrint),
             {
-              hd: e.ann.print,
+              hd: getPrint(e),
               tl: /* [] */0
             }
           ]));
@@ -2652,9 +3367,7 @@ function printProgramFull$1(insertPrintTopLevel, param) {
   var ts = Belt_List.map(param.it, (function (t) {
           return printTerm$1(t, /* TopLevel */2);
         }));
-  var print = $$String.concat("\n", Belt_List.map(ts, (function (t) {
-              return t.ann.print;
-            })));
+  var print = printConcat("\n", Belt_List.map(ts, getPrint));
   return {
           it: ts,
           ann: {
@@ -2665,7 +3378,7 @@ function printProgramFull$1(insertPrintTopLevel, param) {
 }
 
 function printProgram$1(insertPrintTopLevel, p) {
-  return printProgramFull$1(insertPrintTopLevel, p).ann.print;
+  return toString(printProgramFull$1(insertPrintTopLevel, p).ann.print);
 }
 
 function refMut(env, x) {
@@ -2756,20 +3469,110 @@ function constantToString$2(c) {
 
 function listToString$2(es) {
   if (Belt_List.some(es, (function (e) {
-            return $$String.contains(e, /* '\n' */10);
+            return containsNL(e.it);
           }))) {
-    return "(" + indentBlock($$String.concat(",\n", es), 2) + "\n)";
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: printConcat(",\n", es),
+                      ann: undefined
+                    }, 4),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
   } else {
-    return "(" + $$String.concat(", ", es) + ")";
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: printConcat(", ", es),
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
   }
 }
 
 function defvarLike$2(op, x, e) {
-  return "" + op + "" + x + " = " + indent(e, 2) + "";
+  var ss_0 = {
+    it: {
+      TAG: /* Plain */0,
+      _0: op
+    },
+    ann: undefined
+  };
+  var ss_1 = {
+    hd: x,
+    tl: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: " = "
+        },
+        ann: undefined
+      },
+      tl: {
+        hd: indent(e, 2),
+        tl: /* [] */0
+      }
+    }
+  };
+  var ss = {
+    hd: ss_0,
+    tl: ss_1
+  };
+  return {
+          it: {
+            TAG: /* Group */1,
+            _0: ss
+          },
+          ann: undefined
+        };
 }
 
 function exprAppToString$1(e, es) {
-  return "" + e + "" + listToString$2(es) + "";
+  return group2(e, {
+              it: listToString$2(es),
+              ann: undefined
+            });
 }
 
 var printingTopLevel$1 = {
@@ -2778,18 +3581,18 @@ var printingTopLevel$1 = {
 
 function consumeContext$1(e, context) {
   if (context.TAG === /* Expr */0) {
-    return e;
+    return surround("", e, "");
   }
   switch (context._0) {
     case /* Step */0 :
-        return "" + e + "";
+        return surround("", e, "");
     case /* Return */1 :
-        return "return " + e + "";
+        return surround("return ", e, "");
     case /* TopLevel */2 :
         if (printingTopLevel$1.contents) {
-          return "print(" + e + ")";
+          return surround("print(", e, ")");
         } else {
-          return "" + e + "";
+          return surround("", e, "");
         }
     
   }
@@ -2797,7 +3600,7 @@ function consumeContext$1(e, context) {
 
 function consumeContextWrap$1(e, context) {
   if (context.TAG === /* Expr */0 && context._0) {
-    return "(" + e + ")";
+    return surround("(", e, ")");
   } else {
     return consumeContext$1(e, context);
   }
@@ -2811,9 +3614,9 @@ function consumeContextVoid$1(e, context) {
     case /* Step */0 :
         return consumeContext$1(e, context);
     case /* Return */1 :
-        return "" + e + "\nreturn";
+        return surround("", e, "\nreturn");
     case /* TopLevel */2 :
-        return "" + e + "";
+        return surround("", e, "");
     
   }
 }
@@ -2822,9 +3625,10 @@ function consumeContextStat$1(e, context) {
   if (context.TAG !== /* Expr */0) {
     return consumeContextVoid$1(e, context);
   }
+  var err = "" + toString(e.it) + " can't be used as a expression in Python";
   throw {
         RE_EXN_ID: SMoLPrintError,
-        _1: "" + e + " can't be used as a expression in Python",
+        _1: err,
         Error: new Error()
       };
 }
@@ -2849,7 +3653,7 @@ function exprAppPrmToString$1(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext$1("[" + e1.ann.print + ", " + e2.ann.print + "]", context)
+                      ann: consumeContext$1(op2("[", getPrint(e1), ", ", getPrint(e2), "]"), context)
                     };
             }
             
@@ -2866,7 +3670,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1("" + e1$1.ann.print + "[0]", context)
+                    ann: consumeContext$1(op1("", getPrint(e1$1), "[0]"), context)
                   };
           }
           break;
@@ -2881,7 +3685,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1("" + e1$2.ann.print + "[1]", context)
+                    ann: consumeContext$1(op1("", getPrint(e1$2), "[1]"), context)
                   };
           }
           break;
@@ -2902,7 +3706,7 @@ function exprAppPrmToString$1(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1("" + e1$3.ann.print + "[0] = " + e2$1.ann.print + "", context)
+                      ann: consumeContextStat$1(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
                     };
             }
             
@@ -2925,7 +3729,7 @@ function exprAppPrmToString$1(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1("" + e1$4.ann.print + "[1] = " + e2$2.ann.print + "", context)
+                      ann: consumeContextStat$1(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
                     };
             }
             
@@ -2940,9 +3744,10 @@ function exprAppPrmToString$1(p, es, context) {
                     /* VecNew */5,
                     es$1
                   ],
-                  ann: consumeContext$1("[" + $$String.concat(", ", Belt_List.map(es$1, (function (e) {
-                                  return e.ann.print;
-                                }))) + "]", context)
+                  ann: consumeContext$1(op1("[", {
+                            it: printConcat(", ", Belt_List.map(es$1, getPrint)),
+                            ann: undefined
+                          }, "]"), context)
                 };
       case /* VecRef */6 :
           if (es) {
@@ -2961,7 +3766,7 @@ function exprAppPrmToString$1(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext$1("" + e1$5.ann.print + "[" + e2$3.ann.print + "]", context)
+                      ann: consumeContext$1(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"), context)
                     };
             }
             
@@ -2990,7 +3795,7 @@ function exprAppPrmToString$1(p, es, context) {
                             }
                           }
                         ],
-                        ann: consumeContextStat$1("" + e1$6.ann.print + "[" + e2$4.ann.print + "] = " + e3.ann.print + "", context)
+                        ann: consumeContextStat$1(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
                       };
               }
               
@@ -3009,7 +3814,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1("len(" + e1$7.ann.print + ")", context)
+                    ann: consumeContext$1(op1("len(", getPrint(e1$7), ")"), context)
                   };
           }
           break;
@@ -3024,7 +3829,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$1("raise " + e1$8.ann.print + "", context)
+                    ann: consumeContextWrap$1(op1("raise ", getPrint(e1$8), ""), context)
                   };
           }
           break;
@@ -3039,7 +3844,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$1("!" + e1$9.ann.print + "", context)
+                    ann: consumeContextWrap$1(op1("not ", getPrint(e1$9), ""), context)
                   };
           }
           break;
@@ -3054,7 +3859,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$1("print(" + e1$10.ann.print + ")", context)
+                    ann: consumeContextVoid$1(op1("print(", getPrint(e1$10), ")"), context)
                   };
           }
           break;
@@ -3069,7 +3874,7 @@ function exprAppPrmToString$1(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$1("next(" + e1$11.ann.print + ")", context)
+                    ann: consumeContextVoid$1(op1("next(", getPrint(e1$11), ")"), context)
                   };
           }
           break;
@@ -3111,9 +3916,10 @@ function exprAppPrmToString$1(p, es, context) {
                 },
                 es$2
               ],
-              ann: consumeContextWrap$1($$String.concat(" " + os + " ", Belt_List.map(es$2, (function (e) {
-                              return e.ann.print;
-                            }))), context)
+              ann: consumeContextWrap$1({
+                    it: printConcat(" " + os + " ", Belt_List.map(es$2, getPrint)),
+                    ann: undefined
+                  }, context)
             };
     }
     if (es) {
@@ -3158,14 +3964,14 @@ function exprAppPrmToString$1(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContextWrap$1("" + e1$12.ann.print + " " + os$1 + " " + e2$5.ann.print + "", context)
+                ann: consumeContext$1(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
               };
       }
       
     }
     
   }
-  var err = "Python doesn't let you use " + toString(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  var err = "Python doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -3174,37 +3980,39 @@ function exprAppPrmToString$1(p, es, context) {
 }
 
 function funLike$1(op, x, xs, e) {
-  return "" + op + " " + exprAppToString$1(x, xs) + ":" + indentBlock(e, 4) + "";
+  return op2("" + op + " ", exprAppToString$1(x, xs), ":", indentBlock(e, 4), "");
 }
 
 function defvarToString$1(x, e) {
-  return "" + defvarLike$2("", x, e) + "";
+  return op1("", defvarLike$2("", x, e), "");
 }
 
 function deffunToString$2(f, xs, b) {
-  return "" + funLike$1("def", f, xs, b) + "";
+  return funLike$1("def", f, xs, b);
 }
 
 function defgenToString$2(f, xs, b) {
-  return "" + funLike$1("def", f, xs, b) + "";
+  return funLike$1("def", f, xs, b);
 }
 
 function exprLamToString$2(xs, b) {
-  return "lambda " + $$String.concat(",", xs) + ": " + b + "";
-}
-
-function exprYieldToString$2(e) {
-  return "yield " + e + "";
+  return op2("lambda ", {
+              it: printConcat(",", xs),
+              ann: undefined
+            }, ": ", b, "");
 }
 
 function exprBgnToString$2(es, e) {
-  return "" + listToString$2(Belt_List.concatMany([
-                  es,
-                  {
-                    hd: e,
-                    tl: /* [] */0
-                  }
-                ])) + "[-1]";
+  return op1("", {
+              it: listToString$2(Belt_List.concatMany([
+                        es,
+                        {
+                          hd: e,
+                          tl: /* [] */0
+                        }
+                      ])),
+              ann: undefined
+            }, "[-1]");
 }
 
 function exprCndToString$2(ebs, ob) {
@@ -3212,20 +4020,26 @@ function exprCndToString$2(ebs, ob) {
           ebs,
           {
             hd: [
-              "",
+              {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "se:"
+                },
+                ann: undefined
+              },
               ob
             ],
             tl: /* [] */0
           }
         ]) : ebs;
   var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return "if " + param[0] + ":" + indentBlock(param[1], 4) + "";
+          return op2("if ", param[0], ":", indentBlock(param[1], 4), "\n");
         }));
-  return $$String.concat("else ", ebs$2);
+  return printConcat(" el", ebs$2);
 }
 
 function exprIfToString$2(e_cnd, e_thn, e_els) {
-  return "" + e_thn + " if " + e_cnd + " else " + e_els + "";
+  return op3("", e_thn, " if ", e_cnd, " else ", e_els, "");
 }
 
 function symbolToString$2(param) {
@@ -3234,7 +4048,10 @@ function symbolToString$2(param) {
           it: it,
           ann: {
             srcrange: param.ann,
-            print: escapeName$1(it)
+            print: {
+              TAG: /* Plain */0,
+              _0: escapeName$1(it)
+            }
           }
         };
 }
@@ -3245,22 +4062,36 @@ function printExp$2(param, context, env) {
   switch (it.TAG | 0) {
     case /* Con */0 :
         var c = it._0;
+        var s = constantToString$2(c);
         e = {
           it: {
             TAG: /* Con */0,
             _0: c
           },
-          ann: consumeContext$1(constantToString$2(c), context)
+          ann: consumeContext$1({
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s
+                },
+                ann: undefined
+              }, context)
         };
         break;
     case /* Ref */1 :
         var x = it._0;
+        var s$1 = escapeName$1(x);
         e = {
           it: {
             TAG: /* Ref */1,
             _0: x
           },
-          ann: consumeContext$1(escapeName$1(x), context)
+          ann: consumeContext$1({
+                it: {
+                  TAG: /* Plain */0,
+                  _0: s$1
+                },
+                ann: undefined
+              }, context)
         };
         break;
     case /* Set */2 :
@@ -3277,7 +4108,7 @@ function printExp$2(param, context, env) {
             _0: x$2,
             _1: e$1
           },
-          ann: consumeContextStat$1(defvarLike$2("", x$2.ann.print, e$1.ann.print), context)
+          ann: consumeContextStat$1(defvarLike$2("", getPrint(x$2), getPrint(e$1)), context)
         };
         break;
     case /* Lam */3 :
@@ -3310,13 +4141,11 @@ function printExp$2(param, context, env) {
                 ],
                 ann: {
                   srcrange: b.ann,
-                  print: e$2.ann.print
+                  print: getPrint(e$2).it
                 }
               }
             },
-            ann: consumeContextWrap$1(exprLamToString$2(Belt_List.map(xs, (function (x) {
-                            return x.ann.print;
-                          })), e$2.ann.print), context)
+            ann: consumeContextWrap$1(exprLamToString$2(Belt_List.map(xs, getPrint), getPrint(e$2)), context)
           };
         } else {
           throw {
@@ -3373,9 +4202,7 @@ function printExp$2(param, context, env) {
             _0: e$3,
             _1: es$1
           },
-          ann: consumeContext$1(exprAppToString$1(e$3.ann.print, Belt_List.map(es$1, (function (e) {
-                          return e.ann.print;
-                        }))), context)
+          ann: consumeContext$1(exprAppToString$1(getPrint(e$3), Belt_List.map(es$1, getPrint)), context)
         };
         break;
     case /* Bgn */8 :
@@ -3395,9 +4222,7 @@ function printExp$2(param, context, env) {
             _0: es$2,
             _1: e$4
           },
-          ann: consumeContext$1(exprBgnToString$2(Belt_List.map(es$2, (function (e) {
-                          return e.ann.print;
-                        })), e$4.ann.print), context)
+          ann: consumeContext$1(exprBgnToString$2(Belt_List.map(es$2, getPrint), getPrint(e$4)), context)
         };
         break;
     case /* If */9 :
@@ -3420,7 +4245,7 @@ function printExp$2(param, context, env) {
             _1: e_thn,
             _2: e_els
           },
-          ann: consumeContextWrap$1(exprIfToString$2(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print), context)
+          ann: consumeContextWrap$1(exprIfToString$2(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
         };
         break;
     case /* Cnd */10 :
@@ -3450,12 +4275,10 @@ function printExp$2(param, context, env) {
           },
           ann: exprCndToString$2(Belt_List.map(ebs, (function (param) {
                       return [
-                              param[0].ann.print,
-                              param[1].ann.print
+                              getPrint(param[0]),
+                              getPrint(param[1])
                             ];
-                    })), Belt_Option.map(ob, (function (b) {
-                      return b.ann.print;
-                    })))
+                    })), Belt_Option.map(ob, getPrint))
         };
         break;
     case /* GLam */11 :
@@ -3474,7 +4297,7 @@ function printExp$2(param, context, env) {
             TAG: /* Yield */12,
             _0: e$5
           },
-          ann: consumeContextWrap$1(exprYieldToString$2(e$5.ann.print), context)
+          ann: consumeContextWrap$1(op1("yield ", getPrint(e$5), ""), context)
         };
         break;
     
@@ -3504,7 +4327,7 @@ function defToString$1(param, env) {
             _0: x,
             _1: e
           },
-          ann: defvarToString$1(x.ann.print, e.ann.print)
+          ann: defvarToString$1(getPrint(x), getPrint(e))
         };
         break;
     case /* Fun */1 :
@@ -3520,9 +4343,7 @@ function defToString$1(param, env) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$2(f.ann.print, Belt_List.map(xs, (function (x) {
-                      return x.ann.print;
-                    })), b.ann.print)
+          ann: deffunToString$2(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
         };
         break;
     case /* GFun */2 :
@@ -3538,9 +4359,7 @@ function defToString$1(param, env) {
             _1: xs$1,
             _2: b$1
           },
-          ann: defgenToString$2(f$1.ann.print, Belt_List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$1.ann.print)
+          ann: defgenToString$2(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
         };
         break;
     
@@ -3549,7 +4368,7 @@ function defToString$1(param, env) {
           it: d$1.it,
           ann: {
             srcrange: param.ann,
-            print: d$1.ann
+            print: d$1.ann.it
           }
         };
 }
@@ -3578,12 +4397,10 @@ function printBlock$2(param, context, env) {
         TAG: /* Stat */1,
         _0: context
       }, env);
-  var print = $$String.concat("\n", Belt_List.concatMany([
-            Belt_List.map(ts$1, (function (t) {
-                    return t.ann.print;
-                  })),
+  var print = printConcat("\n", Belt_List.concatMany([
+            Belt_List.map(ts$1, getPrint),
             {
-              hd: e.ann.print,
+              hd: getPrint(e),
               tl: /* [] */0
             }
           ]));
@@ -3614,17 +4431,22 @@ function printBody(param, context, args, env) {
         TAG: /* Stat */1,
         _0: context
       }, env$1);
-  var print = $$String.concat("\n", Belt_List.concatMany([
+  var print = printConcat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
-                      return "" + (
-                              param[1] ? "global" : "nonlocal"
-                            ) + " " + param[0] + "";
+                      var s = "" + (
+                        param[1] ? "global" : "nonlocal"
+                      ) + " " + param[0] + "";
+                      return {
+                              it: {
+                                TAG: /* Plain */0,
+                                _0: s
+                              },
+                              ann: undefined
+                            };
                     })),
-            Belt_List.map(ts$1, (function (t) {
-                    return t.ann.print;
-                  })),
+            Belt_List.map(ts$1, getPrint),
             {
-              hd: e.ann.print,
+              hd: getPrint(e),
               tl: /* [] */0
             }
           ]));
@@ -3704,9 +4526,7 @@ function printProgramFull$2(insertPrintTopLevel, param) {
   var ts$1 = Belt_List.map(ts, (function (t) {
           return printTerm$2(t, /* TopLevel */2, env);
         }));
-  var print = $$String.concat("\n", Belt_List.map(ts$1, (function (t) {
-              return t.ann.print;
-            })));
+  var print = printConcat("\n", Belt_List.map(ts$1, getPrint));
   return {
           it: ts$1,
           ann: {
@@ -3717,19 +4537,19 @@ function printProgramFull$2(insertPrintTopLevel, param) {
 }
 
 function printProgram$2(insertPrintTopLevel, p) {
-  return printProgramFull$2(insertPrintTopLevel, p).ann.print;
+  return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
 }
 
-function toString$5(t) {
+function toString$6(t) {
   if (t.TAG === /* ParseError */0) {
-    return toString$4(t._0);
+    return toString$5(t._0);
   } else {
     return t._0;
   }
 }
 
 var TranslateError = {
-  toString: toString$5
+  toString: toString$6
 };
 
 var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
@@ -3981,23 +4801,24 @@ var Parser = {
 
 var SMoLPrinter = {
   printOutput: printOutput,
-  printProgramFull: printProgramFull,
-  printProgram: printProgram
+  printProgram: printProgram,
+  printProgramFull: printProgramFull
 };
 
 var JSPrinter = {
   printOutput: printOutput$1,
-  printProgramFull: printProgramFull$1,
-  printProgram: printProgram$1
+  printProgram: printProgram$1,
+  printProgramFull: printProgramFull$1
 };
 
 var PYPrinter = {
   printOutput: printOutput$2,
-  printProgramFull: printProgramFull$2,
-  printProgram: printProgram$2
+  printProgram: printProgram$2,
+  printProgramFull: printProgramFull$2
 };
 
 export {
+  Print ,
   Primitive ,
   SExprKind ,
   Arity ,

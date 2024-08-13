@@ -1,5 +1,15 @@
 open SExpression
 
+type annotated<'it, 'ann> = {it: 'it, ann: 'ann}
+
+module Print: {
+  type rec t =
+  | Plain(string)
+  | Group(list<annotated<t, option<srcrange>>>)
+  let toString: t => string
+  let map: (string => string, t) => t
+}
+
 type constant = Uni | Nil | Num(float) | Lgc(bool) | Str(string)
 
 type rec val =
@@ -43,8 +53,6 @@ module Primitive: {
     | Cons
   let toString: t => string
 }
-
-type annotated<'it, 'ann> = {it: 'it, ann: 'ann}
 
 type symbol = string
 
@@ -121,11 +129,11 @@ module Parser: {
 // Print
 
 type exn += SMoLPrintError(string)
-type printAnn = {srcrange: srcrange, print: string}
+type printAnn = {srcrange: srcrange, print: Print.t}
 module type Printer = {
   let printOutput: output => string
-  let printProgramFull: (bool, program<srcrange>) => program<printAnn>
   let printProgram: (bool, program<srcrange>) => string
+  let printProgramFull: (bool, program<srcrange>) => program<printAnn>
 }
 
 module SMoLPrinter: Printer
