@@ -1771,7 +1771,7 @@ module PYPrinter = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: op2("[", getPrint(e1), ", ", getPrint(e2), "]")->consumeContext(context),
+          ann: op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]")->consumeContext(context),
           it: (PairNew, list{e1, e2}),
         }
       }
@@ -1809,9 +1809,9 @@ module PYPrinter = {
         let es = es->List.map(e => e(false))
         {
           ann: op1(
-            "[",
+            "[ ",
             printConcat(`, `, es->List.map(e => getPrint(e))) |> dummy,
-            "]",
+            " ]",
           )->consumeContext(context),
           it: (VecNew, es),
         }

@@ -3653,7 +3653,7 @@ function exprAppPrmToString$1(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext$1(op2("[", getPrint(e1), ", ", getPrint(e2), "]"), context)
+                      ann: consumeContext$1(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"), context)
                     };
             }
             
@@ -3744,10 +3744,10 @@ function exprAppPrmToString$1(p, es, context) {
                     /* VecNew */5,
                     es$1
                   ],
-                  ann: consumeContext$1(op1("[", {
+                  ann: consumeContext$1(op1("[ ", {
                             it: printConcat(", ", Belt_List.map(es$1, getPrint)),
                             ann: undefined
-                          }, "]"), context)
+                          }, " ]"), context)
                 };
       case /* VecRef */6 :
           if (es) {
