@@ -229,6 +229,22 @@ function termsOfBlock(param) {
   }
 }
 
+function xsOfTerm(t) {
+  var match = t.it;
+  if (match.TAG === /* Def */0) {
+    return {
+            hd: match._0._0,
+            tl: /* [] */0
+          };
+  } else {
+    return /* [] */0;
+  }
+}
+
+function xsOfBlock(b) {
+  return Belt_List.flatten(Belt_List.map(termsOfBlock(b), xsOfTerm));
+}
+
 function toString$2(t) {
   if (t) {
     return "list";
@@ -3492,18 +3508,6 @@ function extend(ss, env) {
         ];
 }
 
-function xsOfTerm(t) {
-  var match = t.it;
-  if (match.TAG === /* Def */0) {
-    return {
-            hd: match._0._0.it,
-            tl: /* [] */0
-          };
-  } else {
-    return /* [] */0;
-  }
-}
-
 function escapeName$1(x) {
   var re = /-/g;
   var matchFn = function (_matchPart, _offset, _wholeString) {
@@ -4455,7 +4459,7 @@ function obToString$1(ob, ctx, env) {
 }
 
 function printBlock$2(b, context, env) {
-  var xs = Belt_List.flatten(Belt_List.map(termsOfBlock(b), xsOfTerm));
+  var xs = xsOfBlock(b);
   if (xs !== /* [] */0) {
     throw {
           RE_EXN_ID: SMoLPrintError,
@@ -4517,10 +4521,9 @@ function printBlock$2(b, context, env) {
 }
 
 function printBody(b, context, args, env) {
-  var match = extend(Belt_List.concatMany([
-            args,
-            Belt_List.flatten(Belt_List.map(termsOfBlock(b), xsOfTerm))
-          ]), env);
+  var match = extend(Belt_List.concat(Belt_List.map(xsOfBlock(b), (function (x) {
+                  return x.it;
+                })), args), env);
   var env$1 = match[1];
   var printBlock = function (param) {
     var srcrange = param.ann;
@@ -4659,7 +4662,9 @@ function printProgramFull$2(insertPrintTopLevel, param) {
   printingTopLevel$1.contents = insertPrintTopLevel;
   var env = {
     TAG: /* G */0,
-    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.flatten(Belt_List.map(ts, xsOfTerm))))
+    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.map(Belt_List.flatten(Belt_List.map(ts, xsOfTerm)), (function (x) {
+                    return x.it;
+                  }))))
   };
   var ts$1 = Belt_List.map(ts, (function (t) {
           return printTerm$2(t, /* TopLevel */2, env);
@@ -6680,8 +6685,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$2 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
         getPrint(b$2);
+        Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -7469,6 +7474,8 @@ var SCPrinter = {
 export {
   Print ,
   Primitive ,
+  xsOfTerm ,
+  xsOfBlock ,
   SExprKind ,
   Arity ,
   TermKind ,

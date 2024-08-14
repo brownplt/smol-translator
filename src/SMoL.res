@@ -188,6 +188,17 @@ let rec termsOfBlock = ({it}) => {
   }
 }
 
+let xsOfTerm = t => {
+  switch t.it {
+  | Exp(_) => list{}
+  | Def(Var(x, _)) => list{x}
+  | Def(Fun(f, _xs, _b)) => list{f}
+  | Def(GFun(f, _xs, _b)) => list{f}
+  }
+}
+
+let xsOfBlock = b => List.flatten(termsOfBlock(b)->List.map(xsOfTerm))
+
 module SExprKind = {
   type t = Atom | List
   let toString = t => {
@@ -1670,15 +1681,6 @@ module PYPrinter = {
     (refs, E(ss->List.toArray->HashSet.String.fromArray, env, refs))
   }
 
-  let xsOfTerm = t => {
-    switch t.it {
-    | Exp(_) => list{}
-    | Def(Var(x, _)) => list{x.it}
-    | Def(Fun(f, _xs, _b)) => list{f.it}
-    | Def(GFun(f, _xs, _b)) => list{f.it}
-    }
-  }
-
   let escapeName = x => {
     let re = %re("/-/g")
     let matchFn = (_matchPart, _offset, _wholeString) => {
@@ -2126,7 +2128,7 @@ module PYPrinter = {
     ob->Option.map(b => b->printBlock(ctx, env))
   }
   and printBlock = (b, context: statContext, env) => {
-    let xs = termsOfBlock(b)->List.map(xsOfTerm)->List.flatten
+    let xs = xsOfBlock(b)
     if xs != list{} {
       raisePrintError("Python blocks can't declair local variables")
     }
@@ -2147,10 +2149,7 @@ module PYPrinter = {
     printBlock(b)
   }
   and printBody = (b, context: statContext, args, env) => {
-    let (refs, env) = extend(
-      list{...args, ...termsOfBlock(b)->List.map(xsOfTerm)->List.flatten},
-      env,
-    )
+    let (refs, env) = extend(xsOfBlock(b)->List.map(x => x.it) -> List.concat(args), env)
 
     let rec printBlock = ({ann: srcrange, it: b}) => {
       switch b {
@@ -2207,7 +2206,14 @@ module PYPrinter = {
 
   let printProgramFull = (insertPrintTopLevel, {ann: srcrange, it: ts}: program<srcrange>) => {
     printingTopLevel := insertPrintTopLevel
-    let env = G(ts->List.map(xsOfTerm)->List.flatten->List.toArray->HashSet.String.fromArray)
+    let env = G(
+      ts
+      ->List.map(xsOfTerm)
+      ->List.flatten
+      ->List.map(x => x.it)
+      ->List.toArray
+      ->HashSet.String.fromArray,
+    )
     let ts = ts->List.map(t => t->printTerm(TopLevel, env))
     let print = printConcat("\n", ts->List.map(getPrint))
     {
@@ -3033,7 +3039,7 @@ module SCPrinter = {
       "",
     )
   }
-  let exprGenToString = (xs, b) => {
+  let exprGenToString = (_xs, _b) => {
     raisePrintError("generators are not supported yet in Scala translation.")
   }
   let exprYieldToString = e => op1("yield ", e, "")
@@ -3063,7 +3069,7 @@ module SCPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: Plain(escapeName(it))
+        print: Plain(escapeName(it)),
       },
     }
   }
