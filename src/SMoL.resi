@@ -75,7 +75,9 @@ and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
 and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
 and bind<'ann> = annotated<bindNode<'ann>, 'ann>
 
-and blockNode<'ann> = (list<term<'ann>>, expression<'ann>)
+and blockNode<'ann> =
+  | Ret(expressionNode<'ann>)
+  | Cons(term<'ann>, block<'ann>)
 and block<'ann> = annotated<blockNode<'ann>, 'ann>
 
 and definitionNode<'ann> =
@@ -139,8 +141,8 @@ module type Printer = {
 module SMoLPrinter: Printer
 module JSPrinter: Printer
 module PYPrinter: Printer
-// module ScalaPrinter: Printer
-// module CommonPrinter: Printer
+module PCPrinter: Printer
+module SCPrinter: Printer
 
 module TranslateError: {
   type t =
@@ -156,5 +158,5 @@ module type Translator = {
 }
 module JSTranslator: Translator
 module PYTranslator: Translator
-// module ScalaTranslator: Translator
-// module CommonTranslator: Translator
+module PCTranslator: Translator
+module SCTranslator: Translator

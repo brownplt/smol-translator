@@ -1,12 +1,12 @@
-fun build_dbl():
+fun buildDbl():
   let n = 1
   return lam ():
     n = n * 2
     return n
   end
 end
-let dbl1 = build_dbl()
-let dbl2 = build_dbl()
+let dbl1 = buildDbl()
+let dbl2 = buildDbl()
 dbl1()
 dbl2()
 dbl1()

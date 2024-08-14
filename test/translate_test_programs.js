@@ -60,41 +60,41 @@ for (const f of fs.readdirSync(path)) {
             console.log(name);
             console.error(err);
         }
-        // try {
-        //     if (! incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {
-        //         const program = fs.readFileSync(programFile, 'utf8');
-        //         const outputs = fs.readFileSync(outputsFile, 'utf8');
-        //         if (!outputs.includes("@")) {
-        //             try {
-        //                 fs.writeFileSync(`${path}/${name}.scala`, Scala3_actual_hard_coded_translation[name] || SMoL.ScalaTranslator.translateProgram(true, program));
-        //                 fs.writeFileSync(`${path}/${name}.scala.txt`, SMoL.ScalaTranslator.translateTerms(outputs));
-        //             } catch (err) {
-        //                 fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
-        //             }
-        //         } else {
-        //             fs.writeFileSync(`${path}/${name}.scala.err`, "Skipped translation because the outputs include `@`.");
-        //         }
-        //     }
-        // } catch (err) {
-        //     console.log(name);
-        //     console.error(err);
-        // }
-        // try {
-        //     const program = fs.readFileSync(programFile, 'utf8');
-        //     const outputs = fs.readFileSync(outputsFile, 'utf8');
-        //     if (!outputs.includes("@")) {
-        //         try {
-        //             fs.writeFileSync(`${path}/${name}.cm`, SMoL.CommonTranslator.translateProgram(true, program));
-        //             fs.writeFileSync(`${path}/${name}.cm.txt`, SMoL.CommonTranslator.translateTerms(outputs));
-        //         } catch (err) {
-        //             fs.writeFileSync(`${path}/${name}.cm.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
-        //         }
-        //     } else {
-        //         fs.writeFileSync(`${path}/${name}.cm.err`, "Skipped translation because the outputs include `@`.");
-        //     }
-        // } catch (err) {
-        //     console.log(name);
-        //     console.error(err);
-        // }
+        try {
+            const program = fs.readFileSync(programFile, 'utf8');
+            const outputs = fs.readFileSync(outputsFile, 'utf8');
+            if (!outputs.includes("@")) {
+                try {
+                    fs.writeFileSync(`${path}/${name}.cm`, SMoL.PCTranslator.translateProgram(true, program));
+                    fs.writeFileSync(`${path}/${name}.cm.txt`, SMoL.PCTranslator.translateOutput(outputs));
+                } catch (err) {
+                    fs.writeFileSync(`${path}/${name}.cm.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                }
+            } else {
+                fs.writeFileSync(`${path}/${name}.cm.err`, "Skipped translation because the outputs include `@`.");
+            }
+        } catch (err) {
+            console.log(name);
+            console.error(err);
+        }
+        try {
+            if (! incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {
+                const program = fs.readFileSync(programFile, 'utf8');
+                const outputs = fs.readFileSync(outputsFile, 'utf8');
+                if (!outputs.includes("@")) {
+                    try {
+                        fs.writeFileSync(`${path}/${name}.scala`, Scala3_actual_hard_coded_translation[name] || SMoL.SCTranslator.translateProgram(true, program));
+                        fs.writeFileSync(`${path}/${name}.scala.txt`, SMoL.SCTranslator.translateOutput(outputs));
+                    } catch (err) {
+                        fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                    }
+                } else {
+                    fs.writeFileSync(`${path}/${name}.scala.err`, "Skipped translation because the outputs include `@`.");
+                }
+            }
+        } catch (err) {
+            console.log(name);
+            console.error(err);
+        }
     }
 }
