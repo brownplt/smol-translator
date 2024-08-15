@@ -74,6 +74,7 @@ type constant =
   | Num(float)
   | Lgc(bool)
   | Str(string)
+  | Sym(string)
 
 type rec val =
   | Con(constant)
@@ -771,6 +772,7 @@ module SMoLPrinter = {
         "#f"
       }
     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Sym(s) => s
     }
   }
 
@@ -1114,6 +1116,7 @@ module JSPrinter = {
         "false"
       }
     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Sym(s) => s
     }
   }
 
@@ -1704,6 +1707,7 @@ module PYPrinter = {
         "False"
       }
     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Sym(s) => s
     }
   }
 
@@ -2258,6 +2262,7 @@ module PCPrinter = {
         "false"
       }
     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Sym(s) => s
     }
   }
 
@@ -2782,6 +2787,7 @@ module SCPrinter = {
         "false"
       }
     | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Sym(s) => s
     }
   }
 

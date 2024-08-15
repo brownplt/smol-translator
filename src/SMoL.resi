@@ -4,13 +4,19 @@ type annotated<'it, 'ann> = {it: 'it, ann: 'ann}
 
 module Print: {
   type rec t =
-  | Plain(string)
-  | Group(list<annotated<t, option<srcrange>>>)
+    | Plain(string)
+    | Group(list<annotated<t, option<srcrange>>>)
   let toString: t => string
   let map: (string => string, t) => t
 }
 
-type constant = Uni | Nil | Num(float) | Lgc(bool) | Str(string)
+type constant =
+  | Uni
+  | Nil
+  | Num(float)
+  | Lgc(bool)
+  | Str(string)
+  | Sym(string)
 
 type rec val =
   | Con(constant)

@@ -1433,6 +1433,8 @@ function constantToString(c) {
         }
     case /* Str */2 :
         return "\"" + $$String.escaped(c._0) + "\"";
+    case /* Sym */3 :
+        return c._0;
     
   }
 }
@@ -2385,6 +2387,8 @@ function constantToString$1(c) {
           }
       case /* Str */2 :
           return "\"" + $$String.escaped(c._0) + "\"";
+      case /* Sym */3 :
+          return c._0;
       
     }
   }
@@ -3542,6 +3546,8 @@ function constantToString$2(c) {
           }
       case /* Str */2 :
           return "\"" + $$String.escaped(c._0) + "\"";
+      case /* Sym */3 :
+          return c._0;
       
     }
   }
@@ -4719,6 +4725,8 @@ function constantToString$3(c) {
         }
     case /* Str */2 :
         return "\"" + $$String.escaped(c._0) + "\"";
+    case /* Sym */3 :
+        return c._0;
     
   }
 }
@@ -5828,6 +5836,8 @@ function constantToString$4(c) {
           }
       case /* Str */2 :
           return "\"" + $$String.escaped(c._0) + "\"";
+      case /* Sym */3 :
+          return c._0;
       
     }
   }
