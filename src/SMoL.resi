@@ -136,6 +136,7 @@ module Parser: {
 type exn += SMoLPrintError(string)
 type printAnn = {srcrange: srcrange, print: Print.t}
 module type Printer = {
+  let printName: string => string
   let printOutput: output => string
   let printProgram: (bool, program<srcrange>) => string
   let printProgramFull: (bool, program<srcrange>) => program<printAnn>
@@ -155,6 +156,7 @@ module TranslateError: {
 }
 type exn += SMoLTranslateError(TranslateError.t)
 module type Translator = {
+  let translateName: string => string
   let translateOutput: string => string
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>

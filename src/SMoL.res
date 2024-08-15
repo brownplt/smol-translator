@@ -737,6 +737,7 @@ let raisePrintError = err => raise(SMoLPrintError(err))
 
 type printAnn = {srcrange: srcrange, print: Print.t}
 module type Printer = {
+  let printName: string => string
   let printOutput: output => string
   let printProgram: (bool, program<srcrange>) => string
   let printProgramFull: (bool, program<srcrange>) => program<printAnn>
@@ -756,6 +757,8 @@ let hcat = (s1, s2) => {
 }
 
 module SMoLPrinter = {
+  let printName = x => x
+
   let constantToString = c => {
     switch c {
     | Uni => "#<void>"
@@ -1084,7 +1087,7 @@ let op3 = (s1, p1, s2, p2, s3, p3, s4) =>
   group(list{plain(s1), p1, plain(s2), p2, plain(s3), p3, plain(s4)})
 
 module JSPrinter = {
-  let escapeName = x => {
+  let printName = x => {
     let re = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) => {
       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
@@ -1385,7 +1388,7 @@ module JSPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: Plain(escapeName(it)),
+        print: Plain(printName(it)),
       },
     }
   }
@@ -1398,7 +1401,7 @@ module JSPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: plain(x->escapeName)->consumeContext(context),
+        ann: plain(x->printName)->consumeContext(context),
       }
     | Set(x, e) => {
         let x = symbolToString(x)
@@ -1681,7 +1684,7 @@ module PYPrinter = {
     (refs, E(ss->List.toArray->HashSet.String.fromArray, env, refs))
   }
 
-  let escapeName = x => {
+  let printName = x => {
     let re = %re("/-/g")
     let matchFn = (_matchPart, _offset, _wholeString) => {
       "_"
@@ -1970,7 +1973,7 @@ module PYPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: Plain(escapeName(it)),
+        print: Plain(printName(it)),
       },
     }
   }
@@ -1983,7 +1986,7 @@ module PYPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: plain(x->escapeName)->consumeContext(context),
+        ann: plain(x->printName)->consumeContext(context),
       }
     | Set(x, e) => {
         refMut(env, x.it)
@@ -2149,7 +2152,7 @@ module PYPrinter = {
     printBlock(b)
   }
   and printBody = (b, context: statContext, args, env) => {
-    let (refs, env) = extend(xsOfBlock(b)->List.map(x => x.it) -> List.concat(args), env)
+    let (refs, env) = extend(xsOfBlock(b)->List.map(x => x.it)->List.concat(args), env)
 
     let rec printBlock = ({ann: srcrange, it: b}) => {
       switch b {
@@ -2228,7 +2231,7 @@ module PYPrinter = {
 }
 
 module PCPrinter = {
-  let escapeName = x => {
+  let printName = x => {
     let re = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) => {
       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
@@ -2513,7 +2516,7 @@ module PCPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: Plain(it->escapeName),
+        print: Plain(it->printName),
       },
     }
   }
@@ -2526,7 +2529,7 @@ module PCPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: plain(x->escapeName)->consumeContext(context),
+        ann: plain(x->printName)->consumeContext(context),
       }
     | Set(x, e) => {
         let x = symbolToString(x)
@@ -2752,7 +2755,7 @@ module PCPrinter = {
 }
 
 module SCPrinter = {
-  let escapeName = x => {
+  let printName = x => {
     let re = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) => {
       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
@@ -3069,7 +3072,7 @@ module SCPrinter = {
       it,
       ann: {
         srcrange: ann,
-        print: Plain(escapeName(it)),
+        print: Plain(printName(it)),
       },
     }
   }
@@ -3082,7 +3085,7 @@ module SCPrinter = {
       }
     | Ref(x) => {
         it: Ref(x),
-        ann: plain(x->escapeName)->consumeContext(context),
+        ann: plain(x->printName)->consumeContext(context),
       }
     | Set(x, e) => {
         let x = symbolToString(x)
@@ -3139,25 +3142,8 @@ module SCPrinter = {
       }
     | Let(_xes, _b) =>
       raisePrintError("let-expressions are not supported by our pseudo-code syntax")
-    | Letrec(xes, b) =>
-      switch context {
-      | Expr(_) => raisePrintError("letrec-expressions are not supported by our pseudo-code syntax")
-      | Stat(ctx) => {
-          let xes = xes->List.map(xeToString)
-          let b = b->printBlock(ctx)
-          {
-            ann: Group(list{
-              plain("{\n"),
-              indentBlock(
-                printConcat("\n", list{...xes->List.map(xe => getPrint(xe)), getPrint(b)}) |> dummy,
-                2,
-              ),
-              plain("\n}"),
-            }),
-            it: Letrec(xes, b),
-          }
-        }
-      }
+    | Letrec(_xes, _b) =>
+      raisePrintError("letrec-expressions are not supported by our pseudo-code syntax")
     | Cnd(ebs, ob) =>
       switch context {
       | Expr(_) =>
@@ -3236,18 +3222,18 @@ module SCPrinter = {
     let {ann: print, it} = d
     {ann: {print: print.it, srcrange}, it}
   }
-  and xeToString = ({it: xe, ann: srcrange}: bind<srcrange>): bind<printAnn> => {
-    let (x, e) = xe
-    let (x, e) = (symbolToString(x), e->printExp(Expr(false)))
-    let print = defvarToString(getPrint(x), getPrint(e)).it
-    {
-      it: (x, e),
-      ann: {
-        print,
-        srcrange,
-      },
-    }
-  }
+  // and xeToString = ({it: xe, ann: srcrange}: bind<srcrange>): bind<printAnn> => {
+  //   let (x, e) = xe
+  //   let (x, e) = (symbolToString(x), e->printExp(Expr(false)))
+  //   let print = defvarToString(getPrint(x), getPrint(e)).it
+  //   {
+  //     it: (x, e),
+  //     ann: {
+  //       print,
+  //       srcrange,
+  //     },
+  //   }
+  // }
   and ebToString = (eb, ctx: statContext) => {
     let (e, b) = eb
     (e->printExp(Expr(false)), b->printBlock(ctx))
@@ -3322,6 +3308,7 @@ module SCPrinter = {
 }
 
 module type Translator = {
+  let translateName: string => string
   // print terms, interleaved with whitespace
   let translateOutput: string => string
   // print runnable full programs
@@ -3341,12 +3328,13 @@ module TranslateError = {
 }
 exception SMoLTranslateError(TranslateError.t)
 
-module JSTranslator = {
+module MakeTranslator = (P: Printer) => {
+  let translateName = P.printName
   let translateOutput = src => {
     switch Parser.parseOutput(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | output =>
-      switch JSPrinter.printOutput(output) {
+      switch P.printOutput(output) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | output => output
       }
@@ -3356,7 +3344,7 @@ module JSTranslator = {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch JSPrinter.printProgram(printTopLevel, p) {
+      switch P.printProgram(printTopLevel, p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | p => p
       }
@@ -3366,71 +3354,7 @@ module JSTranslator = {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch JSPrinter.printProgramFull(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-}
-module PYTranslator = {
-  let translateOutput = src => {
-    switch Parser.parseOutput(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | output =>
-      switch PYPrinter.printOutput(output) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | output => output
-      }
-    }
-  }
-  let translateProgram = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch PYPrinter.printProgram(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-  let translateProgramFull = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch PYPrinter.printProgramFull(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-}
-module PCTranslator = {
-  let translateOutput = src => {
-    switch Parser.parseOutput(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | output =>
-      switch PCPrinter.printOutput(output) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | output => output
-      }
-    }
-  }
-  let translateProgram = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch PCPrinter.printProgram(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-  let translateProgramFull = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch PCPrinter.printProgramFull(printTopLevel, p) {
+      switch P.printProgramFull(printTopLevel, p) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | p => p
       }
@@ -3438,35 +3362,7 @@ module PCTranslator = {
   }
 }
 
-module SCTranslator = {
-  let translateOutput = src => {
-    switch Parser.parseOutput(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | output =>
-      switch SCPrinter.printOutput(output) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | output => output
-      }
-    }
-  }
-  let translateProgram = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch SCPrinter.printProgram(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-  let translateProgramFull = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
-    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
-    | p =>
-      switch SCPrinter.printProgramFull(printTopLevel, p) {
-      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
-      | p => p
-      }
-    }
-  }
-}
+module JSTranslator = MakeTranslator(JSPrinter)
+module PYTranslator = MakeTranslator(PYPrinter)
+module PCTranslator = MakeTranslator(PCPrinter)
+module SCTranslator = MakeTranslator(SCPrinter)

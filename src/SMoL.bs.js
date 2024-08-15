@@ -1410,6 +1410,10 @@ function hcat(s1, s2) {
         };
 }
 
+function printName(x) {
+  return x;
+}
+
 function constantToString(c) {
   if (typeof c === "number") {
     if (c === /* Uni */0) {
@@ -2346,7 +2350,7 @@ function op3(s1, p1, s2, p2, s3, p3, s4) {
         };
 }
 
-function escapeName(x) {
+function printName$1(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -2982,7 +2986,7 @@ function symbolToString$1(param) {
             srcrange: param.ann,
             print: {
               TAG: /* Plain */0,
-              _0: escapeName(it)
+              _0: printName$1(it)
             }
           }
         };
@@ -3011,7 +3015,7 @@ function printExp$1(param, context) {
         break;
     case /* Ref */1 :
         var x = it._0;
-        var s$1 = escapeName(x);
+        var s$1 = printName$1(x);
         e = {
           it: {
             TAG: /* Ref */1,
@@ -3508,7 +3512,7 @@ function extend(ss, env) {
         ];
 }
 
-function escapeName$1(x) {
+function printName$2(x) {
   var re = /-/g;
   var matchFn = function (_matchPart, _offset, _wholeString) {
     return "_";
@@ -4126,7 +4130,7 @@ function symbolToString$2(param) {
             srcrange: param.ann,
             print: {
               TAG: /* Plain */0,
-              _0: escapeName$1(it)
+              _0: printName$2(it)
             }
           }
         };
@@ -4155,7 +4159,7 @@ function printExp$2(param, context, env) {
         break;
     case /* Ref */1 :
         var x = it._0;
-        var s$1 = escapeName$1(x);
+        var s$1 = printName$2(x);
         e = {
           it: {
             TAG: /* Ref */1,
@@ -4683,7 +4687,7 @@ function printProgram$2(insertPrintTopLevel, p) {
   return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
 }
 
-function escapeName$2(x) {
+function printName$3(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -5302,7 +5306,7 @@ function symbolToString$3(param) {
             srcrange: param.ann,
             print: {
               TAG: /* Plain */0,
-              _0: escapeName$2(it)
+              _0: printName$3(it)
             }
           }
         };
@@ -5331,7 +5335,7 @@ function printExp$3(param, context) {
         break;
     case /* Ref */1 :
         var x = it._0;
-        var s$1 = escapeName$2(x);
+        var s$1 = printName$3(x);
         e = {
           it: {
             TAG: /* Ref */1,
@@ -5789,7 +5793,7 @@ function printProgram$3(insertPrintTopLevel, p) {
   return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
 }
 
-function escapeName$3(x) {
+function printName$4(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -6439,7 +6443,7 @@ function symbolToString$4(param) {
             srcrange: param.ann,
             print: {
               TAG: /* Plain */0,
-              _0: escapeName$3(it)
+              _0: printName$4(it)
             }
           }
         };
@@ -6468,7 +6472,7 @@ function printExp$4(param, context) {
         break;
     case /* Ref */1 :
         var x = it._0;
-        var s$1 = escapeName$3(x);
+        var s$1 = printName$4(x);
         e = {
           it: {
             TAG: /* Ref */1,
@@ -6517,57 +6521,11 @@ function printExp$4(param, context) {
               Error: new Error()
             };
     case /* Letrec */5 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "letrec-expressions are not supported by our pseudo-code syntax",
-                Error: new Error()
-              };
-        }
-        var xes = Belt_List.map(it._0, xeToString$3);
-        var b$1 = printBlock$4(it._1, context._0);
-        e = {
-          it: {
-            TAG: /* Letrec */5,
-            _0: xes,
-            _1: b$1
-          },
-          ann: {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "{\n"
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: printConcat("\n", Belt_List.concatMany([
-                                Belt_List.map(xes, getPrint),
-                                {
-                                  hd: getPrint(b$1),
-                                  tl: /* [] */0
-                                }
-                              ])),
-                      ann: undefined
-                    }, 2),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: "\n}"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          }
-        };
-        break;
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "letrec-expressions are not supported by our pseudo-code syntax",
+              Error: new Error()
+            };
     case /* AppPrm */6 :
         var es = Belt_List.map(it._1, (function (e, b) {
                 return printExp$4(e, {
@@ -6684,8 +6642,8 @@ function printExp$4(param, context) {
         break;
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
-        var b$2 = printBlock$4(it._1, /* Return */1);
-        getPrint(b$2);
+        var b$1 = printBlock$4(it._1, /* Return */1);
+        getPrint(b$1);
         Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
@@ -6696,7 +6654,7 @@ function printExp$4(param, context) {
           it: {
             TAG: /* Lam */3,
             _0: xs$1,
-            _1: b$2
+            _1: b$1
           },
           ann: consumeContextWrap$3(undefined, context)
         };
@@ -6779,26 +6737,6 @@ function defToString$3(param) {
           ann: {
             srcrange: param.ann,
             print: d$1.ann.it
-          }
-        };
-}
-
-function xeToString$3(param) {
-  var xe = param.it;
-  var x = symbolToString$4(xe[0]);
-  var e = printExp$4(xe[1], {
-        TAG: /* Expr */0,
-        _0: false
-      });
-  var print = defvarToString$3(getPrint(x), getPrint(e)).it;
-  return {
-          it: [
-            x,
-            e
-          ],
-          ann: {
-            srcrange: param.ann,
-            print: print
           }
         };
 }
@@ -7071,6 +7009,7 @@ function translateProgramFull(printTopLevel, src) {
 }
 
 var JSTranslator = {
+  translateName: printName$1,
   translateOutput: translateOutput,
   translateProgram: translateProgram,
   translateProgramFull: translateProgramFull
@@ -7191,6 +7130,7 @@ function translateProgramFull$1(printTopLevel, src) {
 }
 
 var PYTranslator = {
+  translateName: printName$2,
   translateOutput: translateOutput$1,
   translateProgram: translateProgram$1,
   translateProgramFull: translateProgramFull$1
@@ -7311,6 +7251,7 @@ function translateProgramFull$2(printTopLevel, src) {
 }
 
 var PCTranslator = {
+  translateName: printName$3,
   translateOutput: translateOutput$2,
   translateProgram: translateProgram$2,
   translateProgramFull: translateProgramFull$2
@@ -7431,6 +7372,7 @@ function translateProgramFull$3(printTopLevel, src) {
 }
 
 var SCTranslator = {
+  translateName: printName$4,
   translateOutput: translateOutput$3,
   translateProgram: translateProgram$3,
   translateProgramFull: translateProgramFull$3
@@ -7442,30 +7384,35 @@ var Parser = {
 };
 
 var SMoLPrinter = {
+  printName: printName,
   printOutput: printOutput,
   printProgram: printProgram,
   printProgramFull: printProgramFull
 };
 
 var JSPrinter = {
+  printName: printName$1,
   printOutput: printOutput$1,
   printProgram: printProgram$1,
   printProgramFull: printProgramFull$1
 };
 
 var PYPrinter = {
+  printName: printName$2,
   printOutput: printOutput$2,
   printProgram: printProgram$2,
   printProgramFull: printProgramFull$2
 };
 
 var PCPrinter = {
+  printName: printName$3,
   printOutput: printOutput$3,
   printProgram: printProgram$3,
   printProgramFull: printProgramFull$3
 };
 
 var SCPrinter = {
+  printName: printName$4,
   printOutput: printOutput$4,
   printProgram: printProgram$4,
   printProgramFull: printProgramFull$4
