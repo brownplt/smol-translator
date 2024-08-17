@@ -1,13 +1,18 @@
 open SExpression
 
-type annotated<'it, 'ann> = {it: 'it, ann: 'ann}
+type rec printNode =
+  | Plain(string)
+  | Group(list<print>)
+and print = annotated<printNode, option<sourceLocation>>
 
 module Print: {
-  type rec t =
-    | Plain(string)
-    | Group(list<annotated<t, option<srcrange>>>)
+  type t = printNode
   let toString: t => string
   let map: (string => string, t) => t
+  let concat2: (annotated<t, option<sourceLocation>>, string, annotated<t, option<sourceLocation>>) => t
+  let concat: (string, list<annotated<t, option<sourceLocation>>>) => t
+  let pad: (string, annotated<t, option<sourceLocation>>, string) => t
+  let dummyAnn: t => print
 }
 
 type constant =
@@ -82,8 +87,8 @@ and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
 and bind<'ann> = annotated<bindNode<'ann>, 'ann>
 
 and blockNode<'ann> =
-  | Ret(expressionNode<'ann>)
-  | Cons(term<'ann>, block<'ann>)
+  | BRet(expressionNode<'ann>)
+  | BCons(term<'ann>, block<'ann>)
 and block<'ann> = annotated<blockNode<'ann>, 'ann>
 
 and definitionNode<'ann> =
@@ -95,7 +100,9 @@ and definition<'ann> = annotated<definitionNode<'ann>, 'ann>
 and termNode<'ann> = Def(definitionNode<'ann>) | Exp(expressionNode<'ann>)
 and term<'ann> = annotated<termNode<'ann>, 'ann>
 
-and programNode<'ann> = list<term<'ann>>
+and programNode<'ann> =
+  | PNil
+  | PCons(term<'ann>, program<'ann>)
 and program<'ann> = annotated<programNode<'ann>, 'ann>
 
 let xsOfTerm: term<'ann> => list<annotated<symbol, 'ann>>
@@ -124,28 +131,28 @@ module TermKind: {
 module ParseError: {
   type t =
     | SExprParseError(string)
-    | SExprKindError(SExprKind.t, string, SExpression.annotated<SExpression.t>)
-    | SExprArityError(Arity.t, string, list<SExpression.annotated<SExpression.t>>)
+    | SExprKindError(SExprKind.t, string, sexpr)
+    | SExprArityError(Arity.t, string, list<sexpr>)
     | LiteralSymbolError(string)
-    | LiteralListError(SExpression.annotated<SExpression.t>)
-    | TermKindError(TermKind.t, string, term<srcrange>)
+    | LiteralListError(sexpr)
+    | TermKindError(TermKind.t, string, term<sourceLocation>)
   let toString: t => string
 }
 type exn += SMoLParseError(ParseError.t)
 module Parser: {
   let parseOutput: string => output
-  let parseProgram: string => program<srcrange>
+  let parseProgram: string => program<sourceLocation>
 }
 
 // Print
 
 type exn += SMoLPrintError(string)
-type printAnn = {srcrange: srcrange, print: Print.t}
+type printAnn = {sourceLocation: sourceLocation, print: Print.t}
 module type Printer = {
   let printName: string => string
   let printOutput: output => string
-  let printProgram: (bool, program<srcrange>) => string
-  let printProgramFull: (bool, program<srcrange>) => program<printAnn>
+  let printProgram: (bool, program<sourceLocation>) => string
+  let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
 }
 
 module SMoLPrinter: Printer

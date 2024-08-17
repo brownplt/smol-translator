@@ -11,6 +11,12 @@ See [the SMoL vs Python
 section](#smol-vs-python) for limitations and known incompatibilities
 between the languages.
 
+## Installation
+
+```sh
+npm install git+https://github.com/brownplt/smol-translator.git
+```
+
 ## Usage
 
 ### Text-to-text Whole-program Translation
