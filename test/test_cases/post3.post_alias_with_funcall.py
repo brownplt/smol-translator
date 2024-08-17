@@ -1,5 +1,6 @@
-zz = [88, 88]
+zz = [ 88, 88 ]
 def f(aa):
-    return aa.__setitem__(0, 97)
+    aa[0] = 97
+    return
 print(f(zz))
 print(zz)

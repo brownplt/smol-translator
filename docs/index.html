@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SMoL Translator Demo</title>
+    <link rel="stylesheet" href="main.css">
+</head>
+
+<body>
+    <h1>Translate a SMoL Program</h1>
+    <main>
+        <form id="from">
+            <label for="from-program"><strong>From <a
+                        href="https://docs.google.com/document/d/e/2PACX-1vTMVCrUYliicrunyxftDwv6HVmBeKaRW9-VF9Xh1GUFoHMmomOczz_RRIZXPJoH8WB66x-d4GlRvwuy/pub">SMoL</a>:</strong>
+            </label>
+            <textarea id="from-program"></textarea>
+        </form>
+        <form id="to">
+            <strong>To
+                <select name="target-syntax">
+                    <option value="Python">Python</option>
+                    <option value="JavaScript">JavaScript</option>
+                    <option value="Pseudo">Pseudo</option>
+                </select>
+            </strong>
+            <textarea id="to-program"></textarea>
+        </form>
+    </main>
+</body>
+
+</html>
