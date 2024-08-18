@@ -2371,11 +2371,9 @@ module PYPrinter: Printer = {
 
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
     printingTopLevel := insertPrintTopLevel
-    let ts = termsOfProgram(p)
+    let xs = xsOfProgram(p)
     let env = G(
-      ts
-      ->List.map(xsOfTerm)
-      ->List.flatten
+      xs
       ->List.map(x => x.it)
       ->List.toArray
       ->HashSet.String.fromArray,

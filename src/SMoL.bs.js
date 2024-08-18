@@ -4855,10 +4855,10 @@ function printOutput$2(os) {
 
 function printProgramFull$2(insertPrintTopLevel, p) {
   printingTopLevel$1.contents = insertPrintTopLevel;
-  var ts = termsOfProgram(p);
+  var xs = xsOfProgram(p);
   var env = {
     TAG: /* G */0,
-    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.map(Belt_List.flatten(Belt_List.map(ts, xsOfTerm)), (function (x) {
+    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.map(xs, (function (x) {
                     return x.it;
                   }))))
   };
