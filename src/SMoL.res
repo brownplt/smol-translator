@@ -222,6 +222,7 @@ let xsOfTerm = t => {
 }
 
 let xsOfBlock = b => List.flatten(termsOfBlock(b)->List.map(xsOfTerm))
+let xsOfProgram = p => List.flatten(termsOfProgram(p)->List.map(xsOfTerm))
 
 module SExprKind = {
   type t = Atom | List

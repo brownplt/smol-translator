@@ -313,6 +313,10 @@ function xsOfBlock(b) {
   return Belt_List.flatten(Belt_List.map(termsOfBlock(b), xsOfTerm));
 }
 
+function xsOfProgram(p) {
+  return Belt_List.flatten(Belt_List.map(termsOfProgram(p), xsOfTerm));
+}
+
 function toString$2(t) {
   if (t) {
     return "list";
@@ -6935,8 +6939,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
         getPrint(b$1);
+        Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -7739,8 +7743,8 @@ var SMoLPrinter = {
 export {
   Print ,
   Primitive ,
-  xsOfTerm ,
   xsOfBlock ,
+  xsOfProgram ,
   SExprKind ,
   Arity ,
   TermKind ,

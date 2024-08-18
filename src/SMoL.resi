@@ -105,8 +105,8 @@ and programNode<'ann> =
   | PCons(term<'ann>, program<'ann>)
 and program<'ann> = annotated<programNode<'ann>, 'ann>
 
-let xsOfTerm: term<'ann> => list<annotated<symbol, 'ann>>
 let xsOfBlock: block<'ann> => list<annotated<symbol, 'ann>>
+let xsOfProgram: program<'ann> => list<annotated<symbol, 'ann>>
 
 // Parse
 
