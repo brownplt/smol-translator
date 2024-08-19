@@ -3277,7 +3277,7 @@ function printExp$1(param, context) {
     case /* App */7 :
         var e$2 = printExp$1(it._0, {
               TAG: /* Expr */0,
-              _0: false
+              _0: true
             });
         var es$1 = Belt_List.map(it._1, (function (e) {
                 return printExp$1(e, {
@@ -4464,7 +4464,7 @@ function printExp$2(param, context, env) {
     case /* App */7 :
         var e$5 = printExp$2(it._0, {
               TAG: /* Expr */0,
-              _0: false
+              _0: true
             }, env);
         var es$1 = Belt_List.map(it._1, (function (e) {
                 return printExp$2(e, {
@@ -5700,7 +5700,7 @@ function printExp$3(param, context) {
     case /* App */7 :
         var e$2 = printExp$3(it._0, {
               TAG: /* Expr */0,
-              _0: false
+              _0: true
             });
         var es$1 = Belt_List.map(it._1, (function (e) {
                 return printExp$3(e, {
@@ -6843,7 +6843,7 @@ function printExp$4(param, context) {
     case /* App */7 :
         var e$2 = printExp$4(it._0, {
               TAG: /* Expr */0,
-              _0: false
+              _0: true
             });
         var es$1 = Belt_List.map(it._1, (function (e) {
                 return printExp$4(e, {

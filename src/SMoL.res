@@ -1559,7 +1559,7 @@ module JSPrinter: Printer = {
         }
       }
     | App(e, es) => {
-        let e = e->printExp(Expr(false))
+        let e = e->printExp(Expr(true))
         let es = es->List.map(e => e->printExp(Expr(false)))
         {
           ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext(
@@ -2190,7 +2190,7 @@ module PYPrinter: Printer = {
         }
       }
     | App(e, es) => {
-        let e = e->printExp(Expr(false), env)
+        let e = e->printExp(Expr(true), env)
         let es = es->List.map(e => e->printExp(Expr(false), env))
         {
           ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext(
@@ -2775,7 +2775,7 @@ module PCPrinter: Printer = {
         }
       }
     | App(e, es) => {
-        let e = e->printExp(Expr(false))
+        let e = e->printExp(Expr(true))
         let es = es->List.map(e => e->printExp(Expr(false)))
         {
           ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext(
@@ -3375,7 +3375,7 @@ module SCPrinter: Printer = {
         }
       }
     | App(e, es) => {
-        let e = e->printExp(Expr(false))
+        let e = e->printExp(Expr(true))
         let es = es->List.map(e => e->printExp(Expr(false)))
         {
           ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext(
