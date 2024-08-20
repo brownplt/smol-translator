@@ -151,6 +151,7 @@ type printAnn = {sourceLocation: sourceLocation, print: Print.t}
 module type Printer = {
   let printName: string => string
   let printOutput: output => string
+  let printStandAloneTerm: term<sourceLocation> => string
   let printProgram: (bool, program<sourceLocation>) => string
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
 }
@@ -165,12 +166,14 @@ module TranslateError: {
   type t =
     | ParseError(ParseError.t)
     | PrintError(string)
+    | KindError(string)
   let toString: t => string
 }
 type exn += SMoLTranslateError(TranslateError.t)
 module type Translator = {
   let translateName: string => string
   let translateOutput: string => string
+  let translateStandAloneTerm: string => string
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
 }

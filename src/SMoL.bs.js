@@ -2351,6 +2351,10 @@ function printProgram(insertPrintTopLevel, p) {
   return toString(printProgramFull(insertPrintTopLevel, p).ann.print);
 }
 
+function printStandAloneTerm(t) {
+  return toString(printTerm(t).ann.print);
+}
+
 function op1(s1, p1, s2) {
   var ss_0 = {
     it: {
@@ -3657,9 +3661,27 @@ function printProgram$1(insertPrintTopLevel, p) {
   return toString(printProgramFull$1(insertPrintTopLevel, p).ann.print);
 }
 
+function printStandAloneTerm$1(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var tmp;
+  tmp = it.TAG === /* Def */0 ? defToString({
+          it: it._0,
+          ann: ann
+        }).ann.print : printExp$1({
+          it: it._0,
+          ann: ann
+        }, {
+          TAG: /* Expr */0,
+          _0: false
+        }).ann.print;
+  return toString(tmp);
+}
+
 var JSPrinter = {
   printName: printName$1,
   printOutput: printOutput$1,
+  printStandAloneTerm: printStandAloneTerm$1,
   printProgram: printProgram$1,
   printProgramFull: printProgramFull$1
 };
@@ -4660,7 +4682,7 @@ function printBlock$2(b, context, env) {
   if (xs !== /* [] */0) {
     throw {
           RE_EXN_ID: SMoLPrintError,
-          _1: "Python blocks can't declair local variables",
+          _1: "Python blocks can't declare local variables",
           Error: new Error()
         };
   }
@@ -4836,7 +4858,7 @@ function printOutput$2(os) {
       case /* Lst */1 :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "Lists are not supported in JavaScript",
+                _1: "Lists are not supported in Python",
                 Error: new Error()
               };
       case /* Vec */2 :
@@ -4922,9 +4944,31 @@ function printProgram$2(insertPrintTopLevel, p) {
   return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
 }
 
+function printStandAloneTerm$2(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var globalEnv = {
+    TAG: /* G */0,
+    _0: Belt_HashSetString.fromArray([])
+  };
+  var tmp;
+  tmp = it.TAG === /* Def */0 ? defToString$1({
+          it: it._0,
+          ann: ann
+        }, globalEnv).ann.print : printExp$2({
+          it: it._0,
+          ann: ann
+        }, {
+          TAG: /* Expr */0,
+          _0: false
+        }, globalEnv).ann.print;
+  return toString(tmp);
+}
+
 var PYPrinter = {
   printName: printName$2,
   printOutput: printOutput$2,
+  printStandAloneTerm: printStandAloneTerm$2,
   printProgram: printProgram$2,
   printProgramFull: printProgramFull$2
 };
@@ -5364,7 +5408,7 @@ function exprAppPrmToString$2(p, es, context) {
       case /* Cons */13 :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by JavaScript",
+                _1: "List is not supported by the pseudo-code syntax",
                 Error: new Error()
               };
       
@@ -6080,9 +6124,27 @@ function printProgram$3(insertPrintTopLevel, p) {
   return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
 }
 
+function printStandAloneTerm$3(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var tmp;
+  tmp = it.TAG === /* Def */0 ? defToString$2({
+          it: it._0,
+          ann: ann
+        }).ann.print : printExp$3({
+          it: it._0,
+          ann: ann
+        }, {
+          TAG: /* Expr */0,
+          _0: false
+        }).ann.print;
+  return toString(tmp);
+}
+
 var PCPrinter = {
   printName: printName$3,
   printOutput: printOutput$3,
+  printStandAloneTerm: printStandAloneTerm$3,
   printProgram: printProgram$3,
   printProgramFull: printProgramFull$3
 };
@@ -7214,18 +7276,39 @@ function printProgram$4(insertPrintTopLevel, p) {
   return toString(printProgramFull$4(insertPrintTopLevel, p).ann.print);
 }
 
+function printStandAloneTerm$4(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var tmp;
+  tmp = it.TAG === /* Def */0 ? defToString$3({
+          it: it._0,
+          ann: ann
+        }).ann.print : printExp$4({
+          it: it._0,
+          ann: ann
+        }, {
+          TAG: /* Expr */0,
+          _0: false
+        }).ann.print;
+  return toString(tmp);
+}
+
 var SCPrinter = {
   printName: printName$4,
   printOutput: printOutput$4,
+  printStandAloneTerm: printStandAloneTerm$4,
   printProgram: printProgram$4,
   printProgramFull: printProgramFull$4
 };
 
 function toString$6(t) {
-  if (t.TAG === /* ParseError */0) {
-    return toString$5(t._0);
-  } else {
-    return t._0;
+  switch (t.TAG | 0) {
+    case /* ParseError */0 :
+        return toString$5(t._0);
+    case /* PrintError */1 :
+    case /* KindError */2 :
+        return t._0;
+    
   }
 }
 
@@ -7234,6 +7317,31 @@ var TranslateError = {
 };
 
 var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
+
+function programAsTerm(p) {
+  var match = p.it;
+  if (match) {
+    if (match._1.it) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* KindError */2,
+              _0: "Expecting a term, given a program"
+            },
+            Error: new Error()
+          };
+    }
+    return match._0;
+  }
+  throw {
+        RE_EXN_ID: SMoLTranslateError,
+        _1: {
+          TAG: /* KindError */2,
+          _0: "Expecting a term, given a program"
+        },
+        Error: new Error()
+      };
+}
 
 function translateOutput(src) {
   var output;
@@ -7256,6 +7364,44 @@ function translateOutput(src) {
   }
   try {
     return printOutput$1(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm(src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$1(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7352,6 +7498,7 @@ function translateProgramFull(printTopLevel, src) {
 var JSTranslator = {
   translateName: printName$1,
   translateOutput: translateOutput,
+  translateStandAloneTerm: translateStandAloneTerm,
   translateProgram: translateProgram,
   translateProgramFull: translateProgramFull
 };
@@ -7377,6 +7524,44 @@ function translateOutput$1(src) {
   }
   try {
     return printOutput$2(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm$1(src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$2(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7473,6 +7658,7 @@ function translateProgramFull$1(printTopLevel, src) {
 var PYTranslator = {
   translateName: printName$2,
   translateOutput: translateOutput$1,
+  translateStandAloneTerm: translateStandAloneTerm$1,
   translateProgram: translateProgram$1,
   translateProgramFull: translateProgramFull$1
 };
@@ -7498,6 +7684,44 @@ function translateOutput$2(src) {
   }
   try {
     return printOutput$3(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm$2(src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$3(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7594,6 +7818,7 @@ function translateProgramFull$2(printTopLevel, src) {
 var PCTranslator = {
   translateName: printName$3,
   translateOutput: translateOutput$2,
+  translateStandAloneTerm: translateStandAloneTerm$2,
   translateProgram: translateProgram$2,
   translateProgramFull: translateProgramFull$2
 };
@@ -7619,6 +7844,44 @@ function translateOutput$3(src) {
   }
   try {
     return printOutput$4(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm$3(src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$4(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7715,6 +7978,7 @@ function translateProgramFull$3(printTopLevel, src) {
 var SCTranslator = {
   translateName: printName$4,
   translateOutput: translateOutput$3,
+  translateStandAloneTerm: translateStandAloneTerm$3,
   translateProgram: translateProgram$3,
   translateProgramFull: translateProgramFull$3
 };
@@ -7736,6 +8000,7 @@ var Parser = {
 var SMoLPrinter = {
   printName: printName,
   printOutput: printOutput,
+  printStandAloneTerm: printStandAloneTerm,
   printProgram: printProgram,
   printProgramFull: printProgramFull
 };

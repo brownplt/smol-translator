@@ -787,6 +787,7 @@ type printAnn = {sourceLocation: sourceLocation, print: Print.t}
 module type Printer = {
   let printName: string => string
   let printOutput: output => string
+  let printStandAloneTerm: term<sourceLocation> => string
   let printProgram: (bool, program<sourceLocation>) => string
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
 }
@@ -1175,6 +1176,10 @@ module SMoLPrinter = {
 
   let printProgram = (insertPrintTopLevel, p) => {
     printProgramFull(insertPrintTopLevel, p).ann.print->Print.toString
+  }
+
+  let printStandAloneTerm = t => {
+    printTerm(t).ann.print->Print.toString
   }
 }
 
@@ -1774,6 +1779,13 @@ module JSPrinter: Printer = {
   let printProgram = (insertPrintTopLevel, p) => {
     printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
   }
+
+  let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
+    switch it {
+      | Def(it) => defToString({ it, ann }).ann.print
+      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+    } |> Print.toString
+  }
 }
 
 module PYPrinter: Printer = {
@@ -2291,7 +2303,7 @@ module PYPrinter: Printer = {
   and printBlock = (b, context: statContext, env) => {
     let xs = xsOfBlock(b)
     if xs != list{} {
-      raisePrintError("Python blocks can't declair local variables")
+      raisePrintError("Python blocks can't declare local variables")
     }
     let rec printBlock = ({ann: sourceLocation, it: b}) => {
       switch b {
@@ -2357,7 +2369,7 @@ module PYPrinter: Printer = {
     let rec p = (v: val): string => {
       switch v {
       | Con(c) => constantToString(c)
-      | Lst(_es) => raisePrintError("Lists are not supported in JavaScript")
+      | Lst(_es) => raisePrintError("Lists are not supported in Python")
       | Vec(es) => `[${String.concat(", ", es->List.map(p))}]`
       }
     }
@@ -2422,6 +2434,14 @@ module PYPrinter: Printer = {
 
   let printProgram = (insertPrintTopLevel, p) => {
     printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+  }
+
+  let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
+    let globalEnv = G(HashSet.String.fromArray([]))
+    switch it {
+      | Def(it) => defToString({ it, ann }, globalEnv).ann.print
+      | Exp(it) => printExp({it, ann}, Expr(false), globalEnv).ann.print
+    } |> Print.toString
   }
 }
 
@@ -2652,7 +2672,7 @@ module PCPrinter: Printer = {
           it: (Next, list{e1}),
         }
       }
-    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | (Cons, _) => raisePrintError("List is not supported by the pseudo-code syntax")
     | _ =>
       raisePrintError(
         `Our pseudo-code syntax doesn't let you use ${Primitive.toString(p)} on ${List.length(
@@ -2990,6 +3010,13 @@ module PCPrinter: Printer = {
 
   let printProgram = (insertPrintTopLevel, p) => {
     printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+  }
+
+  let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
+    switch it {
+      | Def(it) => defToString({ it, ann }).ann.print
+      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+    } |> Print.toString
   }
 }
 
@@ -3585,12 +3612,20 @@ module SCPrinter: Printer = {
   let printProgram = (insertPrintTopLevel, p) => {
     printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
   }
+
+  let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
+    switch it {
+      | Def(it) => defToString({ it, ann }).ann.print
+      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+    } |> Print.toString
+  }
 }
 
 module type Translator = {
   let translateName: string => string
   // print terms, interleaved with whitespace
   let translateOutput: string => string
+  let translateStandAloneTerm: string => string
   // print runnable full programs
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
@@ -3599,14 +3634,24 @@ module TranslateError = {
   type t =
     | ParseError(ParseError.t)
     | PrintError(string)
+    | KindError(string)
   let toString = t => {
     switch t {
     | ParseError(err) => ParseError.toString(err)
     | PrintError(err) => err
+    | KindError(err) => err
     }
   }
 }
 exception SMoLTranslateError(TranslateError.t)
+let raiseTranslateError = e => raise(SMoLTranslateError(e))
+
+let programAsTerm = (p: program<_>): term<_> => {
+  switch p.it {
+    | PCons(t, { it: PNil}) => t
+    | _ => raiseTranslateError(KindError("Expecting a term, given a program"))
+  }
+}
 
 module MakeTranslator = (P: Printer) => {
   let translateName = P.printName
@@ -3617,6 +3662,16 @@ module MakeTranslator = (P: Printer) => {
       switch P.printOutput(output) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | output => output
+      }
+    }
+  }
+  let translateStandAloneTerm = src => {
+    switch Parser.parseProgram(src) {
+    | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+    | p =>
+      switch P.printStandAloneTerm(p |> programAsTerm) {
+      | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+      | p => p
       }
     }
   }
