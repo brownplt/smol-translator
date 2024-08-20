@@ -2653,14 +2653,14 @@ function consumeContext(e, context) {
   }
   switch (context._0) {
     case /* Step */0 :
-        return surround("", e, ";");
+        return surround("", e, "");
     case /* Return */1 :
-        return surround("return ", e, ";");
+        return surround("return ", e, "");
     case /* TopLevel */2 :
         if (printingTopLevel.contents) {
-          return surround("console.log(", e, ");");
+          return surround("console.log(", e, ")");
         } else {
-          return surround("", e, ";");
+          return surround("", e, "");
         }
     
   }
@@ -2682,9 +2682,9 @@ function consumeContextVoid(e, context) {
     case /* Step */0 :
         return consumeContext(e, context);
     case /* Return */1 :
-        return surround("", e, ";\nreturn;");
+        return surround("", e, "\nreturn");
     case /* TopLevel */2 :
-        return surround("", e, ";");
+        return surround("", e, "");
     
   }
 }
@@ -3052,7 +3052,7 @@ function funLike(op, x, xs, e) {
 }
 
 function defvarToString(x, e) {
-  return op1("", defvarLike$1("let ", x, e), ";");
+  return op1("", defvarLike$1("let ", x, e), "");
 }
 
 function deffunToString$1(f, xs, b) {
@@ -3672,8 +3672,8 @@ function printStandAloneTerm$1(param) {
           it: it._0,
           ann: ann
         }, {
-          TAG: /* Expr */0,
-          _0: false
+          TAG: /* Stat */1,
+          _0: /* Step */0
         }).ann.print;
   return toString(tmp);
 }
@@ -4959,8 +4959,8 @@ function printStandAloneTerm$2(param) {
           it: it._0,
           ann: ann
         }, {
-          TAG: /* Expr */0,
-          _0: false
+          TAG: /* Stat */1,
+          _0: /* Step */0
         }, globalEnv).ann.print;
   return toString(tmp);
 }
@@ -6135,8 +6135,8 @@ function printStandAloneTerm$3(param) {
           it: it._0,
           ann: ann
         }, {
-          TAG: /* Expr */0,
-          _0: false
+          TAG: /* Stat */1,
+          _0: /* Step */0
         }).ann.print;
   return toString(tmp);
 }
@@ -7287,8 +7287,8 @@ function printStandAloneTerm$4(param) {
           it: it._0,
           ann: ann
         }, {
-          TAG: /* Expr */0,
-          _0: false
+          TAG: /* Stat */1,
+          _0: /* Step */0
         }).ann.print;
   return toString(tmp);
 }

@@ -1257,13 +1257,13 @@ module JSPrinter: Printer = {
     | Expr(_) => surround("", e, "")
     | Stat(ctx) =>
       switch ctx {
-      | Step => surround("", e, ";")
-      | Return => surround("return ", e, ";") //`return ${e};`
+      | Step => surround("", e, "")
+      | Return => surround("return ", e, "") //`return ${e}`
       | TopLevel =>
         if printingTopLevel.contents {
-          surround("console.log(", e, ");")
+          surround("console.log(", e, ")")
         } else {
-          surround("", e, ";")
+          surround("", e, "")
         }
       }
     }
@@ -1278,8 +1278,8 @@ module JSPrinter: Printer = {
 
   let consumeContextVoid = (e: annotated<_, _>, context) => {
     switch context {
-    | Stat(Return) => surround("", e, ";\nreturn;")
-    | Stat(TopLevel) => surround("", e, ";")
+    | Stat(Return) => surround("", e, "\nreturn")
+    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -1455,7 +1455,7 @@ module JSPrinter: Printer = {
   }
 
   let defvarToString = (x, e) => {
-    op1("", defvarLike("let ", x, e), ";")
+    op1("", defvarLike("let ", x, e), "")
   }
 
   let deffunToString = (f, xs, b) => {
@@ -1783,7 +1783,7 @@ module JSPrinter: Printer = {
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
       | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
@@ -2440,7 +2440,7 @@ module PYPrinter: Printer = {
     let globalEnv = G(HashSet.String.fromArray([]))
     switch it {
       | Def(it) => defToString({ it, ann }, globalEnv).ann.print
-      | Exp(it) => printExp({it, ann}, Expr(false), globalEnv).ann.print
+      | Exp(it) => printExp({it, ann}, Stat(Step), globalEnv).ann.print
     } |> Print.toString
   }
 }
@@ -3015,7 +3015,7 @@ module PCPrinter: Printer = {
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
       | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
@@ -3616,7 +3616,7 @@ module SCPrinter: Printer = {
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
       | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Expr(false)).ann.print
+      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
