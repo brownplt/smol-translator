@@ -1,5 +1,6 @@
-val x = Buffer(71, 86)
+val x = Buffer(10, 48, 95)
 def f(y : Buffer[Int]) =
-  y(0) = 34
-f(x)
-println(x)
+  y(0) = 32
+  y(0)
+val z = f(x)
+println(x(0))

@@ -15,6 +15,9 @@ const incompatibleWithScala3 = new Set([
     "post3.post_not_aliased_by_funarg_2",
     "post4.post_not_aliased_by_funarg_2",
 ]);
+const incompatibleWithPY = new Set([
+    "mutvars2.update_undefined",
+]);
 for (const [reason, items] of Object.entries(Scala3_source_hard_coded_translation)) {
     for (const { broken, fix, task, tutorial } of items) {
         Scala3_actual_hard_coded_translation[`${tutorial}.${task}`] = fix.trim();
@@ -26,6 +29,7 @@ for (const f of fs.readdirSync(path)) {
         const name = f.substring(0, f.length - suffix.length);
         const programFile = `${path}/${name}.smol`;
         const outputsFile = `${path}/${name}.smol.txt`;
+        // JS
         try {
             const program = fs.readFileSync(programFile, 'utf8');
             const outputs = fs.readFileSync(outputsFile, 'utf8');
@@ -43,23 +47,27 @@ for (const f of fs.readdirSync(path)) {
             console.log(name);
             console.error(err);
         }
+        // PY
         try {
-            const program = fs.readFileSync(programFile, 'utf8');
-            const outputs = fs.readFileSync(outputsFile, 'utf8');
-            if (!outputs.includes("@")) {
-                try {
-                    fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
-                    fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs));
-                } catch (err) {
-                    fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+            if (!incompatibleWithPY.has(name.replace(/[.]again$/, ""))) {
+                const program = fs.readFileSync(programFile, 'utf8');
+                const outputs = fs.readFileSync(outputsFile, 'utf8');
+                if (!outputs.includes("@")) {
+                    try {
+                        fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
+                        fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs));
+                    } catch (err) {
+                        fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                    }
+                } else {
+                    fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
                 }
-            } else {
-                fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
             }
         } catch (err) {
             console.log(name);
             console.error(err);
         }
+        // Pseudocode
         try {
             const program = fs.readFileSync(programFile, 'utf8');
             const outputs = fs.readFileSync(outputsFile, 'utf8');
@@ -77,8 +85,9 @@ for (const f of fs.readdirSync(path)) {
             console.log(name);
             console.error(err);
         }
+        // Scala
         try {
-            if (! incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {
+            if (!incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {
                 const program = fs.readFileSync(programFile, 'utf8');
                 const outputs = fs.readFileSync(outputsFile, 'utf8');
                 if (!outputs.includes("@")) {
