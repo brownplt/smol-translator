@@ -1,5 +1,6 @@
-(defvar x (mvec 71 86))
+(defvar x (mvec 10 48 95))
 (deffun (f y)
-  (vec-set! y 0 34))
-(f x)
-x
+  (vec-set! y 0 32)
+  (vec-ref y 0))
+(defvar z (f x))
+(vec-ref x 0)

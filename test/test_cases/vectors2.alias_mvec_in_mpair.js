@@ -1,4 +1,4 @@
-let v = [ 51, 62, 73 ]
-let vv = [ v, v ]
-vv[1][0] = 44
-console.log(vv[0])
+let x = [ 19, 73, 28 ]
+let y = [ x, x ]
+y[0][0] = 64
+console.log(y[1])

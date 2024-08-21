@@ -1,4 +1,4 @@
-val x = Buffer(77)
+val x = Buffer(52, 70, 61)
 val y = x
-x(0) = 34
-println(y)
+x(0) = 93
+println(y(0))

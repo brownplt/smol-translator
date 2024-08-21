@@ -1,7 +1,7 @@
-let x = [ 71, 86 ]
+let x = [ 10, 48, 95 ]
 function f(y) {
-  y[0] = 34
-  return
+  y[0] = 32
+  return y[0]
 }
-console.log(f(x))
-console.log(x)
+let z = f(x)
+console.log(x[0])

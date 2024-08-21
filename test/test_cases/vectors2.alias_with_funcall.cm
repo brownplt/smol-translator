@@ -1,7 +1,7 @@
-let x = vec[71, 86]
+let x = vec[10, 48, 95]
 fun f(y):
-  y[0] = 34
-  return
+  y[0] = 32
+  return y[0]
 end
-f(x)
-x
+let z = f(x)
+x[0]

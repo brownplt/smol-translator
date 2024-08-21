@@ -61,7 +61,7 @@ export const tutorials =
         "emphasize": "We have two kinds of places where a definition might happen: the top-level **block** and\nfunction bodies (which are also **blocks**).\nA block is a sequence of definitions and expressions.\n\nBlocks form a tree-like structure in a program.\nFor example, we have four blocks in the following program:\n\n```\n(defvar n 42)\n\n(deffun (f x)\n  (defvar y 1)\n  (+ x y))\n\n(deffun (g)\n  (deffun (h m)\n    (* 2 m))\n  (f (h 3)))\n\n(g)\n```\n\nThe blocks are:\n\n- the top-level block, where the definitions of var`n`, var`f`, and var`g` appear\n- the body of var`f`, where the definition of var`y` appears, which is a sub-block of the top-level block\n- the body of var`g`, where the definition of var`h` appears, which is also a sub-block of the top-level block, and\n- the body of var`h`, where no local definition appears, which is a sub-block of the body of var`g`\n"
       },
       "intro_error": {
-        "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is `23 error`\nbecause you can't \"call\" a number and because programs stop executing as soon as they run into an error.\n\n```\n(defvar x 23)\nx\n(x 0)\nx\n```\n"
+        "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is `23 error`\nbecause you can't \"call\" a number, so the program stops executing as soon as it runs into an error.\n\n```\n(defvar x 23)\nx\n(x 0)\nx\n```\n"
       },
       "warmup_error": {
         "program": "(defvar xyz 42)\nabc\n",
@@ -356,7 +356,7 @@ export const tutorials =
       "warmup_vecref": {
         "program": "(defvar v (mvec (mvec 58 43) (mvec 43 66)))\n(defvar vr (vec-ref v 1))\n(vec-ref vr 0)\n",
         "answer": "43",
-        "feedback": "Recall that the left-most element is the 0-th (rather than 1-th!) element.\nterm`(vec-ref v 1)` produces the value of term`(mvec 43 66)`.\nSo, term`(vec-ref vr 0)` produces `43`.\n",
+        "feedback": "Recall that the left-most element is the `0`-th (rather than 1-th!) element.\nterm`(vec-ref v 1)` produces the value of term`(mvec 43 66)`.\nSo, term`(vec-ref vr 0)` produces `43`.\n",
         "misconceptions": {
           "58": {
             "misconception": "Other"
@@ -423,13 +423,13 @@ export const tutorials =
         "confirm": "In this tutorial, we will learn *more* about **mutable values**, illustrated with **vectors**.\n"
       },
       "alias_with_defvar": {
-        "program": "(defvar x (mvec 77))\n(defvar y x)\n(vec-set! x 0 34)\ny\n",
-        "answer": "#(34)",
-        "feedback": "The program creates a one-element vector (the only element being 77)\nand binds it to both var`x` and var`y`.\nThe `0`-th element of the vector is then replaced with `34`.\nSo, the vector is printed as `#(34)`.\n",
+        "program": "(defvar x (mvec 52 70 61))\n(defvar y x)\n(vec-set! x 0 93)\n(vec-ref y 0)\n",
+        "answer": "93",
+        "feedback": "The program creates a vector where the `0`-th element is `52`.\nand binds it to both var`x` and var`y`.\nThe `0`-th element of the vector is then replaced with `93`.\nSo, the result is `93`.\n",
         "misconceptions": {
-          "#(77)": {
-            "misconception": "DefsCopyStructs",
-            "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`x` doesn't change var`y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n"
+          "52": {
+            "misconception": "DefCopyStruct",
+            "feedback": "You might think var`x` and var`y` refer to different vectors,\nso changing var`x` doesn't change var`y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable,\nand binding a vector to a new variable does not create a copy of that vector.\n"
           }
         },
         "again": {
@@ -443,7 +443,7 @@ export const tutorials =
         "feedback": "var`x` is first bound to a vector that refers `62`. var`y` is bound to the same vector.\nThe vector mutation replaces `62` with `34`. So, eventually, the vector becomes `#(34)`.\n",
         "misconceptions": {
           "#(62)": {
-            "misconception": "DefsCopyStructs",
+            "misconception": "DefCopyStruct",
             "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`y` doesn't change var`x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n"
           }
         },
@@ -453,12 +453,12 @@ export const tutorials =
         }
       },
       "alias_with_funcall": {
-        "program": "(defvar x (mvec 71 86))\n(deffun (f y)\n  (vec-set! y 0 34))\n(f x)\nx\n",
-        "answer": "#(34 86)",
-        "feedback": "The program first creates a two-element vector. The elements are `71` and `86`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f x)` replaces the first vector element with `34`.\nAfter that, the vector is printed. The vector now refers `34` and `86`, so the\nresult is `#(34 86)`.\n",
+        "program": "(defvar x (mvec 10 48 95))\n(deffun (f y)\n  (vec-set! y 0 32)\n  (vec-ref y 0))\n(defvar z (f x))\n(vec-ref x 0)\n",
+        "answer": "32",
+        "feedback": "The program first creates a three-element vector, where the `0`-th element is `10`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f x)` replaces the `0`-th vector element with `32`.\nAfter that, the vector is printed. So the\nresult is `32`.\n",
         "misconceptions": {
-          "#(71 86)": {
-            "misconception": "CallsCopyStructs",
+          "71": {
+            "misconception": "CallCopyStruct",
             "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`y` doesn't change var`x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n"
           }
         },
@@ -473,7 +473,7 @@ export const tutorials =
         "feedback": "The program creates a vector and binds it to var`x`.\nThe function call term`(f x)` binds var`y` to the same vector.\nThe function replaces the `0`-th element of the vector with `34`\nand then returns the vector.\nSo, the final result is the vector, which is printed as `#(34 83)`.\n",
         "misconceptions": {
           "#(99 83)": {
-            "misconception": "CallsCopyStructs",
+            "misconception": "CallCopyStruct",
             "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`x` doesn't change var`y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n"
           },
           "error": {
@@ -492,7 +492,7 @@ export const tutorials =
         "feedback": "var`x` is bound to a one-element vector.\nThe only element of this vector is `53`.\nvar`v` is bound to a two-element vector.\nThe elements of this vector are `72` and the one-element vector.\nThe subsequent term`(vec-set! x 0 72)` mutates the one-element vector.\nFinally, the value of var`v` is printed.\n",
         "misconceptions": {
           "#(72 #(53))": {
-            "misconception": "StructsCopyStructs",
+            "misconception": "StructCopyStruct",
             "feedback": "You might think var`x` and the 1-th element of var`v` refer to different vectors, so changing var`x` doesn't change the 1-th element of var`v`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n"
           }
         },
@@ -502,12 +502,12 @@ export const tutorials =
         }
       },
       "alias_mvec_in_mpair": {
-        "program": "(defvar v (mvec 51 62 73))\n(defvar vv (mvec v v))\n(vec-set! (vec-ref vv 1) 0 44)\n(vec-ref vv 0)\n",
-        "answer": "#(44 62 73)",
-        "feedback": "This program first creates a three-element vector and binds it to var`v`.\nAfter that, the program creates a two-element vector. Both elements refer to the first vector.\nAfter that, the `0`-th element of the three-element vector is replaced with `44`.\nFinally, the three-element vector is printed.\n",
+        "program": "(defvar x (mvec 19 73 28))\n(defvar y (mvec x x))\n(vec-set! (vec-ref y 0) 0 64)\n(vec-ref y 1)\n",
+        "answer": "#(64 73 28)",
+        "feedback": "This program first creates a three-element vector and binds it to var`v`.\nAfter that, the program creates a two-element vector. Both elements refer to the first vector.\nAfter that, the `0`-th element of the three-element vector is replaced with `64`.\nFinally, the three-element vector is printed.\n",
         "misconceptions": {
-          "#(51 62 73)": {
-            "misconception": "StructsCopyStructs",
+          "#(51 73 28)": {
+            "misconception": "StructCopyStruct",
             "feedback": "You might think the two elements of var`v` refer to different vectors, so changing one doesn't change the other.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n"
           }
         },
@@ -583,7 +583,7 @@ export const tutorials =
           "There is nothing in the heap."
         ],
         "answer": "@100 = #(42); @200 = #(@100 @100)",
-        "feedback": "%2% and %3% are wrong.\nVectors refer values.\n`#(42)` and `#(3)` are not values, although some vector values are printed like them.\nSo, `@200 = #(#(42) #(42))` and `@200 = #(#(42) #(3))` can not be valid.\n\nterm`(mvec 3)` creates a 1-element vector, `@100`.\nThe only element is `3`.\nterm`(mvec mv mv)` creates a 2-element vector, `@200`.\nBoth elements of `@200` are `@100`.\nNo more vectors are created, which means %4% must be wrong.\nSo, then, the correct answer must be %1% or %0%.\n\nHowever, the subsequent mutation changes `@100` (the first element of `@200`).\nThe 0-th element of `@100` is mutated to `42`.\nSo, %0% is the correct answer.\n"
+        "feedback": "%2% and %3% are wrong.\nVectors refer values.\n`#(42)` and `#(3)` are not values, although some vector values are printed like them.\nSo, `@200 = #(#(42) #(42))` and `@200 = #(#(42) #(3))` can not be valid.\n\nterm`(mvec 3)` creates a 1-element vector, `@100`.\nThe only element is `3`.\nterm`(mvec mv mv)` creates a 2-element vector, `@200`.\nBoth elements of `@200` are `@100`.\nNo more vectors are created, which means %4% must be wrong.\nSo, then, the correct answer must be %1% or %0%.\n\nHowever, the subsequent mutation changes `@100` (the first element of `@200`).\nThe `0`-th element of `@100` is mutated to `42`.\nSo, %0% is the correct answer.\n"
       },
       "reflect_heap_not_env": {
         "prompt": "The following program defines two variables but\ncreates nothing on the heap.\n\n```\n(defvar x 2)\n(defvar y 3)\nx\ny\n```\n\nThe following program defines no variables but\ncreates two things on the heap.\n\n```\n(mvec 1 (mvec 2 3))\n```\n\nWhat did you learn from this pair of programs?\n"
@@ -648,7 +648,7 @@ export const tutorials =
           "@100 = #(1 #(3 4))"
         ],
         "answer": "@100 = #(1 @200); @200 = #(3 4)",
-        "feedback": "Two vectors are created. So, there must be at least two things on the heap.\nThis rules out %1,5%.\n\n%4% is wrong because vectors refer values (e.g., `1`, `2`, and `@200`).\n`#(3 4)` is not itself a value; it's the *printing* of the value that resides at `@200`.\n%2% can be the heap after the second vector is created.\nHowever, the subsequent mutation changes `@100`.\nSo, %2% is wrong.\n\nThe mutation replaces the 1-th (i.e., second) element rather than the 0-th element,\nso %0% is correct, while %3% is wrong.\n"
+        "feedback": "Two vectors are created. So, there must be at least two things on the heap.\nThis rules out %1,5%.\n\n%4% is wrong because vectors refer values (e.g., `1`, `2`, and `@200`).\n`#(3 4)` is not itself a value; it's the *printing* of the value that resides at `@200`.\n%2% can be the heap after the second vector is created.\nHowever, the subsequent mutation changes `@100`.\nSo, %2% is wrong.\n\nThe mutation replaces the 1-th (i.e., second) element rather than the `0`-th element,\nso %0% is correct, while %3% is wrong.\n"
       },
       "alias_mvec_in_mvec": {
         "prompt": "Which choice best describes the heap at the end of the following program?\n",
@@ -676,7 +676,7 @@ export const tutorials =
           "@100 = #(1 2 3); @200 = #(6 @100)"
         ],
         "answer": "@100 = #(6 2 3); @200 = #(@100 @100)",
-        "feedback": "Vectors refer values (e.g., `1` and `@200`).\nThis rules out %1,2%.\n\nTwo vectors are created.\nSo, there must be two vectors on the heap.\nThis rules out %3,4%.\n\nvar`vv` is bound to a 2-element vector, and the\n1-th element of the 2-element vector must be the 3-element vector.\nThe mutation replaces the 0-th element in the 3-element vector with `6`.\nSo, %0% is the correct answer, while\n%5% does not reflect the effect of the mutation, and %6% mutates the wrong vector.\n"
+        "feedback": "Vectors refer values (e.g., `1` and `@200`).\nThis rules out %1,2%.\n\nTwo vectors are created.\nSo, there must be two vectors on the heap.\nThis rules out %3,4%.\n\nvar`vv` is bound to a 2-element vector, and the\n1-th element of the 2-element vector must be the 3-element vector.\nThe mutation replaces the `0`-th element in the 3-element vector with `6`.\nSo, %0% is the correct answer, while\n%5% does not reflect the effect of the mutation, and %6% mutates the wrong vector.\n"
       },
       "basic_circularity": {
         "prompt": "Which choice best describes the heap at the end of the following program?\n",
@@ -727,13 +727,13 @@ export const tutorials =
         }
       },
       "not_aliased_by_defvar_1": {
-        "program": "(defvar x 12)\n(defvar y x)\n(set! x 0)\nx\ny\n",
-        "answer": "0 12",
-        "feedback": "The first definition binds var`x` to `12`.\nThe second definition binds var`y` to the value of var`x`, which is `12`.\nThe variable assignment mutates the binding of var`x`, so var`x` is now bound to `0`.\nBut var`y` is still bound to `12`.\n",
+        "program": "(defvar x 80)\n(defvar y x)\n(set! x 32)\nx\ny\n",
+        "answer": "32 80",
+        "feedback": "The first definition binds var`x` to `80`.\nThe second definition binds var`y` to the value of var`x`, which is `80`.\nThe variable assignment mutates the binding of var`x`, so var`x` is now bound to `32`.\nBut var`y` is still bound to `80`.\n",
         "misconceptions": {
-          "0 0": {
+          "32 32": {
             "misconception": "DefByRef",
-            "feedback": "You might think term`(defvar y x)` binds var`y` to var`x`, so changing var`x` will change var`y`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to the `12`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
+            "feedback": "You might think term`(defvar y x)` binds var`y` to var`x`, so changing var`x` will change var`y`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to the `80`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
           }
         },
         "again": {
@@ -812,7 +812,7 @@ export const tutorials =
       "new_alias_mvec_in_mvec_trick": {
         "program": "(defvar x (mvec 55))\n(defvar v (mvec x 55 55))\n(set! x (mvec 66))\nv\n",
         "answer": "#(#(55) 55 55)",
-        "feedback": "var`x` is first bound to a one-element vector.\nvar`v` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! x (mvec 66))` binds var`x` to a new vector.\nThis doesn't impact var`v` because\nthe 0-th element of var`v` is still the one-element vector.\n",
+        "feedback": "var`x` is first bound to a one-element vector.\nvar`v` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! x (mvec 66))` binds var`x` to a new vector.\nThis doesn't impact var`v` because\nthe `0`-th element of var`v` is still the one-element vector.\n",
         "misconceptions": {
           "#(#(66) 55 55)": {
             "misconception": "StructByRef",
@@ -1730,7 +1730,7 @@ export const tutorials =
         "feedback": "The program creates a one-element vector (the only element being 23)\nand binds it to both var`v1` and var`v2`.\nThe `0`-th element of the vector is then replaced with `45`.\nSo, when the vector is printed as `#(45)`.\n",
         "misconceptions": {
           "#(23)": {
-            "misconception": "DefsCopyStructs",
+            "misconception": "DefCopyStruct",
             "feedback": "You might think var`v1` and var`v2` refer to different vectors, so changing var`v1` doesn't change var`v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n"
           }
         },
@@ -1745,7 +1745,7 @@ export const tutorials =
         "feedback": "The program first creates a two-element vector. The elements are both `77`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f m1)` replaces the first vector element with `43`.\nAfter that, the vector is printed. The vector now refers `43` and `77`, so the\nresult is `#(43 77)`.\n",
         "misconceptions": {
           "#(77 77)": {
-            "misconception": "CallsCopyStructs",
+            "misconception": "CallCopyStruct",
             "feedback": "You might think var`m1` and var`m2` refer to different vectors, so changing var`m2` doesn't change var`m1`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n"
           }
         },
@@ -1760,7 +1760,7 @@ export const tutorials =
         "feedback": "`v1` is bound to a one-element vector.\nThe only element of this vector is `53`.\n`v2` is bound to a two-element vector.\nThe elements of this vector are `72` and the one-element vector.\nThe subsequent term`(vec-set! v1 0 72)` mutates the one-element vector.\nFinally, the value of var`v2` is printed.\n",
         "misconceptions": {
           "#(72 #(53))": {
-            "misconception": "StructsCopyStructs",
+            "misconception": "StructCopyStruct",
             "feedback": "You might think var`v1` and the 1-th element of var`v2` refer to different vectors, so changing var`v1` doesn't change the 1-th element of var`v2`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n"
           }
         },
@@ -1772,7 +1772,7 @@ export const tutorials =
       "post_basic_circularity": {
         "program": "(defvar m (mvec 82 76))\n(vec-set! m 0 m)\n(vec-ref m 1)\n",
         "answer": "76",
-        "feedback": "var`m` is bound to a vector.\nterm`(vec-set! m 0 m)` replaces the 0-th element of the vector with the vector itself.\nThis is fine because a vector element can be any value, including itself.\nBesides, the vector is not copied, so the mutation finishes immediately.\n",
+        "feedback": "var`m` is bound to a vector.\nterm`(vec-set! m 0 m)` replaces the `0`-th element of the vector with the vector itself.\nThis is fine because a vector element can be any value, including itself.\nBesides, the vector is not copied, so the mutation finishes immediately.\n",
         "misconceptions": {
           "error": {
             "misconception": "NoCircularity",
@@ -1813,7 +1813,7 @@ export const tutorials =
         "feedback": "The program creates a one-element vector (the only element being 72)\nand binds it to both var`p` and var`q`.\nThe `0`-th element of the vector is then replaced with `94`.\nSo, when the vector is printed as `#(94)`.\n",
         "misconceptions": {
           "#(72)": {
-            "misconception": "DefsCopyStructs",
+            "misconception": "DefCopyStruct",
             "feedback": "You might think var`p` and var`q` refer to different vectors, so changing var`p` doesn't change var`q`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and binding a vector to a new variable does not create a copy of that vector.\n"
           }
         },
@@ -1828,7 +1828,7 @@ export const tutorials =
         "feedback": "The program first creates a two-element vector. The elements are both `88`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f zz)` replaces the first vector element with `97`.\nAfter that, the vector is printed. The vector now refers `97` and `88`, so the\nresult is `#(97 88)`.\n",
         "misconceptions": {
           "#(88 88)": {
-            "misconception": "CallsCopyStructs",
+            "misconception": "CallCopyStruct",
             "feedback": "You might think var`zz` and var`aa` refer to different vectors, so changing var`aa` doesn't change var`zz`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n"
           }
         },
@@ -1843,7 +1843,7 @@ export const tutorials =
         "feedback": "var`nn` is bound to a one-element vector.\nThe only element of this vector is `66`.\nvar`mm` is bound to a two-element vector.\nThe elements of this vector are `77` and the one-element vector.\nThe subsequent term`(vec-set! nn 0 77)` mutates the one-element vector.\nFinally, the value of var`mm` is printed.\n",
         "misconceptions": {
           "#(77 #(66))": {
-            "misconception": "StructsCopyStructs",
+            "misconception": "StructCopyStruct",
             "feedback": "You might think var`nn` and the 1-th element of var`mm` refer to different vectors, so changing var`nn` doesn't change the 1-th element of var`mm`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n"
           }
         },
@@ -1855,7 +1855,7 @@ export const tutorials =
       "post_basic_circularity": {
         "program": "(defvar ns (mvec 74 85))\n(vec-set! ns 0 ns)\n(vec-ref ns 1)\n",
         "answer": "85",
-        "feedback": "var`ns` is bound to a vector.\nterm`(vec-set! ns 0 ns)` replaces the 0-th element of the vector with the vector itself.\nThis is fine because a vector element can be any value, including itself.\nBesides, the vector is not copied, so the mutation finishes immediately.\n",
+        "feedback": "var`ns` is bound to a vector.\nterm`(vec-set! ns 0 ns)` replaces the `0`-th element of the vector with the vector itself.\nThis is fine because a vector element can be any value, including itself.\nBesides, the vector is not copied, so the mutation finishes immediately.\n",
         "misconceptions": {
           "error": {
             "misconception": "NoCircularity",
@@ -1927,7 +1927,7 @@ export const tutorials =
       "post_new_alias_mvec_in_mvec_trick": {
         "program": "(defvar m (mvec 66))\n(defvar z (mvec m 66 66))\n(set! m (mvec 43))\nz\n",
         "answer": "#(#(66) 66 66)",
-        "feedback": "var`m` is first bound to a one-element vector.\nvar`z` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! m (mvec 43))` binds var`m` to a new vector.\nThis doesn't impact var`z` because\nthe 0-th element of var`z` is still the one-element vector.\n",
+        "feedback": "var`m` is first bound to a one-element vector.\nvar`z` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! m (mvec 43))` binds var`m` to a new vector.\nThis doesn't impact var`z` because\nthe `0`-th element of var`z` is still the one-element vector.\n",
         "misconceptions": {
           "#(#(43) 66 66)": {
             "misconception": "StructByRef",
@@ -2020,7 +2020,7 @@ export const tutorials =
       "post_new_alias_mvec_in_mvec_trick": {
         "program": "(defvar a (mvec 88))\n(defvar c (mvec a 88 88))\n(set! a (mvec 76))\nc\n",
         "answer": "#(#(88) 88 88)",
-        "feedback": "var`a` is first bound to a one-element vector.\nvar`c` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! a (mvec 76))` binds var`a` to a new vector.\nThis doesn't impact var`c` because\nthe 0-th element of var`c` is still the one-element vector.\n",
+        "feedback": "var`a` is first bound to a one-element vector.\nvar`c` is bound to a three-element vector, of which the first element is the one-element vector.\nterm`(set! a (mvec 76))` binds var`a` to a new vector.\nThis doesn't impact var`c` because\nthe `0`-th element of var`c` is still the one-element vector.\n",
         "misconceptions": {
           "#(#(76) 88 88)": {
             "misconception": "StructByRef",

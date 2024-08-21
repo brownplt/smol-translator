@@ -1,5 +1,5 @@
-x = 12
+x = 80
 y = x
-x = 0
+x = 32
 print(x)
 print(y)

@@ -1,5 +1,5 @@
-var x = 12
+var x = 80
 var y = x
-x = 0
+x = 32
 println(x)
 println(y)

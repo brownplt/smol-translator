@@ -1,5 +1,5 @@
-let x = 12
+let x = 80
 let y = x
-x = 0
+x = 32
 x
 y
