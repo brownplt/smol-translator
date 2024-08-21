@@ -1,2 +1,2 @@
-(defvar x (/ 12 0))
+(defvar x (12 54))
 3

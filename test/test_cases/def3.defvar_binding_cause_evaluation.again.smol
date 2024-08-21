@@ -1,2 +1,2 @@
-(defvar b (/ 79 0))
+(defvar b (79 6))
 1

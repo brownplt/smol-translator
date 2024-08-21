@@ -38,6 +38,7 @@ def run_py_file(test):
         actual_result = stdout + "\n" + "error"
     actual_result = actual_result.strip().split("\n")
     actual_result = [s for s in actual_result if s != '']
+    actual_result = [s[:-2] if s.endswith(".0") else s for s in actual_result] # remove trailing .0
     actual_result = " ".join(s.strip() for s in actual_result)
     actual_result = actual_result.strip().split("None")
     actual_result = [s for s in actual_result if s != '']
@@ -132,31 +133,31 @@ for test in glob.glob("./test/test_cases/*{}".format(suffix)):
         print("No expected output.")
         print("----------")
 
-# suffix = ".scala"
-# # i = 0
-# for test in glob.glob("./test/test_cases/*{}".format(suffix)):
-#     # i = i + 1
-#     # if i > 10:
-#     #     break
-#     program = open(test).read()
-#     try:
-#         wished_results = "{}.scala.txt".format(test[:-len(suffix)])
-#         wished_results = open(wished_results).read().strip()
-#         actual_results = run_scala_file(test)
-#         if wished_results == actual_results:
-#             # print("PASSED {}".format(test))
-#             pass
-#         else:
-#             print("FAILED {}".format(test))
-#             print("Program:")
-#             print(program)
-#             print("Wished: {}".format(repr(wished_results)))
-#             print("Actual: {}".format(repr(actual_results)))
-#             print("----------")
-#     except FileNotFoundError as e:
-#         print("FAILED {}".format(test))
-#         print("Program:")
-#         print(program)
-#         print("No expected output.")
-#         print(e)
-#         print("----------")
+suffix = ".scala"
+# i = 0
+for test in glob.glob("./test/test_cases/*{}".format(suffix)):
+    # i = i + 1
+    # if i > 10:
+    #     break
+    program = open(test).read()
+    try:
+        wished_results = "{}.scala.txt".format(test[:-len(suffix)])
+        wished_results = open(wished_results).read().strip()
+        actual_results = run_scala_file(test)
+        if wished_results == actual_results:
+            # print("PASSED {}".format(test))
+            pass
+        else:
+            print("FAILED {}".format(test))
+            print("Program:")
+            print(program)
+            print("Wished: {}".format(repr(wished_results)))
+            print("Actual: {}".format(repr(actual_results)))
+            print("----------")
+    except FileNotFoundError as e:
+        print("FAILED {}".format(test))
+        print("Program:")
+        print(program)
+        print("No expected output.")
+        print(e)
+        print("----------")

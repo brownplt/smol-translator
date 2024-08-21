@@ -1,3 +1,3 @@
 def g(x, y, z):
-    return x * (y * z)
-print(g(2, 1, 3))
+    return (x * y) * z
+print(g(5, 2, 3))

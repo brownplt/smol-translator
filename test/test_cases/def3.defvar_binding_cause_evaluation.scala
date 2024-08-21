@@ -1,2 +1,2 @@
-val x = 12 / 0
+val x = 12(54)
 println(3)
