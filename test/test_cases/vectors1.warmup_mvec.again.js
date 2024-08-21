@@ -1,5 +1,5 @@
-let x = 7;
+let x = 7
 function fun(n) {
-  return n * 2;
+  return n * 2
 }
-console.log([ fun(x), x ]);
+console.log([ fun(x), x ])

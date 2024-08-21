@@ -1,9 +1,9 @@
-let x = 1;
+let x = 1
 function f(y) {
   function g() {
-    let z = 2;
-    return x + y + z;
+    let z = 2
+    return x + y + z
   }
-  return g();
+  return g()
 }
-console.log(f(3) + 4);
+console.log(f(3) + 4)

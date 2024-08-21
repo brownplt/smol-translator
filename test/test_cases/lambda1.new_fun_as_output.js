@@ -1,8 +1,8 @@
 function inc(x) {
-  return x + 1;
+  return x + 1
 }
 function g() {
-  return inc;
+  return inc
 }
-let f = g();
-console.log(f(10));
+let f = g()
+console.log(f(10))

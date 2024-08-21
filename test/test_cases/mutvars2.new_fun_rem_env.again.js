@@ -1,11 +1,11 @@
-let a = 4;
+let a = 4
 function h() {
-  return a;
+  return a
 }
 function k() {
-  a = 2;
-  return h();
+  a = 2
+  return h()
 }
-console.log(k());
-a = 6;
-console.log(h());
+console.log(k())
+a = 6
+console.log(h())

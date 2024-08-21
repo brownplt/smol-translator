@@ -1,11 +1,11 @@
-let n = 7;
+let n = 7
 function foo() {
-  return n;
+  return n
 }
 function bar() {
-  n = 3;
-  return foo();
+  n = 3
+  return foo()
 }
-console.log(bar());
-n = 5;
-console.log(foo());
+console.log(bar())
+n = 5
+console.log(foo())

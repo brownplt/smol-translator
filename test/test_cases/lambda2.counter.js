@@ -1,13 +1,13 @@
 function foo() {
-  let n = 0;
+  let n = 0
   function bar() {
-    n = n + 1;
-    return n;
+    n = n + 1
+    return n
   }
-  return bar;
+  return bar
 }
-let f = foo();
-let g = foo();
-console.log(f());
-console.log(f());
-console.log(g());
+let f = foo()
+let g = foo()
+console.log(f())
+console.log(f())
+console.log(g())

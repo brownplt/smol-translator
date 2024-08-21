@@ -1,2 +1,2 @@
-let xyz = 42;
-console.log(abc);
+let xyz = 42
+console.log(abc)

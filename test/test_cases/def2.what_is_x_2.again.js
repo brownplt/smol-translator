@@ -1,9 +1,9 @@
-let s = 21;
+let s = 21
 function i() {
-  return s;
+  return s
 }
 function j() {
-  let s = 76;
-  return i();
+  let s = 76
+  return i()
 }
-console.log(j());
+console.log(j())

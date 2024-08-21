@@ -1,6 +1,6 @@
-let a = [ 66, 54 ];
+let a = [ 66, 54 ]
 function h(b) {
-  a[0] = 42;
-  return b;
+  a[0] = 42
+  return b
 }
-console.log(h(a));
+console.log(h(a))

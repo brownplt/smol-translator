@@ -1,5 +1,5 @@
-let n = 44;
+let n = 44
 function f(x) {
-  return x + 1;
+  return x + 1
 }
-console.log([ n, f(n) ]);
+console.log([ n, f(n) ])

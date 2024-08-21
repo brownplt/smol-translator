@@ -1,11 +1,11 @@
-let x = 12;
+let x = 12
 function f() {
-  return x;
+  return x
 }
 function g() {
-  x = 0;
-  return f();
+  x = 0
+  return f()
 }
-console.log(g());
-x = 1;
-console.log(f());
+console.log(g())
+x = 1
+console.log(f())

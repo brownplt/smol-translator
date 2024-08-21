@@ -1,7 +1,7 @@
-let x = [ 71, 86 ];
+let x = [ 71, 86 ]
 function f(y) {
-  y[0] = 34;
-  return;
+  y[0] = 34
+  return
 }
-console.log(f(x));
-console.log(x);
+console.log(f(x))
+console.log(x)

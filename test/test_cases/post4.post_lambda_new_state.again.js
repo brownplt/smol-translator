@@ -1,9 +1,9 @@
-let a = 2;
+let a = 2
 function make() {
   return function (b) {
-    return a + b;
-  };
+    return a + b
+  }
 }
-let fun = make();
-a = 1;
-console.log(fun(1));
+let fun = make()
+a = 1
+console.log(fun(1))
