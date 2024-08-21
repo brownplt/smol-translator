@@ -20,16 +20,11 @@ module Print = {
     let ln = ref(0)
     let ch = ref(0)
     let rec f = ({it, ann}) => {
+      let begin = {ln: ln.contents, ch: ch.contents}
       switch it {
-      | Group(es) => {
-          let begin = {ln: ln.contents, ch: ch.contents}
-          es->List.forEach(f)
-          let end = {ln: ln.contents, ch: ch.contents}
-          ann->Option.forEach(ann => {
-            hMap := Map.set(hMap.contents, ann, {begin, end})
-          })
-        }
-      | Plain(s) => s |> String.iter(c => {
+      | Group(es) => es->List.forEach(f)
+      | Plain(s) =>
+        s |> String.iter(c => {
           switch c {
           | '\n' => {
               ln := ln.contents + 1
@@ -39,6 +34,10 @@ module Print = {
           }
         })
       }
+      let end = {ln: ln.contents, ch: ch.contents}
+      ann->Option.forEach(ann => {
+        hMap := Map.set(hMap.contents, ann, {begin, end})
+      })
     }
     f(t)
     hMap.contents

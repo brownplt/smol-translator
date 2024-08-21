@@ -32,23 +32,24 @@ function toSourceMap(t, id) {
   };
   var f = function (param) {
     var it = param.it;
-    if (it.TAG === /* Plain */0) {
-      return $$String.iter((function (c) {
-                    if (c !== 10) {
-                      ch.contents = ch.contents + 1 | 0;
-                    } else {
-                      ln.contents = ln.contents + 1 | 0;
-                      ch.contents = 0;
-                    }
-                  }), it._0);
-    }
     var begin_ln = ln.contents;
     var begin_ch = ch.contents;
     var begin = {
       ln: begin_ln,
       ch: begin_ch
     };
-    Belt_List.forEach(it._0, f);
+    if (it.TAG === /* Plain */0) {
+      $$String.iter((function (c) {
+              if (c !== 10) {
+                ch.contents = ch.contents + 1 | 0;
+              } else {
+                ln.contents = ln.contents + 1 | 0;
+                ch.contents = 0;
+              }
+            }), it._0);
+    } else {
+      Belt_List.forEach(it._0, f);
+    }
     var end_ln = ln.contents;
     var end_ch = ch.contents;
     var end = {
