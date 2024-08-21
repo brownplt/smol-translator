@@ -2,12 +2,12 @@
 
 import * as Curry from "rescript/lib/es6/curry.js";
 import * as $$String from "rescript/lib/es6/string.js";
+import * as Belt_Map from "rescript/lib/es6/belt_Map.js";
 import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
 import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.bs.js";
-import * as Belt_HashMap from "rescript/lib/es6/belt_HashMap.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
@@ -21,7 +21,9 @@ function mapAnn(f, param) {
 }
 
 function toSourceMap(t, id) {
-  var hMap = Belt_HashMap.make(10, id);
+  var hMap = {
+    contents: Belt_Map.make(id)
+  };
   var ln = {
     contents: 0
   };
@@ -54,14 +56,14 @@ function toSourceMap(t, id) {
       ch: end_ch
     };
     Belt_Option.forEach(param.ann, (function (ann) {
-            Belt_HashMap.set(hMap, ann, {
+            hMap.contents = Belt_Map.set(hMap.contents, ann, {
                   begin: begin,
                   end: end
                 });
           }));
   };
   f(t);
-  return hMap;
+  return hMap.contents;
 }
 
 function toString(it) {
@@ -7046,8 +7048,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
         getPrint(b$1);
+        Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",

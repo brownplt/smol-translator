@@ -11,8 +11,8 @@ module Print: {
   let toString: t<'id> => string
   let toSourceMap: (
     print<'key>,
-    HashMap.id<'key, 'entity>,
-  ) => HashMap.t<'key, sourceLocation, 'entity>
+    Map.id<'key, 'entity>,
+  ) => Map.t<'key, SExpression.sourceLocation, 'entity>
   let map: (string => string, t<'id>) => t<'id>
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>

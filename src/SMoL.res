@@ -16,7 +16,7 @@ and print<'id> = annotated<printNode<'id>, option<'id>>
 module Print = {
   type t<'id> = printNode<'id>
   let toSourceMap = (t, id) => {
-    let hMap = Belt.HashMap.make(~hintSize=10, ~id)
+    let hMap = ref(Map.make(~id))
     let ln = ref(0)
     let ch = ref(0)
     let rec f = ({it, ann}) => {
@@ -26,7 +26,7 @@ module Print = {
           es->List.forEach(f)
           let end = {ln: ln.contents, ch: ch.contents}
           ann->Option.forEach(ann => {
-            HashMap.set(hMap, ann, {begin, end})
+            hMap := Map.set(hMap.contents, ann, {begin, end})
           })
         }
       | Plain(s) => s |> String.iter(c => {
@@ -41,7 +41,7 @@ module Print = {
       }
     }
     f(t)
-    hMap
+    hMap.contents
   }
   let rec toString = it => {
     switch it {
