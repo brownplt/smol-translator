@@ -8,14 +8,42 @@ let mapAnn = (f, {ann, it}: annotated<_, _>): annotated<_, _> => {
   }
 }
 
-type rec printNode =
+type rec printNode<'id> =
   | Plain(string)
-  | Group(list<print>)
-and print = annotated<printNode, option<sourceLocation>>
+  | Group(list<print<'id>>)
+and print<'id> = annotated<printNode<'id>, option<'id>>
 
 module Print = {
-  type rec t = printNode
-  let rec toString: t => string = it => {
+  type t<'id> = printNode<'id>
+  let toSourceMap = (t, id) => {
+    let hMap = Belt.HashMap.make(~hintSize=10, ~id)
+    let ln = ref(0)
+    let ch = ref(0)
+    let rec f = ({it, ann}) => {
+      switch it {
+      | Group(es) => {
+          let begin = {ln: ln.contents, ch: ch.contents}
+          es->List.forEach(f)
+          let end = {ln: ln.contents, ch: ch.contents}
+          ann->Option.forEach(ann => {
+            HashMap.set(hMap, ann, {begin, end})
+          })
+        }
+      | Plain(s) => s |> String.iter(c => {
+          switch c {
+          | '\n' => {
+              ln := ln.contents + 1
+              ch := 0
+            }
+          | _ => ch := ch.contents + 1
+          }
+        })
+      }
+    }
+    f(t)
+    hMap
+  }
+  let rec toString = it => {
     switch it {
     | Plain(s) => s
     | Group(ts) =>
@@ -37,7 +65,7 @@ module Print = {
     Group(list{p1, {it: Plain(s), ann: None}, p2})
   }
 
-  let concat = (s: string, ts: list<_>): t => {
+  let concat = (s: string, ts: list<_>) => {
     let intersperse = (x, ys) => {
       switch ys {
       | list{} => list{}
@@ -60,7 +88,7 @@ module Print = {
     {it: Plain(it), ann: None}
   }
 
-  let pad = (prefix: string, it, suffix: string): t => {
+  let pad = (prefix: string, it, suffix: string) => {
     let prefix = string(prefix)
     let suffix = string(suffix)
     Group(list{prefix, it, suffix})
@@ -783,7 +811,7 @@ module Parser = {
 type exn += SMoLPrintError(string)
 let raisePrintError = err => raise(SMoLPrintError(err))
 
-type printAnn = {sourceLocation: sourceLocation, print: Print.t}
+type printAnn = {sourceLocation: sourceLocation, print: Print.t<sourceLocation>}
 module type Printer = {
   let printName: string => string
   let printOutput: output => string
@@ -796,8 +824,8 @@ let getPrint = ({ann: {print, sourceLocation}}) => {
   {it: print, ann: Some(sourceLocation)}
 }
 
-let indent = (t: annotated<Print.t, option<sourceLocation>>, i): annotated<
-  Print.t,
+let indent = (t: annotated<Print.t<sourceLocation>, option<sourceLocation>>, i): annotated<
+  Print.t<sourceLocation>,
   option<sourceLocation>,
 > => {
   let pad = Js.String.repeat(i, " ")
@@ -938,7 +966,7 @@ module SMoLPrinter = {
   let rec printExp = ({it, ann: sourceLocation}: expression<sourceLocation>): expression<
     printAnn,
   > => {
-    let e: annotated<expressionNode<printAnn>, Print.t> = switch it {
+    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
     | Con(c) => {
         it: Con(c),
         ann: Plain(constantToString(c)),
@@ -1296,7 +1324,7 @@ module JSPrinter: Printer = {
     p: Primitive.t,
     es: list<bool => expression<printAnn>>,
     context: context,
-  ): annotated<_, Print.t> => {
+  ): annotated<_, Print.t<sourceLocation>> => {
     switch (p, es) {
     | (Arith(o), es) => {
         let os = switch o {
@@ -1511,7 +1539,7 @@ module JSPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}, context) => {
-    let e: annotated<expressionNode<printAnn>, Print.t> = switch it {
+    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
     | Con(c) => {
         it: Con(c),
         ann: Print.string(constantToString(c))->consumeContext(context),
@@ -1782,8 +1810,8 @@ module JSPrinter: Printer = {
 
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
-      | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
+    | Def(it) => defToString({it, ann}).ann.print
+    | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
@@ -1937,7 +1965,7 @@ module PYPrinter: Printer = {
     p: Primitive.t,
     es: list<bool => expression<printAnn>>,
     context: context,
-  ): annotated<_, Print.t> => {
+  ): annotated<_, Print.t<sourceLocation>> => {
     switch (p, es) {
     | (Arith(o), es) => {
         let os = switch o {
@@ -2147,7 +2175,7 @@ module PYPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}, context, env) => {
-    let e: annotated<expressionNode<printAnn>, Print.t> = switch it {
+    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
     | Con(c) => {
         it: Con(c),
         ann: Print.string(constantToString(c))->consumeContext(context),
@@ -2384,12 +2412,7 @@ module PYPrinter: Printer = {
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
     printingTopLevel := insertPrintTopLevel
     let xs = xsOfProgram(p)
-    let env = G(
-      xs
-      ->List.map(x => x.it)
-      ->List.toArray
-      ->HashSet.String.fromArray,
-    )
+    let env = G(xs->List.map(x => x.it)->List.toArray->HashSet.String.fromArray)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
@@ -2439,8 +2462,8 @@ module PYPrinter: Printer = {
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     let globalEnv = G(HashSet.String.fromArray([]))
     switch it {
-      | Def(it) => defToString({ it, ann }, globalEnv).ann.print
-      | Exp(it) => printExp({it, ann}, Stat(Step), globalEnv).ann.print
+    | Def(it) => defToString({it, ann}, globalEnv).ann.print
+    | Exp(it) => printExp({it, ann}, Stat(Step), globalEnv).ann.print
     } |> Print.toString
   }
 }
@@ -2530,7 +2553,7 @@ module PCPrinter: Printer = {
     p: Primitive.t,
     es: list<bool => expression<printAnn>>,
     context: context,
-  ): annotated<_, Print.t> => {
+  ): annotated<_, Print.t<sourceLocation>> => {
     switch (p, es) {
     | (Arith(o), es) => {
         let os = switch o {
@@ -2742,7 +2765,7 @@ module PCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}, context) => {
-    let e: annotated<expressionNode<printAnn>, Print.t> = switch it {
+    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
     | Con(c) => {
         it: Con(c),
         ann: Print.string(constantToString(c))->consumeContext(context),
@@ -3014,8 +3037,8 @@ module PCPrinter: Printer = {
 
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
-      | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
+    | Def(it) => defToString({it, ann}).ann.print
+    | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
@@ -3114,7 +3137,7 @@ module SCPrinter: Printer = {
     p: Primitive.t,
     es: list<bool => expression<printAnn>>,
     context: context,
-  ): annotated<_, Print.t> => {
+  ): annotated<_, Print.t<sourceLocation>> => {
     switch (p, es) {
     | (Arith(o), es) => {
         let os = switch o {
@@ -3349,7 +3372,7 @@ module SCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}, context) => {
-    let e: annotated<expressionNode<printAnn>, Print.t> = switch it {
+    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
     | Con(c) => {
         it: Con(c),
         ann: Print.string(constantToString(c))->consumeContext(context),
@@ -3615,8 +3638,8 @@ module SCPrinter: Printer = {
 
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
-      | Def(it) => defToString({ it, ann }).ann.print
-      | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
+    | Def(it) => defToString({it, ann}).ann.print
+    | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
     } |> Print.toString
   }
 }
@@ -3648,8 +3671,8 @@ let raiseTranslateError = e => raise(SMoLTranslateError(e))
 
 let programAsTerm = (p: program<_>): term<_> => {
   switch p.it {
-    | PCons(t, { it: PNil}) => t
-    | _ => raiseTranslateError(KindError("Expecting a term, given a program"))
+  | PCons(t, {it: PNil}) => t
+  | _ => raiseTranslateError(KindError("Expecting a term, given a program"))
   }
 }
 

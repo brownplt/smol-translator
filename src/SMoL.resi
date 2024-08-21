@@ -1,18 +1,23 @@
 open SExpression
+open Belt
 
-type rec printNode =
+type rec printNode<'id> =
   | Plain(string)
-  | Group(list<print>)
-and print = annotated<printNode, option<sourceLocation>>
+  | Group(list<print<'id>>)
+and print<'id> = annotated<printNode<'id>, option<'id>>
 
 module Print: {
-  type t = printNode
-  let toString: t => string
-  let map: (string => string, t) => t
-  let concat2: (annotated<t, option<sourceLocation>>, string, annotated<t, option<sourceLocation>>) => t
-  let concat: (string, list<annotated<t, option<sourceLocation>>>) => t
-  let pad: (string, annotated<t, option<sourceLocation>>, string) => t
-  let dummyAnn: t => print
+  type t<'id> = printNode<'id>
+  let toString: t<'id> => string
+  let toSourceMap: (
+    print<'key>,
+    HashMap.id<'key, 'entity>,
+  ) => HashMap.t<'key, sourceLocation, 'entity>
+  let map: (string => string, t<'id>) => t<'id>
+  let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
+  let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
+  let pad: (string, annotated<t<'id>, option<'id>>, string) => t<'id>
+  let dummyAnn: t<'id> => print<'id>
 }
 
 type constant =
@@ -147,7 +152,7 @@ module Parser: {
 // Print
 
 type exn += SMoLPrintError(string)
-type printAnn = {sourceLocation: sourceLocation, print: Print.t}
+type printAnn = {sourceLocation: sourceLocation, print: Print.t<sourceLocation>}
 module type Printer = {
   let printName: string => string
   let printOutput: output => string

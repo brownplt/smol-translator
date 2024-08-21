@@ -7,6 +7,7 @@ import * as Js_string from "rescript/lib/es6/js_string.js";
 import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.bs.js";
+import * as Belt_HashMap from "rescript/lib/es6/belt_HashMap.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
@@ -17,6 +18,50 @@ function mapAnn(f, param) {
           it: Curry._1(f, param.it),
           ann: param.ann
         };
+}
+
+function toSourceMap(t, id) {
+  var hMap = Belt_HashMap.make(10, id);
+  var ln = {
+    contents: 0
+  };
+  var ch = {
+    contents: 0
+  };
+  var f = function (param) {
+    var it = param.it;
+    if (it.TAG === /* Plain */0) {
+      return $$String.iter((function (c) {
+                    if (c !== 10) {
+                      ch.contents = ch.contents + 1 | 0;
+                    } else {
+                      ln.contents = ln.contents + 1 | 0;
+                      ch.contents = 0;
+                    }
+                  }), it._0);
+    }
+    var begin_ln = ln.contents;
+    var begin_ch = ch.contents;
+    var begin = {
+      ln: begin_ln,
+      ch: begin_ch
+    };
+    Belt_List.forEach(it._0, f);
+    var end_ln = ln.contents;
+    var end_ch = ch.contents;
+    var end = {
+      ln: end_ln,
+      ch: end_ch
+    };
+    Belt_Option.forEach(param.ann, (function (ann) {
+            Belt_HashMap.set(hMap, ann, {
+                  begin: begin,
+                  end: end
+                });
+          }));
+  };
+  f(t);
+  return hMap;
 }
 
 function toString(it) {
@@ -7001,8 +7046,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        getPrint(b$1);
         Belt_List.map(xs$1, getPrint);
+        getPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -7985,6 +8030,7 @@ var SCTranslator = {
 
 var Print = {
   toString: toString,
+  toSourceMap: toSourceMap,
   map: map,
   concat2: concat2,
   concat: concat,
