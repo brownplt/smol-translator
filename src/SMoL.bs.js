@@ -8063,6 +8063,7 @@ export {
   SMoLParseError ,
   Parser ,
   SMoLPrintError ,
+  getPrint ,
   SMoLPrinter ,
   JSPrinter ,
   PYPrinter ,

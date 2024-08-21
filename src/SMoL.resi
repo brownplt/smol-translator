@@ -161,6 +161,8 @@ module type Printer = {
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
 }
 
+let getPrint: annotated<'a, printAnn> => print<sourceLocation>
+
 module SMoLPrinter: Printer
 module JSPrinter: Printer
 module PYPrinter: Printer
