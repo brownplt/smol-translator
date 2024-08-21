@@ -1325,7 +1325,7 @@ module JSPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), os, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -1966,7 +1966,7 @@ module PYPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), os, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -2559,7 +2559,7 @@ module PCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), os, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -2727,7 +2727,7 @@ module PCPrinter: Printer = {
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    op3("if", e_cnd, ": ", e_thn, " else: ", e_els, " end")
+    op3("if ", e_cnd, ": ", e_thn, " else: ", e_els, " end")
     // `${e_cnd} ? ${e_thn} : ${e_els}`
   }
 
@@ -3143,7 +3143,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), os, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -3334,7 +3334,7 @@ module SCPrinter: Printer = {
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    op3("if", e_cnd, ": ", e_thn, " else: ", e_els, " end")
+    op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "")
     // `${e_cnd} ? ${e_thn} : ${e_els}`
   }
 

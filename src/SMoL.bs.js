@@ -3032,7 +3032,7 @@ function exprAppPrmToString(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
+                ann: consumeContext(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -4259,7 +4259,7 @@ function exprAppPrmToString$1(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$1(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
+                ann: consumeContext$1(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -5491,7 +5491,7 @@ function exprAppPrmToString$2(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$2(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
+                ann: consumeContext$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -5583,7 +5583,7 @@ function exprCndToString$3(ebs, ob) {
 }
 
 function exprIfToString$3(e_cnd, e_thn, e_els) {
-  return op3("if", e_cnd, ": ", e_thn, " else: ", e_els, " end");
+  return op3("if ", e_cnd, ": ", e_thn, " else: ", e_els, " end");
 }
 
 function symbolToString$3(param) {
@@ -6686,7 +6686,7 @@ function exprAppPrmToString$3(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$3(op2("", getPrint(e1$12), os$1, getPrint(e2$5), ""), context)
+                ann: consumeContext$3(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -6790,7 +6790,7 @@ function exprCndToString$4(ebs, ob) {
 }
 
 function exprIfToString$4(e_cnd, e_thn, e_els) {
-  return op3("if", e_cnd, ": ", e_thn, " else: ", e_els, " end");
+  return op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "");
 }
 
 function symbolToString$4(param) {
