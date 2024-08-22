@@ -1239,7 +1239,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
     | PNil => PNil
     | PCons(t, p) => {
         let t = {
-          ann: {begin: {ln: 0, ch: 0}, end: {ln: 0, ch: 0}},
+          ...t,
           it: switch t.it {
           | Exp(e) => {
               let rec ie = e => {

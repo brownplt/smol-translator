@@ -2582,16 +2582,7 @@ function insertTopLevelPrint(p) {
         _0: ie(e._0)
       };
     }
-    var t_ann = {
-      begin: {
-        ln: 0,
-        ch: 0
-      },
-      end: {
-        ln: 0,
-        ch: 0
-      }
-    };
+    var t_ann = t.ann;
     var t$1 = {
       it: tmp$1,
       ann: t_ann
