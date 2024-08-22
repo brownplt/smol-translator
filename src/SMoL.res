@@ -1232,6 +1232,16 @@ module SMoLPrinter = {
   }
 }
 
+let moveBeginChByOne = (sourceLocation: sourceLocation): sourceLocation => {
+  {
+    ...sourceLocation,
+    begin: {
+      ...sourceLocation.begin,
+      ch: sourceLocation.begin.ch + 1
+    }
+  }
+}
+
 let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocation> => {
   {
     ...p,
@@ -1268,7 +1278,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                 | AppPrm(Print, es) => AppPrm(Print, es)
                 | Yield(e) => Yield(e)
                 | e => {
-                    AppPrm(Print, list{{it: e, ann: t.ann}})
+                    AppPrm(Print, list{{it: e, ann: moveBeginChByOne(t.ann)}})
                   }
                 }
               }

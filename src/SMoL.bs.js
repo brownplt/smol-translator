@@ -2437,6 +2437,17 @@ function printStandAloneTerm(t) {
   return toString(printTerm(t).ann.print);
 }
 
+function moveBeginChByOne(sourceLocation) {
+  var init = sourceLocation.begin;
+  return {
+          begin: {
+            ln: init.ln,
+            ch: sourceLocation.begin.ch + 1 | 0
+          },
+          end: sourceLocation.end
+        };
+}
+
 function insertTopLevelPrint(p) {
   var match = p.it;
   var tmp;
@@ -2571,7 +2582,7 @@ function insertTopLevelPrint(p) {
                 _1: {
                   hd: {
                     it: e,
-                    ann: t.ann
+                    ann: moveBeginChByOne(t.ann)
                   },
                   tl: /* [] */0
                 }
@@ -7197,8 +7208,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        getPrint(b$1);
         Belt_List.map(xs$1, getPrint);
+        getPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
