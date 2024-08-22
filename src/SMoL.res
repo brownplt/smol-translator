@@ -864,7 +864,7 @@ module SMoLPrinter = {
   }
 
   let defvarLike = (op, x: annotated<_, _>, e: annotated<_, _>) => {
-    if containsNL(e.it) {
+    if containsNL(e.it) || op == "deffun" || op == "defgen" {
       Group(list{
         Print.string("("),
         Print.string(op),

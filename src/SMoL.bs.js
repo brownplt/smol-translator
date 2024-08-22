@@ -1607,7 +1607,7 @@ function listToString(ss) {
 }
 
 function defvarLike(op, x, e) {
-  if (containsNL(e.it)) {
+  if (containsNL(e.it) || op === "deffun" || op === "defgen") {
     return {
             TAG: /* Group */1,
             _0: {
