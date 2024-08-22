@@ -158,7 +158,8 @@ type exn += SMoLPrintError(string)
 type printAnn = {sourceLocation: sourceLocation, print: Print.t<sourceLocation>}
 module type Printer = {
   let printName: string => string
-  let printOutput: output => string
+  let printOutputlet: outputlet => string
+  let printOutput: (~sep: string=?, list<outputlet>) => string
   let printStandAloneTerm: term<sourceLocation> => string
   let printProgram: (bool, program<sourceLocation>) => string
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>

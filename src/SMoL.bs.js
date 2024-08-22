@@ -2325,7 +2325,7 @@ function printTerm(param) {
   }
 }
 
-function printOutput(os) {
+function printOutputlet(o) {
   var p = function (v) {
     switch (v.TAG | 0) {
       case /* Ref */0 :
@@ -2342,13 +2342,16 @@ function printOutput(os) {
       
     }
   };
-  return $$String.concat(" ", Belt_List.map(os, (function (o) {
-                    if (o) {
-                      return p(o._0);
-                    } else {
-                      return "error";
-                    }
-                  })));
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet));
 }
 
 function printProgramFull(_insertPrintTopLevel, p) {
@@ -3635,7 +3638,7 @@ function printTerm$1(param, ctx) {
   }
 }
 
-function printOutput$1(os) {
+function printOutputlet$1(o) {
   var p = function (v) {
     switch (v.TAG | 0) {
       case /* Ref */0 :
@@ -3659,13 +3662,16 @@ function printOutput$1(os) {
       
     }
   };
-  return $$String.concat(" ", Belt_List.map(os, (function (o) {
-                    if (o) {
-                      return p(o._0);
-                    } else {
-                      return "error";
-                    }
-                  })));
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput$1(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet$1));
 }
 
 function printProgramFull$1(insertPrintTopLevel, p) {
@@ -3749,6 +3755,7 @@ function printStandAloneTerm$1(param) {
 
 var JSPrinter = {
   printName: printName$1,
+  printOutputlet: printOutputlet$1,
   printOutput: printOutput$1,
   printStandAloneTerm: printStandAloneTerm$1,
   printProgram: printProgram$1,
@@ -4919,7 +4926,7 @@ function printTerm$2(param, ctx, env) {
   }
 }
 
-function printOutput$2(os) {
+function printOutputlet$2(o) {
   var p = function (v) {
     switch (v.TAG | 0) {
       case /* Ref */0 :
@@ -4942,13 +4949,16 @@ function printOutput$2(os) {
       
     }
   };
-  return $$String.concat(" ", Belt_List.map(os, (function (o) {
-                    if (o) {
-                      return p(o._0);
-                    } else {
-                      return "error";
-                    }
-                  })));
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput$2(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet$2));
 }
 
 function printProgramFull$2(insertPrintTopLevel, p) {
@@ -5043,6 +5053,7 @@ function printStandAloneTerm$2(param) {
 
 var PYPrinter = {
   printName: printName$2,
+  printOutputlet: printOutputlet$2,
   printOutput: printOutput$2,
   printStandAloneTerm: printStandAloneTerm$2,
   printProgram: printProgram$2,
@@ -6113,7 +6124,7 @@ function printTerm$3(param, ctx) {
   }
 }
 
-function printOutput$3(os) {
+function printOutputlet$3(o) {
   var p = function (v) {
     switch (v.TAG | 0) {
       case /* Ref */0 :
@@ -6130,13 +6141,16 @@ function printOutput$3(os) {
       
     }
   };
-  return $$String.concat(" ", Belt_List.map(os, (function (o) {
-                    if (o) {
-                      return p(o._0);
-                    } else {
-                      return "error";
-                    }
-                  })));
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput$3(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet$3));
 }
 
 function printProgramFull$3(insertPrintTopLevel, p) {
@@ -6220,6 +6234,7 @@ function printStandAloneTerm$3(param) {
 
 var PCPrinter = {
   printName: printName$3,
+  printOutputlet: printOutputlet$3,
   printOutput: printOutput$3,
   printStandAloneTerm: printStandAloneTerm$3,
   printProgram: printProgram$3,
@@ -7262,7 +7277,7 @@ function printTerm$4(param, ctx) {
   }
 }
 
-function printOutput$4(os) {
+function printOutputlet$4(o) {
   var p = function (v) {
     switch (v.TAG | 0) {
       case /* Ref */0 :
@@ -7297,13 +7312,16 @@ function printOutput$4(os) {
       
     }
   };
-  return $$String.concat(" ", Belt_List.map(os, (function (o) {
-                    if (o) {
-                      return p(o._0);
-                    } else {
-                      return "error";
-                    }
-                  })));
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput$4(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet$4));
 }
 
 function printProgramFull$4(insertPrintTopLevel, p) {
@@ -7390,6 +7408,7 @@ function printStandAloneTerm$4(param) {
 
 var SCPrinter = {
   printName: printName$4,
+  printOutputlet: printOutputlet$4,
   printOutput: printOutput$4,
   printStandAloneTerm: printStandAloneTerm$4,
   printProgram: printProgram$4,
@@ -7458,7 +7477,7 @@ function translateOutput(src) {
     throw err;
   }
   try {
-    return printOutput(output);
+    return printOutput(undefined, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7618,7 +7637,7 @@ function translateOutput$1(src) {
     throw err;
   }
   try {
-    return printOutput$1(output);
+    return printOutput$1(undefined, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7778,7 +7797,7 @@ function translateOutput$2(src) {
     throw err;
   }
   try {
-    return printOutput$2(output);
+    return printOutput$2(undefined, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7938,7 +7957,7 @@ function translateOutput$3(src) {
     throw err;
   }
   try {
-    return printOutput$3(output);
+    return printOutput$3(undefined, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -8098,7 +8117,7 @@ function translateOutput$4(src) {
     throw err;
   }
   try {
-    return printOutput$4(output);
+    return printOutput$4(undefined, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -8255,6 +8274,7 @@ var Parser = {
 
 var SMoLPrinter = {
   printName: printName,
+  printOutputlet: printOutputlet,
   printOutput: printOutput,
   printStandAloneTerm: printStandAloneTerm,
   printProgram: printProgram,

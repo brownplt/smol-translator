@@ -817,7 +817,8 @@ let raisePrintError = err => raise(SMoLPrintError(err))
 type printAnn = {sourceLocation: sourceLocation, print: Print.t<sourceLocation>}
 module type Printer = {
   let printName: string => string
-  let printOutput: output => string
+  let printOutputlet: outputlet => string
+  let printOutput: (~sep: string=?, list<outputlet>) => string
   let printStandAloneTerm: term<sourceLocation> => string
   let printProgram: (bool, program<sourceLocation>) => string
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
@@ -1146,7 +1147,7 @@ module SMoLPrinter = {
     }
   }
 
-  let printOutput = (os): string => {
+  let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(i) => `#${i |> Int.toString}#`
@@ -1164,12 +1165,14 @@ module SMoLPrinter = {
         }
       }
     }
-    os->List.map(o => {
-      switch o {
-      | OErr => "error"
-      | OVal(v) => p(v)
-      }
-    }) |> String.concat(" ")
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    os->List.map(printOutputlet) |> String.concat(sep)
   }
 
   let printProgramFull = (_insertPrintTopLevel, p: program<sourceLocation>) => {
@@ -1757,7 +1760,7 @@ module JSPrinter: Printer = {
     }
   }
 
-  let printOutput = (os): string => {
+  let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(i) => `[Circular *${i |> Int.toString}]`
@@ -1775,12 +1778,14 @@ module JSPrinter: Printer = {
         }
       }
     }
-    os->List.map(o => {
-      switch o {
-      | OErr => "error"
-      | OVal(v) => p(v)
-      }
-    }) |> String.concat(" ")
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    os->List.map(printOutputlet) |> String.concat(sep)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -2416,7 +2421,7 @@ module PYPrinter: Printer = {
     }
   }
 
-  let printOutput = (os): string => {
+  let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(_) => `[...]`
@@ -2434,12 +2439,14 @@ module PYPrinter: Printer = {
         }
       }
     }
-    os->List.map(o => {
-      switch o {
-      | OErr => "error"
-      | OVal(v) => p(v)
-      }
-    }) |> String.concat(" ")
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    os->List.map(printOutputlet) |> String.concat(sep)
   }
 
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
@@ -3004,7 +3011,7 @@ module PCPrinter: Printer = {
     }
   }
 
-  let printOutput = (os): string => {
+  let printOutputlet = (o): string => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(i) => `#${i |> Int.toString}#`
@@ -3022,12 +3029,14 @@ module PCPrinter: Printer = {
         }
       }
     }
-    os->List.map(o => {
-      switch o {
-      | OErr => "error"
-      | OVal(v) => p(v)
-      }
-    }) |> String.concat(" ")
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    os->List.map(printOutputlet) |> String.concat(sep)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -3601,7 +3610,7 @@ module SCPrinter: Printer = {
     }
   }
 
-  let printOutput = (os): string => {
+  let printOutputlet = (o): string => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(_) => raisePrintError("Can't print circular data structure in Scala")
@@ -3619,12 +3628,14 @@ module SCPrinter: Printer = {
         }
       }
     }
-    os->List.map(o => {
-      switch o {
-      | OErr => "error"
-      | OVal(v) => p(v)
-      }
-    }) |> String.concat(" ")
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    os->List.map(printOutputlet) |> String.concat(sep)
   }
 
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
