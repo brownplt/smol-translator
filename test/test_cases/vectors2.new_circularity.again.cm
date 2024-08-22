@@ -1,4 +1,4 @@
 let a = vec[41, 92]
 let b = vec[a]
 a[1] = b
-a[0]
+print(a[0])

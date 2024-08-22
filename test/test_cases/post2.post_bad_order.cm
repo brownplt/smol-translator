@@ -1,4 +1,4 @@
 let n = m * 4
 let m = 3
-n
-m
+print(n)
+print(m)

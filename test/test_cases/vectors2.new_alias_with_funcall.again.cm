@@ -3,4 +3,4 @@ fun h(b):
   a[0] = 42
   return b
 end
-h(a)
+print(h(a))

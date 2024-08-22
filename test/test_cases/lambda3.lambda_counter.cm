@@ -7,6 +7,6 @@ fun foobar():
 end
 let f = foobar()
 let g = foobar()
-f()
-f()
-g()
+print(f())
+print(f())
+print(g())

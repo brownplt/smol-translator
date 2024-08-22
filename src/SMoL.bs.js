@@ -2437,6 +2437,178 @@ function printStandAloneTerm(t) {
   return toString(printTerm(t).ann.print);
 }
 
+function insertTopLevelPrint(p) {
+  var match = p.it;
+  var tmp;
+  if (match) {
+    var t = match._0;
+    var e = t.it;
+    var tmp$1;
+    if (e.TAG === /* Def */0) {
+      tmp$1 = e;
+    } else {
+      var ie = function (e) {
+        var iae = function (ae) {
+          return {
+                  it: ie(ae.it),
+                  ann: ae.ann
+                };
+        };
+        var ib = function (b) {
+          var e = b.it;
+          var tmp;
+          tmp = e.TAG === /* BRet */0 ? ({
+                TAG: /* BRet */0,
+                _0: ie(e._0)
+              }) : ({
+                TAG: /* BCons */1,
+                _0: e._0,
+                _1: ib(e._1)
+              });
+          return {
+                  it: tmp,
+                  ann: b.ann
+                };
+        };
+        var ieb = function (param) {
+          return [
+                  param[0],
+                  ib(param[1])
+                ];
+        };
+        switch (e.TAG | 0) {
+          case /* Set */2 :
+              return {
+                      TAG: /* Set */2,
+                      _0: e._0,
+                      _1: e._1
+                    };
+          case /* Let */4 :
+          case /* Letrec */5 :
+              return {
+                      TAG: /* Let */4,
+                      _0: e._0,
+                      _1: ib(e._1)
+                    };
+          case /* AppPrm */6 :
+              var match = e._0;
+              if (typeof match === "number") {
+                switch (match) {
+                  case /* PairSetLeft */3 :
+                      return {
+                              TAG: /* AppPrm */6,
+                              _0: /* PairSetLeft */3,
+                              _1: e._1
+                            };
+                  case /* PairSetRight */4 :
+                      return {
+                              TAG: /* AppPrm */6,
+                              _0: /* PairSetRight */4,
+                              _1: e._1
+                            };
+                  case /* VecSet */7 :
+                      return {
+                              TAG: /* AppPrm */6,
+                              _0: /* VecSet */7,
+                              _1: e._1
+                            };
+                  case /* Err */9 :
+                      return {
+                              TAG: /* AppPrm */6,
+                              _0: /* Err */9,
+                              _1: e._1
+                            };
+                  case /* Print */11 :
+                      return {
+                              TAG: /* AppPrm */6,
+                              _0: /* Print */11,
+                              _1: e._1
+                            };
+                  case /* PairNew */0 :
+                  case /* PairRefLeft */1 :
+                  case /* PairRefRight */2 :
+                  case /* VecNew */5 :
+                  case /* VecRef */6 :
+                  case /* VecLen */8 :
+                  case /* Not */10 :
+                  case /* Next */12 :
+                  case /* Cons */13 :
+                      break;
+                  
+                }
+              }
+              break;
+          case /* Bgn */8 :
+              return {
+                      TAG: /* Bgn */8,
+                      _0: e._0,
+                      _1: iae(e._1)
+                    };
+          case /* If */9 :
+              return {
+                      TAG: /* If */9,
+                      _0: e._0,
+                      _1: iae(e._1),
+                      _2: iae(e._2)
+                    };
+          case /* Cnd */10 :
+              return {
+                      TAG: /* Cnd */10,
+                      _0: Belt_List.map(e._0, ieb),
+                      _1: Belt_Option.map(e._1, ib)
+                    };
+          case /* Yield */12 :
+              return {
+                      TAG: /* Yield */12,
+                      _0: e._0
+                    };
+          default:
+            
+        }
+        return {
+                TAG: /* AppPrm */6,
+                _0: /* Print */11,
+                _1: {
+                  hd: {
+                    it: e,
+                    ann: t.ann
+                  },
+                  tl: /* [] */0
+                }
+              };
+      };
+      tmp$1 = {
+        TAG: /* Exp */1,
+        _0: ie(e._0)
+      };
+    }
+    var t_ann = {
+      begin: {
+        ln: 0,
+        ch: 0
+      },
+      end: {
+        ln: 0,
+        ch: 0
+      }
+    };
+    var t$1 = {
+      it: tmp$1,
+      ann: t_ann
+    };
+    tmp = /* PCons */{
+      _0: t$1,
+      _1: insertTopLevelPrint(match._1)
+    };
+  } else {
+    tmp = /* PNil */0;
+  }
+  return {
+          it: tmp,
+          ann: p.ann
+        };
+}
+
 function op1(s1, p1, s2) {
   var ss_0 = {
     it: {
@@ -2725,26 +2897,11 @@ function exprAppToString(e, es) {
             });
 }
 
-var printingTopLevel = {
-  contents: false
-};
-
 function consumeContext(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return surround("", e, "");
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return surround("", e, "");
-    case /* Return */1 :
-        return surround("return ", e, "");
-    case /* TopLevel */2 :
-        if (printingTopLevel.contents) {
-          return surround("console.log(", e, ")");
-        } else {
-          return surround("", e, "");
-        }
-    
+  } else {
+    return surround("return ", e, "");
   }
 }
 
@@ -2757,17 +2914,10 @@ function consumeContextWrap(e, context) {
 }
 
 function consumeContextVoid(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return consumeContext(e, context);
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return consumeContext(e, context);
-    case /* Return */1 :
-        return surround("", e, "\nreturn");
-    case /* TopLevel */2 :
-        return surround("", e, "");
-    
+  } else {
+    return surround("", e, "\nreturn");
   }
 }
 
@@ -3693,7 +3843,7 @@ function printOutput$1(sepOpt, os) {
 }
 
 function printProgramFull$1(insertPrintTopLevel, p) {
-  printingTopLevel.contents = insertPrintTopLevel;
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -3710,7 +3860,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$1(it._0, /* TopLevel */2);
+    var t = printTerm$1(it._0, /* Step */0);
     if (!p.it) {
       return {
               it: /* PCons */{
@@ -3747,7 +3897,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             }
           };
   };
-  return print(p);
+  return print(p$1);
 }
 
 function printProgram$1(insertPrintTopLevel, p) {
@@ -3964,26 +4114,11 @@ function exprAppToString$1(e, es) {
             });
 }
 
-var printingTopLevel$1 = {
-  contents: false
-};
-
 function consumeContext$1(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return surround("", e, "");
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return surround("", e, "");
-    case /* Return */1 :
-        return surround("return ", e, "");
-    case /* TopLevel */2 :
-        if (printingTopLevel$1.contents) {
-          return surround("print(", e, ")");
-        } else {
-          return surround("", e, "");
-        }
-    
+  } else {
+    return surround("return ", e, "");
   }
 }
 
@@ -3996,17 +4131,10 @@ function consumeContextWrap$1(e, context) {
 }
 
 function consumeContextVoid$1(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return consumeContext$1(e, context);
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return consumeContext$1(e, context);
-    case /* Return */1 :
-        return surround("", e, "\nreturn");
-    case /* TopLevel */2 :
-        return surround("", e, "");
-    
+  } else {
+    return surround("", e, "\nreturn");
   }
 }
 
@@ -4980,8 +5108,8 @@ function printOutput$2(sepOpt, os) {
 }
 
 function printProgramFull$2(insertPrintTopLevel, p) {
-  printingTopLevel$1.contents = insertPrintTopLevel;
-  var xs = xsOfProgram(p);
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
+  var xs = xsOfProgram(p$1);
   var env = {
     TAG: /* G */0,
     _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.map(xs, (function (x) {
@@ -5004,7 +5132,7 @@ function printProgramFull$2(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$2(it._0, /* TopLevel */2, env);
+    var t = printTerm$2(it._0, /* Step */0, env);
     if (!p.it) {
       return {
               it: /* PCons */{
@@ -5041,7 +5169,7 @@ function printProgramFull$2(insertPrintTopLevel, p) {
             }
           };
   };
-  return print(p);
+  return print(p$1);
 }
 
 function printProgram$2(insertPrintTopLevel, p) {
@@ -5215,22 +5343,11 @@ function exprAppToString$2(e, es) {
             });
 }
 
-var printingTopLevel$2 = {
-  contents: false
-};
-
 function consumeContext$2(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return surround("", e, "");
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return surround("", e, "");
-    case /* Return */1 :
-        return surround("return ", e, "");
-    case /* TopLevel */2 :
-        return surround("print(", e, ")");
-    
+  } else {
+    return surround("return ", e, "");
   }
 }
 
@@ -5243,17 +5360,10 @@ function consumeContextWrap$2(e, context) {
 }
 
 function consumeContextVoid$2(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return consumeContext$2(e, context);
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return consumeContext$2(e, context);
-    case /* Return */1 :
-        return surround("", e, "\nreturn");
-    case /* TopLevel */2 :
-        return surround("", e, "");
-    
+  } else {
+    return surround("", e, "\nreturn");
   }
 }
 
@@ -5264,15 +5374,10 @@ function consumeContextWrapVoid(e, context) {
     } else {
       return consumeContext$2(e, context);
     }
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return consumeContext$2(e, context);
-    case /* Return */1 :
-        return surround("", e, "\nreturn");
-    case /* TopLevel */2 :
-        return surround("", e, "");
-    
+  } else if (context._0) {
+    return surround("", e, "\nreturn");
+  } else {
+    return consumeContext$2(e, context);
   }
 }
 
@@ -6182,7 +6287,7 @@ function printOutput$3(sepOpt, os) {
 }
 
 function printProgramFull$3(insertPrintTopLevel, p) {
-  printingTopLevel$2.contents = insertPrintTopLevel;
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -6199,7 +6304,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$3(it._0, /* TopLevel */2);
+    var t = printTerm$3(it._0, /* Step */0);
     if (!p.it) {
       return {
               it: /* PCons */{
@@ -6236,7 +6341,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             }
           };
   };
-  return print(p);
+  return print(p$1);
 }
 
 function printProgram$3(insertPrintTopLevel, p) {
@@ -6425,10 +6530,6 @@ function exprAppToString$3(e, es) {
                 }));
 }
 
-var printingTopLevel$3 = {
-  contents: false
-};
-
 var containsVarMutation = {
   contents: false
 };
@@ -6438,17 +6539,7 @@ var containsVecMutation = {
 };
 
 function consumeContext$3(e, context) {
-  if (context.TAG === /* Expr */0) {
-    return surround("", e, "");
-  }
-  switch (context._0) {
-    case /* Step */0 :
-    case /* Return */1 :
-        return surround("", e, "");
-    case /* TopLevel */2 :
-        return surround("println(", e, ")");
-    
-  }
+  return surround("", e, "");
 }
 
 function consumeContextWrap$3(e, context) {
@@ -6460,16 +6551,10 @@ function consumeContextWrap$3(e, context) {
 }
 
 function consumeContextVoid$3(e, context) {
-  if (context.TAG === /* Expr */0) {
+  if (context.TAG === /* Expr */0 || !context._0) {
     return consumeContext$3(e, context);
-  }
-  switch (context._0) {
-    case /* Step */0 :
-        return consumeContext$3(e, context);
-    case /* Return */1 :
-    case /* TopLevel */2 :
-        return surround("", e, "");
-    
+  } else {
+    return surround("", e, "");
   }
 }
 
@@ -7121,8 +7206,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
         getPrint(b$1);
+        Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -7353,8 +7438,8 @@ function printOutput$4(sepOpt, os) {
 }
 
 function printProgramFull$4(insertPrintTopLevel, p) {
-  printingTopLevel$3.contents = insertPrintTopLevel;
-  var s = printProgram(insertPrintTopLevel, p);
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
+  var s = printProgram(insertPrintTopLevel, p$1);
   containsVarMutation.contents = Js_string.includes("(set!", s);
   containsVecMutation.contents = Js_string.includes("vec-set!", s) || Js_string.includes("set-left!", s) || Js_string.includes("set-right!", s);
   var print = function (param) {
@@ -7373,7 +7458,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$4(it._0, /* TopLevel */2);
+    var t = printTerm$4(it._0, /* Step */0);
     if (!p.it) {
       return {
               it: /* PCons */{
@@ -7410,7 +7495,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
             }
           };
   };
-  return print(p);
+  return print(p$1);
 }
 
 function printProgram$4(insertPrintTopLevel, p) {

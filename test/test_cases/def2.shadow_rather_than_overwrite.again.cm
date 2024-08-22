@@ -3,4 +3,4 @@ fun k(dog):
   let cat = 4
   return cat + dog
 end
-k(1) + cat
+print(k(1) + cat)

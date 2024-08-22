@@ -1,2 +1,2 @@
 let foo = 77
-bar
+print(bar)

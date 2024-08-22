@@ -6,5 +6,5 @@ fun f(n):
 end
 let fun1 = f(10)
 let fun2 = f(1)
-fun1(4)
-fun2(4)
+print(fun1(4))
+print(fun2(4))

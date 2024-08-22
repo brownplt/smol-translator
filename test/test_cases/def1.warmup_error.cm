@@ -1,2 +1,2 @@
 let xyz = 42
-abc
+print(abc)

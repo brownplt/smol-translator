@@ -2,4 +2,4 @@ fun foobar(n):
   let m = 4
   return n + m
 end
-foobar(2) + m
+print(foobar(2) + m)

@@ -6,6 +6,6 @@ fun f2():
   t = 4
   return f1()
 end
-f2()
+print(f2())
 t = 2
-f1()
+print(f1())

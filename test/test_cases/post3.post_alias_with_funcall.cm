@@ -3,5 +3,5 @@ fun f(aa):
   aa[0] = 97
   return
 end
-f(zz)
-zz
+print(f(zz))
+print(zz)

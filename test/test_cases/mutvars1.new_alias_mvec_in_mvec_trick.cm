@@ -1,4 +1,4 @@
 let x = vec[55]
 let v = vec[x, 55, 55]
 x = vec[66]
-v
+print(v)

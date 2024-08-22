@@ -6,4 +6,4 @@ fun f():
   end
   return g()
 end
-f()
+print(f())

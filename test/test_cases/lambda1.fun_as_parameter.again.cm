@@ -4,4 +4,4 @@ end
 fun inc(x):
   return x + 1
 end
-ffx(inc, 1)
+print(ffx(inc, 1))

@@ -6,4 +6,4 @@ fun j():
   let s = 76
   return i()
 end
-j()
+print(j())

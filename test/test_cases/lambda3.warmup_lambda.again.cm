@@ -3,4 +3,4 @@ fun g(a):
     return a + b
   end
 end
-g(3)(2)
+print(g(3)(2))

@@ -6,6 +6,6 @@ fun k():
   a = 2
   return h()
 end
-k()
+print(k())
 a = 6
-h()
+print(h())

@@ -6,6 +6,6 @@ fun bar():
   n = 3
   return foo()
 end
-bar()
+print(bar())
 n = 5
-foo()
+print(foo())

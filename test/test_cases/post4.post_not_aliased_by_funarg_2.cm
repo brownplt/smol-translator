@@ -3,4 +3,4 @@ fun h(m):
   m = 7
   return n
 end
-h(n)
+print(h(n))

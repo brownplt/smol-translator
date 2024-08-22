@@ -6,4 +6,4 @@ fun make():
 end
 let fun = make()
 a = 1
-fun(1)
+print(fun(1))

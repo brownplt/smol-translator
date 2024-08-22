@@ -4,4 +4,4 @@ end
 fun double(x):
   return x + x
 end
-twice(double, 1)
+print(twice(double, 1))

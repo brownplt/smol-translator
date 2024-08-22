@@ -3,5 +3,5 @@ fun foobar(b):
   a = 2
   return b
 end
-foobar(a)
-a
+print(foobar(a))
+print(a)

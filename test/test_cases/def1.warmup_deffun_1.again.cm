@@ -1,4 +1,4 @@
 fun g(x, y, z):
   return (x * y) * z
 end
-g(5, 2, 3)
+print(g(5, 2, 3))

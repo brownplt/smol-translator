@@ -5,5 +5,5 @@ fun k(b):
 end
 let foo = k(3)
 let bar = k(2)
-foo(3)
-bar(3)
+print(foo(3))
+print(bar(3))

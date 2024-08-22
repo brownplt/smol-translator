@@ -3,4 +3,4 @@ fun k(b):
   b = 3
   return a
 end
-k(a)
+print(k(a))

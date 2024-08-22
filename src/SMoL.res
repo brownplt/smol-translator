@@ -1232,10 +1232,60 @@ module SMoLPrinter = {
   }
 }
 
+let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocation> => {
+  {
+    ...p,
+    it: switch p.it {
+    | PNil => PNil
+    | PCons(t, p) => {
+        let t = {
+          ann: {begin: {ln: 0, ch: 0}, end: {ln: 0, ch: 0}},
+          it: switch t.it {
+          | Exp(e) => {
+              let rec ie = e => {
+                let iae = ae => {...ae, it: ie(ae.it)}
+                let rec ib = (b: block<sourceLocation>): block<sourceLocation> => {
+                  ...b,
+                  it: switch b.it {
+                  | BRet(e) => BRet(ie(e))
+                  | BCons(t, b) => BCons(t, ib(b))
+                  },
+                }
+                let ieb = ((e, b)) => (e, ib(b))
+                let iebs = ebs => List.map(ebs, ieb)
+                let iob = ob => Option.map(ob, ib)
+                switch e {
+                | Set(x, e) => Set(x, e)
+                | Bgn(es, e) => Bgn(es, iae(e))
+                | If(ec, et, el) => If(ec, iae(et), iae(el))
+                | Cnd(ebs, ob) => Cnd(iebs(ebs), iob(ob))
+                | Let(bs, b) => Let(bs, ib(b))
+                | Letrec(bs, b) => Let(bs, ib(b))
+                | AppPrm(VecSet, es) => AppPrm(VecSet, es)
+                | AppPrm(PairSetLeft, es) => AppPrm(PairSetLeft, es)
+                | AppPrm(PairSetRight, es) => AppPrm(PairSetRight, es)
+                | AppPrm(Err, es) => AppPrm(Err, es)
+                | AppPrm(Print, es) => AppPrm(Print, es)
+                | Yield(e) => Yield(e)
+                | e => {
+                    AppPrm(Print, list{{it: e, ann: t.ann}})
+                  }
+                }
+              }
+              Exp(ie(e))
+            }
+          | it => it
+          },
+        }
+        PCons(t, insertTopLevelPrint(p))
+      }
+    },
+  }
+}
+
 type statContext =
   | Step
   | Return
-  | TopLevel
 
 type context =
   | Expr(bool) // the bool indicates whether we are in an infix operation
@@ -1299,8 +1349,6 @@ module JSPrinter: Printer = {
     group2(e, listToString(es) |> Print.dummyAnn)
   }
 
-  let printingTopLevel = ref(false)
-
   let consumeContext = (e: annotated<_, _>, context) => {
     switch context {
     | Expr(_) => surround("", e, "")
@@ -1308,12 +1356,6 @@ module JSPrinter: Printer = {
       switch ctx {
       | Step => surround("", e, "")
       | Return => surround("return ", e, "") //`return ${e}`
-      | TopLevel =>
-        if printingTopLevel.contents {
-          surround("console.log(", e, ")")
-        } else {
-          surround("", e, "")
-        }
       }
     }
   }
@@ -1328,7 +1370,6 @@ module JSPrinter: Printer = {
   let consumeContextVoid = (e: annotated<_, _>, context) => {
     switch context {
     | Stat(Return) => surround("", e, "\nreturn")
-    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -1794,12 +1835,16 @@ module JSPrinter: Printer = {
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
-    printingTopLevel := insertPrintTopLevel
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
       | PCons(t, p) => {
-          let t = printTerm(t, TopLevel)
+          let t = printTerm(t, Step)
           switch p {
           | {it: PNil} => {
               it: PCons(
@@ -1952,8 +1997,6 @@ module PYPrinter: Printer = {
     group2(e, listToString(es) |> Print.dummyAnn)
   }
 
-  let printingTopLevel = ref(false)
-
   let consumeContext = (e: annotated<_, _>, context) => {
     switch context {
     | Expr(_) => surround("", e, "")
@@ -1961,12 +2004,6 @@ module PYPrinter: Printer = {
       switch ctx {
       | Step => surround("", e, "")
       | Return => surround("return ", e, "")
-      | TopLevel =>
-        if printingTopLevel.contents {
-          surround("print(", e, ")")
-        } else {
-          surround("", e, "")
-        }
       }
     }
   }
@@ -1981,7 +2018,6 @@ module PYPrinter: Printer = {
   let consumeContextVoid = (e: annotated<_, _>, context) => {
     switch context {
     | Stat(Return) => surround("", e, "\nreturn")
-    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -2455,14 +2491,18 @@ module PYPrinter: Printer = {
   }
 
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
-    printingTopLevel := insertPrintTopLevel
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
     let xs = xsOfProgram(p)
     let env = G(xs->List.map(x => x.it)->List.toArray->HashSet.String.fromArray)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
       | PCons(t, p) => {
-          let t = printTerm(t, TopLevel, env)
+          let t = printTerm(t, Step, env)
           switch p {
           | {it: PNil} => {
               it: PCons(
@@ -2566,8 +2606,6 @@ module PCPrinter: Printer = {
     group2(e, listToString(es) |> Print.dummyAnn)
   }
 
-  let printingTopLevel = ref(false)
-
   let consumeContext = (e: annotated<_, _>, context) => {
     switch context {
     | Expr(_) => surround("", e, "")
@@ -2575,7 +2613,6 @@ module PCPrinter: Printer = {
       switch ctx {
       | Step => surround("", e, "")
       | Return => surround("return ", e, "")
-      | TopLevel => surround("print(", e, ")")
       }
     }
   }
@@ -2590,7 +2627,6 @@ module PCPrinter: Printer = {
   let consumeContextVoid = (e: annotated<_, _>, context) => {
     switch context {
     | Stat(Return) => surround("", e, "\nreturn")
-    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -2599,7 +2635,6 @@ module PCPrinter: Printer = {
     switch context {
     | Expr(true) => surround("(", e, ")")
     | Stat(Return) => surround("", e, "\nreturn")
-    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -3055,12 +3090,16 @@ module PCPrinter: Printer = {
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
-    printingTopLevel := insertPrintTopLevel
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
       | PCons(t, p) => {
-          let t = printTerm(t, TopLevel)
+          let t = printTerm(t, Step)
           switch p {
           | {it: PNil} => {
               it: PCons(
@@ -3169,7 +3208,6 @@ module SCPrinter: Printer = {
     )
   }
 
-  let printingTopLevel = ref(false)
   let containsVarMutation = ref(false)
   let containsVecMutation = ref(false)
 
@@ -3180,7 +3218,6 @@ module SCPrinter: Printer = {
       switch ctx {
       | Step => surround("", e, "")
       | Return => surround("", e, "")
-      | TopLevel => surround("println(", e, ")")
       }
     }
   }
@@ -3195,7 +3232,6 @@ module SCPrinter: Printer = {
   let consumeContextVoid = (e: annotated<_, _>, context) => {
     switch context {
     | Stat(Return) => surround("", e, "")
-    | Stat(TopLevel) => surround("", e, "")
     | _ => consumeContext(e, context)
     }
   }
@@ -3654,7 +3690,11 @@ module SCPrinter: Printer = {
   }
 
   let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
-    printingTopLevel := insertPrintTopLevel
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
     let s = SMoLPrinter.printProgram(insertPrintTopLevel, p)
     containsVarMutation := Js.String.includes("(set!", s)
     containsVecMutation :=
@@ -3666,7 +3706,7 @@ module SCPrinter: Printer = {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
       | PCons(t, p) => {
-          let t = printTerm(t, TopLevel)
+          let t = printTerm(t, Step)
           switch p {
           | {it: PNil} => {
               it: PCons(

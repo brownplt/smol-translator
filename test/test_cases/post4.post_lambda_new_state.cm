@@ -6,4 +6,4 @@ fun foo():
 end
 let bar = foo()
 a = 3
-bar(0)
+print(bar(0))

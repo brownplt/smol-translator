@@ -5,4 +5,4 @@ fun dec(n):
   return n - 1
 end
 let v = vec[inc, dec]
-v[1](2)
+print(v[1](2))

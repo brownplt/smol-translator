@@ -5,4 +5,4 @@ fun g():
   return inc
 end
 let f = g()
-f(10)
+print(f(10))

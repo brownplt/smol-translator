@@ -1,5 +1,5 @@
 let a = 1
 let b = a
 a = 2
-a
-b
+print(a)
+print(b)

@@ -6,4 +6,4 @@ fun f1(m):
   end
   return f2()
 end
-f1(1) + 3
+print(f1(1) + 3)

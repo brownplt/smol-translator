@@ -3,4 +3,4 @@ fun foobar(t):
   t = 2
   return s
 end
-foobar(s)
+print(foobar(s))

@@ -5,4 +5,4 @@ fun fun1():
   return average
 end
 let x = fun1()
-x(20, 40)
+print(x(20, 40))

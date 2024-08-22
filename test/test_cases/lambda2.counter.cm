@@ -8,6 +8,6 @@ fun foo():
 end
 let f = foo()
 let g = foo()
-f()
-f()
-g()
+print(f())
+print(f())
+print(g())

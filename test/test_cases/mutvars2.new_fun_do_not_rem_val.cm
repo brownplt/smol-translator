@@ -3,4 +3,4 @@ fun f(n):
   return x + n
 end
 x = 2
-f(30)
+print(f(30))

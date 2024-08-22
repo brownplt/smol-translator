@@ -1,4 +1,4 @@
 let x = vec[19, 73, 28]
 let y = vec[x, x]
 y[0][0] = 64
-y[1]
+print(y[1])

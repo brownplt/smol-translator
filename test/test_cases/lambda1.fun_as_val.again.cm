@@ -3,4 +3,4 @@ fun f1():
 end
 let f2 = f1
 let f3 = f2
-f3() * 10
+print(f3() * 10)

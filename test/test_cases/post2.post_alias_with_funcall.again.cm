@@ -3,5 +3,5 @@ fun foobar(b):
   b[0] = 52
   return
 end
-foobar(a)
-a
+print(foobar(a))
+print(a)

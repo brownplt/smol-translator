@@ -1,3 +1,3 @@
 let v = vec[vec[58, 43], vec[43, 66]]
 let vr = v[1]
-vr[0]
+print(vr[0])
