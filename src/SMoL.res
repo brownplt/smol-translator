@@ -908,7 +908,12 @@ module SMoLPrinter = {
   }
 
   let beginLike = (op, ts) => {
-    Group(list{Print.string(op), indentBlock(Print.concat("\n", ts) |> Print.dummyAnn, 2)})
+    Group(list{
+      Print.string("("),
+      Print.string(op),
+      indentBlock(Print.concat("\n", ts) |> Print.dummyAnn, 2),
+      Print.string(")"),
+    })
     // `(${op}${)`
   }
   let exprBgnToString = (es, e) => {

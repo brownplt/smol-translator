@@ -1,6 +1,6 @@
 {
   "name": "@brownplt/smol-translator",
-  "version": "8.0.0",
+  "version": "8.0.1",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
   "main": "src/SMoL.bs.js",

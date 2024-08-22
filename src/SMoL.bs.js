@@ -1743,16 +1743,34 @@ function beginLike(op, ts) {
             hd: {
               it: {
                 TAG: /* Plain */0,
-                _0: op
+                _0: "("
               },
               ann: undefined
             },
             tl: {
-              hd: indentBlock({
-                    it: concat("\n", ts),
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: op
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: concat("\n", ts),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
                     ann: undefined
-                  }, 2),
-              tl: /* [] */0
+                  },
+                  tl: /* [] */0
+                }
+              }
             }
           }
         };
