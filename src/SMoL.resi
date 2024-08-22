@@ -28,10 +28,13 @@ type constant =
   | Str(string)
   | Sym(string)
 
-type rec val =
-  | Con(constant)
+type rec struct =
   | Lst(list<val>)
   | Vec(list<val>)
+and val =
+  | Ref(int)
+  | Con(constant)
+  | Struct(option<int>, struct)
 type outputlet =
   | OVal(val)
   | OErr

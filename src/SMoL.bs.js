@@ -559,18 +559,26 @@ function outputletOfSExpr(e) {
     var atom = e.it;
     if (atom.TAG === /* Atom */0) {
       return {
-              TAG: /* Con */0,
+              TAG: /* Con */1,
               _0: constant_of_atom(atom._0)
             };
     } else if (atom._0) {
       return {
-              TAG: /* Vec */2,
-              _0: Belt_List.map(atom._2, p)
+              TAG: /* Struct */2,
+              _0: undefined,
+              _1: {
+                TAG: /* Vec */1,
+                _0: Belt_List.map(atom._2, p)
+              }
             };
     } else {
       return {
-              TAG: /* Lst */1,
-              _0: Belt_List.map(atom._2, p)
+              TAG: /* Struct */2,
+              _0: undefined,
+              _1: {
+                TAG: /* Lst */0,
+                _0: Belt_List.map(atom._2, p)
+              }
             };
     }
   };
@@ -2320,12 +2328,17 @@ function printTerm(param) {
 function printOutput(os) {
   var p = function (v) {
     switch (v.TAG | 0) {
-      case /* Con */0 :
+      case /* Ref */0 :
+          return "#" + String(v._0) + "#";
+      case /* Con */1 :
           return constantToString(v._0);
-      case /* Lst */1 :
-          return "(" + $$String.concat(" ", Belt_List.map(v._0, p)) + ")";
-      case /* Vec */2 :
-          return "#(" + $$String.concat(" ", Belt_List.map(v._0, p)) + ")";
+      case /* Struct */2 :
+          var content = v._1;
+          var i = v._0;
+          var i$1 = i !== undefined ? "#" + String(i) + "=" : "";
+          var content$1;
+          content$1 = content.TAG === /* Lst */0 ? "(" + $$String.concat(" ", Belt_List.map(content._0, p)) + ")" : "#(" + $$String.concat(" ", Belt_List.map(content._0, p)) + ")";
+          return "" + i$1 + "" + content$1 + "";
       
     }
   };
@@ -2561,7 +2574,7 @@ function constantToString$1(c) {
     }
     throw {
           RE_EXN_ID: SMoLPrintError,
-          _1: "Lists are not supported in JavaScript",
+          _1: "Lists are not supported in JavaScript.",
           Error: new Error()
         };
   } else {
@@ -3625,16 +3638,24 @@ function printTerm$1(param, ctx) {
 function printOutput$1(os) {
   var p = function (v) {
     switch (v.TAG | 0) {
-      case /* Con */0 :
+      case /* Ref */0 :
+          return "[Circular *" + String(v._0) + "]";
+      case /* Con */1 :
           return constantToString$1(v._0);
-      case /* Lst */1 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Lists are not supported in JavaScript",
-                Error: new Error()
-              };
-      case /* Vec */2 :
-          return "[ " + $$String.concat(", ", Belt_List.map(v._0, p)) + " ]";
+      case /* Struct */2 :
+          var content = v._1;
+          var i = v._0;
+          var i$1 = i !== undefined ? "<ref *" + String(i) + "> " : "";
+          var content$1;
+          if (content.TAG === /* Lst */0) {
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Lists are not supported in JavaScript.",
+                  Error: new Error()
+                };
+          }
+          content$1 = "[ " + $$String.concat(", ", Belt_List.map(content._0, p)) + " ]";
+          return "" + i$1 + "" + content$1 + "";
       
     }
   };
@@ -3788,7 +3809,7 @@ function constantToString$2(c) {
     }
     throw {
           RE_EXN_ID: SMoLPrintError,
-          _1: "Lists are not supported in Python",
+          _1: "Lists are not supported in Python.",
           Error: new Error()
         };
   } else {
@@ -4901,16 +4922,23 @@ function printTerm$2(param, ctx, env) {
 function printOutput$2(os) {
   var p = function (v) {
     switch (v.TAG | 0) {
-      case /* Con */0 :
+      case /* Ref */0 :
+          return "[...]";
+      case /* Con */1 :
           return constantToString$2(v._0);
-      case /* Lst */1 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Lists are not supported in Python",
-                Error: new Error()
-              };
-      case /* Vec */2 :
-          return "[" + $$String.concat(", ", Belt_List.map(v._0, p)) + "]";
+      case /* Struct */2 :
+          var content = v._1;
+          var i = "";
+          var content$1;
+          if (content.TAG === /* Lst */0) {
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Lists are not supported in Python.",
+                  Error: new Error()
+                };
+          }
+          content$1 = "[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]";
+          return "" + i + "" + content$1 + "";
       
     }
   };
@@ -6088,16 +6116,17 @@ function printTerm$3(param, ctx) {
 function printOutput$3(os) {
   var p = function (v) {
     switch (v.TAG | 0) {
-      case /* Con */0 :
+      case /* Ref */0 :
+          return "#" + String(v._0) + "#";
+      case /* Con */1 :
           return constantToString$3(v._0);
-      case /* Lst */1 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Lists are not supported in JavaScript",
-                Error: new Error()
-              };
-      case /* Vec */2 :
-          return "vec[" + $$String.concat(", ", Belt_List.map(v._0, p)) + "]";
+      case /* Struct */2 :
+          var content = v._1;
+          var i = v._0;
+          var i$1 = i !== undefined ? "#" + String(i) + "=" : "";
+          var content$1;
+          content$1 = content.TAG === /* Lst */0 ? "list[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]" : "vec[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]";
+          return "" + i$1 + "" + content$1 + "";
       
     }
   };
@@ -7049,8 +7078,8 @@ function printExp$4(param, context) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        getPrint(b$1);
         Belt_List.map(xs$1, getPrint);
+        getPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -7236,17 +7265,35 @@ function printTerm$4(param, ctx) {
 function printOutput$4(os) {
   var p = function (v) {
     switch (v.TAG | 0) {
-      case /* Con */0 :
-          return constantToString$4(v._0);
-      case /* Lst */1 :
+      case /* Ref */0 :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "Lists are not supported in JavaScript",
+                _1: "Can't print circular data structure in Scala",
                 Error: new Error()
               };
-      case /* Vec */2 :
-          var vecKeyword = containsVecMutation.contents || containsVarMutation.contents ? "Buffer" : "";
-          return "" + vecKeyword + "(" + $$String.concat(", ", Belt_List.map(v._0, p)) + ")";
+      case /* Con */1 :
+          return constantToString$4(v._0);
+      case /* Struct */2 :
+          var content = v._1;
+          var i;
+          if (v._0 !== undefined) {
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Can't print circular data structure in Scala",
+                  Error: new Error()
+                };
+          }
+          i = "";
+          var content$1;
+          if (content.TAG === /* Lst */0) {
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Lists are not supported in Scala.",
+                  Error: new Error()
+                };
+          }
+          content$1 = "Buffer(" + $$String.concat(", ", Belt_List.map(content._0, p)) + ")";
+          return "" + i + "" + content$1 + "";
       
     }
   };

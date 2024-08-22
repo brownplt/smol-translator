@@ -117,10 +117,14 @@ type constant =
   | Str(string)
   | Sym(string)
 
-type rec val =
-  | Con(constant)
+type rec struct =
   | Lst(list<val>)
   | Vec(list<val>)
+and val =
+  | Ref(int)
+  | Con(constant)
+  | Struct(option<int>, struct)
+
 type outputlet =
   | OVal(val)
   | OErr
@@ -397,8 +401,8 @@ module Parser = {
         let rec p = (e: sexpr): val => {
           switch e.it {
           | Atom(atom) => Con(constant_of_atom(atom))
-          | Sequence(Vector, _b, es) => Vec(es->List.map(p))
-          | Sequence(List, _b, es) => Lst(es->List.map(p))
+          | Sequence(Vector, _b, es) => Struct(None, Vec(es->List.map(p)))
+          | Sequence(List, _b, es) => Struct(None, Lst(es->List.map(p)))
           }
         }
         p(e)
@@ -1145,9 +1149,19 @@ module SMoLPrinter = {
   let printOutput = (os): string => {
     let rec p = (v: val): string => {
       switch v {
+      | Ref(i) => `#${i |> Int.toString}#`
       | Con(c) => constantToString(c)
-      | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
-      | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(i) => `#${i |> Int.toString}=`
+          }
+          let content = switch content {
+          | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
+          | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+          }
+          `${i}${content}`
+        }
       }
     }
     os->List.map(o => {
@@ -1244,7 +1258,7 @@ module JSPrinter: Printer = {
   let constantToString = c => {
     switch c {
     | Uni => "null"
-    | Nil => raisePrintError("Lists are not supported in JavaScript")
+    | Nil => raisePrintError("Lists are not supported in JavaScript.")
     | Num(n) => Float.toString(n)
     | Lgc(l) =>
       if l {
@@ -1746,9 +1760,19 @@ module JSPrinter: Printer = {
   let printOutput = (os): string => {
     let rec p = (v: val): string => {
       switch v {
+      | Ref(i) => `[Circular *${i |> Int.toString}]`
       | Con(c) => constantToString(c)
-      | Lst(_es) => raisePrintError("Lists are not supported in JavaScript")
-      | Vec(es) => `[ ${String.concat(", ", es->List.map(p))} ]`
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(i) => `<ref *${i |> Int.toString}> `
+          }
+          let content = switch content {
+          | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Vec(es) => `[ ${String.concat(", ", es->List.map(p))} ]`
+          }
+          `${i}${content}`
+        }
       }
     }
     os->List.map(o => {
@@ -1885,7 +1909,7 @@ module PYPrinter: Printer = {
   let constantToString = c => {
     switch c {
     | Uni => "None"
-    | Nil => raisePrintError("Lists are not supported in Python")
+    | Nil => raisePrintError("Lists are not supported in Python.")
     | Num(n) => Float.toString(n)
     | Lgc(l) =>
       if l {
@@ -2395,9 +2419,19 @@ module PYPrinter: Printer = {
   let printOutput = (os): string => {
     let rec p = (v: val): string => {
       switch v {
+      | Ref(_) => `[...]`
       | Con(c) => constantToString(c)
-      | Lst(_es) => raisePrintError("Lists are not supported in Python")
-      | Vec(es) => `[${String.concat(", ", es->List.map(p))}]`
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(_) => ""
+          }
+          let content = switch content {
+          | Lst(_) => raisePrintError("Lists are not supported in Python.")
+          | Vec(es) => `[${String.concat(", ", es->List.map(p))}]`
+          }
+          `${i}${content}`
+        }
       }
     }
     os->List.map(o => {
@@ -2973,9 +3007,19 @@ module PCPrinter: Printer = {
   let printOutput = (os): string => {
     let rec p = (v: val): string => {
       switch v {
+      | Ref(i) => `#${i |> Int.toString}#`
       | Con(c) => constantToString(c)
-      | Lst(_es) => raisePrintError("Lists are not supported in JavaScript")
-      | Vec(es) => `vec[${String.concat(", ", es->List.map(p))}]`
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(i) => `#${i |> Int.toString}=`
+          }
+          let content = switch content {
+          | Lst(es) => `list[${String.concat(", ", es->List.map(p))}]`
+          | Vec(es) => `vec[${String.concat(", ", es->List.map(p))}]`
+          }
+          `${i}${content}`
+        }
       }
     }
     os->List.map(o => {
@@ -3560,15 +3604,18 @@ module SCPrinter: Printer = {
   let printOutput = (os): string => {
     let rec p = (v: val): string => {
       switch v {
+      | Ref(_) => raisePrintError("Can't print circular data structure in Scala")
       | Con(c) => constantToString(c)
-      | Lst(_es) => raisePrintError("Lists are not supported in JavaScript")
-      | Vec(es) => {
-          let vecKeyword = if containsVecMutation.contents || containsVarMutation.contents {
-            "Buffer"
-          } else {
-            ""
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(_) => raisePrintError("Can't print circular data structure in Scala")
           }
-          `${vecKeyword}(${String.concat(", ", es->List.map(p))})`
+          let content = switch content {
+          | Lst(_es) => raisePrintError("Lists are not supported in Scala.")
+          | Vec(es) => `Buffer(${String.concat(", ", es->List.map(p))})`
+          }
+          `${i}${content}`
         }
       }
     }
