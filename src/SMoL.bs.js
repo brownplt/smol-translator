@@ -7458,7 +7458,7 @@ function translateOutput(src) {
     throw err;
   }
   try {
-    return printOutput$1(output);
+    return printOutput(output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7496,7 +7496,7 @@ function translateStandAloneTerm(src) {
     throw err;
   }
   try {
-    return printStandAloneTerm$1(programAsTerm(p));
+    return printStandAloneTerm(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7534,7 +7534,7 @@ function translateProgram(printTopLevel, src) {
     throw err;
   }
   try {
-    return printProgram$1(printTopLevel, p);
+    return printProgram(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -7553,6 +7553,166 @@ function translateProgram(printTopLevel, src) {
 }
 
 function translateProgramFull(printTopLevel, src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgramFull(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var SMoLTranslator = {
+  translateName: printName,
+  translateOutput: translateOutput,
+  translateStandAloneTerm: translateStandAloneTerm,
+  translateProgram: translateProgram,
+  translateProgramFull: translateProgramFull
+};
+
+function translateOutput$1(src) {
+  var output;
+  try {
+    output = parseOutput(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printOutput$1(output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm$1(src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$1(programAsTerm(p));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram$1(printTopLevel, src) {
+  var p;
+  try {
+    p = makeProgram(parseTerms(src));
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* ParseError */0,
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$1(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: /* PrintError */1,
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgramFull$1(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7592,13 +7752,13 @@ function translateProgramFull(printTopLevel, src) {
 
 var JSTranslator = {
   translateName: printName$1,
-  translateOutput: translateOutput,
-  translateStandAloneTerm: translateStandAloneTerm,
-  translateProgram: translateProgram,
-  translateProgramFull: translateProgramFull
+  translateOutput: translateOutput$1,
+  translateStandAloneTerm: translateStandAloneTerm$1,
+  translateProgram: translateProgram$1,
+  translateProgramFull: translateProgramFull$1
 };
 
-function translateOutput$1(src) {
+function translateOutput$2(src) {
   var output;
   try {
     output = parseOutput(src);
@@ -7636,7 +7796,7 @@ function translateOutput$1(src) {
   }
 }
 
-function translateStandAloneTerm$1(src) {
+function translateStandAloneTerm$2(src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7674,7 +7834,7 @@ function translateStandAloneTerm$1(src) {
   }
 }
 
-function translateProgram$1(printTopLevel, src) {
+function translateProgram$2(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7712,7 +7872,7 @@ function translateProgram$1(printTopLevel, src) {
   }
 }
 
-function translateProgramFull$1(printTopLevel, src) {
+function translateProgramFull$2(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7752,13 +7912,13 @@ function translateProgramFull$1(printTopLevel, src) {
 
 var PYTranslator = {
   translateName: printName$2,
-  translateOutput: translateOutput$1,
-  translateStandAloneTerm: translateStandAloneTerm$1,
-  translateProgram: translateProgram$1,
-  translateProgramFull: translateProgramFull$1
+  translateOutput: translateOutput$2,
+  translateStandAloneTerm: translateStandAloneTerm$2,
+  translateProgram: translateProgram$2,
+  translateProgramFull: translateProgramFull$2
 };
 
-function translateOutput$2(src) {
+function translateOutput$3(src) {
   var output;
   try {
     output = parseOutput(src);
@@ -7796,7 +7956,7 @@ function translateOutput$2(src) {
   }
 }
 
-function translateStandAloneTerm$2(src) {
+function translateStandAloneTerm$3(src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7834,7 +7994,7 @@ function translateStandAloneTerm$2(src) {
   }
 }
 
-function translateProgram$2(printTopLevel, src) {
+function translateProgram$3(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7872,7 +8032,7 @@ function translateProgram$2(printTopLevel, src) {
   }
 }
 
-function translateProgramFull$2(printTopLevel, src) {
+function translateProgramFull$3(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7912,13 +8072,13 @@ function translateProgramFull$2(printTopLevel, src) {
 
 var PCTranslator = {
   translateName: printName$3,
-  translateOutput: translateOutput$2,
-  translateStandAloneTerm: translateStandAloneTerm$2,
-  translateProgram: translateProgram$2,
-  translateProgramFull: translateProgramFull$2
+  translateOutput: translateOutput$3,
+  translateStandAloneTerm: translateStandAloneTerm$3,
+  translateProgram: translateProgram$3,
+  translateProgramFull: translateProgramFull$3
 };
 
-function translateOutput$3(src) {
+function translateOutput$4(src) {
   var output;
   try {
     output = parseOutput(src);
@@ -7956,7 +8116,7 @@ function translateOutput$3(src) {
   }
 }
 
-function translateStandAloneTerm$3(src) {
+function translateStandAloneTerm$4(src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -7994,7 +8154,7 @@ function translateStandAloneTerm$3(src) {
   }
 }
 
-function translateProgram$3(printTopLevel, src) {
+function translateProgram$4(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -8032,7 +8192,7 @@ function translateProgram$3(printTopLevel, src) {
   }
 }
 
-function translateProgramFull$3(printTopLevel, src) {
+function translateProgramFull$4(printTopLevel, src) {
   var p;
   try {
     p = makeProgram(parseTerms(src));
@@ -8072,10 +8232,10 @@ function translateProgramFull$3(printTopLevel, src) {
 
 var SCTranslator = {
   translateName: printName$4,
-  translateOutput: translateOutput$3,
-  translateStandAloneTerm: translateStandAloneTerm$3,
-  translateProgram: translateProgram$3,
-  translateProgramFull: translateProgramFull$3
+  translateOutput: translateOutput$4,
+  translateStandAloneTerm: translateStandAloneTerm$4,
+  translateProgram: translateProgram$4,
+  translateProgramFull: translateProgramFull$4
 };
 
 var Print = {
@@ -8121,6 +8281,7 @@ export {
   SCPrinter ,
   TranslateError ,
   SMoLTranslateError ,
+  SMoLTranslator ,
   JSTranslator ,
   PYTranslator ,
   PCTranslator ,
