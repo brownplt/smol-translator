@@ -5079,16 +5079,7 @@ var PYPrinter = {
 };
 
 function printName$3(x) {
-  var re = /-./g;
-  var matchFn = function (matchPart, _offset, _wholeString) {
-    return matchPart.substring(1).toUpperCase();
-  };
-  var x$1 = x.replace(re, matchFn);
-  if (x$1 === "var") {
-    return "$var";
-  } else {
-    return x$1;
-  }
+  return x;
 }
 
 function constantToString$3(c) {
@@ -5233,11 +5224,12 @@ function consumeContext$2(e, context) {
     return surround("", e, "");
   }
   switch (context._0) {
+    case /* Step */0 :
+        return surround("", e, "");
     case /* Return */1 :
         return surround("return ", e, "");
-    case /* Step */0 :
     case /* TopLevel */2 :
-        return surround("", e, "");
+        return surround("print(", e, ")");
     
   }
 }
@@ -5699,7 +5691,7 @@ function symbolToString$3(param) {
             sourceLocation: param.ann,
             print: {
               TAG: /* Plain */0,
-              _0: printName$3(it)
+              _0: it
             }
           }
         };
@@ -5728,7 +5720,6 @@ function printExp$3(param, context) {
         break;
     case /* Ref */1 :
         var x = it._0;
-        var it$2 = printName$3(x);
         e = {
           it: {
             TAG: /* Ref */1,
@@ -5737,7 +5728,7 @@ function printExp$3(param, context) {
           ann: consumeContext$2({
                 it: {
                   TAG: /* Plain */0,
-                  _0: it$2
+                  _0: x
                 },
                 ann: undefined
               }, context)

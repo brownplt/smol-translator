@@ -2515,18 +2515,19 @@ module PYPrinter: Printer = {
 
 module PCPrinter: Printer = {
   let printName = x => {
-    let re = %re("/-./g")
-    let matchFn = (matchPart, _offset, _wholeString) => {
-      Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
-    }
-    let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
+    x
+    // let re = %re("/-./g")
+    // let matchFn = (matchPart, _offset, _wholeString) => {
+    //   Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
+    // }
+    // let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
 
-    // add `$` to the beginning of reserved words
-    if x == "var" {
-      "$var"
-    } else {
-      x
-    }
+    // // add `$` to the beginning of reserved words
+    // if x == "var" {
+    //   "$var"
+    // } else {
+    //   x
+    // }
   }
 
   let constantToString = c => {
@@ -2574,7 +2575,7 @@ module PCPrinter: Printer = {
       switch ctx {
       | Step => surround("", e, "")
       | Return => surround("return ", e, "")
-      | TopLevel => surround("", e, "")
+      | TopLevel => surround("print(", e, ")")
       }
     }
   }
