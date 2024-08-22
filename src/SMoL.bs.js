@@ -5257,6 +5257,25 @@ function consumeContextVoid$2(e, context) {
   }
 }
 
+function consumeContextWrapVoid(e, context) {
+  if (context.TAG === /* Expr */0) {
+    if (context._0) {
+      return surround("(", e, ")");
+    } else {
+      return consumeContext$2(e, context);
+    }
+  }
+  switch (context._0) {
+    case /* Step */0 :
+        return consumeContext$2(e, context);
+    case /* Return */1 :
+        return surround("", e, "\nreturn");
+    case /* TopLevel */2 :
+        return surround("", e, "");
+    
+  }
+}
+
 function exprAppPrmToString$2(p, es, context) {
   if (typeof p === "number") {
     switch (p) {
@@ -5330,7 +5349,7 @@ function exprAppPrmToString$2(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextVoid$2(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
+                      ann: consumeContextWrapVoid(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
                     };
             }
             
@@ -5353,7 +5372,7 @@ function exprAppPrmToString$2(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextVoid$2(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
+                      ann: consumeContextWrapVoid(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
                     };
             }
             
@@ -5419,7 +5438,7 @@ function exprAppPrmToString$2(p, es, context) {
                             }
                           }
                         ],
-                        ann: consumeContextVoid$2(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
+                        ann: consumeContextWrapVoid(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
                       };
               }
               
@@ -5746,7 +5765,7 @@ function printExp$3(param, context) {
             _0: x$1,
             _1: e$1
           },
-          ann: consumeContextWrap$2(exprSetToString(getPrint(x$1), getPrint(e$1)), context)
+          ann: consumeContextWrapVoid(exprSetToString(getPrint(x$1), getPrint(e$1)), context)
         };
         break;
     case /* Lam */3 :

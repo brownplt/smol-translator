@@ -2595,6 +2595,15 @@ module PCPrinter: Printer = {
     }
   }
 
+  let consumeContextWrapVoid = (e: annotated<_, _>, context) => {
+    switch context {
+    | Expr(true) => surround("(", e, ")")
+    | Stat(Return) => surround("", e, "\nreturn")
+    | Stat(TopLevel) => surround("", e, "")
+    | _ => consumeContext(e, context)
+    }
+  }
+
   let exprAppPrmToString = (
     p: Primitive.t,
     es: list<bool => expression<printAnn>>,
@@ -2658,7 +2667,7 @@ module PCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: op2("", getPrint(e1), "[0] = ", getPrint(e2), "")->consumeContextVoid(context),
+          ann: op2("", getPrint(e1), "[0] = ", getPrint(e2), "")->consumeContextWrapVoid(context),
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -2666,7 +2675,7 @@ module PCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: op2("", getPrint(e1), "[1] = ", getPrint(e2), "")->consumeContextVoid(context),
+          ann: op2("", getPrint(e1), "[1] = ", getPrint(e2), "")->consumeContextWrapVoid(context),
           it: (PairSetRight, list{e1, e2}),
         }
       }
@@ -2702,7 +2711,7 @@ module PCPrinter: Printer = {
             "] = ",
             getPrint(e3),
             "",
-          )->consumeContextVoid(context),
+          )->consumeContextWrapVoid(context),
           it: (VecSet, list{e1, e2, e3}),
         }
       }
@@ -2824,7 +2833,7 @@ module PCPrinter: Printer = {
         let x = symbolToString(x)
         let e: expression<printAnn> = e->printExp(Expr(false))
         {
-          ann: exprSetToString(getPrint(x), getPrint(e))->consumeContextWrap(context),
+          ann: exprSetToString(getPrint(x), getPrint(e))->consumeContextWrapVoid(context),
           it: Set(x, e),
         }
       }
