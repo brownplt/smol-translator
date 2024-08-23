@@ -2908,9 +2908,9 @@ module PCPrinter: Printer = {
         let es = es->List.map(e => e(false))
         {
           ann: op1(
-            "[ ",
+            "vec[",
             Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
-            " ]",
+            "]",
           )->consumeContext,
           it: (VecNew, es),
         }
@@ -2986,8 +2986,7 @@ module PCPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, " {", indentBlock(e, 2), "\n}")
-    // `${op} ${exprAppToString(x, xs)} {${}\n}`
+    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, ":", indentBlock(e, 2), "\nend")
   }
 
   let defvarToString = (x, e) => {
@@ -2995,11 +2994,11 @@ module PCPrinter: Printer = {
   }
 
   let deffunToString = (f, xs, b) => {
-    funLike("function", f, xs, b)
+    funLike("fun", f, xs, b)
   }
 
   let defgenToString = (f, xs, b) => {
-    funLike("function*", f, xs, b)
+    funLike("gen fun", f, xs, b)
   }
 
   let exprSetToString = (x, e) => {
@@ -3007,10 +3006,10 @@ module PCPrinter: Printer = {
   }
 
   let exprLamToString = (xs, b) => {
-    funLike("function", Print.string(""), xs, b)
+    funLike("lam", Print.string(""), xs, b)
   }
   let exprGenToString = (xs, b) => {
-    funLike("function*", Print.string(""), xs, b)
+    funLike("gen lam", Print.string(""), xs, b)
   }
   let exprYieldToString = e => op1("yield ", e, "")
 
@@ -3265,7 +3264,7 @@ module PCPrinter: Printer = {
             ann: defvarToString(getPrint(x), getPrint(e)),
             it: Var(x, e),
           },
-          ";",
+          "",
         )
       }
     | Fun(f, xs, b) => {

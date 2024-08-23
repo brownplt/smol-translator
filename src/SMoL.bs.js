@@ -5775,10 +5775,10 @@ function exprAppPrmToString$2(p, es) {
                     /* VecNew */5,
                     es$1
                   ],
-                  ann: consumeContext$2(op1("[ ", {
+                  ann: consumeContext$2(op1("vec[", {
                             it: concat(", ", Belt_List.map(es$1, getPrint)),
                             ann: undefined
-                          }, " ]"))
+                          }, "]"))
                 };
       case /* VecRef */6 :
           if (es) {
@@ -6011,19 +6011,19 @@ function funLike$2(op, x, xs, e) {
   return op2("" + op + " ", {
               it: exprAppToString$2(x, xs),
               ann: undefined
-            }, " {", indentBlock(e, 2), "\n}");
+            }, ":", indentBlock(e, 2), "\nend");
 }
 
 function deffunToString$3(f, xs, b) {
-  return funLike$2("function", f, xs, b);
+  return funLike$2("fun", f, xs, b);
 }
 
 function defgenToString$3(f, xs, b) {
-  return funLike$2("function*", f, xs, b);
+  return funLike$2("gen fun", f, xs, b);
 }
 
 function exprLamToString$3(xs, b) {
-  return funLike$2("function", {
+  return funLike$2("lam", {
               it: {
                 TAG: /* Plain */0,
                 _0: ""
@@ -6033,7 +6033,7 @@ function exprLamToString$3(xs, b) {
 }
 
 function exprGenToString$2(xs, b) {
-  return funLike$2("function*", {
+  return funLike$2("gen lam", {
               it: {
                 TAG: /* Plain */0,
                 _0: ""
@@ -6567,7 +6567,7 @@ function printDef$3(param) {
             },
             ann: defvarLike$3("let ", getPrint(x), getPrint(e$1))
           },
-          ";"
+          ""
         ];
         break;
     case /* Fun */1 :
