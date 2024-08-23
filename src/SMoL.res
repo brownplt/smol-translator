@@ -4147,5 +4147,5 @@ module MakeTranslator = (P: Printer) => {
 module SMoLTranslator = MakeTranslator(SMoLPrinter)
 module JSTranslator = MakeTranslator(JSPrinter)
 module PYTranslator = MakeTranslator(PYPrinter)
-// module PCTranslator = MakeTranslator(PCPrinter)
+module PCTranslator = MakeTranslator(PCPrinter)
 // module SCTranslator = MakeTranslator(SCPrinter)

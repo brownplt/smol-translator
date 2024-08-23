@@ -191,5 +191,5 @@ module type Translator = {
 module SMoLTranslator: Translator
 module JSTranslator: Translator
 module PYTranslator: Translator
-// module PCTranslator: Translator
+module PCTranslator: Translator
 // module SCTranslator: Translator
