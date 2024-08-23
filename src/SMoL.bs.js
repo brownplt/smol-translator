@@ -4483,7 +4483,7 @@ function exprAppPrmToString$1(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$1(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
+                ann: consumeContextWrap$1(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -4855,7 +4855,7 @@ function defToString$1(param, env) {
     case /* Fun */1 :
         var f = symbolToString$2(d._0);
         var xs = Belt_List.map(d._1, symbolToString$2);
-        var b = printBody(d._2, /* Return */1, Belt_List.map(xs, (function (x) {
+        var b = printBody(d._2, Belt_List.map(xs, (function (x) {
                     return x.it;
                   })), env);
         d$1 = {
@@ -4871,7 +4871,7 @@ function defToString$1(param, env) {
     case /* GFun */2 :
         var f$1 = symbolToString$2(d._0);
         var xs$1 = Belt_List.map(d._1, symbolToString$2);
-        var b$1 = printBody(d._2, /* Return */1, Belt_List.map(xs$1, (function (x) {
+        var b$1 = printBody(d._2, Belt_List.map(xs$1, (function (x) {
                     return x.it;
                   })), env);
         d$1 = {
@@ -4901,6 +4901,57 @@ function obToString$1(ob, ctx, env) {
               }));
 }
 
+function printBlockHelper(context, param, env) {
+  var sourceLocation = param.ann;
+  var b = param.it;
+  if (b.TAG === /* BRet */0) {
+    return mapAnn((function (e) {
+                  return {
+                          TAG: /* BRet */0,
+                          _0: e
+                        };
+                }), printExp$2({
+                    it: b._0,
+                    ann: sourceLocation
+                  }, {
+                    TAG: /* Stat */1,
+                    _0: context
+                  }, env));
+  }
+  var t = printTerm$2(b._0, /* Step */0, env);
+  var b$1 = printBlockHelper(context, b._1, env);
+  var print = {
+    TAG: /* Group */1,
+    _0: {
+      hd: getPrint(t),
+      tl: {
+        hd: {
+          it: {
+            TAG: /* Plain */0,
+            _0: "\n"
+          },
+          ann: undefined
+        },
+        tl: {
+          hd: getPrint(b$1),
+          tl: /* [] */0
+        }
+      }
+    }
+  };
+  return {
+          it: {
+            TAG: /* BCons */1,
+            _0: t,
+            _1: b$1
+          },
+          ann: {
+            sourceLocation: sourceLocation,
+            print: print
+          }
+        };
+}
+
 function printBlock$2(b, context, env) {
   var xs = xsOfBlock(b);
   if (xs !== /* [] */0) {
@@ -4910,115 +4961,14 @@ function printBlock$2(b, context, env) {
           Error: new Error()
         };
   }
-  var printBlock$3 = function (param) {
-    var sourceLocation = param.ann;
-    var b = param.it;
-    if (b.TAG === /* BRet */0) {
-      return mapAnn((function (e) {
-                    return {
-                            TAG: /* BRet */0,
-                            _0: e
-                          };
-                  }), printExp$2({
-                      it: b._0,
-                      ann: sourceLocation
-                    }, {
-                      TAG: /* Stat */1,
-                      _0: context
-                    }, env));
-    }
-    var t = printTerm$2(b._0, /* Step */0, env);
-    var b$1 = printBlock$3(b._1);
-    var print = {
-      TAG: /* Group */1,
-      _0: {
-        hd: getPrint(t),
-        tl: {
-          hd: {
-            it: {
-              TAG: /* Plain */0,
-              _0: "\n"
-            },
-            ann: undefined
-          },
-          tl: {
-            hd: getPrint(b$1),
-            tl: /* [] */0
-          }
-        }
-      }
-    };
-    return {
-            it: {
-              TAG: /* BCons */1,
-              _0: t,
-              _1: b$1
-            },
-            ann: {
-              sourceLocation: sourceLocation,
-              print: print
-            }
-          };
-  };
-  return printBlock$3(b);
+  return printBlockHelper(context, b, env);
 }
 
-function printBody(b, context, args, env) {
+function printBody(b, args, env) {
   var match = extend(Belt_List.concat(Belt_List.map(xsOfBlock(b), (function (x) {
                   return x.it;
                 })), args), env);
-  var env$1 = match[1];
-  var printBlock = function (param) {
-    var sourceLocation = param.ann;
-    var b = param.it;
-    if (b.TAG === /* BRet */0) {
-      return mapAnn((function (e) {
-                    return {
-                            TAG: /* BRet */0,
-                            _0: e
-                          };
-                  }), printExp$2({
-                      it: b._0,
-                      ann: sourceLocation
-                    }, {
-                      TAG: /* Stat */1,
-                      _0: context
-                    }, env$1));
-    }
-    var t = printTerm$2(b._0, /* Step */0, env$1);
-    var b$1 = printBlock(b._1);
-    var print = {
-      TAG: /* Group */1,
-      _0: {
-        hd: getPrint(t),
-        tl: {
-          hd: {
-            it: {
-              TAG: /* Plain */0,
-              _0: "\n"
-            },
-            ann: undefined
-          },
-          tl: {
-            hd: getPrint(b$1),
-            tl: /* [] */0
-          }
-        }
-      }
-    };
-    return {
-            it: {
-              TAG: /* BCons */1,
-              _0: t,
-              _1: b$1
-            },
-            ann: {
-              sourceLocation: sourceLocation,
-              print: print
-            }
-          };
-  };
-  var b$1 = printBlock(b);
+  var b$1 = printBlockHelper(/* Return */1, b, match[1]);
   var print = concat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
                       return {
@@ -5714,7 +5664,7 @@ function exprAppPrmToString$2(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
+                ann: consumeContextWrap$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       
@@ -6893,7 +6843,7 @@ function exprAppPrmToString$3(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext$3(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
+                ann: consumeContextWrap$3(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
               };
       }
       

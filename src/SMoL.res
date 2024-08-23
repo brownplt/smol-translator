@@ -2073,7 +2073,7 @@ module PYPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContextWrap(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -2381,7 +2381,7 @@ module PYPrinter: Printer = {
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(Return, xs->List.map(x => x.it), env)
+        let b = b->printBody(xs->List.map(x => x.it), env)
         {
           ann: deffunToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
           it: Fun(f, xs, b),
@@ -2390,7 +2390,7 @@ module PYPrinter: Printer = {
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(Return, xs->List.map(x => x.it), env)
+        let b = b->printBody(xs->List.map(x => x.it), env)
         {
           ann: defgenToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
           it: GFun(f, xs, b),
@@ -2407,47 +2407,30 @@ module PYPrinter: Printer = {
   and obToString = (ob, ctx: statContext, env) => {
     ob->Option.map(b => b->printBlock(ctx, env))
   }
+  and printBlockHelper = (context, {ann: sourceLocation, it: b}, env) => {
+    switch b {
+    | BRet(e) => printExp({it: e, ann: sourceLocation}, Stat(context), env) |> mapAnn(e => BRet(e))
+    | BCons(t, b) => {
+        let t = printTerm(t, Step, env)
+        let b = printBlockHelper(context, b, env)
+        let print = Group(list{getPrint(t), Print.string("\n"), getPrint(b)})
+        {
+          ann: {print, sourceLocation},
+          it: BCons(t, b),
+        }
+      }
+    }
+  }
   and printBlock = (b, context: statContext, env) => {
     let xs = xsOfBlock(b)
     if xs != list{} {
       raisePrintError("Python blocks can't declare local variables")
     }
-    let rec printBlock = ({ann: sourceLocation, it: b}) => {
-      switch b {
-      | BRet(e) =>
-        printExp({it: e, ann: sourceLocation}, Stat(context), env) |> mapAnn(e => BRet(e))
-      | BCons(t, b) => {
-          let t = printTerm(t, Step, env)
-          let b = printBlock(b)
-          let print = Group(list{getPrint(t), Print.string("\n"), getPrint(b)})
-          {
-            ann: {print, sourceLocation},
-            it: BCons(t, b),
-          }
-        }
-      }
-    }
-    printBlock(b)
+    printBlockHelper(context, b, env)
   }
-  and printBody = (b, context: statContext, args, env) => {
+  and printBody = (b, args, env) => {
     let (refs, env) = extend(xsOfBlock(b)->List.map(x => x.it)->List.concat(args), env)
-
-    let rec printBlock = ({ann: sourceLocation, it: b}) => {
-      switch b {
-      | BRet(e) =>
-        printExp({it: e, ann: sourceLocation}, Stat(context), env) |> mapAnn(e => BRet(e))
-      | BCons(t, b) => {
-          let t = printTerm(t, Step, env)
-          let b = printBlock(b)
-          let print = Group(list{getPrint(t), Print.string("\n"), getPrint(b)})
-          {
-            ann: {print, sourceLocation},
-            it: BCons(t, b),
-          }
-        }
-      }
-    }
-    let b = printBlock(b)
+    let b = printBlockHelper(Return, b, env)
     let print = Print.concat(
       "\n",
       list{
@@ -2682,7 +2665,7 @@ module PCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContextWrap(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -3279,7 +3262,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContextWrap(context),
           it: (Cmp(o), list{e1, e2}),
         }
       }
