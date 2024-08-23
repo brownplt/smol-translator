@@ -1,5 +1,5 @@
 function f(x, y, z) {
-  let p = y * z
-  return x + p
+  let p = y * z;
+  return x + p;
 }
-console.log(f(2, 1, 3))
+console.log(f(2, 1, 3));

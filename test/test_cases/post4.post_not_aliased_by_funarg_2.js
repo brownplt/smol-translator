@@ -1,6 +1,6 @@
-let n = 2
+let n = 2;
 function h(m) {
-  m = 7
-  return n
+  m = 7;
+  return n;
 }
-console.log(h(n))
+console.log(h(n));

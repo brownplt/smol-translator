@@ -1,9 +1,9 @@
-let a = 3
+let a = 3;
 function foo(b) {
   function bar() {
-    let c = 6
-    return a + b + c
+    let c = 6;
+    return a + b + c;
   }
-  return bar()
+  return bar();
 }
-console.log(foo(4) + 2)
+console.log(foo(4) + 2);

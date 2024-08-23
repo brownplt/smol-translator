@@ -1147,12 +1147,12 @@ module SMoLPrinter = {
   and printBlock = ({ann: sourceLocation, it: b}) => {
     switch b {
     | BRet(e) => {
-      let e = printExp(e)
-      {
-        ann: e.ann,
-        it: BRet(e)
+        let e = printExp(e)
+        {
+          ann: e.ann,
+          it: BRet(e),
+        }
       }
-    }
     | BCons(t, b) => {
         let t = printTerm(t)
         let b = printBlock(b)
@@ -1402,8 +1402,8 @@ module JSPrinter: Printer = {
       expr: _ => surround("", e, ""),
       stat: ctx =>
         switch ctx {
-        | Step => ("", e, "")
-        | Return => ("return ", e, "") //`return ${e}`
+        | Step => ("", e, ";")
+        | Return => ("return ", e, ";") //`return ${e}`
         },
     }
   }
@@ -1424,7 +1424,7 @@ module JSPrinter: Printer = {
     {
       stat: ctx =>
         switch ctx {
-        | Return => ("", e, "\nreturn")
+        | Return => ("", e, ";\nreturn;")
         | ctx => consumeContext(e).stat(ctx)
         },
       expr: consumeContext(e).expr,
@@ -1809,39 +1809,49 @@ module JSPrinter: Printer = {
     }
     e(sourceLocation)
   }
-  and defToString = ({ann: sourceLocation, it: d}: definition<sourceLocation>): definition<
-    printAnn,
-  > => {
-    let d = switch d {
+  and printDef = ({ann: sourceLocation, it: d}) => {
+    let (prefix, d, suffix) = switch d {
     | Var(x, e) => {
         let x = x->symbolToString
         let e = e->printExp->asExpr(false)
-        {
-          ann: defvarToString(getPrint(x), getPrint(e)),
-          it: Var(x, e),
-        }
+        (
+          "",
+          {
+            ann: defvarToString(getPrint(x), getPrint(e)),
+            it: Var(x, e),
+          },
+          ";",
+        )
       }
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
-        {
-          ann: deffunToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
-          it: Fun(f, xs, b),
-        }
+        (
+          "",
+          {
+            ann: deffunToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
+            it: Fun(f, xs, b),
+          },
+          "",
+        )
       }
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
-        {
-          ann: defgenToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
-          it: GFun(f, xs, b),
-        }
+        (
+          "",
+          {
+            ann: defgenToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
+            it: GFun(f, xs, b),
+          },
+          "",
+        )
       }
     }
     let {ann: print, it} = d
-    {ann: {print, sourceLocation}, it}
+    (prefix, {ann: {print, sourceLocation}, it}, suffix)
   }
   and xeToString = ({it: xe, ann: sourceLocation}: bind<sourceLocation>): bind<printAnn> => {
     let (x, e) = xe
@@ -1900,7 +1910,12 @@ module JSPrinter: Printer = {
         let it = it |> mapAnn(it => Exp(it))
         (prefix, it, suffix)
       }
-    | Def(it) => ("", defToString({ann: sourceLocation, it}) |> mapAnn(v => Def(v)), "")
+    | Def(it) => {
+
+        let (prefix, it, suffix) = printDef({ann: sourceLocation, it})
+        let it = it |> mapAnn(it => Def(it))
+        (prefix, it, suffix)
+    }
     }
   }
 
@@ -1990,7 +2005,10 @@ module JSPrinter: Printer = {
 
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
-    | Def(it) => defToString({it, ann}).ann.print
+    | Def(it) => {
+        let (_, it, _) = printDef({it, ann})
+        it.ann.print
+      }
     | Exp(it) => {
         let (_, it, _) = printExp({it, ann})->asStat(Step)
         it.ann.print

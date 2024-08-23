@@ -2896,13 +2896,13 @@ function consumeContext(e) {
                 return [
                         "return ",
                         e,
-                        ""
+                        ";"
                       ];
               } else {
                 return [
                         "",
                         e,
-                        ""
+                        ";"
                       ];
               }
             })
@@ -2930,7 +2930,7 @@ function consumeContextVoid(e) {
                 return [
                         "",
                         e,
-                        "\nreturn"
+                        ";\nreturn;"
                       ];
               } else {
                 return Curry._1(consumeContext(e).stat, ctx);
@@ -3707,60 +3707,77 @@ function printExp$1(param) {
   return Curry._1(e, param.ann);
 }
 
-function defToString(param) {
+function printDef$1(param) {
   var d = param.it;
-  var d$1;
+  var match;
   switch (d.TAG | 0) {
     case /* Var */0 :
         var x = symbolToString$1(d._0);
         var e = printExp$1(d._1);
         var e$1 = Curry._1(e.expr, false);
-        d$1 = {
-          it: {
-            TAG: /* Var */0,
-            _0: x,
-            _1: e$1
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* Var */0,
+              _0: x,
+              _1: e$1
+            },
+            ann: defvarLike$1("let ", getPrint(x), getPrint(e$1))
           },
-          ann: defvarLike$1("let ", getPrint(x), getPrint(e$1))
-        };
+          ";"
+        ];
         break;
     case /* Fun */1 :
         var f = symbolToString$1(d._0);
         var xs = Belt_List.map(d._1, symbolToString$1);
         var b = printBlock$1(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* Fun */1,
-            _0: f,
-            _1: xs,
-            _2: b
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* Fun */1,
+              _0: f,
+              _1: xs,
+              _2: b
+            },
+            ann: deffunToString$1(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
           },
-          ann: deffunToString$1(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
-        };
+          ""
+        ];
         break;
     case /* GFun */2 :
         var f$1 = symbolToString$1(d._0);
         var xs$1 = Belt_List.map(d._1, symbolToString$1);
         var b$1 = printBlock$1(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* GFun */2,
-            _0: f$1,
-            _1: xs$1,
-            _2: b$1
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* GFun */2,
+              _0: f$1,
+              _1: xs$1,
+              _2: b$1
+            },
+            ann: defgenToString$1(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
           },
-          ann: defgenToString$1(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
-        };
+          ""
+        ];
         break;
     
   }
-  return {
-          it: d$1.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: d$1.ann
-          }
-        };
+  var d$1 = match[1];
+  return [
+          match[0],
+          {
+            it: d$1.it,
+            ann: {
+              sourceLocation: param.ann,
+              print: d$1.ann
+            }
+          },
+          match[2]
+        ];
 }
 
 function xeToString$1(param) {
@@ -3887,35 +3904,37 @@ function printTerm$1(param, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
   if (it.TAG === /* Def */0) {
+    var match = printDef$1({
+          it: it._0,
+          ann: sourceLocation
+        });
+    var it$1 = mapAnn((function (it) {
+            return {
+                    TAG: /* Def */0,
+                    _0: it
+                  };
+          }), match[1]);
     return [
-            "",
-            mapAnn((function (v) {
-                    return {
-                            TAG: /* Def */0,
-                            _0: v
-                          };
-                  }), defToString({
-                      it: it._0,
-                      ann: sourceLocation
-                    })),
-            ""
+            match[0],
+            it$1,
+            match[2]
           ];
   }
   var e = printExp$1({
         it: it._0,
         ann: sourceLocation
       });
-  var match = Curry._1(e.stat, ctx);
-  var it$1 = mapAnn((function (it) {
+  var match$1 = Curry._1(e.stat, ctx);
+  var it$2 = mapAnn((function (it) {
           return {
                   TAG: /* Exp */1,
                   _0: it
                 };
-        }), match[1]);
+        }), match$1[1]);
   return [
-          match[0],
-          it$1,
-          match[2]
+          match$1[0],
+          it$2,
+          match$1[2]
         ];
 }
 
@@ -4028,17 +4047,18 @@ function printStandAloneTerm$1(param) {
   var it = param.it;
   var tmp;
   if (it.TAG === /* Def */0) {
-    tmp = defToString({
+    var match = printDef$1({
           it: it._0,
           ann: ann
-        }).ann.print;
+        });
+    tmp = match[1].ann.print;
   } else {
     var e = printExp$1({
           it: it._0,
           ann: ann
         });
-    var match = Curry._1(e.stat, /* Step */0);
-    tmp = match[1].ann.print;
+    var match$1 = Curry._1(e.stat, /* Step */0);
+    tmp = match$1[1].ann.print;
   }
   return toString(tmp);
 }

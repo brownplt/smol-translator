@@ -1,3 +1,3 @@
-let rent = 10
-rent = 10 * 2
-console.log(rent)
+let rent = 10;
+rent = 10 * 2;
+console.log(rent);

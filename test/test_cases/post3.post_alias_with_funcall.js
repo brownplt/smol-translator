@@ -1,7 +1,7 @@
-let zz = [ 88, 88 ]
+let zz = [ 88, 88 ];
 function f(aa) {
-  aa[0] = 97
-  return
+  aa[0] = 97;
+  return;
 }
-console.log(f(zz))
-console.log(zz)
+console.log(f(zz));
+console.log(zz);

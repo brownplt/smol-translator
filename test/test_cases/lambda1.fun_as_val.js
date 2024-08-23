@@ -1,6 +1,6 @@
 function f() {
-  return 42
+  return 42;
 }
-let g = f
-let h = g
-console.log(h())
+let g = f;
+let h = g;
+console.log(h());

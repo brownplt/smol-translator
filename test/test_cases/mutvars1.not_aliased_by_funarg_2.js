@@ -1,6 +1,6 @@
-let x = 12
+let x = 12;
 function f(y) {
-  y = 0
-  return x
+  y = 0;
+  return x;
 }
-console.log(f(x))
+console.log(f(x));

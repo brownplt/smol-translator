@@ -1,9 +1,9 @@
-let a = 9
+let a = 9;
 function fun() {
-  let b = 2
+  let b = 2;
   function prod() {
-    return a * b
+    return a * b;
   }
-  return prod()
+  return prod();
 }
-console.log(fun())
+console.log(fun());

@@ -1,2 +1,2 @@
-let foo = 77
-console.log(bar)
+let foo = 77;
+console.log(bar);

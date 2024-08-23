@@ -1,4 +1,4 @@
 function f(x) {
-  return 3
+  return 3;
 }
-console.log(f(7(5)))
+console.log(f(7(5)));

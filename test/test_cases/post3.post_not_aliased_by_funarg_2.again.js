@@ -1,6 +1,6 @@
-let s = 1
+let s = 1;
 function foobar(t) {
-  t = 2
-  return s
+  t = 2;
+  return s;
 }
-console.log(foobar(s))
+console.log(foobar(s));
