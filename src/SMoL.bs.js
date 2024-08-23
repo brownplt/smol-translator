@@ -7464,7 +7464,12 @@ function exprAppPrmToString$3(p, es) {
 
 function funLike$3(op, x, xs, e) {
   return op2("" + op + " ", {
-              it: exprAppToString$3(x, xs),
+              it: exprAppToString$3(x, Belt_List.map(xs, (function (x) {
+                          return {
+                                  it: op1("", x, " : Int"),
+                                  ann: undefined
+                                };
+                        }))),
               ann: undefined
             }, " =", indentBlock(e, 2), "");
 }
@@ -7803,8 +7808,8 @@ function printExp$4(param) {
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
         getPrint(b$1);
+        Belt_List.map(xs$1, getPrint);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",

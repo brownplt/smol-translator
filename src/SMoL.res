@@ -3719,7 +3719,7 @@ module SCPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, " =", indentBlock(e, 2), "")
+    op2(`${op} `, exprAppToString(x, xs -> List.map(x => op1("", x, " : Int") |> Print.dummyAnn)) |> Print.dummyAnn, " =", indentBlock(e, 2), "")
   }
 
   let defvarToString = (x, e) => {
