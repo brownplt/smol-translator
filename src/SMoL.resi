@@ -170,7 +170,7 @@ let getPrint: annotated<'a, printAnn> => print<sourceLocation>
 module SMoLPrinter: Printer
 module JSPrinter: Printer
 module PYPrinter: Printer
-// module PCPrinter: Printer
+module PCPrinter: Printer
 // module SCPrinter: Printer
 
 module TranslateError: {

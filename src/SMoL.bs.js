@@ -5463,6 +5463,1457 @@ var PYPrinter = {
   printProgramFull: printProgramFull$2
 };
 
+function printName$3(x) {
+  return x;
+}
+
+function constantToString$3(c) {
+  if (typeof c === "number") {
+    if (c === /* Uni */0) {
+      return "Unit";
+    } else {
+      return "Nil";
+    }
+  }
+  switch (c.TAG | 0) {
+    case /* Num */0 :
+        return String(c._0);
+    case /* Lgc */1 :
+        if (c._0) {
+          return "True";
+        } else {
+          return "False";
+        }
+    case /* Str */2 :
+        return "\"" + $$String.escaped(c._0) + "\"";
+    case /* Sym */3 :
+        return c._0;
+    
+  }
+}
+
+function listToString$3(es) {
+  if (Belt_List.some(es, (function (e) {
+            return containsNL(e.it);
+          }))) {
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: concat(",\n", es),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
+  } else {
+    return {
+            TAG: /* Group */1,
+            _0: {
+              hd: {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: concat(", ", es),
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
+  }
+}
+
+function defvarLike$3(op, x, e) {
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: op
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: x,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: " = "
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: indent(e, 2),
+                  tl: /* [] */0
+                }
+              }
+            }
+          }
+        };
+}
+
+function exprAppToString$2(e, es) {
+  return group2(e, {
+              it: listToString$3(es),
+              ann: undefined
+            });
+}
+
+function consumeContext$2(e) {
+  return {
+          expr: (function (param) {
+              return surround("", e, "");
+            }),
+          stat: (function (ctx) {
+              if (ctx) {
+                return [
+                        "return ",
+                        e,
+                        ""
+                      ];
+              } else {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              }
+            })
+        };
+}
+
+function consumeContextWrap$2(e) {
+  return {
+          expr: (function (ctx) {
+              if (ctx) {
+                return surround("(", e, ")");
+              } else {
+                return Curry._1(consumeContext$2(e).expr, ctx);
+              }
+            }),
+          stat: consumeContext$2(e).stat
+        };
+}
+
+function consumeContextVoid$2(e) {
+  return {
+          expr: consumeContext$2(e).expr,
+          stat: (function (ctx) {
+              if (ctx) {
+                return [
+                        "",
+                        e,
+                        "\nreturn"
+                      ];
+              } else {
+                return Curry._1(consumeContext$2(e).stat, ctx);
+              }
+            })
+        };
+}
+
+function consumeContextWrapVoid(e) {
+  return {
+          expr: consumeContextWrap$2(e).expr,
+          stat: (function (ctx) {
+              if (ctx) {
+                return [
+                        "",
+                        e,
+                        "\nreturn"
+                      ];
+              } else {
+                return Curry._1(consumeContext$2(e).stat, ctx);
+              }
+            })
+        };
+}
+
+function exprAppPrmToString$2(p, es) {
+  if (typeof p === "number") {
+    switch (p) {
+      case /* PairNew */0 :
+          if (es) {
+            var match = es.tl;
+            if (match && !match.tl) {
+              var e1 = Curry._1(es.hd, false);
+              var e2 = Curry._1(match.hd, false);
+              return {
+                      it: [
+                        /* PairNew */0,
+                        {
+                          hd: e1,
+                          tl: {
+                            hd: e2,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContext$2(op2("vec[", getPrint(e1), ", ", getPrint(e2), "]"))
+                    };
+            }
+            
+          }
+          break;
+      case /* PairRefLeft */1 :
+          if (es && !es.tl) {
+            var e1$1 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* PairRefLeft */1,
+                      {
+                        hd: e1$1,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(op1("", getPrint(e1$1), "[0]"))
+                  };
+          }
+          break;
+      case /* PairRefRight */2 :
+          if (es && !es.tl) {
+            var e1$2 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* PairRefRight */2,
+                      {
+                        hd: e1$2,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(op1("", getPrint(e1$2), "[1]"))
+                  };
+          }
+          break;
+      case /* PairSetLeft */3 :
+          if (es) {
+            var match$1 = es.tl;
+            if (match$1 && !match$1.tl) {
+              var e1$3 = Curry._1(es.hd, false);
+              var e2$1 = Curry._1(match$1.hd, false);
+              return {
+                      it: [
+                        /* PairSetLeft */3,
+                        {
+                          hd: e1$3,
+                          tl: {
+                            hd: e2$1,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContextWrapVoid(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""))
+                    };
+            }
+            
+          }
+          break;
+      case /* PairSetRight */4 :
+          if (es) {
+            var match$2 = es.tl;
+            if (match$2 && !match$2.tl) {
+              var e1$4 = Curry._1(es.hd, false);
+              var e2$2 = Curry._1(match$2.hd, false);
+              return {
+                      it: [
+                        /* PairSetRight */4,
+                        {
+                          hd: e1$4,
+                          tl: {
+                            hd: e2$2,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContextWrapVoid(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""))
+                    };
+            }
+            
+          }
+          break;
+      case /* VecNew */5 :
+          var es$1 = Belt_List.map(es, (function (e) {
+                  return Curry._1(e, false);
+                }));
+          return {
+                  it: [
+                    /* VecNew */5,
+                    es$1
+                  ],
+                  ann: consumeContext$2(op1("[ ", {
+                            it: concat(", ", Belt_List.map(es$1, getPrint)),
+                            ann: undefined
+                          }, " ]"))
+                };
+      case /* VecRef */6 :
+          if (es) {
+            var match$3 = es.tl;
+            if (match$3 && !match$3.tl) {
+              var e1$5 = Curry._1(es.hd, true);
+              var e2$3 = Curry._1(match$3.hd, false);
+              return {
+                      it: [
+                        /* VecRef */6,
+                        {
+                          hd: e1$5,
+                          tl: {
+                            hd: e2$3,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContext$2(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"))
+                    };
+            }
+            
+          }
+          break;
+      case /* VecSet */7 :
+          if (es) {
+            var match$4 = es.tl;
+            if (match$4) {
+              var match$5 = match$4.tl;
+              if (match$5 && !match$5.tl) {
+                var e1$6 = Curry._1(es.hd, true);
+                var e2$4 = Curry._1(match$4.hd, false);
+                var e3 = Curry._1(match$5.hd, false);
+                return {
+                        it: [
+                          /* VecSet */7,
+                          {
+                            hd: e1$6,
+                            tl: {
+                              hd: e2$4,
+                              tl: {
+                                hd: e3,
+                                tl: /* [] */0
+                              }
+                            }
+                          }
+                        ],
+                        ann: consumeContextWrapVoid(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""))
+                      };
+              }
+              
+            }
+            
+          }
+          break;
+      case /* VecLen */8 :
+          if (es && !es.tl) {
+            var e1$7 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* VecLen */8,
+                      {
+                        hd: e1$7,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(op1("length(", getPrint(e1$7), ")"))
+                  };
+          }
+          break;
+      case /* Err */9 :
+          if (es && !es.tl) {
+            var e1$8 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* Err */9,
+                      {
+                        hd: e1$8,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap$2(op1("raise ", getPrint(e1$8), ""))
+                  };
+          }
+          break;
+      case /* Not */10 :
+          if (es && !es.tl) {
+            var e1$9 = Curry._1(es.hd, true);
+            return {
+                    it: [
+                      /* Not */10,
+                      {
+                        hd: e1$9,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap$2(op1("! ", getPrint(e1$9), ""))
+                  };
+          }
+          break;
+      case /* Print */11 :
+          if (es && !es.tl) {
+            var e1$10 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* Print */11,
+                      {
+                        hd: e1$10,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid$2(op1("print(", getPrint(e1$10), ")"))
+                  };
+          }
+          break;
+      case /* Next */12 :
+          if (es && !es.tl) {
+            var e1$11 = Curry._1(es.hd, false);
+            return {
+                    it: [
+                      /* Next */12,
+                      {
+                        hd: e1$11,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid$2(op1("next(", getPrint(e1$11), ")"))
+                  };
+          }
+          break;
+      case /* Cons */13 :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "List is not supported by Pseudo",
+                Error: new Error()
+              };
+      
+    }
+  } else {
+    if (p.TAG === /* Arith */0) {
+      var o = p._0;
+      var os;
+      switch (o) {
+        case /* Add */0 :
+            os = "+";
+            break;
+        case /* Sub */1 :
+            os = "-";
+            break;
+        case /* Mul */2 :
+            os = "*";
+            break;
+        case /* Div */3 :
+            os = "/";
+            break;
+        
+      }
+      var es$2 = Belt_List.map(es, (function (e) {
+              return Curry._1(e, true);
+            }));
+      return {
+              it: [
+                {
+                  TAG: /* Arith */0,
+                  _0: o
+                },
+                es$2
+              ],
+              ann: consumeContextWrap$2(concat(" " + os + " ", Belt_List.map(es$2, getPrint)))
+            };
+    }
+    if (es) {
+      var match$6 = es.tl;
+      if (match$6 && !match$6.tl) {
+        var o$1 = p._0;
+        var os$1;
+        switch (o$1) {
+          case /* Lt */0 :
+              os$1 = "<";
+              break;
+          case /* Eq */1 :
+              os$1 = "==";
+              break;
+          case /* Gt */2 :
+              os$1 = ">";
+              break;
+          case /* Le */3 :
+              os$1 = "<=";
+              break;
+          case /* Ge */4 :
+              os$1 = ">=";
+              break;
+          case /* Ne */5 :
+              os$1 = "!=";
+              break;
+          
+        }
+        var e1$12 = Curry._1(es.hd, true);
+        var e2$5 = Curry._1(match$6.hd, true);
+        return {
+                it: [
+                  {
+                    TAG: /* Cmp */1,
+                    _0: o$1
+                  },
+                  {
+                    hd: e1$12,
+                    tl: {
+                      hd: e2$5,
+                      tl: /* [] */0
+                    }
+                  }
+                ],
+                ann: consumeContext$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
+              };
+      }
+      
+    }
+    
+  }
+  var err = "Pseudo doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: err,
+        Error: new Error()
+      };
+}
+
+function funLike$2(op, x, xs, e) {
+  return op2("" + op + " ", {
+              it: exprAppToString$2(x, xs),
+              ann: undefined
+            }, " {", indentBlock(e, 2), "\n}");
+}
+
+function deffunToString$3(f, xs, b) {
+  return funLike$2("function", f, xs, b);
+}
+
+function defgenToString$3(f, xs, b) {
+  return funLike$2("function*", f, xs, b);
+}
+
+function exprLamToString$3(xs, b) {
+  return funLike$2("function", {
+              it: {
+                TAG: /* Plain */0,
+                _0: ""
+              },
+              ann: undefined
+            }, xs, b);
+}
+
+function exprGenToString$2(xs, b) {
+  return funLike$2("function*", {
+              it: {
+                TAG: /* Plain */0,
+                _0: ""
+              },
+              ann: undefined
+            }, xs, b);
+}
+
+function exprBgnToString$2(es, e) {
+  return listToString$3(Belt_List.concatMany([
+                  es,
+                  {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
+function exprCndToString$3(ebs, ob) {
+  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
+          ebs,
+          {
+            hd: [
+              {
+                it: {
+                  TAG: /* Plain */0,
+                  _0: "e:"
+                },
+                ann: undefined
+              },
+              ob
+            ],
+            tl: /* [] */0
+          }
+        ]) : ebs;
+  var ebs$2 = Belt_List.map(ebs$1, (function (param) {
+          return {
+                  it: op2("if ", param[0], ":", indentBlock(param[1], 2), "\n"),
+                  ann: undefined
+                };
+        }));
+  return op1("", {
+              it: concat(" els", ebs$2),
+              ann: undefined
+            }, "end");
+}
+
+function exprIfToString$3(e_cnd, e_thn, e_els) {
+  return op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "");
+}
+
+function letLike$1(op, xes, b) {
+  var xes_it = concat("\n", xes);
+  var xes$1 = {
+    it: xes_it,
+    ann: undefined
+  };
+  var ss_0 = {
+    it: {
+      TAG: /* Plain */0,
+      _0: "("
+    },
+    ann: undefined
+  };
+  var ss_1 = {
+    hd: indent(xes$1, 1),
+    tl: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: ")"
+        },
+        ann: undefined
+      },
+      tl: /* [] */0
+    }
+  };
+  var ss = {
+    hd: ss_0,
+    tl: ss_1
+  };
+  var xes_it$1 = {
+    TAG: /* Group */1,
+    _0: ss
+  };
+  var xes$2 = {
+    it: xes_it$1,
+    ann: undefined
+  };
+  var ss_0$1 = {
+    it: {
+      TAG: /* Plain */0,
+      _0: "("
+    },
+    ann: undefined
+  };
+  var ss_1$1 = {
+    hd: {
+      it: {
+        TAG: /* Plain */0,
+        _0: op
+      },
+      ann: undefined
+    },
+    tl: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: " "
+        },
+        ann: undefined
+      },
+      tl: /* [] */0
+    }
+  };
+  var ss$1 = {
+    hd: ss_0$1,
+    tl: ss_1$1
+  };
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: hcat({
+                    it: {
+                      TAG: /* Group */1,
+                      _0: ss$1
+                    },
+                    ann: undefined
+                  }, xes$2),
+              ann: undefined
+            },
+            tl: {
+              hd: indentBlock(b, 2),
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
+}
+
+function symbolToString$3(param) {
+  var it = param.it;
+  return {
+          it: it,
+          ann: {
+            sourceLocation: param.ann,
+            print: {
+              TAG: /* Plain */0,
+              _0: it
+            }
+          }
+        };
+}
+
+function printExp$3(param) {
+  var it = param.it;
+  var lift = function (param, sourceLocation) {
+    var print = param.ann;
+    var it = param.it;
+    return {
+            expr: (function (ctx) {
+                return {
+                        it: it,
+                        ann: {
+                          sourceLocation: sourceLocation,
+                          print: Curry._1(print.expr, ctx)
+                        }
+                      };
+              }),
+            stat: (function (ctx) {
+                var match = Curry._1(print.stat, ctx);
+                return [
+                        match[0],
+                        {
+                          it: it,
+                          ann: {
+                            sourceLocation: sourceLocation,
+                            print: match[1]
+                          }
+                        },
+                        match[2]
+                      ];
+              })
+          };
+  };
+  var e;
+  switch (it.TAG | 0) {
+    case /* Con */0 :
+        var c = it._0;
+        var partial_arg_it = {
+          TAG: /* Con */0,
+          _0: c
+        };
+        var partial_arg_ann = consumeContext$2({
+              TAG: /* Plain */0,
+              _0: constantToString$3(c)
+            });
+        var partial_arg = {
+          it: partial_arg_it,
+          ann: partial_arg_ann
+        };
+        e = (function (param) {
+            return lift(partial_arg, param);
+          });
+        break;
+    case /* Ref */1 :
+        var x = it._0;
+        var partial_arg_it$1 = {
+          TAG: /* Ref */1,
+          _0: x
+        };
+        var partial_arg_ann$1 = consumeContext$2({
+              TAG: /* Plain */0,
+              _0: x
+            });
+        var partial_arg$1 = {
+          it: partial_arg_it$1,
+          ann: partial_arg_ann$1
+        };
+        e = (function (param) {
+            return lift(partial_arg$1, param);
+          });
+        break;
+    case /* Set */2 :
+        var x$1 = symbolToString$3(it._0);
+        var e$1 = printExp$3(it._1);
+        var e$2 = Curry._1(e$1.expr, false);
+        var partial_arg_it$2 = {
+          TAG: /* Set */2,
+          _0: x$1,
+          _1: e$2
+        };
+        var partial_arg_ann$2 = consumeContextWrapVoid(defvarLike$3("", getPrint(x$1), getPrint(e$2)));
+        var partial_arg$2 = {
+          it: partial_arg_it$2,
+          ann: partial_arg_ann$2
+        };
+        e = (function (param) {
+            return lift(partial_arg$2, param);
+          });
+        break;
+    case /* Lam */3 :
+        var xs = Belt_List.map(it._0, symbolToString$3);
+        var b = printBlock$3(it._1, /* Return */1);
+        var partial_arg_it$3 = {
+          TAG: /* Lam */3,
+          _0: xs,
+          _1: b
+        };
+        var partial_arg_ann$3 = consumeContextWrap$2(exprLamToString$3(Belt_List.map(xs, getPrint), getPrint(b)));
+        var partial_arg$3 = {
+          it: partial_arg_it$3,
+          ann: partial_arg_ann$3
+        };
+        e = (function (param) {
+            return lift(partial_arg$3, param);
+          });
+        break;
+    case /* Let */4 :
+        var b$1 = it._1;
+        var xes = Belt_List.map(it._0, xeToString$2);
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (param) {
+                        var b$2 = printBlock$3(b$1, /* Step */0);
+                        return {
+                                it: {
+                                  TAG: /* Let */4,
+                                  _0: xes,
+                                  _1: b$2
+                                },
+                                ann: {
+                                  sourceLocation: sourceLocation,
+                                  print: letLike$1("let", Belt_List.map(xes, getPrint), getPrint(b$2))
+                                }
+                              };
+                      }),
+                    stat: (function (ctx) {
+                        var b$2 = printBlock$3(b$1, ctx);
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: /* Let */4,
+                                    _0: xes,
+                                    _1: b$2
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: letLike$1("let", Belt_List.map(xes, getPrint), getPrint(b$2))
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
+        break;
+    case /* Letrec */5 :
+        var b$2 = it._1;
+        var xes$1 = Belt_List.map(it._0, xeToString$2);
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (param) {
+                        var b$3 = printBlock$3(b$2, /* Step */0);
+                        return {
+                                it: {
+                                  TAG: /* Letrec */5,
+                                  _0: xes$1,
+                                  _1: b$3
+                                },
+                                ann: {
+                                  sourceLocation: sourceLocation,
+                                  print: letLike$1("letrec", Belt_List.map(xes$1, getPrint), getPrint(b$3))
+                                }
+                              };
+                      }),
+                    stat: (function (ctx) {
+                        var b$3 = printBlock$3(b$2, ctx);
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: /* Letrec */5,
+                                    _0: xes$1,
+                                    _1: b$3
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: letLike$1("letrec", Belt_List.map(xes$1, getPrint), getPrint(b$3))
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
+        break;
+    case /* AppPrm */6 :
+        var es = Belt_List.map(it._1, (function (e, b) {
+                var e$1 = printExp$3(e);
+                return Curry._1(e$1.expr, b);
+              }));
+        var match = exprAppPrmToString$2(it._0, es);
+        var match$1 = match.it;
+        var partial_arg_it$4 = {
+          TAG: /* AppPrm */6,
+          _0: match$1[0],
+          _1: match$1[1]
+        };
+        var partial_arg_ann$4 = match.ann;
+        var partial_arg$4 = {
+          it: partial_arg_it$4,
+          ann: partial_arg_ann$4
+        };
+        e = (function (param) {
+            return lift(partial_arg$4, param);
+          });
+        break;
+    case /* App */7 :
+        var e$3 = printExp$3(it._0);
+        var e$4 = Curry._1(e$3.expr, true);
+        var es$1 = Belt_List.map(it._1, (function (e) {
+                var e$1 = printExp$3(e);
+                return Curry._1(e$1.expr, false);
+              }));
+        var partial_arg_it$5 = {
+          TAG: /* App */7,
+          _0: e$4,
+          _1: es$1
+        };
+        var partial_arg_ann$5 = consumeContext$2(exprAppToString$2(getPrint(e$4), Belt_List.map(es$1, getPrint)));
+        var partial_arg$5 = {
+          it: partial_arg_it$5,
+          ann: partial_arg_ann$5
+        };
+        e = (function (param) {
+            return lift(partial_arg$5, param);
+          });
+        break;
+    case /* Bgn */8 :
+        var es$2 = Belt_List.map(it._0, (function (e) {
+                var e$1 = printExp$3(e);
+                return Curry._1(e$1.expr, false);
+              }));
+        var e$5 = printExp$3(it._1);
+        var e$6 = Curry._1(e$5.expr, false);
+        var partial_arg_it$6 = {
+          TAG: /* Bgn */8,
+          _0: es$2,
+          _1: e$6
+        };
+        var partial_arg_ann$6 = consumeContext$2(exprBgnToString$2(Belt_List.map(es$2, getPrint), getPrint(e$6)));
+        var partial_arg$6 = {
+          it: partial_arg_it$6,
+          ann: partial_arg_ann$6
+        };
+        e = (function (param) {
+            return lift(partial_arg$6, param);
+          });
+        break;
+    case /* If */9 :
+        var e$7 = printExp$3(it._0);
+        var e_cnd = Curry._1(e$7.expr, true);
+        var e$8 = printExp$3(it._1);
+        var e_thn = Curry._1(e$8.expr, true);
+        var e$9 = printExp$3(it._2);
+        var e_els = Curry._1(e$9.expr, true);
+        var partial_arg_it$7 = {
+          TAG: /* If */9,
+          _0: e_cnd,
+          _1: e_thn,
+          _2: e_els
+        };
+        var partial_arg_ann$7 = consumeContextWrap$2(exprIfToString$3(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)));
+        var partial_arg$7 = {
+          it: partial_arg_it$7,
+          ann: partial_arg_ann$7
+        };
+        e = (function (param) {
+            return lift(partial_arg$7, param);
+          });
+        break;
+    case /* Cnd */10 :
+        var ob = it._1;
+        var ebs = it._0;
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (param) {
+                        throw {
+                              RE_EXN_ID: SMoLPrintError,
+                              _1: "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+                              Error: new Error()
+                            };
+                      }),
+                    stat: (function (ctx) {
+                        var ebs$1 = Belt_List.map(ebs, (function (eb) {
+                                var e = printExp$3(eb[0]);
+                                return [
+                                        Curry._1(e.expr, false),
+                                        printBlock$3(eb[1], ctx)
+                                      ];
+                              }));
+                        var ob$1 = obToString$2(ob, ctx);
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: /* Cnd */10,
+                                    _0: ebs$1,
+                                    _1: ob$1
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: exprCndToString$3(Belt_List.map(ebs$1, (function (param) {
+                                                return [
+                                                        getPrint(param[0]),
+                                                        getPrint(param[1])
+                                                      ];
+                                              })), Belt_Option.map(ob$1, getPrint))
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
+        break;
+    case /* GLam */11 :
+        var xs$1 = Belt_List.map(it._0, symbolToString$3);
+        var b$3 = printBlock$3(it._1, /* Return */1);
+        var partial_arg_it$8 = {
+          TAG: /* GLam */11,
+          _0: xs$1,
+          _1: b$3
+        };
+        var partial_arg_ann$8 = consumeContextWrap$2(exprGenToString$2(Belt_List.map(xs$1, getPrint), getPrint(b$3)));
+        var partial_arg$8 = {
+          it: partial_arg_it$8,
+          ann: partial_arg_ann$8
+        };
+        e = (function (param) {
+            return lift(partial_arg$8, param);
+          });
+        break;
+    case /* Yield */12 :
+        var e$10 = printExp$3(it._0);
+        var e$11 = Curry._1(e$10.expr, false);
+        var partial_arg_it$9 = {
+          TAG: /* Yield */12,
+          _0: e$11
+        };
+        var partial_arg_ann$9 = consumeContextWrap$2(op1("yield ", getPrint(e$11), ""));
+        var partial_arg$9 = {
+          it: partial_arg_it$9,
+          ann: partial_arg_ann$9
+        };
+        e = (function (param) {
+            return lift(partial_arg$9, param);
+          });
+        break;
+    
+  }
+  return Curry._1(e, param.ann);
+}
+
+function printDef$3(param) {
+  var d = param.it;
+  var match;
+  switch (d.TAG | 0) {
+    case /* Var */0 :
+        var x = symbolToString$3(d._0);
+        var e = printExp$3(d._1);
+        var e$1 = Curry._1(e.expr, false);
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* Var */0,
+              _0: x,
+              _1: e$1
+            },
+            ann: defvarLike$3("let ", getPrint(x), getPrint(e$1))
+          },
+          ";"
+        ];
+        break;
+    case /* Fun */1 :
+        var f = symbolToString$3(d._0);
+        var xs = Belt_List.map(d._1, symbolToString$3);
+        var b = printBlock$3(d._2, /* Return */1);
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* Fun */1,
+              _0: f,
+              _1: xs,
+              _2: b
+            },
+            ann: deffunToString$3(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
+          },
+          ""
+        ];
+        break;
+    case /* GFun */2 :
+        var f$1 = symbolToString$3(d._0);
+        var xs$1 = Belt_List.map(d._1, symbolToString$3);
+        var b$1 = printBlock$3(d._2, /* Return */1);
+        match = [
+          "",
+          {
+            it: {
+              TAG: /* GFun */2,
+              _0: f$1,
+              _1: xs$1,
+              _2: b$1
+            },
+            ann: defgenToString$3(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
+          },
+          ""
+        ];
+        break;
+    
+  }
+  var d$1 = match[1];
+  return [
+          match[0],
+          {
+            it: d$1.it,
+            ann: {
+              sourceLocation: param.ann,
+              print: d$1.ann
+            }
+          },
+          match[2]
+        ];
+}
+
+function xeToString$2(param) {
+  var xe = param.it;
+  var x = symbolToString$3(xe[0]);
+  var e = printExp$3(xe[1]);
+  var e$1 = Curry._1(e.expr, false);
+  var print = defvarLike$3("let ", getPrint(x), getPrint(e$1));
+  return {
+          it: [
+            x,
+            e$1
+          ],
+          ann: {
+            sourceLocation: param.ann,
+            print: print
+          }
+        };
+}
+
+function obToString$2(ob, ctx) {
+  return Belt_Option.map(ob, (function (b) {
+                return printBlock$3(b, ctx);
+              }));
+}
+
+function printBlock$3(param, context) {
+  var ann = param.ann;
+  var b = param.it;
+  if (b.TAG === /* BRet */0) {
+    var e = printExp$3(b._0);
+    var match = Curry._1(e.stat, context);
+    var e$1 = match[1];
+    var print = {
+      TAG: /* Group */1,
+      _0: {
+        hd: {
+          it: {
+            TAG: /* Plain */0,
+            _0: match[0]
+          },
+          ann: undefined
+        },
+        tl: {
+          hd: getPrint(e$1),
+          tl: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: match[2]
+              },
+              ann: undefined
+            },
+            tl: /* [] */0
+          }
+        }
+      }
+    };
+    return {
+            it: {
+              TAG: /* BRet */0,
+              _0: e$1
+            },
+            ann: {
+              sourceLocation: ann,
+              print: print
+            }
+          };
+  }
+  var match$1 = printTerm$3(b._0, /* Step */0);
+  var t = match$1[1];
+  var b$1 = printBlock$3(b._1, context);
+  var print$1 = {
+    TAG: /* Group */1,
+    _0: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: match$1[0]
+        },
+        ann: undefined
+      },
+      tl: {
+        hd: getPrint(t),
+        tl: {
+          hd: {
+            it: {
+              TAG: /* Plain */0,
+              _0: match$1[2]
+            },
+            ann: undefined
+          },
+          tl: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: "\n"
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: getPrint(b$1),
+              tl: /* [] */0
+            }
+          }
+        }
+      }
+    }
+  };
+  return {
+          it: {
+            TAG: /* BCons */1,
+            _0: t,
+            _1: b$1
+          },
+          ann: {
+            sourceLocation: ann,
+            print: print$1
+          }
+        };
+}
+
+function printTerm$3(param, ctx) {
+  var sourceLocation = param.ann;
+  var it = param.it;
+  if (it.TAG === /* Def */0) {
+    var match = printDef$3({
+          it: it._0,
+          ann: sourceLocation
+        });
+    var it$1 = mapAnn((function (it) {
+            return {
+                    TAG: /* Def */0,
+                    _0: it
+                  };
+          }), match[1]);
+    return [
+            match[0],
+            it$1,
+            match[2]
+          ];
+  }
+  var e = printExp$3({
+        it: it._0,
+        ann: sourceLocation
+      });
+  var match$1 = Curry._1(e.stat, ctx);
+  var it$2 = mapAnn((function (it) {
+          return {
+                  TAG: /* Exp */1,
+                  _0: it
+                };
+        }), match$1[1]);
+  return [
+          match$1[0],
+          it$2,
+          match$1[2]
+        ];
+}
+
+function printOutputlet$3(o) {
+  var p = function (v) {
+    switch (v.TAG | 0) {
+      case /* Ref */0 :
+          return "#" + String(v._0) + "#";
+      case /* Con */1 :
+          return constantToString$3(v._0);
+      case /* Struct */2 :
+          var content = v._1;
+          var i = v._0;
+          var i$1 = i !== undefined ? "#" + String(i) + "#=" : "";
+          var content$1;
+          if (content.TAG === /* Lst */0) {
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Lists are not supported in Pseudo.",
+                  Error: new Error()
+                };
+          }
+          content$1 = "vec[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]";
+          return "" + i$1 + "" + content$1 + "";
+      
+    }
+  };
+  if (o) {
+    return p(o._0);
+  } else {
+    return "error";
+  }
+}
+
+function printOutput$3(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return $$String.concat(sep, Belt_List.map(os, printOutputlet$3));
+}
+
+function printProgramFull$3(insertPrintTopLevel, p) {
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
+  var print = function (param) {
+    var sourceLocation = param.ann;
+    var it = param.it;
+    if (!it) {
+      return {
+              it: /* PNil */0,
+              ann: {
+                sourceLocation: sourceLocation,
+                print: {
+                  TAG: /* Group */1,
+                  _0: /* [] */0
+                }
+              }
+            };
+    }
+    var p = it._1;
+    var match = printTerm$3(it._0, /* Step */0);
+    var suffix = match[2];
+    var t = match[1];
+    var prefix = match[0];
+    if (!p.it) {
+      return {
+              it: /* PCons */{
+                _0: t,
+                _1: {
+                  it: /* PNil */0,
+                  ann: {
+                    sourceLocation: {
+                      begin: sourceLocation.end,
+                      end: sourceLocation.end
+                    },
+                    print: {
+                      TAG: /* Plain */0,
+                      _0: ""
+                    }
+                  }
+                }
+              },
+              ann: {
+                sourceLocation: sourceLocation,
+                print: op1(prefix, getPrint(t), suffix)
+              }
+            };
+    }
+    var p$1 = print(p);
+    return {
+            it: /* PCons */{
+              _0: t,
+              _1: p$1
+            },
+            ann: {
+              sourceLocation: sourceLocation,
+              print: concat2({
+                    it: op1(prefix, getPrint(t), suffix),
+                    ann: undefined
+                  }, "\n", getPrint(p$1))
+            }
+          };
+  };
+  return print(p$1);
+}
+
+function printProgram$3(insertPrintTopLevel, p) {
+  return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
+}
+
+function printStandAloneTerm$3(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var tmp;
+  if (it.TAG === /* Def */0) {
+    var match = printDef$3({
+          it: it._0,
+          ann: ann
+        });
+    tmp = match[1].ann.print;
+  } else {
+    var e = printExp$3({
+          it: it._0,
+          ann: ann
+        });
+    var match$1 = Curry._1(e.stat, /* Step */0);
+    tmp = match$1[1].ann.print;
+  }
+  return toString(tmp);
+}
+
+var PCPrinter = {
+  printName: printName$3,
+  printOutputlet: printOutputlet$3,
+  printOutput: printOutput$3,
+  printStandAloneTerm: printStandAloneTerm$3,
+  printProgram: printProgram$3,
+  printProgramFull: printProgramFull$3
+};
+
 function toString$6(t) {
   switch (t.TAG | 0) {
     case /* ParseError */0 :
@@ -6025,6 +7476,7 @@ export {
   SMoLPrinter ,
   JSPrinter ,
   PYPrinter ,
+  PCPrinter ,
   TranslateError ,
   SMoLTranslateError ,
   SMoLTranslator ,
