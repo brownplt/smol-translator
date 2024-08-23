@@ -5242,7 +5242,7 @@ function printLamBody(b, args, env) {
   }
   throw {
         RE_EXN_ID: SMoLPrintError,
-        _1: "In Python, `lambda` bodies must contain exactly one expression",
+        _1: "In Python, a lambda body must contain exactly one expression",
         Error: new Error()
       };
 }

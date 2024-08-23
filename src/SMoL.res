@@ -2610,7 +2610,7 @@ module PYPrinter: Printer = {
           ann,
         }
       }
-    | _ => raisePrintError("In Python, `lambda` bodies must contain exactly one expression")
+    | _ => raisePrintError("In Python, a lambda body must contain exactly one expression")
     }
   }
   and printDefBody = (b, args, env): block<printAnn> => {
