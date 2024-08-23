@@ -1404,7 +1404,7 @@ module JSPrinter: Printer = {
       stat: ctx =>
         switch ctx {
         | Step => ("", e, ";")
-        | Return => ("return ", e, ";") //`return ${e}`
+        | Return => ("return ", e, ";")
         },
     }
   }
@@ -1640,7 +1640,6 @@ module JSPrinter: Printer = {
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
     op3("", e_cnd, " ? ", e_thn, " : ", e_els, "")
-    // `${e_cnd} ? ${e_thn} : ${e_els}`
   }
 
   let symbolToString = ({it, ann}) => {
@@ -3505,7 +3504,7 @@ module SCPrinter: Printer = {
   }
 
   let defvarLike = (op, x, e) => {
-    group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
   }
 
   let exprAppToString = (e, es) => {
@@ -3522,36 +3521,44 @@ module SCPrinter: Printer = {
   let containsVarMutation = ref(false)
   let containsVecMutation = ref(false)
 
-  let consumeContext = (e: annotated<_, _>, context) => {
-    switch context {
-    | Expr(_) => surround("", e, "")
-    | Stat(ctx) =>
-      switch ctx {
-      | Step => surround("", e, "")
-      | Return => surround("", e, "")
-      }
+  let consumeContext: consumer = e => {
+    {
+      expr: _ => surround("", e, ""),
+      stat: ctx =>
+        switch ctx {
+        | Step => ("", e, "")
+        | Return => ("", e, "")
+        },
     }
   }
 
-  let consumeContextWrap = (e: annotated<_, _>, context: context) => {
-    switch context {
-    | Expr(true) => surround("(", e, ")")
-    | _ => consumeContext(e, context)
+  let consumeContextWrap: consumer = e => {
+    {
+      expr: ctx =>
+        if ctx {
+          surround("(", e, ")")
+        } else {
+          consumeContext(e).expr(ctx)
+        },
+      stat: consumeContext(e).stat,
     }
   }
 
-  let consumeContextVoid = (e: annotated<_, _>, context) => {
-    switch context {
-    | Stat(Return) => surround("", e, "")
-    | _ => consumeContext(e, context)
+  let consumeContextVoid: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, "")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContext(e).expr,
     }
   }
 
-  let exprAppPrmToString = (
-    p: Primitive.t,
-    es: list<bool => expression<printAnn>>,
-    context: context,
-  ): annotated<_, Print.t<sourceLocation>> => {
+  let exprAppPrmToString = (p: Primitive.t, es: list<bool => expression<printAnn>>): annotated<
+    _,
+    contexted<Print.t<sourceLocation>, _>,
+  > => {
     switch (p, es) {
     | (Arith(o), es) => {
         let os = switch o {
@@ -3562,9 +3569,7 @@ module SCPrinter: Printer = {
         }
         let es = es->List.map(e => e(true))
         {
-          ann: Print.concat(` ${os} `, es->List.map(e => getPrint(e)))
-          ->Print.dummyAnn
-          ->consumeContextWrap(context),
+          ann: Print.concat(` ${os} `, es->List.map(e => getPrint(e)))->consumeContextWrap,
           it: (Arith(o), es),
         }
       }
@@ -3580,7 +3585,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContextWrap(context),
+          ann: op2("", getPrint(e1), ` ${os} `, getPrint(e2), "")->consumeContext,
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -3593,23 +3598,21 @@ module SCPrinter: Printer = {
           ""
         }
         {
-          ann: op2(`${vecKeyword}(`, getPrint(e1), ", ", getPrint(e2), ")")->consumeContext(
-            context,
-          ),
+          ann: op2(`${vecKeyword}(`, getPrint(e1), ", ", getPrint(e2), ")")->consumeContext,
           it: (PairNew, list{e1, e2}),
         }
       }
     | (PairRefLeft, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: op1("", getPrint(e1), "(0)")->consumeContext(context),
+          ann: op1("", getPrint(e1), "(0)")->consumeContext,
           it: (PairRefLeft, list{e1}),
         }
       }
     | (PairRefRight, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: op1("", getPrint(e1), "(1)")->consumeContext(context),
+          ann: op1("", getPrint(e1), "(1)")->consumeContext,
           it: (PairRefRight, list{e1}),
         }
       }
@@ -3617,7 +3620,7 @@ module SCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: op2("", getPrint(e1), "(0) = ", getPrint(e2), "")->consumeContextVoid(context),
+          ann: op2("", getPrint(e1), "(0) = ", getPrint(e2), "")->consumeContextVoid,
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -3625,7 +3628,7 @@ module SCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: op2("", getPrint(e1), "(1) = ", getPrint(e2), "")->consumeContextVoid(context),
+          ann: op2("", getPrint(e1), "(1) = ", getPrint(e2), "")->consumeContextVoid,
           it: (PairSetRight, list{e1, e2}),
         }
       }
@@ -3641,7 +3644,7 @@ module SCPrinter: Printer = {
             `${vecKeyword}(`,
             Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
             ")",
-          )->consumeContext(context),
+          )->consumeContext,
           it: (VecNew, es),
         }
       }
@@ -3649,7 +3652,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(false)
         {
-          ann: op2("", getPrint(e1), "(", getPrint(e2), ")")->consumeContext(context),
+          ann: op2("", getPrint(e1), "(", getPrint(e2), ")")->consumeContext,
           it: (VecRef, list{e1, e2}),
         }
       }
@@ -3658,7 +3661,6 @@ module SCPrinter: Printer = {
         let e2 = e2(false)
         let e3 = e3(false)
         {
-          // ann: `${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`->consumeContextStat(context),
           ann: op3(
             "",
             getPrint(e1),
@@ -3667,49 +3669,49 @@ module SCPrinter: Printer = {
             ") = ",
             getPrint(e3),
             "",
-          )->consumeContextVoid(context),
+          )->consumeContextVoid,
           it: (VecSet, list{e1, e2, e3}),
         }
       }
     | (VecLen, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: op1("", getPrint(e1), ".length")->consumeContext(context),
+          ann: op1("", getPrint(e1), ".length")->consumeContext,
           it: (VecLen, list{e1}),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: op1("throw ", getPrint(e1), "")->consumeContextWrap(context),
+          ann: op1("throw ", getPrint(e1), "")->consumeContextWrap,
           it: (Err, list{e1}),
         }
       }
     | (Not, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: op1("¬ ", getPrint(e1), "")->consumeContextWrap(context),
+          ann: op1("! ", getPrint(e1), "")->consumeContextWrap,
           it: (Not, list{e1}),
         }
       }
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: op1("println(", getPrint(e1), ")")->consumeContextVoid(context),
+          ann: op1("println(", getPrint(e1), ")")->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
     | (Next, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: op1("next(", getPrint(e1), ")")->consumeContextVoid(context),
+          ann: op1("next(", getPrint(e1), ")")->consumeContextVoid,
           it: (Next, list{e1}),
         }
       }
-    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | (Cons, _) => raisePrintError("List is not supported by Scala")
     | _ =>
       raisePrintError(
-        `Our pseudo-code syntax doesn't let you use ${Primitive.toString(p)} on ${List.length(
+        `Scala doesn't let you use ${Primitive.toString(p)} on ${List.length(
             es,
           ) |> Int.toString} parameter(s).`,
       )
@@ -3717,7 +3719,7 @@ module SCPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs), " =", indentBlock(e, 2), "")
+    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, " =", indentBlock(e, 2), "")
   }
 
   let defvarToString = (x, e) => {
@@ -3726,25 +3728,28 @@ module SCPrinter: Printer = {
     } else {
       "val"
     }
-    op1("", defvarLike(`${keyword} `, x, e), "")
+    defvarLike(`${keyword} `, x, e)
   }
 
   let deffunToString = (f, xs, b) => {
-    funLike("def", f, xs->List.map(x => group2(x, Print.string(" : Int"))), b)
+    funLike("def", f, xs, b)
   }
 
   let defgenToString = (f, xs, b) => {
-    funLike("gen def", f, xs->List.map(x => group2(x, Print.string(" : Int"))), b)
+    funLike("gen def", f, xs, b)
   }
 
   let exprSetToString = (x, e) => {
-    op2("", x, " = ", e, "")
+    defvarLike("", x, e)
   }
 
   let exprLamToString = (xs, b) => {
     op2(
       "(",
-      Print.concat(", ", xs->List.map(x => group2(x, Print.string(" : Int")))) |> Print.dummyAnn,
+      Print.concat(
+        ", ",
+        xs->List.map(x => group2(x, Print.string(" : Int")) |> Print.dummyAnn),
+      ) |> Print.dummyAnn,
       ") =>",
       indentBlock(b, 2),
       "",
@@ -3756,7 +3761,7 @@ module SCPrinter: Printer = {
   let exprYieldToString = e => op1("yield ", e, "")
 
   let exprBgnToString = (es, e) => {
-    listToString(list{...es, e}) |> Print.dummyAnn
+    listToString(list{...es, e})
   }
 
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
@@ -3766,13 +3771,13 @@ module SCPrinter: Printer = {
       | Some(b) => list{...ebs, (Print.string(""), b)}
       }
     }
-    let ebs = ebs->List.map(((e, b)) => op2("if ", e, ":", indentBlock(b, 2), "\nend"))
+    let ebs =
+      ebs->List.map(((e, b)) => op2("if ", e, ":", indentBlock(b, 2), "\nend") |> Print.dummyAnn)
     Print.concat(" else ", ebs)
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "")
-    // `${e_cnd} ? ${e_thn} : ${e_els}`
+    op3("", e_cnd, " ? ", e_thn, " : ", e_els, "")
   }
 
   let symbolToString = ({it, ann}) => {
@@ -3785,93 +3790,113 @@ module SCPrinter: Printer = {
     }
   }
 
-  let rec printExp = ({it, ann: sourceLocation}, context) => {
-    let e: annotated<expressionNode<printAnn>, Print.t<sourceLocation>> = switch it {
-    | Con(c) => {
+  let rec printExp = ({it, ann: sourceLocation}) => {
+    let lift = ({it, ann: print}, sourceLocation) => {
+      {
+        expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
+        stat: ctx => {
+          let (prefix, print, suffix) = print.stat(ctx)
+          (prefix, {it, ann: {sourceLocation, print}}, suffix)
+        },
+      }
+    }
+    let e: sourceLocation => contexted<
+      expression<printAnn>,
+      (string, expression<printAnn>, string),
+    > = switch it {
+    | Con(c) =>
+      {
         it: Con(c),
-        ann: Print.string(constantToString(c))->consumeContext(context),
-      }
-    | Ref(x) => {
+        ann: Plain(constantToString(c))->consumeContext,
+      }->lift
+    | Ref(x) =>
+      {
         it: Ref(x),
-        ann: Print.string(x->printName)->consumeContext(context),
-      }
-    | Set(x, e) => {
+        ann: Plain(x->printName)->consumeContext,
+      }->lift
+    | Set(x, e) =>
+      {
         let x = symbolToString(x)
         let e: expression<printAnn> = e->printExp->asExpr(false)
         {
-          ann: exprSetToString(getPrint(x), getPrint(e))->consumeContextVoid(context),
+          ann: exprSetToString(getPrint(x), getPrint(e))->consumeContextVoid,
           it: Set(x, e),
         }
-      }
-    | Lam(xs, b) => {
+      }->lift
+    | Lam(xs, b) =>
+      {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprLamToString(xs->List.map(x => getPrint(x)), getPrint(b))->consumeContextWrap(
-            context,
-          ),
+          ann: exprLamToString(xs->List.map(x => getPrint(x)), getPrint(b))->consumeContextWrap,
           it: Lam(xs, b),
         }
-      }
-    | GLam(xs, b) => {
+      }->lift
+    | GLam(xs, b) =>
+      {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
         {
-          ann: exprGenToString(xs->List.map(x => getPrint(x)), getPrint(b))->consumeContextWrap(
-            context,
-          ),
-          it: Lam(xs, b),
+          ann: exprGenToString(xs->List.map(x => getPrint(x)), getPrint(b))->consumeContextWrap,
+          it: GLam(xs, b),
         }
-      }
-    | Yield(e) => {
+      }->lift
+    | Yield(e) =>
+      {
         let e = e->printExp->asExpr(false)
         {
-          ann: exprYieldToString(getPrint(e))->consumeContextWrap(context),
+          ann: exprYieldToString(getPrint(e))->consumeContextWrap,
           it: Yield(e),
         }
-      }
-    | AppPrm(p, es) => {
+      }->lift
+    | AppPrm(p, es) =>
+      {
         let es = es->List.map((e, b) => e->printExp->asExpr(b))
-        let {ann: print, it: (p, es)} = exprAppPrmToString(p, es, context)
+        let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
           ann: print,
         }
-      }
-    | App(e, es) => {
+      }->lift
+    | App(e, es) =>
+      {
         let e = e->printExp->asExpr(true)
         let es = es->List.map(e => e->printExp->asExpr(false))
         {
-          ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext(
-            context,
-          ),
+          ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext,
           it: App(e, es),
         }
-      }
-    | Let(_xes, _b) =>
-      raisePrintError("let-expressions are not supported by our pseudo-code syntax")
-    | Letrec(_xes, _b) =>
-      raisePrintError("letrec-expressions are not supported by our pseudo-code syntax")
+      }->lift
+    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Scala")
+    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala")
     | Cnd(ebs, ob) =>
-      switch context {
-      | Expr(_) =>
-        raisePrintError(
-          "Multi-armed conditionals in our pseudo-code syntax is not supported by the translator yet.",
-        )
-      | Stat(context) => {
+      sourceLocation => {
+        expr: _ =>
+          raisePrintError(
+            "Multi-armed conditionals in Scala is not supported by the translator yet.",
+          ),
+        stat: ctx => {
           let ebs: list<(expression<printAnn>, block<printAnn>)> =
-            ebs->List.map(eb => eb->ebToString(context))
-          let ob = ob->obToString(context)
-          {
-            ann: exprCndToString(
-              ebs->List.map(((e, b)) => (getPrint(e), getPrint(b))),
-              ob->Option.map(b => getPrint(b)),
-            ),
-            it: Cnd(ebs, ob),
-          }
-        }
+            ebs->List.map(eb => eb->ebToString(ctx))
+          let ob = ob->obToString(ctx)
+          (
+            "",
+            {
+              ann: {
+                sourceLocation,
+                print: exprCndToString(
+                  ebs->List.map(((e, b)) => (getPrint(e), getPrint(b))),
+                  ob->Option.map(b => getPrint(b)),
+                ),
+              },
+              it: Cnd(ebs, ob),
+            },
+            "",
+          )
+        },
       }
-    | If(e_cnd, e_thn, e_els) => {
+    | If(e_cnd, e_thn, e_els) =>
+      {
         let e_cnd = e_cnd->printExp->asExpr(true)
         let e_thn = e_thn->printExp->asExpr(true)
         let e_els = e_els->printExp->asExpr(true)
@@ -3880,70 +3905,66 @@ module SCPrinter: Printer = {
             getPrint(e_cnd),
             getPrint(e_thn),
             getPrint(e_els),
-          )->consumeContextWrap(context),
+          )->consumeContextWrap,
           it: If(e_cnd, e_thn, e_els),
         }
-      }
-    | Bgn(es, e) => {
+      }->lift
+    | Bgn(es, e) =>
+      {
         let es = es->List.map(e => e->printExp->asExpr(false))
         let e = e->printExp->asExpr(false)
         {
-          ann: exprBgnToString(es->List.map(e => getPrint(e)), getPrint(e))->consumeContext(
-            context,
-          ),
+          ann: exprBgnToString(es->List.map(e => getPrint(e)), getPrint(e))->consumeContext,
           it: Bgn(es, e),
         }
-      }
+      }->lift
     }
-    let {ann: print, it} = e
-    {ann: {print, sourceLocation}, it}
+    e(sourceLocation)
   }
-  and defToString = ({ann: sourceLocation, it: d}: definition<sourceLocation>): definition<
-    printAnn,
-  > => {
-    let d = switch d {
+  and printDef = ({ann: sourceLocation, it: d}) => {
+    let (prefix, d, suffix) = switch d {
     | Var(x, e) => {
         let x = x->symbolToString
         let e = e->printExp->asExpr(false)
-        {
-          ann: defvarToString(getPrint(x), getPrint(e)),
-          it: Var(x, e),
-        }
+        (
+          "",
+          {
+            ann: defvarToString(getPrint(x), getPrint(e)),
+            it: Var(x, e),
+          },
+          "",
+        )
       }
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
-        {
-          ann: deffunToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
-          it: Fun(f, xs, b),
-        }
+        (
+          "",
+          {
+            ann: deffunToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
+            it: Fun(f, xs, b),
+          },
+          "",
+        )
       }
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(Return)
-        {
-          ann: defgenToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
-          it: GFun(f, xs, b),
-        }
+        (
+          "",
+          {
+            ann: defgenToString(getPrint(f), xs->List.map(x => getPrint(x)), getPrint(b)),
+            it: GFun(f, xs, b),
+          },
+          "",
+        )
       }
     }
     let {ann: print, it} = d
-    {ann: {print: print.it, sourceLocation}, it}
+    (prefix, {ann: {print, sourceLocation}, it}, suffix)
   }
-  // and xeToString = ({it: xe, ann: sourceLocation}: bind<sourceLocation>): bind<printAnn> => {
-  //   let (x, e) = xe
-  //   let (x, e) = (symbolToString(x), e->printExp->asExpr(false))
-  //   let print = defvarToString(getPrint(x), getPrint(e)).it
-  //   {
-  //     it: (x, e),
-  //     ann: {
-  //       print,
-  //       sourceLocation,
-  //     },
-  //   }
-  // }
   and ebToString = (eb, ctx: statContext) => {
     let (e, b) = eb
     (e->printExp->asExpr(false), b->printBlock(ctx))
@@ -3951,28 +3972,53 @@ module SCPrinter: Printer = {
   and obToString = (ob, ctx: statContext) => {
     ob->Option.map(b => b->printBlock(ctx))
   }
-  and printBlock = ({ann: sourceLocation, it: b}, context: statContext) => {
+  and printBlock = ({ann, it: b}, context: statContext) => {
     switch b {
-    | BRet(e) => printExp({it: e, ann: sourceLocation}, Stat(context)) |> mapAnn(e => BRet(e))
-    | BCons(t, b) => {
-        let t = printTerm(t, Step)
-        let b = printBlock(b, context)
-        let print = Group(list{getPrint(t), Print.string("\n"), getPrint(b)})
+    | BRet(e) => {
+        let (prefix, e, suffix) = printExp(e)->asStat(context)
+        let print = Group(list{Print.string(prefix), getPrint(e), Print.string(suffix)})
         {
-          ann: {print, sourceLocation},
+          ann: {print, sourceLocation: ann},
+          it: BRet(e),
+        }
+      }
+    | BCons(t, b) => {
+        let (prefix, t, suffix) = printTerm(t, Step)
+        let b = printBlock(b, context)
+        let print = Group(list{
+          Print.string(prefix),
+          getPrint(t),
+          Print.string(suffix),
+          Print.string("\n"),
+          getPrint(b),
+        })
+        {
+          ann: {print, sourceLocation: ann},
           it: BCons(t, b),
         }
       }
     }
   }
-  and printTerm = ({ann: sourceLocation, it: t}: term<sourceLocation>, ctx): term<printAnn> => {
-    switch t {
-    | Exp(it) => printExp({ann: sourceLocation, it}, Stat(ctx)) |> mapAnn(v => Exp(v))
-    | Def(it) => defToString({ann: sourceLocation, it}) |> mapAnn(v => Def(v))
+  and printTerm = ({ann: sourceLocation, it}: term<sourceLocation>, ctx): (
+    string,
+    term<printAnn>,
+    string,
+  ) => {
+    switch it {
+    | Exp(it) => {
+        let (prefix, it, suffix) = printExp({ann: sourceLocation, it})->asStat(ctx)
+        let it = it |> mapAnn(it => Exp(it))
+        (prefix, it, suffix)
+      }
+    | Def(it) => {
+        let (prefix, it, suffix) = printDef({ann: sourceLocation, it})
+        let it = it |> mapAnn(it => Def(it))
+        (prefix, it, suffix)
+      }
     }
   }
 
-  let printOutputlet = (o): string => {
+  let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
       | Ref(_) => raisePrintError("Can't print circular data structure in Scala")
@@ -4000,7 +4046,7 @@ module SCPrinter: Printer = {
     os->List.map(printOutputlet) |> String.concat(sep)
   }
 
-  let printProgramFull = (insertPrintTopLevel, p: program<sourceLocation>) => {
+  let printProgramFull = (insertPrintTopLevel, p) => {
     let p = if insertPrintTopLevel {
       insertTopLevelPrint(p)
     } else {
@@ -4017,7 +4063,7 @@ module SCPrinter: Printer = {
       switch it {
       | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
       | PCons(t, p) => {
-          let t = printTerm(t, Step)
+          let (prefix, t, suffix) = printTerm(t, Step)
           switch p {
           | {it: PNil} => {
               it: PCons(
@@ -4034,7 +4080,7 @@ module SCPrinter: Printer = {
                 },
               ),
               ann: {
-                print: getPrint(t).it,
+                print: op1(prefix, getPrint(t), suffix),
                 sourceLocation,
               },
             }
@@ -4043,7 +4089,11 @@ module SCPrinter: Printer = {
               {
                 it: PCons(t, p),
                 ann: {
-                  print: Print.concat2(getPrint(t), "\n", getPrint(p)),
+                  print: Print.concat2(
+                    op1(prefix, getPrint(t), suffix) |> Print.dummyAnn,
+                    "\n",
+                    getPrint(p),
+                  ),
                   sourceLocation,
                 },
               }
@@ -4061,8 +4111,14 @@ module SCPrinter: Printer = {
 
   let printStandAloneTerm = ({it, ann}: term<sourceLocation>): string => {
     switch it {
-    | Def(it) => defToString({it, ann}).ann.print
-    | Exp(it) => printExp({it, ann}, Stat(Step)).ann.print
+    | Def(it) => {
+        let (_, it, _) = printDef({it, ann})
+        it.ann.print
+      }
+    | Exp(it) => {
+        let (_, it, _) = printExp({it, ann})->asStat(Step)
+        it.ann.print
+      }
     } |> Print.toString
   }
 }
