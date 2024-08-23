@@ -4816,15 +4816,14 @@ function printExp$2(param, env) {
         break;
     case /* Lam */3 :
         var xs = Belt_List.map(it._0, symbolToString$2);
-        var e$3 = printBlock$2(it._1, env);
-        var b = Curry._1(e$3.expr, false);
+        var b = printLamBody(it._1, xs, env);
         var partial_arg_it$3 = {
           TAG: /* Lam */3,
           _0: xs,
           _1: b
         };
         var partial_arg_ann$3 = consumeContextWrap$1(exprLamToString$2({
-                  it: listToString$2(Belt_List.map(xs, getPrint)),
+                  it: concat(",", Belt_List.map(xs, getPrint)),
                   ann: undefined
                 }, getPrint(b)));
         var partial_arg$3 = {
@@ -4869,18 +4868,18 @@ function printExp$2(param, env) {
           });
         break;
     case /* App */7 :
-        var e$4 = printExp$2(it._0, env);
-        var e$5 = Curry._1(e$4.expr, true);
+        var e$3 = printExp$2(it._0, env);
+        var e$4 = Curry._1(e$3.expr, true);
         var es$1 = Belt_List.map(it._1, (function (e) {
                 var e$1 = printExp$2(e, env);
                 return Curry._1(e$1.expr, false);
               }));
         var partial_arg_it$5 = {
           TAG: /* App */7,
-          _0: e$5,
+          _0: e$4,
           _1: es$1
         };
-        var partial_arg_ann$5 = consumeContext$1(exprAppToString$1(getPrint(e$5), Belt_List.map(es$1, getPrint)));
+        var partial_arg_ann$5 = consumeContext$1(exprAppToString$1(getPrint(e$4), Belt_List.map(es$1, getPrint)));
         var partial_arg$5 = {
           it: partial_arg_it$5,
           ann: partial_arg_ann$5
@@ -4896,12 +4895,12 @@ function printExp$2(param, env) {
               Error: new Error()
             };
     case /* If */9 :
-        var e$6 = printExp$2(it._0, env);
-        var e_cnd = Curry._1(e$6.expr, true);
-        var e$7 = printExp$2(it._1, env);
-        var e_thn = Curry._1(e$7.expr, true);
-        var e$8 = printExp$2(it._2, env);
-        var e_els = Curry._1(e$8.expr, true);
+        var e$5 = printExp$2(it._0, env);
+        var e_cnd = Curry._1(e$5.expr, true);
+        var e$6 = printExp$2(it._1, env);
+        var e_thn = Curry._1(e$6.expr, true);
+        var e$7 = printExp$2(it._2, env);
+        var e_els = Curry._1(e$7.expr, true);
         var partial_arg_it$6 = {
           TAG: /* If */9,
           _0: e_cnd,
@@ -4965,15 +4964,14 @@ function printExp$2(param, env) {
         break;
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$2);
-        var e$9 = printBlock$2(it._1, env);
-        var b$1 = Curry._1(e$9.expr, false);
+        var b$1 = printLamBody(it._1, xs$1, env);
         var partial_arg_it$7 = {
           TAG: /* GLam */11,
           _0: xs$1,
           _1: b$1
         };
         var partial_arg_ann$7 = consumeContextWrap$1(exprLamToString$2({
-                  it: listToString$2(Belt_List.map(xs$1, getPrint)),
+                  it: concat(",", Belt_List.map(xs$1, getPrint)),
                   ann: undefined
                 }, getPrint(b$1)));
         var partial_arg$7 = {
@@ -4985,13 +4983,13 @@ function printExp$2(param, env) {
           });
         break;
     case /* Yield */12 :
-        var e$10 = printExp$2(it._0, env);
-        var e$11 = Curry._1(e$10.expr, false);
+        var e$8 = printExp$2(it._0, env);
+        var e$9 = Curry._1(e$8.expr, false);
         var partial_arg_it$8 = {
           TAG: /* Yield */12,
-          _0: e$11
+          _0: e$9
         };
-        var partial_arg_ann$8 = consumeContextWrap$1(op1("yield ", getPrint(e$11), ""));
+        var partial_arg_ann$8 = consumeContextWrap$1(op1("yield ", getPrint(e$9), ""));
         var partial_arg$8 = {
           it: partial_arg_it$8,
           ann: partial_arg_ann$8
@@ -5029,7 +5027,7 @@ function printDef$2(param, env) {
     case /* Fun */1 :
         var f = symbolToString$2(d._0);
         var xs = Belt_List.map(d._1, symbolToString$2);
-        var b = printBody(d._2, xs, env);
+        var b = printDefBody(d._2, xs, env);
         match = [
           "",
           {
@@ -5047,7 +5045,7 @@ function printDef$2(param, env) {
     case /* GFun */2 :
         var f$1 = symbolToString$2(d._0);
         var xs$1 = Belt_List.map(d._1, symbolToString$2);
-        var b$1 = printBody(d._2, xs$1, env);
+        var b$1 = printDefBody(d._2, xs$1, env);
         match = [
           "",
           {
@@ -5221,7 +5219,35 @@ function printBlock$2(b, env) {
         };
 }
 
-function printBody(b, args, env) {
+function printLamBody(b, args, env) {
+  var e = b.it;
+  if (e.TAG === /* BRet */0) {
+    var args$1 = Belt_List.map(args, (function (x) {
+            return x.it;
+          }));
+    var match = extend(args$1, env);
+    var e$1 = printExp$2(e._0, match[1]);
+    var match$1 = Curry._1(e$1.expr, false);
+    var ann = match$1.ann;
+    return {
+            it: {
+              TAG: /* BRet */0,
+              _0: {
+                it: match$1.it,
+                ann: ann
+              }
+            },
+            ann: ann
+          };
+  }
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: "In Python, `lambda` bodies must contain exactly one expression",
+        Error: new Error()
+      };
+}
+
+function printDefBody(b, args, env) {
   var locs = Belt_List.map(xsOfBlock(b), (function (x) {
           return x.it;
         }));

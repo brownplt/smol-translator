@@ -2404,10 +2404,10 @@ module PYPrinter: Printer = {
     | Lam(xs, b) =>
       {
         let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(env)->asExpr(false)
+        let b = b->printLamBody(xs, env)
         {
           ann: exprLamToString(
-            listToString(xs->List.map(getPrint))->Print.dummyAnn,
+            Print.concat(",", xs->List.map(getPrint))->Print.dummyAnn,
             getPrint(b),
           )->consumeContextWrap,
           it: Lam(xs, b),
@@ -2416,10 +2416,10 @@ module PYPrinter: Printer = {
     | GLam(xs, b) =>
       {
         let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(env)->asExpr(false)
+        let b = b->printLamBody(xs, env)
         {
           ann: exprGenToString(
-            listToString(xs->List.map(getPrint))->Print.dummyAnn,
+            Print.concat(",", xs->List.map(getPrint))->Print.dummyAnn,
             getPrint(b),
           )->consumeContextWrap,
           it: GLam(xs, b),
@@ -2514,7 +2514,7 @@ module PYPrinter: Printer = {
     | Fun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(xs, env)
+        let b = b->printDefBody(xs, env)
         (
           "",
           {
@@ -2527,7 +2527,7 @@ module PYPrinter: Printer = {
     | GFun(f, xs, b) => {
         let f = f->symbolToString
         let xs = xs->List.map(symbolToString)
-        let b = b->printBody(xs, env)
+        let b = b->printDefBody(xs, env)
         (
           "",
           {
@@ -2580,10 +2580,10 @@ module PYPrinter: Printer = {
       expr: ctx => {
         switch b.it {
         | BRet(e) => {
-            let { it, ann} = e->printExp(env)->asExpr(ctx)
+            let {it, ann} = e->printExp(env)->asExpr(ctx)
             {
-              it: BRet({ it, ann }),
-              ann
+              it: BRet({it, ann}),
+              ann,
             }
           }
         | _ => raisePrintError("Python blocks can't be used as expressions in general")
@@ -2598,7 +2598,22 @@ module PYPrinter: Printer = {
       },
     }
   }
-  and printBody = (b, args, env) => {
+  and printLamBody = (b, args, env): block<printAnn> => {
+    switch b.it {
+    | BRet(e) => {
+        let args: list<string> = args->List.map(x => x.it)
+        let (_refs, env) = extend(args, env)
+        // todo: there should be some check after we support set! expression (#30)
+        let {it, ann} = e->printExp(env)->asExpr(false)
+        {
+          it: BRet({it, ann}),
+          ann,
+        }
+      }
+    | _ => raisePrintError("In Python, `lambda` bodies must contain exactly one expression")
+    }
+  }
+  and printDefBody = (b, args, env): block<printAnn> => {
     let locs: list<string> = xsOfBlock(b)->List.map(x => x.it)
     let args: list<string> = args->List.map(x => x.it)
     let (refs, env) = extend(List.concat(locs, args), env)
