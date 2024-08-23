@@ -9,8 +9,6 @@ import * as Belt_Float from "rescript/lib/es6/belt_Float.js";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.bs.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
-import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
-import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
 
 function mapAnn(f, param) {
@@ -211,17 +209,14 @@ function containsNL(it) {
 
 function group2(s1, s2) {
   return {
-          it: {
-            TAG: /* Group */1,
-            _0: {
-              hd: s1,
-              tl: {
-                hd: s2,
-                tl: /* [] */0
-              }
+          TAG: /* Group */1,
+          _0: {
+            hd: s1,
+            tl: {
+              hd: s2,
+              tl: /* [] */0
             }
-          },
-          ann: undefined
+          }
         };
 }
 
@@ -237,7 +232,10 @@ function surround(prefix, s, suffix) {
               ann: undefined
             },
             tl: {
-              hd: s,
+              hd: {
+                it: s,
+                ann: undefined
+              },
               tl: {
                 hd: {
                   it: {
@@ -486,12 +484,13 @@ function makeProgram(ts) {
 
 function makeBlock(ts, e) {
   if (!ts) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), e);
+    return {
+            it: {
+              TAG: /* BRet */0,
+              _0: e
+            },
+            ann: e.ann
+          };
   }
   var t = ts.hd;
   var b = makeBlock(ts.tl, e);
@@ -963,10 +962,7 @@ function letstar(ann, xes, body) {
   }
   var e = body.it;
   if (e.TAG === /* BRet */0) {
-    return {
-            it: e._0,
-            ann: body.ann
-          };
+    return e._0;
   } else {
     return {
             it: {
@@ -1849,25 +1845,28 @@ function exprIfToString(e_cnd, e_thn, e_els) {
                 _0: "(if "
               },
               ann: undefined
-            }, group2({
-                  it: concat("\n", {
-                        hd: e_cnd,
-                        tl: {
-                          hd: e_thn,
+            }, {
+              it: group2({
+                    it: concat("\n", {
+                          hd: e_cnd,
                           tl: {
-                            hd: e_els,
-                            tl: /* [] */0
+                            hd: e_thn,
+                            tl: {
+                              hd: e_els,
+                              tl: /* [] */0
+                            }
                           }
-                        }
-                      }),
-                  ann: undefined
-                }, {
-                  it: {
-                    TAG: /* Plain */0,
-                    _0: ")"
-                  },
-                  ann: undefined
-                }));
+                        }),
+                    ann: undefined
+                  }, {
+                    it: {
+                      TAG: /* Plain */0,
+                      _0: ")"
+                    },
+                    ann: undefined
+                  }),
+              ann: undefined
+            });
 }
 
 function letLike(op, xes, b) {
@@ -2237,19 +2236,25 @@ function xeToString(param) {
   var xe = param.it;
   var x = symbolToString(xe[0]);
   var e = printExp(xe[1]);
-  var print = hcat(group2({
-            it: {
-              TAG: /* Plain */0,
-              _0: "["
-            },
-            ann: undefined
-          }, getPrint(x)), group2(getPrint(e), {
-            it: {
-              TAG: /* Plain */0,
-              _0: "]"
-            },
-            ann: undefined
-          }));
+  var print = hcat({
+        it: group2({
+              it: {
+                TAG: /* Plain */0,
+                _0: "["
+              },
+              ann: undefined
+            }, getPrint(x)),
+        ann: undefined
+      }, {
+        it: group2(getPrint(e), {
+              it: {
+                TAG: /* Plain */0,
+                _0: "]"
+              },
+              ann: undefined
+            }),
+        ann: undefined
+      });
   return {
           it: [
             x,
@@ -2270,18 +2275,16 @@ function ebToString(eb) {
 }
 
 function printBlock(param) {
-  var sourceLocation = param.ann;
   var b = param.it;
   if (b.TAG === /* BRet */0) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), printExp({
-                    it: b._0,
-                    ann: sourceLocation
-                  }));
+    var e = printExp(b._0);
+    return {
+            it: {
+              TAG: /* BRet */0,
+              _0: e
+            },
+            ann: e.ann
+          };
   }
   var t = printTerm(b._0);
   var b$1 = printBlock(b._1);
@@ -2311,7 +2314,7 @@ function printBlock(param) {
             _1: b$1
           },
           ann: {
-            sourceLocation: sourceLocation,
+            sourceLocation: param.ann,
             print: print
           }
         };
@@ -2468,14 +2471,22 @@ function insertTopLevelPrint(p) {
         var ib = function (b) {
           var e = b.it;
           var tmp;
-          tmp = e.TAG === /* BRet */0 ? ({
-                TAG: /* BRet */0,
-                _0: ie(e._0)
-              }) : ({
-                TAG: /* BCons */1,
-                _0: e._0,
-                _1: ib(e._1)
-              });
+          if (e.TAG === /* BRet */0) {
+            var e$1 = e._0;
+            tmp = {
+              TAG: /* BRet */0,
+              _0: {
+                it: ie(e$1.it),
+                ann: e$1.ann
+              }
+            };
+          } else {
+            tmp = {
+              TAG: /* BCons */1,
+              _0: e._0,
+              _1: ib(e._1)
+            };
+          }
           return {
                   it: tmp,
                   ann: b.ann
@@ -2612,140 +2623,122 @@ function insertTopLevelPrint(p) {
 }
 
 function op1(s1, p1, s2) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: s1
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: p1,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: s2
-        },
-        ann: undefined
-      },
-      tl: /* [] */0
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
   return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: s1
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: p1,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: s2
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
         };
 }
 
 function op2(s1, p1, s2, p2, s3) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: s1
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: p1,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: s2
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: p2,
-        tl: {
-          hd: {
-            it: {
-              TAG: /* Plain */0,
-              _0: s3
-            },
-            ann: undefined
-          },
-          tl: /* [] */0
-        }
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
   return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: s1
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: p1,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: s2
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: p2,
+                  tl: {
+                    hd: {
+                      it: {
+                        TAG: /* Plain */0,
+                        _0: s3
+                      },
+                      ann: undefined
+                    },
+                    tl: /* [] */0
+                  }
+                }
+              }
+            }
+          }
         };
 }
 
 function op3(s1, p1, s2, p2, s3, p3, s4) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: s1
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: p1,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: s2
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: p2,
-        tl: {
-          hd: {
-            it: {
-              TAG: /* Plain */0,
-              _0: s3
-            },
-            ann: undefined
-          },
-          tl: {
-            hd: p3,
-            tl: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: s4
-                },
-                ann: undefined
+  return {
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: s1
               },
-              tl: /* [] */0
+              ann: undefined
+            },
+            tl: {
+              hd: p1,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: s2
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: p2,
+                  tl: {
+                    hd: {
+                      it: {
+                        TAG: /* Plain */0,
+                        _0: s3
+                      },
+                      ann: undefined
+                    },
+                    tl: {
+                      hd: p3,
+                      tl: {
+                        hd: {
+                          it: {
+                            TAG: /* Plain */0,
+                            _0: s4
+                          },
+                          ann: undefined
+                        },
+                        tl: /* [] */0
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
-        }
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
-  return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
         };
 }
 
@@ -2856,39 +2849,33 @@ function listToString$1(es) {
 }
 
 function defvarLike$1(op, x, e) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: op
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: x,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: " = "
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: indent(e, 2),
-        tl: /* [] */0
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
   return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
+          TAG: /* Group */1,
+          _0: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: op
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: x,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: /* Plain */0,
+                    _0: " = "
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: indent(e, 2),
+                  tl: /* [] */0
+                }
+              }
+            }
+          }
         };
 }
 
@@ -2899,43 +2886,74 @@ function exprAppToString(e, es) {
             });
 }
 
-function consumeContext(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return surround("", e, "");
-  } else {
-    return surround("return ", e, "");
-  }
+function consumeContext(e) {
+  return {
+          expr: (function (param) {
+              return surround("", e, "");
+            }),
+          stat: (function (ctx) {
+              if (ctx) {
+                return [
+                        "return ",
+                        e,
+                        ""
+                      ];
+              } else {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              }
+            })
+        };
 }
 
-function consumeContextWrap(e, context) {
-  if (context.TAG === /* Expr */0 && context._0) {
-    return surround("(", e, ")");
-  } else {
-    return consumeContext(e, context);
-  }
+function consumeContextWrap(e) {
+  return {
+          expr: (function (ctx) {
+              if (ctx) {
+                return surround("(", e, ")");
+              } else {
+                return Curry._1(consumeContext(e).expr, ctx);
+              }
+            }),
+          stat: consumeContext(e).stat
+        };
 }
 
-function consumeContextVoid(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return consumeContext(e, context);
-  } else {
-    return surround("", e, "\nreturn");
-  }
+function consumeContextVoid(e) {
+  return {
+          expr: consumeContext(e).expr,
+          stat: (function (ctx) {
+              if (ctx) {
+                return [
+                        "",
+                        e,
+                        "\nreturn"
+                      ];
+              } else {
+                return Curry._1(consumeContext(e).stat, ctx);
+              }
+            })
+        };
 }
 
-function consumeContextStat(e, context) {
-  if (context.TAG !== /* Expr */0) {
-    return consumeContextVoid(e, context);
-  }
-  var err = "" + toString(e.it) + " can't be used as a expression in JavaScript";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
+function consumeContextStat(e) {
+  return {
+          expr: (function (param) {
+              var err = "" + toString(e) + " can't be used as a expression in JavaScript";
+              throw {
+                    RE_EXN_ID: SMoLPrintError,
+                    _1: err,
+                    Error: new Error()
+                  };
+            }),
+          stat: consumeContextVoid(e).stat
+        };
 }
 
-function exprAppPrmToString(p, es, context) {
+function exprAppPrmToString(p, es) {
   if (typeof p === "number") {
     switch (p) {
       case /* PairNew */0 :
@@ -2955,7 +2973,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"), context)
+                      ann: consumeContext(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"))
                     };
             }
             
@@ -2972,7 +2990,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$1), "[0]"), context)
+                    ann: consumeContext(op1("", getPrint(e1$1), "[0]"))
                   };
           }
           break;
@@ -2987,7 +3005,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$2), "[1]"), context)
+                    ann: consumeContext(op1("", getPrint(e1$2), "[1]"))
                   };
           }
           break;
@@ -3008,7 +3026,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
+                      ann: consumeContextStat(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""))
                     };
             }
             
@@ -3031,7 +3049,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
+                      ann: consumeContextStat(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""))
                     };
             }
             
@@ -3049,7 +3067,7 @@ function exprAppPrmToString(p, es, context) {
                   ann: consumeContext(op1("[ ", {
                             it: concat(", ", Belt_List.map(es$1, getPrint)),
                             ann: undefined
-                          }, " ]"), context)
+                          }, " ]"))
                 };
       case /* VecRef */6 :
           if (es) {
@@ -3068,7 +3086,7 @@ function exprAppPrmToString(p, es, context) {
                           }
                         }
                       ],
-                      ann: consumeContext(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"), context)
+                      ann: consumeContext(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"))
                     };
             }
             
@@ -3097,7 +3115,7 @@ function exprAppPrmToString(p, es, context) {
                             }
                           }
                         ],
-                        ann: consumeContextStat(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
+                        ann: consumeContextStat(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""))
                       };
               }
               
@@ -3116,7 +3134,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$7), ".length"), context)
+                    ann: consumeContext(op1("", getPrint(e1$7), ".length"))
                   };
           }
           break;
@@ -3131,7 +3149,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap(op1("throw ", getPrint(e1$8), ""), context)
+                    ann: consumeContextWrap(op1("throw ", getPrint(e1$8), ""))
                   };
           }
           break;
@@ -3146,7 +3164,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap(op1("! ", getPrint(e1$9), ""), context)
+                    ann: consumeContextWrap(op1("! ", getPrint(e1$9), ""))
                   };
           }
           break;
@@ -3161,7 +3179,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid(op1("console.log(", getPrint(e1$10), ")"), context)
+                    ann: consumeContextVoid(op1("console.log(", getPrint(e1$10), ")"))
                   };
           }
           break;
@@ -3176,7 +3194,7 @@ function exprAppPrmToString(p, es, context) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid(op1("", getPrint(e1$11), ".next()"), context)
+                    ann: consumeContextVoid(op1("", getPrint(e1$11), ".next()"))
                   };
           }
           break;
@@ -3218,10 +3236,7 @@ function exprAppPrmToString(p, es, context) {
                 },
                 es$2
               ],
-              ann: consumeContextWrap({
-                    it: concat(" " + os + " ", Belt_List.map(es$2, getPrint)),
-                    ann: undefined
-                  }, context)
+              ann: consumeContextWrap(concat(" " + os + " ", Belt_List.map(es$2, getPrint)))
             };
     }
     if (es) {
@@ -3266,7 +3281,7 @@ function exprAppPrmToString(p, es, context) {
                     }
                   }
                 ],
-                ann: consumeContext(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
+                ann: consumeContext(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
               };
       }
       
@@ -3282,11 +3297,10 @@ function exprAppPrmToString(p, es, context) {
 }
 
 function funLike(op, x, xs, e) {
-  return op2("" + op + " ", exprAppToString(x, xs), " {", indentBlock(e, 2), "\n}");
-}
-
-function defvarToString(x, e) {
-  return op1("", defvarLike$1("let ", x, e), "");
+  return op2("" + op + " ", {
+              it: exprAppToString(x, xs),
+              ann: undefined
+            }, " {", indentBlock(e, 2), "\n}");
 }
 
 function deffunToString$1(f, xs, b) {
@@ -3318,16 +3332,13 @@ function exprGenToString$1(xs, b) {
 }
 
 function exprBgnToString$1(es, e) {
-  return {
-          it: listToString$1(Belt_List.concatMany([
-                    es,
-                    {
-                      hd: e,
-                      tl: /* [] */0
-                    }
-                  ])),
-          ann: undefined
-        };
+  return listToString$1(Belt_List.concatMany([
+                  es,
+                  {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                ]));
 }
 
 function exprCndToString$1(ebs, ob) {
@@ -3348,7 +3359,10 @@ function exprCndToString$1(ebs, ob) {
           }
         ]) : ebs;
   var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return op2("if (", param[0], ") {", indentBlock(param[1], 2), "\n}");
+          return {
+                  it: op2("if (", param[0], ") {", indentBlock(param[1], 2), "\n}"),
+                  ann: undefined
+                };
         }));
   return concat(" else ", ebs$2);
 }
@@ -3371,70 +3385,109 @@ function symbolToString$1(param) {
         };
 }
 
-function printExp$1(param, context) {
+function printExp$1(param) {
   var it = param.it;
+  var lift = function (param, sourceLocation) {
+    var print = param.ann;
+    var it = param.it;
+    return {
+            expr: (function (ctx) {
+                return {
+                        it: it,
+                        ann: {
+                          sourceLocation: sourceLocation,
+                          print: Curry._1(print.expr, ctx)
+                        }
+                      };
+              }),
+            stat: (function (ctx) {
+                var match = Curry._1(print.stat, ctx);
+                return [
+                        match[0],
+                        {
+                          it: it,
+                          ann: {
+                            sourceLocation: sourceLocation,
+                            print: match[1]
+                          }
+                        },
+                        match[2]
+                      ];
+              })
+          };
+  };
   var e;
   switch (it.TAG | 0) {
     case /* Con */0 :
         var c = it._0;
-        var it$1 = constantToString$1(c);
-        e = {
-          it: {
-            TAG: /* Con */0,
-            _0: c
-          },
-          ann: consumeContext({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$1
-                },
-                ann: undefined
-              }, context)
+        var partial_arg_it = {
+          TAG: /* Con */0,
+          _0: c
         };
+        var partial_arg_ann = consumeContext({
+              TAG: /* Plain */0,
+              _0: constantToString$1(c)
+            });
+        var partial_arg = {
+          it: partial_arg_it,
+          ann: partial_arg_ann
+        };
+        e = (function (param) {
+            return lift(partial_arg, param);
+          });
         break;
     case /* Ref */1 :
         var x = it._0;
-        var it$2 = printName$1(x);
-        e = {
-          it: {
-            TAG: /* Ref */1,
-            _0: x
-          },
-          ann: consumeContext({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$2
-                },
-                ann: undefined
-              }, context)
+        var partial_arg_it$1 = {
+          TAG: /* Ref */1,
+          _0: x
         };
+        var partial_arg_ann$1 = consumeContext({
+              TAG: /* Plain */0,
+              _0: printName$1(x)
+            });
+        var partial_arg$1 = {
+          it: partial_arg_it$1,
+          ann: partial_arg_ann$1
+        };
+        e = (function (param) {
+            return lift(partial_arg$1, param);
+          });
         break;
     case /* Set */2 :
         var x$1 = symbolToString$1(it._0);
-        var e$1 = printExp$1(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Set */2,
-            _0: x$1,
-            _1: e$1
-          },
-          ann: consumeContextStat(defvarLike$1("", getPrint(x$1), getPrint(e$1)), context)
+        var e$1 = printExp$1(it._1);
+        var e$2 = Curry._1(e$1.expr, false);
+        var partial_arg_it$2 = {
+          TAG: /* Set */2,
+          _0: x$1,
+          _1: e$2
         };
+        var partial_arg_ann$2 = consumeContextStat(defvarLike$1("", getPrint(x$1), getPrint(e$2)));
+        var partial_arg$2 = {
+          it: partial_arg_it$2,
+          ann: partial_arg_ann$2
+        };
+        e = (function (param) {
+            return lift(partial_arg$2, param);
+          });
         break;
     case /* Lam */3 :
         var xs = Belt_List.map(it._0, symbolToString$1);
         var b = printBlock$1(it._1, /* Return */1);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs,
-            _1: b
-          },
-          ann: consumeContextWrap(exprLamToString$1(Belt_List.map(xs, getPrint), getPrint(b)), context)
+        var partial_arg_it$3 = {
+          TAG: /* Lam */3,
+          _0: xs,
+          _1: b
         };
+        var partial_arg_ann$3 = consumeContextWrap(exprLamToString$1(Belt_List.map(xs, getPrint), getPrint(b)));
+        var partial_arg$3 = {
+          it: partial_arg_it$3,
+          ann: partial_arg_ann$3
+        };
+        e = (function (param) {
+            return lift(partial_arg$3, param);
+          });
         break;
     case /* Let */4 :
         throw {
@@ -3443,205 +3496,215 @@ function printExp$1(param, context) {
               Error: new Error()
             };
     case /* Letrec */5 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "letrec-expressions are not supported by JavaScript",
-                Error: new Error()
-              };
-        }
-        var xes = Belt_List.map(it._0, xeToString$1);
-        var b$1 = printBlock$1(it._1, context._0);
-        e = {
-          it: {
-            TAG: /* Letrec */5,
-            _0: xes,
-            _1: b$1
-          },
-          ann: {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "{\n"
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: concat("\n", Belt_List.concatMany([
-                                Belt_List.map(xes, getPrint),
+        var b$1 = it._1;
+        var xes = it._0;
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (param) {
+                        throw {
+                              RE_EXN_ID: SMoLPrintError,
+                              _1: "letrec-expressions are not supported by JavaScript",
+                              Error: new Error()
+                            };
+                      }),
+                    stat: (function (ctx) {
+                        var xes$1 = Belt_List.map(xes, xeToString$1);
+                        var b$2 = printBlock$1(b$1, ctx);
+                        var match = indentBlock({
+                              it: concat("\n", Belt_List.concatMany([
+                                        Belt_List.map(xes$1, getPrint),
+                                        {
+                                          hd: getPrint(b$2),
+                                          tl: /* [] */0
+                                        }
+                                      ])),
+                              ann: undefined
+                            }, 2);
+                        return [
+                                "{\n",
                                 {
-                                  hd: getPrint(b$1),
-                                  tl: /* [] */0
-                                }
-                              ])),
-                      ann: undefined
-                    }, 2),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: "\n}"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          }
-        };
+                                  it: {
+                                    TAG: /* Letrec */5,
+                                    _0: xes$1,
+                                    _1: b$2
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: match.it
+                                  }
+                                },
+                                "\n}"
+                              ];
+                      })
+                  };
+          });
         break;
     case /* AppPrm */6 :
         var es = Belt_List.map(it._1, (function (e, b) {
-                return printExp$1(e, {
-                            TAG: /* Expr */0,
-                            _0: b
-                          });
+                var e$1 = printExp$1(e);
+                return Curry._1(e$1.expr, b);
               }));
-        var match = exprAppPrmToString(it._0, es, context);
+        var match = exprAppPrmToString(it._0, es);
         var match$1 = match.it;
-        e = {
-          it: {
-            TAG: /* AppPrm */6,
-            _0: match$1[0],
-            _1: match$1[1]
-          },
-          ann: match.ann
+        var partial_arg_it$4 = {
+          TAG: /* AppPrm */6,
+          _0: match$1[0],
+          _1: match$1[1]
         };
+        var partial_arg_ann$4 = match.ann;
+        var partial_arg$4 = {
+          it: partial_arg_it$4,
+          ann: partial_arg_ann$4
+        };
+        e = (function (param) {
+            return lift(partial_arg$4, param);
+          });
         break;
     case /* App */7 :
-        var e$2 = printExp$1(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
+        var e$3 = printExp$1(it._0);
+        var e$4 = Curry._1(e$3.expr, true);
         var es$1 = Belt_List.map(it._1, (function (e) {
-                return printExp$1(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
+                var e$1 = printExp$1(e);
+                return Curry._1(e$1.expr, false);
               }));
-        e = {
-          it: {
-            TAG: /* App */7,
-            _0: e$2,
-            _1: es$1
-          },
-          ann: consumeContext(exprAppToString(getPrint(e$2), Belt_List.map(es$1, getPrint)), context)
+        var partial_arg_it$5 = {
+          TAG: /* App */7,
+          _0: e$4,
+          _1: es$1
         };
+        var partial_arg_ann$5 = consumeContext(exprAppToString(getPrint(e$4), Belt_List.map(es$1, getPrint)));
+        var partial_arg$5 = {
+          it: partial_arg_it$5,
+          ann: partial_arg_ann$5
+        };
+        e = (function (param) {
+            return lift(partial_arg$5, param);
+          });
         break;
     case /* Bgn */8 :
         var es$2 = Belt_List.map(it._0, (function (e) {
-                return printExp$1(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
+                var e$1 = printExp$1(e);
+                return Curry._1(e$1.expr, false);
               }));
-        var e$3 = printExp$1(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Bgn */8,
-            _0: es$2,
-            _1: e$3
-          },
-          ann: consumeContext(exprBgnToString$1(Belt_List.map(es$2, getPrint), getPrint(e$3)), context)
+        var e$5 = printExp$1(it._1);
+        var e$6 = Curry._1(e$5.expr, false);
+        var partial_arg_it$6 = {
+          TAG: /* Bgn */8,
+          _0: es$2,
+          _1: e$6
         };
+        var partial_arg_ann$6 = consumeContext(exprBgnToString$1(Belt_List.map(es$2, getPrint), getPrint(e$6)));
+        var partial_arg$6 = {
+          it: partial_arg_it$6,
+          ann: partial_arg_ann$6
+        };
+        e = (function (param) {
+            return lift(partial_arg$6, param);
+          });
         break;
     case /* If */9 :
-        var e_cnd = printExp$1(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_thn = printExp$1(it._1, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_els = printExp$1(it._2, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        e = {
-          it: {
-            TAG: /* If */9,
-            _0: e_cnd,
-            _1: e_thn,
-            _2: e_els
-          },
-          ann: consumeContextWrap(exprIfToString$1(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
+        var e$7 = printExp$1(it._0);
+        var e_cnd = Curry._1(e$7.expr, true);
+        var e$8 = printExp$1(it._1);
+        var e_thn = Curry._1(e$8.expr, true);
+        var e$9 = printExp$1(it._2);
+        var e_els = Curry._1(e$9.expr, true);
+        var partial_arg_it$7 = {
+          TAG: /* If */9,
+          _0: e_cnd,
+          _1: e_thn,
+          _2: e_els
         };
+        var partial_arg_ann$7 = consumeContextWrap(exprIfToString$1(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)));
+        var partial_arg$7 = {
+          it: partial_arg_it$7,
+          ann: partial_arg_ann$7
+        };
+        e = (function (param) {
+            return lift(partial_arg$7, param);
+          });
         break;
     case /* Cnd */10 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
-                Error: new Error()
-              };
-        }
-        var context$1 = context._0;
-        var ebs = Belt_List.map(it._0, (function (eb) {
-                return [
-                        printExp$1(eb[0], {
-                              TAG: /* Expr */0,
-                              _0: false
-                            }),
-                        printBlock$1(eb[1], context$1)
-                      ];
-              }));
-        var ob = obToString(it._1, context$1);
-        e = {
-          it: {
-            TAG: /* Cnd */10,
-            _0: ebs,
-            _1: ob
-          },
-          ann: exprCndToString$1(Belt_List.map(ebs, (function (param) {
-                      return [
-                              getPrint(param[0]),
-                              getPrint(param[1])
-                            ];
-                    })), Belt_Option.map(ob, getPrint))
-        };
+        var ob = it._1;
+        var ebs = it._0;
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (param) {
+                        throw {
+                              RE_EXN_ID: SMoLPrintError,
+                              _1: "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+                              Error: new Error()
+                            };
+                      }),
+                    stat: (function (ctx) {
+                        var ebs$1 = Belt_List.map(ebs, (function (eb) {
+                                var e = printExp$1(eb[0]);
+                                return [
+                                        Curry._1(e.expr, false),
+                                        printBlock$1(eb[1], ctx)
+                                      ];
+                              }));
+                        var ob$1 = obToString(ob, ctx);
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: /* Cnd */10,
+                                    _0: ebs$1,
+                                    _1: ob$1
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: exprCndToString$1(Belt_List.map(ebs$1, (function (param) {
+                                                return [
+                                                        getPrint(param[0]),
+                                                        getPrint(param[1])
+                                                      ];
+                                              })), Belt_Option.map(ob$1, getPrint))
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
         break;
     case /* GLam */11 :
         var xs$1 = Belt_List.map(it._0, symbolToString$1);
         var b$2 = printBlock$1(it._1, /* Return */1);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs$1,
-            _1: b$2
-          },
-          ann: consumeContextWrap(exprGenToString$1(Belt_List.map(xs$1, getPrint), getPrint(b$2)), context)
+        var partial_arg_it$8 = {
+          TAG: /* Lam */3,
+          _0: xs$1,
+          _1: b$2
         };
+        var partial_arg_ann$8 = consumeContextWrap(exprGenToString$1(Belt_List.map(xs$1, getPrint), getPrint(b$2)));
+        var partial_arg$8 = {
+          it: partial_arg_it$8,
+          ann: partial_arg_ann$8
+        };
+        e = (function (param) {
+            return lift(partial_arg$8, param);
+          });
         break;
     case /* Yield */12 :
-        var e$4 = printExp$1(it._0, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Yield */12,
-            _0: e$4
-          },
-          ann: consumeContextWrap(op1("yield ", getPrint(e$4), ""), context)
+        var e$10 = printExp$1(it._0);
+        var e$11 = Curry._1(e$10.expr, false);
+        var partial_arg_it$9 = {
+          TAG: /* Yield */12,
+          _0: e$11
         };
+        var partial_arg_ann$9 = consumeContextWrap(op1("yield ", getPrint(e$11), ""));
+        var partial_arg$9 = {
+          it: partial_arg_it$9,
+          ann: partial_arg_ann$9
+        };
+        e = (function (param) {
+            return lift(partial_arg$9, param);
+          });
         break;
     
   }
-  return {
-          it: e.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: e.ann
-          }
-        };
+  return Curry._1(e, param.ann);
 }
 
 function defToString(param) {
@@ -3650,17 +3713,15 @@ function defToString(param) {
   switch (d.TAG | 0) {
     case /* Var */0 :
         var x = symbolToString$1(d._0);
-        var e = printExp$1(d._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
+        var e = printExp$1(d._1);
+        var e$1 = Curry._1(e.expr, false);
         d$1 = {
           it: {
             TAG: /* Var */0,
             _0: x,
-            _1: e
+            _1: e$1
           },
-          ann: defvarToString(getPrint(x), getPrint(e))
+          ann: defvarLike$1("let ", getPrint(x), getPrint(e$1))
         };
         break;
     case /* Fun */1 :
@@ -3697,7 +3758,7 @@ function defToString(param) {
           it: d$1.it,
           ann: {
             sourceLocation: param.ann,
-            print: d$1.ann.it
+            print: d$1.ann
           }
         };
 }
@@ -3705,15 +3766,13 @@ function defToString(param) {
 function xeToString$1(param) {
   var xe = param.it;
   var x = symbolToString$1(xe[0]);
-  var e = printExp$1(xe[1], {
-        TAG: /* Expr */0,
-        _0: false
-      });
-  var print = defvarToString(getPrint(x), getPrint(e)).it;
+  var e = printExp$1(xe[1]);
+  var e$1 = Curry._1(e.expr, false);
+  var print = defvarLike$1("let ", getPrint(x), getPrint(e$1));
   return {
           it: [
             x,
-            e
+            e$1
           ],
           ann: {
             sourceLocation: param.ann,
@@ -3729,39 +3788,84 @@ function obToString(ob, ctx) {
 }
 
 function printBlock$1(param, context) {
-  var sourceLocation = param.ann;
+  var ann = param.ann;
   var b = param.it;
   if (b.TAG === /* BRet */0) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), printExp$1({
-                    it: b._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: context
-                  }));
-  }
-  var t = printTerm$1(b._0, /* Step */0);
-  var b$1 = printBlock$1(b._1, context);
-  var print = {
-    TAG: /* Group */1,
-    _0: {
-      hd: getPrint(t),
-      tl: {
+    var e = printExp$1(b._0);
+    var match = Curry._1(e.stat, context);
+    var e$1 = match[1];
+    var print = {
+      TAG: /* Group */1,
+      _0: {
         hd: {
           it: {
             TAG: /* Plain */0,
-            _0: "\n"
+            _0: match[0]
           },
           ann: undefined
         },
         tl: {
-          hd: getPrint(b$1),
-          tl: /* [] */0
+          hd: getPrint(e$1),
+          tl: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: match[2]
+              },
+              ann: undefined
+            },
+            tl: /* [] */0
+          }
+        }
+      }
+    };
+    return {
+            it: {
+              TAG: /* BRet */0,
+              _0: e$1
+            },
+            ann: {
+              sourceLocation: ann,
+              print: print
+            }
+          };
+  }
+  var match$1 = printTerm$1(b._0, /* Step */0);
+  var t = match$1[1];
+  var b$1 = printBlock$1(b._1, context);
+  var print$1 = {
+    TAG: /* Group */1,
+    _0: {
+      hd: {
+        it: {
+          TAG: /* Plain */0,
+          _0: match$1[0]
+        },
+        ann: undefined
+      },
+      tl: {
+        hd: getPrint(t),
+        tl: {
+          hd: {
+            it: {
+              TAG: /* Plain */0,
+              _0: match$1[2]
+            },
+            ann: undefined
+          },
+          tl: {
+            hd: {
+              it: {
+                TAG: /* Plain */0,
+                _0: "\n"
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: getPrint(b$1),
+              tl: /* [] */0
+            }
+          }
         }
       }
     }
@@ -3773,39 +3877,46 @@ function printBlock$1(param, context) {
             _1: b$1
           },
           ann: {
-            sourceLocation: sourceLocation,
-            print: print
+            sourceLocation: ann,
+            print: print$1
           }
         };
 }
 
 function printTerm$1(param, ctx) {
   var sourceLocation = param.ann;
-  var t = param.it;
-  if (t.TAG === /* Def */0) {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Def */0,
-                          _0: v
-                        };
-                }), defToString({
-                    it: t._0,
-                    ann: sourceLocation
-                  }));
-  } else {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Exp */1,
-                          _0: v
-                        };
-                }), printExp$1({
-                    it: t._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: ctx
-                  }));
+  var it = param.it;
+  if (it.TAG === /* Def */0) {
+    return [
+            "",
+            mapAnn((function (v) {
+                    return {
+                            TAG: /* Def */0,
+                            _0: v
+                          };
+                  }), defToString({
+                      it: it._0,
+                      ann: sourceLocation
+                    })),
+            ""
+          ];
   }
+  var e = printExp$1({
+        it: it._0,
+        ann: sourceLocation
+      });
+  var match = Curry._1(e.stat, ctx);
+  var it$1 = mapAnn((function (it) {
+          return {
+                  TAG: /* Exp */1,
+                  _0: it
+                };
+        }), match[1]);
+  return [
+          match[0],
+          it$1,
+          match[2]
+        ];
 }
 
 function printOutputlet$1(o) {
@@ -3862,7 +3973,10 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$1(it._0, /* Step */0);
+    var match = printTerm$1(it._0, /* Step */0);
+    var suffix = match[2];
+    var t = match[1];
+    var prefix = match[0];
     if (!p.it) {
       return {
               it: /* PCons */{
@@ -3883,7 +3997,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
               },
               ann: {
                 sourceLocation: sourceLocation,
-                print: getPrint(t).it
+                print: op1(prefix, getPrint(t), suffix)
               }
             };
     }
@@ -3895,7 +4009,10 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: concat2(getPrint(t), "\n", getPrint(p$1))
+              print: concat2({
+                    it: op1(prefix, getPrint(t), suffix),
+                    ann: undefined
+                  }, "\n", getPrint(p$1))
             }
           };
   };
@@ -3910,16 +4027,19 @@ function printStandAloneTerm$1(param) {
   var ann = param.ann;
   var it = param.it;
   var tmp;
-  tmp = it.TAG === /* Def */0 ? defToString({
+  if (it.TAG === /* Def */0) {
+    tmp = defToString({
           it: it._0,
           ann: ann
-        }).ann.print : printExp$1({
-          it: it._0,
-          ann: ann
-        }, {
-          TAG: /* Stat */1,
-          _0: /* Step */0
         }).ann.print;
+  } else {
+    var e = printExp$1({
+          it: it._0,
+          ann: ann
+        });
+    var match = Curry._1(e.stat, /* Step */0);
+    tmp = match[1].ann.print;
+  }
   return toString(tmp);
 }
 
@@ -3930,3554 +4050,6 @@ var JSPrinter = {
   printStandAloneTerm: printStandAloneTerm$1,
   printProgram: printProgram$1,
   printProgramFull: printProgramFull$1
-};
-
-function refMut(env, x) {
-  if (env.TAG === /* G */0) {
-    return ;
-  }
-  var decl = env._2;
-  if (!Belt_HashSetString.has(env._0, x)) {
-    var _env = env._1;
-    while(true) {
-      var env$1 = _env;
-      if (env$1.TAG === /* G */0) {
-        if (Belt_HashSetString.has(env$1._0, x)) {
-          return Belt_HashMapString.set(decl, x, /* Global */1);
-        } else {
-          return ;
-        }
-      }
-      if (Belt_HashSetString.has(env$1._0, x)) {
-        return Belt_HashMapString.set(decl, x, /* Nonlocal */0);
-      }
-      _env = env$1._1;
-      continue ;
-    };
-  }
-  
-}
-
-function extend(ss, env) {
-  var refs = Belt_HashMapString.make(0);
-  return [
-          refs,
-          {
-            TAG: /* E */1,
-            _0: Belt_HashSetString.fromArray(Belt_List.toArray(ss)),
-            _1: env,
-            _2: refs
-          }
-        ];
-}
-
-function printName$2(x) {
-  var re = /-/g;
-  var matchFn = function (_matchPart, _offset, _wholeString) {
-    return "_";
-  };
-  return x.replace(re, matchFn);
-}
-
-function constantToString$2(c) {
-  if (typeof c === "number") {
-    if (c === /* Uni */0) {
-      return "None";
-    }
-    throw {
-          RE_EXN_ID: SMoLPrintError,
-          _1: "Lists are not supported in Python.",
-          Error: new Error()
-        };
-  } else {
-    switch (c.TAG | 0) {
-      case /* Num */0 :
-          return String(c._0);
-      case /* Lgc */1 :
-          if (c._0) {
-            return "True";
-          } else {
-            return "False";
-          }
-      case /* Str */2 :
-          return "\"" + $$String.escaped(c._0) + "\"";
-      case /* Sym */3 :
-          return c._0;
-      
-    }
-  }
-}
-
-function listToString$2(es) {
-  if (Belt_List.some(es, (function (e) {
-            return containsNL(e.it);
-          }))) {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: concat(",\n", es),
-                      ann: undefined
-                    }, 4),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  } else {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: {
-                  it: concat(", ", es),
-                  ann: undefined
-                },
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  }
-}
-
-function defvarLike$2(op, x, e) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: op
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: x,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: " = "
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: indent(e, 2),
-        tl: /* [] */0
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
-  return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
-        };
-}
-
-function exprAppToString$1(e, es) {
-  return group2(e, {
-              it: listToString$2(es),
-              ann: undefined
-            });
-}
-
-function consumeContext$1(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return surround("", e, "");
-  } else {
-    return surround("return ", e, "");
-  }
-}
-
-function consumeContextWrap$1(e, context) {
-  if (context.TAG === /* Expr */0 && context._0) {
-    return surround("(", e, ")");
-  } else {
-    return consumeContext$1(e, context);
-  }
-}
-
-function consumeContextVoid$1(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return consumeContext$1(e, context);
-  } else {
-    return surround("", e, "\nreturn");
-  }
-}
-
-function consumeContextStat$1(e, context) {
-  if (context.TAG !== /* Expr */0) {
-    return consumeContextVoid$1(e, context);
-  }
-  var err = "" + toString(e.it) + " can't be used as a expression in Python";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
-}
-
-function exprAppPrmToString$1(p, es, context) {
-  if (typeof p === "number") {
-    switch (p) {
-      case /* PairNew */0 :
-          if (es) {
-            var match = es.tl;
-            if (match && !match.tl) {
-              var e1 = Curry._1(es.hd, false);
-              var e2 = Curry._1(match.hd, false);
-              return {
-                      it: [
-                        /* PairNew */0,
-                        {
-                          hd: e1,
-                          tl: {
-                            hd: e2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$1(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairRefLeft */1 :
-          if (es && !es.tl) {
-            var e1$1 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefLeft */1,
-                      {
-                        hd: e1$1,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$1(op1("", getPrint(e1$1), "[0]"), context)
-                  };
-          }
-          break;
-      case /* PairRefRight */2 :
-          if (es && !es.tl) {
-            var e1$2 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefRight */2,
-                      {
-                        hd: e1$2,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$1(op1("", getPrint(e1$2), "[1]"), context)
-                  };
-          }
-          break;
-      case /* PairSetLeft */3 :
-          if (es) {
-            var match$1 = es.tl;
-            if (match$1 && !match$1.tl) {
-              var e1$3 = Curry._1(es.hd, false);
-              var e2$1 = Curry._1(match$1.hd, false);
-              return {
-                      it: [
-                        /* PairSetLeft */3,
-                        {
-                          hd: e1$3,
-                          tl: {
-                            hd: e2$1,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextStat$1(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairSetRight */4 :
-          if (es) {
-            var match$2 = es.tl;
-            if (match$2 && !match$2.tl) {
-              var e1$4 = Curry._1(es.hd, false);
-              var e2$2 = Curry._1(match$2.hd, false);
-              return {
-                      it: [
-                        /* PairSetRight */4,
-                        {
-                          hd: e1$4,
-                          tl: {
-                            hd: e2$2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextStat$1(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecNew */5 :
-          var es$1 = Belt_List.map(es, (function (e) {
-                  return Curry._1(e, false);
-                }));
-          return {
-                  it: [
-                    /* VecNew */5,
-                    es$1
-                  ],
-                  ann: consumeContext$1(op1("[ ", {
-                            it: concat(", ", Belt_List.map(es$1, getPrint)),
-                            ann: undefined
-                          }, " ]"), context)
-                };
-      case /* VecRef */6 :
-          if (es) {
-            var match$3 = es.tl;
-            if (match$3 && !match$3.tl) {
-              var e1$5 = Curry._1(es.hd, true);
-              var e2$3 = Curry._1(match$3.hd, false);
-              return {
-                      it: [
-                        /* VecRef */6,
-                        {
-                          hd: e1$5,
-                          tl: {
-                            hd: e2$3,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$1(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecSet */7 :
-          if (es) {
-            var match$4 = es.tl;
-            if (match$4) {
-              var match$5 = match$4.tl;
-              if (match$5 && !match$5.tl) {
-                var e1$6 = Curry._1(es.hd, true);
-                var e2$4 = Curry._1(match$4.hd, false);
-                var e3 = Curry._1(match$5.hd, false);
-                return {
-                        it: [
-                          /* VecSet */7,
-                          {
-                            hd: e1$6,
-                            tl: {
-                              hd: e2$4,
-                              tl: {
-                                hd: e3,
-                                tl: /* [] */0
-                              }
-                            }
-                          }
-                        ],
-                        ann: consumeContextStat$1(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
-                      };
-              }
-              
-            }
-            
-          }
-          break;
-      case /* VecLen */8 :
-          if (es && !es.tl) {
-            var e1$7 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* VecLen */8,
-                      {
-                        hd: e1$7,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$1(op1("len(", getPrint(e1$7), ")"), context)
-                  };
-          }
-          break;
-      case /* Err */9 :
-          if (es && !es.tl) {
-            var e1$8 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Err */9,
-                      {
-                        hd: e1$8,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$1(op1("raise ", getPrint(e1$8), ""), context)
-                  };
-          }
-          break;
-      case /* Not */10 :
-          if (es && !es.tl) {
-            var e1$9 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Not */10,
-                      {
-                        hd: e1$9,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$1(op1("not ", getPrint(e1$9), ""), context)
-                  };
-          }
-          break;
-      case /* Print */11 :
-          if (es && !es.tl) {
-            var e1$10 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Print */11,
-                      {
-                        hd: e1$10,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$1(op1("print(", getPrint(e1$10), ")"), context)
-                  };
-          }
-          break;
-      case /* Next */12 :
-          if (es && !es.tl) {
-            var e1$11 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Next */12,
-                      {
-                        hd: e1$11,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$1(op1("next(", getPrint(e1$11), ")"), context)
-                  };
-          }
-          break;
-      case /* Cons */13 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by Python",
-                Error: new Error()
-              };
-      
-    }
-  } else {
-    if (p.TAG === /* Arith */0) {
-      var o = p._0;
-      var os;
-      switch (o) {
-        case /* Add */0 :
-            os = "+";
-            break;
-        case /* Sub */1 :
-            os = "-";
-            break;
-        case /* Mul */2 :
-            os = "*";
-            break;
-        case /* Div */3 :
-            os = "/";
-            break;
-        
-      }
-      var es$2 = Belt_List.map(es, (function (e) {
-              return Curry._1(e, true);
-            }));
-      return {
-              it: [
-                {
-                  TAG: /* Arith */0,
-                  _0: o
-                },
-                es$2
-              ],
-              ann: consumeContextWrap$1({
-                    it: concat(" " + os + " ", Belt_List.map(es$2, getPrint)),
-                    ann: undefined
-                  }, context)
-            };
-    }
-    if (es) {
-      var match$6 = es.tl;
-      if (match$6 && !match$6.tl) {
-        var o$1 = p._0;
-        var os$1;
-        switch (o$1) {
-          case /* Lt */0 :
-              os$1 = "<";
-              break;
-          case /* Eq */1 :
-              os$1 = "==";
-              break;
-          case /* Gt */2 :
-              os$1 = ">";
-              break;
-          case /* Le */3 :
-              os$1 = "<=";
-              break;
-          case /* Ge */4 :
-              os$1 = ">=";
-              break;
-          case /* Ne */5 :
-              os$1 = "!=";
-              break;
-          
-        }
-        var e1$12 = Curry._1(es.hd, true);
-        var e2$5 = Curry._1(match$6.hd, true);
-        return {
-                it: [
-                  {
-                    TAG: /* Cmp */1,
-                    _0: o$1
-                  },
-                  {
-                    hd: e1$12,
-                    tl: {
-                      hd: e2$5,
-                      tl: /* [] */0
-                    }
-                  }
-                ],
-                ann: consumeContextWrap$1(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
-              };
-      }
-      
-    }
-    
-  }
-  var err = "Python doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
-}
-
-function funLike$1(op, x, xs, e) {
-  return op2("" + op + " ", exprAppToString$1(x, xs), ":", indentBlock(e, 4), "");
-}
-
-function defvarToString$1(x, e) {
-  return op1("", defvarLike$2("", x, e), "");
-}
-
-function deffunToString$2(f, xs, b) {
-  return funLike$1("def", f, xs, b);
-}
-
-function defgenToString$2(f, xs, b) {
-  return funLike$1("def", f, xs, b);
-}
-
-function exprLamToString$2(xs, b) {
-  return op2("lambda ", {
-              it: concat(",", xs),
-              ann: undefined
-            }, ": ", b, "");
-}
-
-function exprBgnToString$2(es, e) {
-  return op1("", {
-              it: listToString$2(Belt_List.concatMany([
-                        es,
-                        {
-                          hd: e,
-                          tl: /* [] */0
-                        }
-                      ])),
-              ann: undefined
-            }, "[-1]");
-}
-
-function exprCndToString$2(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
-              {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "se:"
-                },
-                ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return op2("if ", param[0], ":", indentBlock(param[1], 4), "\n");
-        }));
-  return concat(" el", ebs$2);
-}
-
-function exprIfToString$2(e_cnd, e_thn, e_els) {
-  return op3("", e_thn, " if ", e_cnd, " else ", e_els, "");
-}
-
-function symbolToString$2(param) {
-  var it = param.it;
-  return {
-          it: it,
-          ann: {
-            sourceLocation: param.ann,
-            print: {
-              TAG: /* Plain */0,
-              _0: printName$2(it)
-            }
-          }
-        };
-}
-
-function printExp$2(param, context, env) {
-  var it = param.it;
-  var e;
-  switch (it.TAG | 0) {
-    case /* Con */0 :
-        var c = it._0;
-        var it$1 = constantToString$2(c);
-        e = {
-          it: {
-            TAG: /* Con */0,
-            _0: c
-          },
-          ann: consumeContext$1({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$1
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Ref */1 :
-        var x = it._0;
-        var it$2 = printName$2(x);
-        e = {
-          it: {
-            TAG: /* Ref */1,
-            _0: x
-          },
-          ann: consumeContext$1({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$2
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Set */2 :
-        var x$1 = it._0;
-        refMut(env, x$1.it);
-        var x$2 = symbolToString$2(x$1);
-        var e$1 = printExp$2(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            }, env);
-        e = {
-          it: {
-            TAG: /* Set */2,
-            _0: x$2,
-            _1: e$1
-          },
-          ann: consumeContextStat$1(defvarLike$2("", getPrint(x$2), getPrint(e$1)), context)
-        };
-        break;
-    case /* Lam */3 :
-        var b = it._1;
-        var e$2 = b.it;
-        if (e$2.TAG === /* BRet */0) {
-          var e_it = e$2._0;
-          var e_ann = b.ann;
-          var e$3 = {
-            it: e_it,
-            ann: e_ann
-          };
-          var xs = Belt_List.map(it._0, symbolToString$2);
-          var match = extend(Belt_List.map(xs, (function (x) {
-                      return x.it;
-                    })), env);
-          var e$4 = printExp$2(e$3, {
-                TAG: /* Expr */0,
-                _0: false
-              }, match[1]);
-          if (Belt_HashMapString.isEmpty(match[0])) {
-            e = {
-              it: {
-                TAG: /* Lam */3,
-                _0: xs,
-                _1: mapAnn((function (e) {
-                        return {
-                                TAG: /* BRet */0,
-                                _0: e
-                              };
-                      }), e$4)
-              },
-              ann: consumeContextWrap$1(exprLamToString$2(Belt_List.map(xs, getPrint), getPrint(e$4)), context)
-            };
-          } else {
-            throw {
-                  RE_EXN_ID: SMoLPrintError,
-                  _1: "Can't mutate variable inside Python lambda",
-                  Error: new Error()
-                };
-          }
-        } else {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "In Python, a lambda body must contains exactly one expression",
-                Error: new Error()
-              };
-        }
-        break;
-    case /* Let */4 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by Python",
-              Error: new Error()
-            };
-    case /* Letrec */5 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "letrec-expressions are not supported by Python",
-              Error: new Error()
-            };
-    case /* AppPrm */6 :
-        var es = Belt_List.map(it._1, (function (e, b) {
-                return printExp$2(e, {
-                            TAG: /* Expr */0,
-                            _0: b
-                          }, env);
-              }));
-        var match$1 = exprAppPrmToString$1(it._0, es, context);
-        var match$2 = match$1.it;
-        e = {
-          it: {
-            TAG: /* AppPrm */6,
-            _0: match$2[0],
-            _1: match$2[1]
-          },
-          ann: match$1.ann
-        };
-        break;
-    case /* App */7 :
-        var e$5 = printExp$2(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            }, env);
-        var es$1 = Belt_List.map(it._1, (function (e) {
-                return printExp$2(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          }, env);
-              }));
-        e = {
-          it: {
-            TAG: /* App */7,
-            _0: e$5,
-            _1: es$1
-          },
-          ann: consumeContext$1(exprAppToString$1(getPrint(e$5), Belt_List.map(es$1, getPrint)), context)
-        };
-        break;
-    case /* Bgn */8 :
-        var es$2 = Belt_List.map(it._0, (function (e) {
-                return printExp$2(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          }, env);
-              }));
-        var e$6 = printExp$2(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            }, env);
-        e = {
-          it: {
-            TAG: /* Bgn */8,
-            _0: es$2,
-            _1: e$6
-          },
-          ann: consumeContext$1(exprBgnToString$2(Belt_List.map(es$2, getPrint), getPrint(e$6)), context)
-        };
-        break;
-    case /* If */9 :
-        var e_cnd = printExp$2(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            }, env);
-        var e_thn = printExp$2(it._1, {
-              TAG: /* Expr */0,
-              _0: true
-            }, env);
-        var e_els = printExp$2(it._2, {
-              TAG: /* Expr */0,
-              _0: true
-            }, env);
-        e = {
-          it: {
-            TAG: /* If */9,
-            _0: e_cnd,
-            _1: e_thn,
-            _2: e_els
-          },
-          ann: consumeContextWrap$1(exprIfToString$2(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
-        };
-        break;
-    case /* Cnd */10 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
-                Error: new Error()
-              };
-        }
-        var context$1 = context._0;
-        var ebs = Belt_List.map(it._0, (function (eb) {
-                return [
-                        printExp$2(eb[0], {
-                              TAG: /* Expr */0,
-                              _0: false
-                            }, env),
-                        printBlock$2(eb[1], context$1, env)
-                      ];
-              }));
-        var ob = obToString$1(it._1, context$1, env);
-        e = {
-          it: {
-            TAG: /* Cnd */10,
-            _0: ebs,
-            _1: ob
-          },
-          ann: exprCndToString$2(Belt_List.map(ebs, (function (param) {
-                      return [
-                              getPrint(param[0]),
-                              getPrint(param[1])
-                            ];
-                    })), Belt_Option.map(ob, getPrint))
-        };
-        break;
-    case /* GLam */11 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "In Python, lambdas can't be generators.",
-              Error: new Error()
-            };
-    case /* Yield */12 :
-        var e$7 = printExp$2(it._0, {
-              TAG: /* Expr */0,
-              _0: false
-            }, env);
-        e = {
-          it: {
-            TAG: /* Yield */12,
-            _0: e$7
-          },
-          ann: consumeContextWrap$1(op1("yield ", getPrint(e$7), ""), context)
-        };
-        break;
-    
-  }
-  return {
-          it: e.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: e.ann
-          }
-        };
-}
-
-function defToString$1(param, env) {
-  var d = param.it;
-  var d$1;
-  switch (d.TAG | 0) {
-    case /* Var */0 :
-        var x = symbolToString$2(d._0);
-        var e = printExp$2(d._1, {
-              TAG: /* Expr */0,
-              _0: false
-            }, env);
-        d$1 = {
-          it: {
-            TAG: /* Var */0,
-            _0: x,
-            _1: e
-          },
-          ann: defvarToString$1(getPrint(x), getPrint(e))
-        };
-        break;
-    case /* Fun */1 :
-        var f = symbolToString$2(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$2);
-        var b = printBody(d._2, Belt_List.map(xs, (function (x) {
-                    return x.it;
-                  })), env);
-        d$1 = {
-          it: {
-            TAG: /* Fun */1,
-            _0: f,
-            _1: xs,
-            _2: b
-          },
-          ann: deffunToString$2(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
-        };
-        break;
-    case /* GFun */2 :
-        var f$1 = symbolToString$2(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$2);
-        var b$1 = printBody(d._2, Belt_List.map(xs$1, (function (x) {
-                    return x.it;
-                  })), env);
-        d$1 = {
-          it: {
-            TAG: /* GFun */2,
-            _0: f$1,
-            _1: xs$1,
-            _2: b$1
-          },
-          ann: defgenToString$2(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
-        };
-        break;
-    
-  }
-  return {
-          it: d$1.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: d$1.ann.it
-          }
-        };
-}
-
-function obToString$1(ob, ctx, env) {
-  return Belt_Option.map(ob, (function (b) {
-                return printBlock$2(b, ctx, env);
-              }));
-}
-
-function printBlockHelper(context, param, env) {
-  var sourceLocation = param.ann;
-  var b = param.it;
-  if (b.TAG === /* BRet */0) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), printExp$2({
-                    it: b._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: context
-                  }, env));
-  }
-  var t = printTerm$2(b._0, /* Step */0, env);
-  var b$1 = printBlockHelper(context, b._1, env);
-  var print = {
-    TAG: /* Group */1,
-    _0: {
-      hd: getPrint(t),
-      tl: {
-        hd: {
-          it: {
-            TAG: /* Plain */0,
-            _0: "\n"
-          },
-          ann: undefined
-        },
-        tl: {
-          hd: getPrint(b$1),
-          tl: /* [] */0
-        }
-      }
-    }
-  };
-  return {
-          it: {
-            TAG: /* BCons */1,
-            _0: t,
-            _1: b$1
-          },
-          ann: {
-            sourceLocation: sourceLocation,
-            print: print
-          }
-        };
-}
-
-function printBlock$2(b, context, env) {
-  var xs = xsOfBlock(b);
-  if (xs !== /* [] */0) {
-    throw {
-          RE_EXN_ID: SMoLPrintError,
-          _1: "Python blocks can't declare local variables",
-          Error: new Error()
-        };
-  }
-  return printBlockHelper(context, b, env);
-}
-
-function printBody(b, args, env) {
-  var match = extend(Belt_List.concat(Belt_List.map(xsOfBlock(b), (function (x) {
-                  return x.it;
-                })), args), env);
-  var b$1 = printBlockHelper(/* Return */1, b, match[1]);
-  var print = concat("\n", Belt_List.concatMany([
-            Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
-                      return {
-                              it: {
-                                TAG: /* Plain */0,
-                                _0: "" + (
-                                  param[1] ? "global" : "nonlocal"
-                                ) + " " + param[0] + ""
-                              },
-                              ann: undefined
-                            };
-                    })),
-            {
-              hd: getPrint(b$1),
-              tl: /* [] */0
-            }
-          ]));
-  return {
-          it: b$1.it,
-          ann: {
-            sourceLocation: b$1.ann.sourceLocation,
-            print: print
-          }
-        };
-}
-
-function printTerm$2(param, ctx, env) {
-  var sourceLocation = param.ann;
-  var t = param.it;
-  if (t.TAG === /* Def */0) {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Def */0,
-                          _0: v
-                        };
-                }), defToString$1({
-                    it: t._0,
-                    ann: sourceLocation
-                  }, env));
-  } else {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Exp */1,
-                          _0: v
-                        };
-                }), printExp$2({
-                    it: t._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: ctx
-                  }, env));
-  }
-}
-
-function printOutputlet$2(o) {
-  var p = function (v) {
-    switch (v.TAG | 0) {
-      case /* Ref */0 :
-          return "[...]";
-      case /* Con */1 :
-          return constantToString$2(v._0);
-      case /* Struct */2 :
-          var content = v._1;
-          var i = "";
-          var content$1;
-          if (content.TAG === /* Lst */0) {
-            throw {
-                  RE_EXN_ID: SMoLPrintError,
-                  _1: "Lists are not supported in Python.",
-                  Error: new Error()
-                };
-          }
-          content$1 = "[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]";
-          return "" + i + "" + content$1 + "";
-      
-    }
-  };
-  if (o) {
-    return p(o._0);
-  } else {
-    return "error";
-  }
-}
-
-function printOutput$2(sepOpt, os) {
-  var sep = sepOpt !== undefined ? sepOpt : " ";
-  return $$String.concat(sep, Belt_List.map(os, printOutputlet$2));
-}
-
-function printProgramFull$2(insertPrintTopLevel, p) {
-  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var xs = xsOfProgram(p$1);
-  var env = {
-    TAG: /* G */0,
-    _0: Belt_HashSetString.fromArray(Belt_List.toArray(Belt_List.map(xs, (function (x) {
-                    return x.it;
-                  }))))
-  };
-  var print = function (param) {
-    var sourceLocation = param.ann;
-    var it = param.it;
-    if (!it) {
-      return {
-              it: /* PNil */0,
-              ann: {
-                sourceLocation: sourceLocation,
-                print: {
-                  TAG: /* Group */1,
-                  _0: /* [] */0
-                }
-              }
-            };
-    }
-    var p = it._1;
-    var t = printTerm$2(it._0, /* Step */0, env);
-    if (!p.it) {
-      return {
-              it: /* PCons */{
-                _0: t,
-                _1: {
-                  it: /* PNil */0,
-                  ann: {
-                    sourceLocation: {
-                      begin: sourceLocation.end,
-                      end: sourceLocation.end
-                    },
-                    print: {
-                      TAG: /* Plain */0,
-                      _0: ""
-                    }
-                  }
-                }
-              },
-              ann: {
-                sourceLocation: sourceLocation,
-                print: getPrint(t).it
-              }
-            };
-    }
-    var p$1 = print(p);
-    return {
-            it: /* PCons */{
-              _0: t,
-              _1: p$1
-            },
-            ann: {
-              sourceLocation: sourceLocation,
-              print: concat2(getPrint(t), "\n", getPrint(p$1))
-            }
-          };
-  };
-  return print(p$1);
-}
-
-function printProgram$2(insertPrintTopLevel, p) {
-  return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
-}
-
-function printStandAloneTerm$2(param) {
-  var ann = param.ann;
-  var it = param.it;
-  var globalEnv = {
-    TAG: /* G */0,
-    _0: Belt_HashSetString.fromArray([])
-  };
-  var tmp;
-  tmp = it.TAG === /* Def */0 ? defToString$1({
-          it: it._0,
-          ann: ann
-        }, globalEnv).ann.print : printExp$2({
-          it: it._0,
-          ann: ann
-        }, {
-          TAG: /* Stat */1,
-          _0: /* Step */0
-        }, globalEnv).ann.print;
-  return toString(tmp);
-}
-
-var PYPrinter = {
-  printName: printName$2,
-  printOutputlet: printOutputlet$2,
-  printOutput: printOutput$2,
-  printStandAloneTerm: printStandAloneTerm$2,
-  printProgram: printProgram$2,
-  printProgramFull: printProgramFull$2
-};
-
-function printName$3(x) {
-  return x;
-}
-
-function constantToString$3(c) {
-  if (typeof c === "number") {
-    if (c === /* Uni */0) {
-      return "null";
-    } else {
-      return "list[]";
-    }
-  }
-  switch (c.TAG | 0) {
-    case /* Num */0 :
-        return String(c._0);
-    case /* Lgc */1 :
-        if (c._0) {
-          return "true";
-        } else {
-          return "false";
-        }
-    case /* Str */2 :
-        return "\"" + $$String.escaped(c._0) + "\"";
-    case /* Sym */3 :
-        return c._0;
-    
-  }
-}
-
-function listToString$3(es) {
-  if (Belt_List.some(es, (function (e) {
-            return containsNL(e.it);
-          }))) {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: concat(",\n", es),
-                      ann: undefined
-                    }, 2),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  } else {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: {
-                  it: concat(", ", es),
-                  ann: undefined
-                },
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  }
-}
-
-function defvarLike$3(op, x, e) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: op
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: x,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: " = "
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: indent(e, 2),
-        tl: /* [] */0
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
-  return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
-        };
-}
-
-function exprAppToString$2(e, es) {
-  return group2(e, {
-              it: listToString$3(es),
-              ann: undefined
-            });
-}
-
-function consumeContext$2(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return surround("", e, "");
-  } else {
-    return surround("return ", e, "");
-  }
-}
-
-function consumeContextWrap$2(e, context) {
-  if (context.TAG === /* Expr */0 && context._0) {
-    return surround("(", e, ")");
-  } else {
-    return consumeContext$2(e, context);
-  }
-}
-
-function consumeContextVoid$2(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return consumeContext$2(e, context);
-  } else {
-    return surround("", e, "\nreturn");
-  }
-}
-
-function consumeContextWrapVoid(e, context) {
-  if (context.TAG === /* Expr */0) {
-    if (context._0) {
-      return surround("(", e, ")");
-    } else {
-      return consumeContext$2(e, context);
-    }
-  } else if (context._0) {
-    return surround("", e, "\nreturn");
-  } else {
-    return consumeContext$2(e, context);
-  }
-}
-
-function exprAppPrmToString$2(p, es, context) {
-  if (typeof p === "number") {
-    switch (p) {
-      case /* PairNew */0 :
-          if (es) {
-            var match = es.tl;
-            if (match && !match.tl) {
-              var e1 = Curry._1(es.hd, false);
-              var e2 = Curry._1(match.hd, false);
-              return {
-                      it: [
-                        /* PairNew */0,
-                        {
-                          hd: e1,
-                          tl: {
-                            hd: e2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$2(op2("vec[", getPrint(e1), ", ", getPrint(e2), "]"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairRefLeft */1 :
-          if (es && !es.tl) {
-            var e1$1 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefLeft */1,
-                      {
-                        hd: e1$1,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$2(op1("", getPrint(e1$1), "[0]"), context)
-                  };
-          }
-          break;
-      case /* PairRefRight */2 :
-          if (es && !es.tl) {
-            var e1$2 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefRight */2,
-                      {
-                        hd: e1$2,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$2(op1("", getPrint(e1$2), "[1]"), context)
-                  };
-          }
-          break;
-      case /* PairSetLeft */3 :
-          if (es) {
-            var match$1 = es.tl;
-            if (match$1 && !match$1.tl) {
-              var e1$3 = Curry._1(es.hd, false);
-              var e2$1 = Curry._1(match$1.hd, false);
-              return {
-                      it: [
-                        /* PairSetLeft */3,
-                        {
-                          hd: e1$3,
-                          tl: {
-                            hd: e2$1,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextWrapVoid(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairSetRight */4 :
-          if (es) {
-            var match$2 = es.tl;
-            if (match$2 && !match$2.tl) {
-              var e1$4 = Curry._1(es.hd, false);
-              var e2$2 = Curry._1(match$2.hd, false);
-              return {
-                      it: [
-                        /* PairSetRight */4,
-                        {
-                          hd: e1$4,
-                          tl: {
-                            hd: e2$2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextWrapVoid(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecNew */5 :
-          var es$1 = Belt_List.map(es, (function (e) {
-                  return Curry._1(e, false);
-                }));
-          return {
-                  it: [
-                    /* VecNew */5,
-                    es$1
-                  ],
-                  ann: consumeContext$2(op1("vec[", {
-                            it: concat(", ", Belt_List.map(es$1, getPrint)),
-                            ann: undefined
-                          }, "]"), context)
-                };
-      case /* VecRef */6 :
-          if (es) {
-            var match$3 = es.tl;
-            if (match$3 && !match$3.tl) {
-              var e1$5 = Curry._1(es.hd, true);
-              var e2$3 = Curry._1(match$3.hd, false);
-              return {
-                      it: [
-                        /* VecRef */6,
-                        {
-                          hd: e1$5,
-                          tl: {
-                            hd: e2$3,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$2(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecSet */7 :
-          if (es) {
-            var match$4 = es.tl;
-            if (match$4) {
-              var match$5 = match$4.tl;
-              if (match$5 && !match$5.tl) {
-                var e1$6 = Curry._1(es.hd, true);
-                var e2$4 = Curry._1(match$4.hd, false);
-                var e3 = Curry._1(match$5.hd, false);
-                return {
-                        it: [
-                          /* VecSet */7,
-                          {
-                            hd: e1$6,
-                            tl: {
-                              hd: e2$4,
-                              tl: {
-                                hd: e3,
-                                tl: /* [] */0
-                              }
-                            }
-                          }
-                        ],
-                        ann: consumeContextWrapVoid(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""), context)
-                      };
-              }
-              
-            }
-            
-          }
-          break;
-      case /* VecLen */8 :
-          if (es && !es.tl) {
-            var e1$7 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* VecLen */8,
-                      {
-                        hd: e1$7,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$2(op1("", getPrint(e1$7), ".length"), context)
-                  };
-          }
-          break;
-      case /* Err */9 :
-          if (es && !es.tl) {
-            var e1$8 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Err */9,
-                      {
-                        hd: e1$8,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$2(op1("throw ", getPrint(e1$8), ""), context)
-                  };
-          }
-          break;
-      case /* Not */10 :
-          if (es && !es.tl) {
-            var e1$9 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Not */10,
-                      {
-                        hd: e1$9,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$2(op1("¬ ", getPrint(e1$9), ""), context)
-                  };
-          }
-          break;
-      case /* Print */11 :
-          if (es && !es.tl) {
-            var e1$10 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Print */11,
-                      {
-                        hd: e1$10,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$2(op1("print(", getPrint(e1$10), ")"), context)
-                  };
-          }
-          break;
-      case /* Next */12 :
-          if (es && !es.tl) {
-            var e1$11 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Next */12,
-                      {
-                        hd: e1$11,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$2(op1("next(", getPrint(e1$11), ")"), context)
-                  };
-          }
-          break;
-      case /* Cons */13 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by the pseudo-code syntax",
-                Error: new Error()
-              };
-      
-    }
-  } else {
-    if (p.TAG === /* Arith */0) {
-      var o = p._0;
-      var os;
-      switch (o) {
-        case /* Add */0 :
-            os = "+";
-            break;
-        case /* Sub */1 :
-            os = "-";
-            break;
-        case /* Mul */2 :
-            os = "*";
-            break;
-        case /* Div */3 :
-            os = "/";
-            break;
-        
-      }
-      var es$2 = Belt_List.map(es, (function (e) {
-              return Curry._1(e, true);
-            }));
-      return {
-              it: [
-                {
-                  TAG: /* Arith */0,
-                  _0: o
-                },
-                es$2
-              ],
-              ann: consumeContextWrap$2({
-                    it: concat(" " + os + " ", Belt_List.map(es$2, getPrint)),
-                    ann: undefined
-                  }, context)
-            };
-    }
-    if (es) {
-      var match$6 = es.tl;
-      if (match$6 && !match$6.tl) {
-        var o$1 = p._0;
-        var os$1;
-        switch (o$1) {
-          case /* Lt */0 :
-              os$1 = "<";
-              break;
-          case /* Eq */1 :
-              os$1 = "==";
-              break;
-          case /* Gt */2 :
-              os$1 = ">";
-              break;
-          case /* Le */3 :
-              os$1 = "<=";
-              break;
-          case /* Ge */4 :
-              os$1 = ">=";
-              break;
-          case /* Ne */5 :
-              os$1 = "!=";
-              break;
-          
-        }
-        var e1$12 = Curry._1(es.hd, true);
-        var e2$5 = Curry._1(match$6.hd, true);
-        return {
-                it: [
-                  {
-                    TAG: /* Cmp */1,
-                    _0: o$1
-                  },
-                  {
-                    hd: e1$12,
-                    tl: {
-                      hd: e2$5,
-                      tl: /* [] */0
-                    }
-                  }
-                ],
-                ann: consumeContextWrap$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
-              };
-      }
-      
-    }
-    
-  }
-  var err = "Our pseudo-code syntax doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
-}
-
-function funLike$2(op, x, xs, e) {
-  return op2("" + op + " ", exprAppToString$2(x, xs), ":", indentBlock(e, 2), "\nend");
-}
-
-function defvarToString$2(x, e) {
-  return op1("", defvarLike$3("let ", x, e), "");
-}
-
-function deffunToString$3(f, xs, b) {
-  return funLike$2("fun", f, xs, b);
-}
-
-function defgenToString$3(f, xs, b) {
-  return funLike$2("gen fun", f, xs, b);
-}
-
-function exprSetToString(x, e) {
-  return op2("", x, " = ", e, "");
-}
-
-function exprLamToString$3(xs, b) {
-  return funLike$2("lam", {
-              it: {
-                TAG: /* Plain */0,
-                _0: ""
-              },
-              ann: undefined
-            }, xs, b);
-}
-
-function exprGenToString$2(xs, b) {
-  return funLike$2("gen lam", {
-              it: {
-                TAG: /* Plain */0,
-                _0: ""
-              },
-              ann: undefined
-            }, xs, b);
-}
-
-function exprBgnToString$3(es, e) {
-  return {
-          it: listToString$3(Belt_List.concatMany([
-                    es,
-                    {
-                      hd: e,
-                      tl: /* [] */0
-                    }
-                  ])),
-          ann: undefined
-        };
-}
-
-function exprCndToString$3(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
-              {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: ""
-                },
-                ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return op2("if ", param[0], ":", indentBlock(param[1], 2), "\nend");
-        }));
-  return concat(" else ", ebs$2);
-}
-
-function exprIfToString$3(e_cnd, e_thn, e_els) {
-  return op3("if ", e_cnd, ": ", e_thn, " else: ", e_els, " end");
-}
-
-function symbolToString$3(param) {
-  var it = param.it;
-  return {
-          it: it,
-          ann: {
-            sourceLocation: param.ann,
-            print: {
-              TAG: /* Plain */0,
-              _0: it
-            }
-          }
-        };
-}
-
-function printExp$3(param, context) {
-  var it = param.it;
-  var e;
-  switch (it.TAG | 0) {
-    case /* Con */0 :
-        var c = it._0;
-        var it$1 = constantToString$3(c);
-        e = {
-          it: {
-            TAG: /* Con */0,
-            _0: c
-          },
-          ann: consumeContext$2({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$1
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Ref */1 :
-        var x = it._0;
-        e = {
-          it: {
-            TAG: /* Ref */1,
-            _0: x
-          },
-          ann: consumeContext$2({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: x
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Set */2 :
-        var x$1 = symbolToString$3(it._0);
-        var e$1 = printExp$3(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Set */2,
-            _0: x$1,
-            _1: e$1
-          },
-          ann: consumeContextWrapVoid(exprSetToString(getPrint(x$1), getPrint(e$1)), context)
-        };
-        break;
-    case /* Lam */3 :
-        var xs = Belt_List.map(it._0, symbolToString$3);
-        var b = printBlock$3(it._1, /* Return */1);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs,
-            _1: b
-          },
-          ann: consumeContextWrap$2(exprLamToString$3(Belt_List.map(xs, getPrint), getPrint(b)), context)
-        };
-        break;
-    case /* Let */4 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by our pseudo-code syntax",
-              Error: new Error()
-            };
-    case /* Letrec */5 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "letrec-expressions are not supported by our pseudo-code syntax",
-                Error: new Error()
-              };
-        }
-        var xes = Belt_List.map(it._0, xeToString$2);
-        var b$1 = printBlock$3(it._1, context._0);
-        e = {
-          it: {
-            TAG: /* Letrec */5,
-            _0: xes,
-            _1: b$1
-          },
-          ann: {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "{\n"
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: concat("\n", Belt_List.concatMany([
-                                Belt_List.map(xes, getPrint),
-                                {
-                                  hd: getPrint(b$1),
-                                  tl: /* [] */0
-                                }
-                              ])),
-                      ann: undefined
-                    }, 2),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: "\n}"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          }
-        };
-        break;
-    case /* AppPrm */6 :
-        var es = Belt_List.map(it._1, (function (e, b) {
-                return printExp$3(e, {
-                            TAG: /* Expr */0,
-                            _0: b
-                          });
-              }));
-        var match = exprAppPrmToString$2(it._0, es, context);
-        var match$1 = match.it;
-        e = {
-          it: {
-            TAG: /* AppPrm */6,
-            _0: match$1[0],
-            _1: match$1[1]
-          },
-          ann: match.ann
-        };
-        break;
-    case /* App */7 :
-        var e$2 = printExp$3(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var es$1 = Belt_List.map(it._1, (function (e) {
-                return printExp$3(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
-              }));
-        e = {
-          it: {
-            TAG: /* App */7,
-            _0: e$2,
-            _1: es$1
-          },
-          ann: consumeContext$2(exprAppToString$2(getPrint(e$2), Belt_List.map(es$1, getPrint)), context)
-        };
-        break;
-    case /* Bgn */8 :
-        var es$2 = Belt_List.map(it._0, (function (e) {
-                return printExp$3(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
-              }));
-        var e$3 = printExp$3(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Bgn */8,
-            _0: es$2,
-            _1: e$3
-          },
-          ann: consumeContext$2(exprBgnToString$3(Belt_List.map(es$2, getPrint), getPrint(e$3)), context)
-        };
-        break;
-    case /* If */9 :
-        var e_cnd = printExp$3(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_thn = printExp$3(it._1, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_els = printExp$3(it._2, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        e = {
-          it: {
-            TAG: /* If */9,
-            _0: e_cnd,
-            _1: e_thn,
-            _2: e_els
-          },
-          ann: consumeContextWrap$2(exprIfToString$3(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
-        };
-        break;
-    case /* Cnd */10 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Multi-armed conditionals in our pseudo-code syntax is not supported by the translator yet.",
-                Error: new Error()
-              };
-        }
-        var context$1 = context._0;
-        var ebs = Belt_List.map(it._0, (function (eb) {
-                return [
-                        printExp$3(eb[0], {
-                              TAG: /* Expr */0,
-                              _0: false
-                            }),
-                        printBlock$3(eb[1], context$1)
-                      ];
-              }));
-        var ob = obToString$2(it._1, context$1);
-        e = {
-          it: {
-            TAG: /* Cnd */10,
-            _0: ebs,
-            _1: ob
-          },
-          ann: exprCndToString$3(Belt_List.map(ebs, (function (param) {
-                      return [
-                              getPrint(param[0]),
-                              getPrint(param[1])
-                            ];
-                    })), Belt_Option.map(ob, getPrint))
-        };
-        break;
-    case /* GLam */11 :
-        var xs$1 = Belt_List.map(it._0, symbolToString$3);
-        var b$2 = printBlock$3(it._1, /* Return */1);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs$1,
-            _1: b$2
-          },
-          ann: consumeContextWrap$2(exprGenToString$2(Belt_List.map(xs$1, getPrint), getPrint(b$2)), context)
-        };
-        break;
-    case /* Yield */12 :
-        var e$4 = printExp$3(it._0, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Yield */12,
-            _0: e$4
-          },
-          ann: consumeContextWrap$2(op1("yield ", getPrint(e$4), ""), context)
-        };
-        break;
-    
-  }
-  return {
-          it: e.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: e.ann
-          }
-        };
-}
-
-function defToString$2(param) {
-  var d = param.it;
-  var d$1;
-  switch (d.TAG | 0) {
-    case /* Var */0 :
-        var x = symbolToString$3(d._0);
-        var e = printExp$3(d._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        d$1 = {
-          it: {
-            TAG: /* Var */0,
-            _0: x,
-            _1: e
-          },
-          ann: defvarToString$2(getPrint(x), getPrint(e))
-        };
-        break;
-    case /* Fun */1 :
-        var f = symbolToString$3(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$3);
-        var b = printBlock$3(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* Fun */1,
-            _0: f,
-            _1: xs,
-            _2: b
-          },
-          ann: deffunToString$3(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
-        };
-        break;
-    case /* GFun */2 :
-        var f$1 = symbolToString$3(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$3);
-        var b$1 = printBlock$3(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* GFun */2,
-            _0: f$1,
-            _1: xs$1,
-            _2: b$1
-          },
-          ann: defgenToString$3(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
-        };
-        break;
-    
-  }
-  return {
-          it: d$1.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: d$1.ann.it
-          }
-        };
-}
-
-function xeToString$2(param) {
-  var xe = param.it;
-  var x = symbolToString$3(xe[0]);
-  var e = printExp$3(xe[1], {
-        TAG: /* Expr */0,
-        _0: false
-      });
-  var print = defvarToString$2(getPrint(x), getPrint(e)).it;
-  return {
-          it: [
-            x,
-            e
-          ],
-          ann: {
-            sourceLocation: param.ann,
-            print: print
-          }
-        };
-}
-
-function obToString$2(ob, ctx) {
-  return Belt_Option.map(ob, (function (b) {
-                return printBlock$3(b, ctx);
-              }));
-}
-
-function printBlock$3(param, context) {
-  var sourceLocation = param.ann;
-  var b = param.it;
-  if (b.TAG === /* BRet */0) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), printExp$3({
-                    it: b._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: context
-                  }));
-  }
-  var t = printTerm$3(b._0, /* Step */0);
-  var b$1 = printBlock$3(b._1, context);
-  var print = {
-    TAG: /* Group */1,
-    _0: {
-      hd: getPrint(t),
-      tl: {
-        hd: {
-          it: {
-            TAG: /* Plain */0,
-            _0: "\n"
-          },
-          ann: undefined
-        },
-        tl: {
-          hd: getPrint(b$1),
-          tl: /* [] */0
-        }
-      }
-    }
-  };
-  return {
-          it: {
-            TAG: /* BCons */1,
-            _0: t,
-            _1: b$1
-          },
-          ann: {
-            sourceLocation: sourceLocation,
-            print: print
-          }
-        };
-}
-
-function printTerm$3(param, ctx) {
-  var sourceLocation = param.ann;
-  var t = param.it;
-  if (t.TAG === /* Def */0) {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Def */0,
-                          _0: v
-                        };
-                }), defToString$2({
-                    it: t._0,
-                    ann: sourceLocation
-                  }));
-  } else {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Exp */1,
-                          _0: v
-                        };
-                }), printExp$3({
-                    it: t._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: ctx
-                  }));
-  }
-}
-
-function printOutputlet$3(o) {
-  var p = function (v) {
-    switch (v.TAG | 0) {
-      case /* Ref */0 :
-          return "#" + String(v._0) + "#";
-      case /* Con */1 :
-          return constantToString$3(v._0);
-      case /* Struct */2 :
-          var content = v._1;
-          var i = v._0;
-          var i$1 = i !== undefined ? "#" + String(i) + "=" : "";
-          var content$1;
-          content$1 = content.TAG === /* Lst */0 ? "list[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]" : "vec[" + $$String.concat(", ", Belt_List.map(content._0, p)) + "]";
-          return "" + i$1 + "" + content$1 + "";
-      
-    }
-  };
-  if (o) {
-    return p(o._0);
-  } else {
-    return "error";
-  }
-}
-
-function printOutput$3(sepOpt, os) {
-  var sep = sepOpt !== undefined ? sepOpt : " ";
-  return $$String.concat(sep, Belt_List.map(os, printOutputlet$3));
-}
-
-function printProgramFull$3(insertPrintTopLevel, p) {
-  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var print = function (param) {
-    var sourceLocation = param.ann;
-    var it = param.it;
-    if (!it) {
-      return {
-              it: /* PNil */0,
-              ann: {
-                sourceLocation: sourceLocation,
-                print: {
-                  TAG: /* Group */1,
-                  _0: /* [] */0
-                }
-              }
-            };
-    }
-    var p = it._1;
-    var t = printTerm$3(it._0, /* Step */0);
-    if (!p.it) {
-      return {
-              it: /* PCons */{
-                _0: t,
-                _1: {
-                  it: /* PNil */0,
-                  ann: {
-                    sourceLocation: {
-                      begin: sourceLocation.end,
-                      end: sourceLocation.end
-                    },
-                    print: {
-                      TAG: /* Plain */0,
-                      _0: ""
-                    }
-                  }
-                }
-              },
-              ann: {
-                sourceLocation: sourceLocation,
-                print: getPrint(t).it
-              }
-            };
-    }
-    var p$1 = print(p);
-    return {
-            it: /* PCons */{
-              _0: t,
-              _1: p$1
-            },
-            ann: {
-              sourceLocation: sourceLocation,
-              print: concat2(getPrint(t), "\n", getPrint(p$1))
-            }
-          };
-  };
-  return print(p$1);
-}
-
-function printProgram$3(insertPrintTopLevel, p) {
-  return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
-}
-
-function printStandAloneTerm$3(param) {
-  var ann = param.ann;
-  var it = param.it;
-  var tmp;
-  tmp = it.TAG === /* Def */0 ? defToString$2({
-          it: it._0,
-          ann: ann
-        }).ann.print : printExp$3({
-          it: it._0,
-          ann: ann
-        }, {
-          TAG: /* Stat */1,
-          _0: /* Step */0
-        }).ann.print;
-  return toString(tmp);
-}
-
-var PCPrinter = {
-  printName: printName$3,
-  printOutputlet: printOutputlet$3,
-  printOutput: printOutput$3,
-  printStandAloneTerm: printStandAloneTerm$3,
-  printProgram: printProgram$3,
-  printProgramFull: printProgramFull$3
-};
-
-function printName$4(x) {
-  var re = /-./g;
-  var matchFn = function (matchPart, _offset, _wholeString) {
-    return matchPart.substring(1).toUpperCase();
-  };
-  var x$1 = x.replace(re, matchFn);
-  if (x$1 === "var") {
-    return "$var";
-  } else {
-    return x$1;
-  }
-}
-
-function constantToString$4(c) {
-  if (typeof c === "number") {
-    if (c === /* Uni */0) {
-      return "null";
-    }
-    throw {
-          RE_EXN_ID: SMoLPrintError,
-          _1: "Lists are not supported in Scala.",
-          Error: new Error()
-        };
-  } else {
-    switch (c.TAG | 0) {
-      case /* Num */0 :
-          return String(c._0);
-      case /* Lgc */1 :
-          if (c._0) {
-            return "true";
-          } else {
-            return "false";
-          }
-      case /* Str */2 :
-          return "\"" + $$String.escaped(c._0) + "\"";
-      case /* Sym */3 :
-          return c._0;
-      
-    }
-  }
-}
-
-function listToString$4(es) {
-  if (Belt_List.some(es, (function (e) {
-            return containsNL(e.it);
-          }))) {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: indentBlock({
-                      it: concat(",\n", es),
-                      ann: undefined
-                    }, 2),
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  } else {
-    return {
-            TAG: /* Group */1,
-            _0: {
-              hd: {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: "("
-                },
-                ann: undefined
-              },
-              tl: {
-                hd: {
-                  it: concat(", ", es),
-                  ann: undefined
-                },
-                tl: {
-                  hd: {
-                    it: {
-                      TAG: /* Plain */0,
-                      _0: ")"
-                    },
-                    ann: undefined
-                  },
-                  tl: /* [] */0
-                }
-              }
-            }
-          };
-  }
-}
-
-function defvarLike$4(op, x, e) {
-  var ss_0 = {
-    it: {
-      TAG: /* Plain */0,
-      _0: op
-    },
-    ann: undefined
-  };
-  var ss_1 = {
-    hd: x,
-    tl: {
-      hd: {
-        it: {
-          TAG: /* Plain */0,
-          _0: " = "
-        },
-        ann: undefined
-      },
-      tl: {
-        hd: indent(e, 2),
-        tl: /* [] */0
-      }
-    }
-  };
-  var ss = {
-    hd: ss_0,
-    tl: ss_1
-  };
-  return {
-          it: {
-            TAG: /* Group */1,
-            _0: ss
-          },
-          ann: undefined
-        };
-}
-
-function exprAppToString$3(e, es) {
-  return group2(e, es === /* [] */0 ? ({
-                  it: {
-                    TAG: /* Plain */0,
-                    _0: ""
-                  },
-                  ann: undefined
-                }) : ({
-                  it: listToString$4(es),
-                  ann: undefined
-                }));
-}
-
-var containsVarMutation = {
-  contents: false
-};
-
-var containsVecMutation = {
-  contents: false
-};
-
-function consumeContext$3(e, context) {
-  return surround("", e, "");
-}
-
-function consumeContextWrap$3(e, context) {
-  if (context.TAG === /* Expr */0 && context._0) {
-    return surround("(", e, ")");
-  } else {
-    return consumeContext$3(e, context);
-  }
-}
-
-function consumeContextVoid$3(e, context) {
-  if (context.TAG === /* Expr */0 || !context._0) {
-    return consumeContext$3(e, context);
-  } else {
-    return surround("", e, "");
-  }
-}
-
-function exprAppPrmToString$3(p, es, context) {
-  if (typeof p === "number") {
-    switch (p) {
-      case /* PairNew */0 :
-          if (es) {
-            var match = es.tl;
-            if (match && !match.tl) {
-              var e1 = Curry._1(es.hd, false);
-              var e2 = Curry._1(match.hd, false);
-              var vecKeyword = containsVecMutation.contents || containsVarMutation.contents ? "Buffer" : "";
-              return {
-                      it: [
-                        /* PairNew */0,
-                        {
-                          hd: e1,
-                          tl: {
-                            hd: e2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$3(op2("" + vecKeyword + "(", getPrint(e1), ", ", getPrint(e2), ")"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairRefLeft */1 :
-          if (es && !es.tl) {
-            var e1$1 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefLeft */1,
-                      {
-                        hd: e1$1,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$3(op1("", getPrint(e1$1), "(0)"), context)
-                  };
-          }
-          break;
-      case /* PairRefRight */2 :
-          if (es && !es.tl) {
-            var e1$2 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* PairRefRight */2,
-                      {
-                        hd: e1$2,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$3(op1("", getPrint(e1$2), "(1)"), context)
-                  };
-          }
-          break;
-      case /* PairSetLeft */3 :
-          if (es) {
-            var match$1 = es.tl;
-            if (match$1 && !match$1.tl) {
-              var e1$3 = Curry._1(es.hd, false);
-              var e2$1 = Curry._1(match$1.hd, false);
-              return {
-                      it: [
-                        /* PairSetLeft */3,
-                        {
-                          hd: e1$3,
-                          tl: {
-                            hd: e2$1,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextVoid$3(op2("", getPrint(e1$3), "(0) = ", getPrint(e2$1), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* PairSetRight */4 :
-          if (es) {
-            var match$2 = es.tl;
-            if (match$2 && !match$2.tl) {
-              var e1$4 = Curry._1(es.hd, false);
-              var e2$2 = Curry._1(match$2.hd, false);
-              return {
-                      it: [
-                        /* PairSetRight */4,
-                        {
-                          hd: e1$4,
-                          tl: {
-                            hd: e2$2,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContextVoid$3(op2("", getPrint(e1$4), "(1) = ", getPrint(e2$2), ""), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecNew */5 :
-          var es$1 = Belt_List.map(es, (function (e) {
-                  return Curry._1(e, false);
-                }));
-          var vecKeyword$1 = containsVecMutation.contents || containsVarMutation.contents ? "Buffer" : "";
-          return {
-                  it: [
-                    /* VecNew */5,
-                    es$1
-                  ],
-                  ann: consumeContext$3(op1("" + vecKeyword$1 + "(", {
-                            it: concat(", ", Belt_List.map(es$1, getPrint)),
-                            ann: undefined
-                          }, ")"), context)
-                };
-      case /* VecRef */6 :
-          if (es) {
-            var match$3 = es.tl;
-            if (match$3 && !match$3.tl) {
-              var e1$5 = Curry._1(es.hd, true);
-              var e2$3 = Curry._1(match$3.hd, false);
-              return {
-                      it: [
-                        /* VecRef */6,
-                        {
-                          hd: e1$5,
-                          tl: {
-                            hd: e2$3,
-                            tl: /* [] */0
-                          }
-                        }
-                      ],
-                      ann: consumeContext$3(op2("", getPrint(e1$5), "(", getPrint(e2$3), ")"), context)
-                    };
-            }
-            
-          }
-          break;
-      case /* VecSet */7 :
-          if (es) {
-            var match$4 = es.tl;
-            if (match$4) {
-              var match$5 = match$4.tl;
-              if (match$5 && !match$5.tl) {
-                var e1$6 = Curry._1(es.hd, true);
-                var e2$4 = Curry._1(match$4.hd, false);
-                var e3 = Curry._1(match$5.hd, false);
-                return {
-                        it: [
-                          /* VecSet */7,
-                          {
-                            hd: e1$6,
-                            tl: {
-                              hd: e2$4,
-                              tl: {
-                                hd: e3,
-                                tl: /* [] */0
-                              }
-                            }
-                          }
-                        ],
-                        ann: consumeContextVoid$3(op3("", getPrint(e1$6), "(", getPrint(e2$4), ") = ", getPrint(e3), ""), context)
-                      };
-              }
-              
-            }
-            
-          }
-          break;
-      case /* VecLen */8 :
-          if (es && !es.tl) {
-            var e1$7 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* VecLen */8,
-                      {
-                        hd: e1$7,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContext$3(op1("", getPrint(e1$7), ".length"), context)
-                  };
-          }
-          break;
-      case /* Err */9 :
-          if (es && !es.tl) {
-            var e1$8 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Err */9,
-                      {
-                        hd: e1$8,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$3(op1("throw ", getPrint(e1$8), ""), context)
-                  };
-          }
-          break;
-      case /* Not */10 :
-          if (es && !es.tl) {
-            var e1$9 = Curry._1(es.hd, true);
-            return {
-                    it: [
-                      /* Not */10,
-                      {
-                        hd: e1$9,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextWrap$3(op1("¬ ", getPrint(e1$9), ""), context)
-                  };
-          }
-          break;
-      case /* Print */11 :
-          if (es && !es.tl) {
-            var e1$10 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Print */11,
-                      {
-                        hd: e1$10,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$3(op1("println(", getPrint(e1$10), ")"), context)
-                  };
-          }
-          break;
-      case /* Next */12 :
-          if (es && !es.tl) {
-            var e1$11 = Curry._1(es.hd, false);
-            return {
-                    it: [
-                      /* Next */12,
-                      {
-                        hd: e1$11,
-                        tl: /* [] */0
-                      }
-                    ],
-                    ann: consumeContextVoid$3(op1("next(", getPrint(e1$11), ")"), context)
-                  };
-          }
-          break;
-      case /* Cons */13 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by JavaScript",
-                Error: new Error()
-              };
-      
-    }
-  } else {
-    if (p.TAG === /* Arith */0) {
-      var o = p._0;
-      var os;
-      switch (o) {
-        case /* Add */0 :
-            os = "+";
-            break;
-        case /* Sub */1 :
-            os = "-";
-            break;
-        case /* Mul */2 :
-            os = "*";
-            break;
-        case /* Div */3 :
-            os = "/";
-            break;
-        
-      }
-      var es$2 = Belt_List.map(es, (function (e) {
-              return Curry._1(e, true);
-            }));
-      return {
-              it: [
-                {
-                  TAG: /* Arith */0,
-                  _0: o
-                },
-                es$2
-              ],
-              ann: consumeContextWrap$3({
-                    it: concat(" " + os + " ", Belt_List.map(es$2, getPrint)),
-                    ann: undefined
-                  }, context)
-            };
-    }
-    if (es) {
-      var match$6 = es.tl;
-      if (match$6 && !match$6.tl) {
-        var o$1 = p._0;
-        var os$1;
-        switch (o$1) {
-          case /* Lt */0 :
-              os$1 = "<";
-              break;
-          case /* Eq */1 :
-              os$1 = "==";
-              break;
-          case /* Gt */2 :
-              os$1 = ">";
-              break;
-          case /* Le */3 :
-              os$1 = "<=";
-              break;
-          case /* Ge */4 :
-              os$1 = ">=";
-              break;
-          case /* Ne */5 :
-              os$1 = "!=";
-              break;
-          
-        }
-        var e1$12 = Curry._1(es.hd, true);
-        var e2$5 = Curry._1(match$6.hd, true);
-        return {
-                it: [
-                  {
-                    TAG: /* Cmp */1,
-                    _0: o$1
-                  },
-                  {
-                    hd: e1$12,
-                    tl: {
-                      hd: e2$5,
-                      tl: /* [] */0
-                    }
-                  }
-                ],
-                ann: consumeContextWrap$3(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""), context)
-              };
-      }
-      
-    }
-    
-  }
-  var err = "Our pseudo-code syntax doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
-}
-
-function funLike$3(op, x, xs, e) {
-  return op2("" + op + " ", exprAppToString$3(x, xs), " =", indentBlock(e, 2), "");
-}
-
-function defvarToString$3(x, e) {
-  var keyword = containsVarMutation.contents ? "var" : "val";
-  return op1("", defvarLike$4("" + keyword + " ", x, e), "");
-}
-
-function deffunToString$4(f, xs, b) {
-  return funLike$3("def", f, Belt_List.map(xs, (function (x) {
-                    return group2(x, {
-                                it: {
-                                  TAG: /* Plain */0,
-                                  _0: " : Int"
-                                },
-                                ann: undefined
-                              });
-                  })), b);
-}
-
-function defgenToString$4(f, xs, b) {
-  return funLike$3("gen def", f, Belt_List.map(xs, (function (x) {
-                    return group2(x, {
-                                it: {
-                                  TAG: /* Plain */0,
-                                  _0: " : Int"
-                                },
-                                ann: undefined
-                              });
-                  })), b);
-}
-
-function exprSetToString$1(x, e) {
-  return op2("", x, " = ", e, "");
-}
-
-function exprLamToString$4(xs, b) {
-  return op2("(", {
-              it: concat(", ", Belt_List.map(xs, (function (x) {
-                          return group2(x, {
-                                      it: {
-                                        TAG: /* Plain */0,
-                                        _0: " : Int"
-                                      },
-                                      ann: undefined
-                                    });
-                        }))),
-              ann: undefined
-            }, ") =>", indentBlock(b, 2), "");
-}
-
-function exprBgnToString$4(es, e) {
-  return {
-          it: listToString$4(Belt_List.concatMany([
-                    es,
-                    {
-                      hd: e,
-                      tl: /* [] */0
-                    }
-                  ])),
-          ann: undefined
-        };
-}
-
-function exprCndToString$4(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
-              {
-                it: {
-                  TAG: /* Plain */0,
-                  _0: ""
-                },
-                ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Belt_List.map(ebs$1, (function (param) {
-          return op2("if ", param[0], ":", indentBlock(param[1], 2), "\nend");
-        }));
-  return concat(" else ", ebs$2);
-}
-
-function exprIfToString$4(e_cnd, e_thn, e_els) {
-  return op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "");
-}
-
-function symbolToString$4(param) {
-  var it = param.it;
-  return {
-          it: it,
-          ann: {
-            sourceLocation: param.ann,
-            print: {
-              TAG: /* Plain */0,
-              _0: printName$4(it)
-            }
-          }
-        };
-}
-
-function printExp$4(param, context) {
-  var it = param.it;
-  var e;
-  switch (it.TAG | 0) {
-    case /* Con */0 :
-        var c = it._0;
-        var it$1 = constantToString$4(c);
-        e = {
-          it: {
-            TAG: /* Con */0,
-            _0: c
-          },
-          ann: consumeContext$3({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$1
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Ref */1 :
-        var x = it._0;
-        var it$2 = printName$4(x);
-        e = {
-          it: {
-            TAG: /* Ref */1,
-            _0: x
-          },
-          ann: consumeContext$3({
-                it: {
-                  TAG: /* Plain */0,
-                  _0: it$2
-                },
-                ann: undefined
-              }, context)
-        };
-        break;
-    case /* Set */2 :
-        var x$1 = symbolToString$4(it._0);
-        var e$1 = printExp$4(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Set */2,
-            _0: x$1,
-            _1: e$1
-          },
-          ann: consumeContextVoid$3(exprSetToString$1(getPrint(x$1), getPrint(e$1)), context)
-        };
-        break;
-    case /* Lam */3 :
-        var xs = Belt_List.map(it._0, symbolToString$4);
-        var b = printBlock$4(it._1, /* Return */1);
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs,
-            _1: b
-          },
-          ann: consumeContextWrap$3(exprLamToString$4(Belt_List.map(xs, getPrint), getPrint(b)), context)
-        };
-        break;
-    case /* Let */4 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by our pseudo-code syntax",
-              Error: new Error()
-            };
-    case /* Letrec */5 :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "letrec-expressions are not supported by our pseudo-code syntax",
-              Error: new Error()
-            };
-    case /* AppPrm */6 :
-        var es = Belt_List.map(it._1, (function (e, b) {
-                return printExp$4(e, {
-                            TAG: /* Expr */0,
-                            _0: b
-                          });
-              }));
-        var match = exprAppPrmToString$3(it._0, es, context);
-        var match$1 = match.it;
-        e = {
-          it: {
-            TAG: /* AppPrm */6,
-            _0: match$1[0],
-            _1: match$1[1]
-          },
-          ann: match.ann
-        };
-        break;
-    case /* App */7 :
-        var e$2 = printExp$4(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var es$1 = Belt_List.map(it._1, (function (e) {
-                return printExp$4(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
-              }));
-        e = {
-          it: {
-            TAG: /* App */7,
-            _0: e$2,
-            _1: es$1
-          },
-          ann: consumeContext$3(exprAppToString$3(getPrint(e$2), Belt_List.map(es$1, getPrint)), context)
-        };
-        break;
-    case /* Bgn */8 :
-        var es$2 = Belt_List.map(it._0, (function (e) {
-                return printExp$4(e, {
-                            TAG: /* Expr */0,
-                            _0: false
-                          });
-              }));
-        var e$3 = printExp$4(it._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Bgn */8,
-            _0: es$2,
-            _1: e$3
-          },
-          ann: consumeContext$3(exprBgnToString$4(Belt_List.map(es$2, getPrint), getPrint(e$3)), context)
-        };
-        break;
-    case /* If */9 :
-        var e_cnd = printExp$4(it._0, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_thn = printExp$4(it._1, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        var e_els = printExp$4(it._2, {
-              TAG: /* Expr */0,
-              _0: true
-            });
-        e = {
-          it: {
-            TAG: /* If */9,
-            _0: e_cnd,
-            _1: e_thn,
-            _2: e_els
-          },
-          ann: consumeContextWrap$3(exprIfToString$4(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)), context)
-        };
-        break;
-    case /* Cnd */10 :
-        if (context.TAG === /* Expr */0) {
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Multi-armed conditionals in our pseudo-code syntax is not supported by the translator yet.",
-                Error: new Error()
-              };
-        }
-        var context$1 = context._0;
-        var ebs = Belt_List.map(it._0, (function (eb) {
-                return [
-                        printExp$4(eb[0], {
-                              TAG: /* Expr */0,
-                              _0: false
-                            }),
-                        printBlock$4(eb[1], context$1)
-                      ];
-              }));
-        var ob = obToString$3(it._1, context$1);
-        e = {
-          it: {
-            TAG: /* Cnd */10,
-            _0: ebs,
-            _1: ob
-          },
-          ann: exprCndToString$4(Belt_List.map(ebs, (function (param) {
-                      return [
-                              getPrint(param[0]),
-                              getPrint(param[1])
-                            ];
-                    })), Belt_Option.map(ob, getPrint))
-        };
-        break;
-    case /* GLam */11 :
-        var xs$1 = Belt_List.map(it._0, symbolToString$4);
-        var b$1 = printBlock$4(it._1, /* Return */1);
-        Belt_List.map(xs$1, getPrint);
-        getPrint(b$1);
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "generators are not supported yet in Scala translation.",
-              Error: new Error()
-            };
-        e = {
-          it: {
-            TAG: /* Lam */3,
-            _0: xs$1,
-            _1: b$1
-          },
-          ann: consumeContextWrap$3(undefined, context)
-        };
-        break;
-    case /* Yield */12 :
-        var e$4 = printExp$4(it._0, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        e = {
-          it: {
-            TAG: /* Yield */12,
-            _0: e$4
-          },
-          ann: consumeContextWrap$3(op1("yield ", getPrint(e$4), ""), context)
-        };
-        break;
-    
-  }
-  return {
-          it: e.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: e.ann
-          }
-        };
-}
-
-function defToString$3(param) {
-  var d = param.it;
-  var d$1;
-  switch (d.TAG | 0) {
-    case /* Var */0 :
-        var x = symbolToString$4(d._0);
-        var e = printExp$4(d._1, {
-              TAG: /* Expr */0,
-              _0: false
-            });
-        d$1 = {
-          it: {
-            TAG: /* Var */0,
-            _0: x,
-            _1: e
-          },
-          ann: defvarToString$3(getPrint(x), getPrint(e))
-        };
-        break;
-    case /* Fun */1 :
-        var f = symbolToString$4(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$4);
-        var b = printBlock$4(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* Fun */1,
-            _0: f,
-            _1: xs,
-            _2: b
-          },
-          ann: deffunToString$4(getPrint(f), Belt_List.map(xs, getPrint), getPrint(b))
-        };
-        break;
-    case /* GFun */2 :
-        var f$1 = symbolToString$4(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$4);
-        var b$1 = printBlock$4(d._2, /* Return */1);
-        d$1 = {
-          it: {
-            TAG: /* GFun */2,
-            _0: f$1,
-            _1: xs$1,
-            _2: b$1
-          },
-          ann: defgenToString$4(getPrint(f$1), Belt_List.map(xs$1, getPrint), getPrint(b$1))
-        };
-        break;
-    
-  }
-  return {
-          it: d$1.it,
-          ann: {
-            sourceLocation: param.ann,
-            print: d$1.ann.it
-          }
-        };
-}
-
-function obToString$3(ob, ctx) {
-  return Belt_Option.map(ob, (function (b) {
-                return printBlock$4(b, ctx);
-              }));
-}
-
-function printBlock$4(param, context) {
-  var sourceLocation = param.ann;
-  var b = param.it;
-  if (b.TAG === /* BRet */0) {
-    return mapAnn((function (e) {
-                  return {
-                          TAG: /* BRet */0,
-                          _0: e
-                        };
-                }), printExp$4({
-                    it: b._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: context
-                  }));
-  }
-  var t = printTerm$4(b._0, /* Step */0);
-  var b$1 = printBlock$4(b._1, context);
-  var print = {
-    TAG: /* Group */1,
-    _0: {
-      hd: getPrint(t),
-      tl: {
-        hd: {
-          it: {
-            TAG: /* Plain */0,
-            _0: "\n"
-          },
-          ann: undefined
-        },
-        tl: {
-          hd: getPrint(b$1),
-          tl: /* [] */0
-        }
-      }
-    }
-  };
-  return {
-          it: {
-            TAG: /* BCons */1,
-            _0: t,
-            _1: b$1
-          },
-          ann: {
-            sourceLocation: sourceLocation,
-            print: print
-          }
-        };
-}
-
-function printTerm$4(param, ctx) {
-  var sourceLocation = param.ann;
-  var t = param.it;
-  if (t.TAG === /* Def */0) {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Def */0,
-                          _0: v
-                        };
-                }), defToString$3({
-                    it: t._0,
-                    ann: sourceLocation
-                  }));
-  } else {
-    return mapAnn((function (v) {
-                  return {
-                          TAG: /* Exp */1,
-                          _0: v
-                        };
-                }), printExp$4({
-                    it: t._0,
-                    ann: sourceLocation
-                  }, {
-                    TAG: /* Stat */1,
-                    _0: ctx
-                  }));
-  }
-}
-
-function printOutputlet$4(o) {
-  var p = function (v) {
-    switch (v.TAG | 0) {
-      case /* Ref */0 :
-          throw {
-                RE_EXN_ID: SMoLPrintError,
-                _1: "Can't print circular data structure in Scala",
-                Error: new Error()
-              };
-      case /* Con */1 :
-          return constantToString$4(v._0);
-      case /* Struct */2 :
-          var content = v._1;
-          var i;
-          if (v._0 !== undefined) {
-            throw {
-                  RE_EXN_ID: SMoLPrintError,
-                  _1: "Can't print circular data structure in Scala",
-                  Error: new Error()
-                };
-          }
-          i = "";
-          var content$1;
-          if (content.TAG === /* Lst */0) {
-            throw {
-                  RE_EXN_ID: SMoLPrintError,
-                  _1: "Lists are not supported in Scala.",
-                  Error: new Error()
-                };
-          }
-          content$1 = "Buffer(" + $$String.concat(", ", Belt_List.map(content._0, p)) + ")";
-          return "" + i + "" + content$1 + "";
-      
-    }
-  };
-  if (o) {
-    return p(o._0);
-  } else {
-    return "error";
-  }
-}
-
-function printOutput$4(sepOpt, os) {
-  var sep = sepOpt !== undefined ? sepOpt : " ";
-  return $$String.concat(sep, Belt_List.map(os, printOutputlet$4));
-}
-
-function printProgramFull$4(insertPrintTopLevel, p) {
-  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var s = printProgram(insertPrintTopLevel, p$1);
-  containsVarMutation.contents = Js_string.includes("(set!", s);
-  containsVecMutation.contents = Js_string.includes("vec-set!", s) || Js_string.includes("set-left!", s) || Js_string.includes("set-right!", s);
-  var print = function (param) {
-    var sourceLocation = param.ann;
-    var it = param.it;
-    if (!it) {
-      return {
-              it: /* PNil */0,
-              ann: {
-                sourceLocation: sourceLocation,
-                print: {
-                  TAG: /* Group */1,
-                  _0: /* [] */0
-                }
-              }
-            };
-    }
-    var p = it._1;
-    var t = printTerm$4(it._0, /* Step */0);
-    if (!p.it) {
-      return {
-              it: /* PCons */{
-                _0: t,
-                _1: {
-                  it: /* PNil */0,
-                  ann: {
-                    sourceLocation: {
-                      begin: sourceLocation.end,
-                      end: sourceLocation.end
-                    },
-                    print: {
-                      TAG: /* Plain */0,
-                      _0: ""
-                    }
-                  }
-                }
-              },
-              ann: {
-                sourceLocation: sourceLocation,
-                print: getPrint(t).it
-              }
-            };
-    }
-    var p$1 = print(p);
-    return {
-            it: /* PCons */{
-              _0: t,
-              _1: p$1
-            },
-            ann: {
-              sourceLocation: sourceLocation,
-              print: concat2(getPrint(t), "\n", getPrint(p$1))
-            }
-          };
-  };
-  return print(p$1);
-}
-
-function printProgram$4(insertPrintTopLevel, p) {
-  return toString(printProgramFull$4(insertPrintTopLevel, p).ann.print);
-}
-
-function printStandAloneTerm$4(param) {
-  var ann = param.ann;
-  var it = param.it;
-  var tmp;
-  tmp = it.TAG === /* Def */0 ? defToString$3({
-          it: it._0,
-          ann: ann
-        }).ann.print : printExp$4({
-          it: it._0,
-          ann: ann
-        }, {
-          TAG: /* Stat */1,
-          _0: /* Step */0
-        }).ann.print;
-  return toString(tmp);
-}
-
-var SCPrinter = {
-  printName: printName$4,
-  printOutputlet: printOutputlet$4,
-  printOutput: printOutput$4,
-  printStandAloneTerm: printStandAloneTerm$4,
-  printProgram: printProgram$4,
-  printProgramFull: printProgramFull$4
 };
 
 function toString$6(t) {
@@ -7842,486 +4414,6 @@ var JSTranslator = {
   translateProgramFull: translateProgramFull$1
 };
 
-function translateOutput$2(src) {
-  var output;
-  try {
-    output = parseOutput(src);
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printOutput$2(undefined, output);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateStandAloneTerm$2(src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printStandAloneTerm$2(programAsTerm(p));
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgram$2(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgram$2(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgramFull$2(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgramFull$2(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-var PYTranslator = {
-  translateName: printName$2,
-  translateOutput: translateOutput$2,
-  translateStandAloneTerm: translateStandAloneTerm$2,
-  translateProgram: translateProgram$2,
-  translateProgramFull: translateProgramFull$2
-};
-
-function translateOutput$3(src) {
-  var output;
-  try {
-    output = parseOutput(src);
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printOutput$3(undefined, output);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateStandAloneTerm$3(src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printStandAloneTerm$3(programAsTerm(p));
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgram$3(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgram$3(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgramFull$3(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgramFull$3(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-var PCTranslator = {
-  translateName: printName$3,
-  translateOutput: translateOutput$3,
-  translateStandAloneTerm: translateStandAloneTerm$3,
-  translateProgram: translateProgram$3,
-  translateProgramFull: translateProgramFull$3
-};
-
-function translateOutput$4(src) {
-  var output;
-  try {
-    output = parseOutput(src);
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printOutput$4(undefined, output);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateStandAloneTerm$4(src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printStandAloneTerm$4(programAsTerm(p));
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgram$4(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgram$4(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-function translateProgramFull$4(printTopLevel, src) {
-  var p;
-  try {
-    p = makeProgram(parseTerms(src));
-  }
-  catch (raw_err){
-    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
-    if (err.RE_EXN_ID === SMoLParseError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* ParseError */0,
-              _0: err._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err;
-  }
-  try {
-    return printProgramFull$4(printTopLevel, p);
-  }
-  catch (raw_err$1){
-    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
-    if (err$1.RE_EXN_ID === SMoLPrintError) {
-      throw {
-            RE_EXN_ID: SMoLTranslateError,
-            _1: {
-              TAG: /* PrintError */1,
-              _0: err$1._1
-            },
-            Error: new Error()
-          };
-    }
-    throw err$1;
-  }
-}
-
-var SCTranslator = {
-  translateName: printName$4,
-  translateOutput: translateOutput$4,
-  translateStandAloneTerm: translateStandAloneTerm$4,
-  translateProgram: translateProgram$4,
-  translateProgramFull: translateProgramFull$4
-};
-
 var Print = {
   toString: toString,
   toSourceMap: toSourceMap,
@@ -8361,15 +4453,9 @@ export {
   getPrint ,
   SMoLPrinter ,
   JSPrinter ,
-  PYPrinter ,
-  PCPrinter ,
-  SCPrinter ,
   TranslateError ,
   SMoLTranslateError ,
   SMoLTranslator ,
   JSTranslator ,
-  PYTranslator ,
-  PCTranslator ,
-  SCTranslator ,
 }
 /* No side effect */
