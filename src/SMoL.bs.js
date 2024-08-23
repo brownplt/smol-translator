@@ -5128,8 +5128,7 @@ function printBlockHelper(param, env, context) {
   }
   var match$1 = printTerm$2(b._0, env, /* Step */0);
   var t = match$1[1];
-  var e$2 = printBlock$2(b._1, env);
-  var b$1 = Curry._1(e$2.stat, context);
+  var b$1 = printBlockHelper(b._1, env, context);
   var print$1 = {
     TAG: /* Group */1,
     _0: {

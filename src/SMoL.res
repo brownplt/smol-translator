@@ -2560,7 +2560,7 @@ module PYPrinter: Printer = {
       }
     | BCons(t, b) => {
         let (prefix, t, suffix) = printTerm(t, env, Step)
-        let b = b->printBlock(env)->asStat(context)
+        let b = b->printBlockHelper(env, context)
         let print = Group(list{
           Print.string(prefix),
           getPrint(t),
