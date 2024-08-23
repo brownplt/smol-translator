@@ -10,9 +10,9 @@ module Print: {
   type t<'id> = printNode<'id>
   let toString: t<'id> => string
   let toSourceMap: (
-    print<'key>,
-    Map.id<'key, 'entity>,
-  ) => Map.t<'key, SExpression.sourceLocation, 'entity>
+    print<'id>,
+    Map.id<'id, 'entity>,
+  ) => Map.t<'id, SExpression.sourceLocation, 'entity>
   let map: (string => string, t<'id>) => t<'id>
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
@@ -105,7 +105,7 @@ and definitionNode<'ann> =
   | GFun(annotated<symbol, 'ann>, list<annotated<symbol, 'ann>>, block<'ann>)
 and definition<'ann> = annotated<definitionNode<'ann>, 'ann>
 
-and termNode<'ann> = Def(definitionNode<'ann>) | Exp(expressionNode<'ann>)
+and termNode<'ann> = Def(definition<'ann>) | Exp(expression<'ann>)
 and term<'ann> = annotated<termNode<'ann>, 'ann>
 
 and programNode<'ann> =
@@ -115,6 +115,19 @@ and program<'ann> = annotated<programNode<'ann>, 'ann>
 
 let xsOfBlock: block<'ann> => list<annotated<symbol, 'ann>>
 let xsOfProgram: program<'ann> => list<annotated<symbol, 'ann>>
+
+type nodeKind =
+ | Name
+ | Expression
+ | Bind
+ | Block
+ | Definition
+ | Term
+ | Program
+module NodeKind: {
+  type t = nodeKind
+  let toString: nodeKind => string
+}
 
 // Parse
 
@@ -155,7 +168,20 @@ module Parser: {
 // Print
 
 type exn += SMoLPrintError(string)
-type printAnn = {sourceLocation: sourceLocation, print: Print.t<sourceLocation>}
+type kindedSourceLocation = {
+  nodeKind: nodeKind,
+  sourceLocation: sourceLocation
+}
+type printAnn = {sourceLocation: sourceLocation, print: Print.t<kindedSourceLocation>}
+
+let getPrint: expression<printAnn> => print<kindedSourceLocation>
+let getNamePrint: annotated<string, printAnn> => print<kindedSourceLocation>
+let getBindPrint: bind<printAnn> => print<kindedSourceLocation>
+let getBlockPrint: block<printAnn> => print<kindedSourceLocation>
+let getDefinitionPrint: definition<printAnn> => print<kindedSourceLocation>
+let getTermPrint: term<printAnn> => print<kindedSourceLocation>
+let getProgramPrint: program<printAnn> => print<kindedSourceLocation>
+
 module type Printer = {
   let printName: string => string
   let printOutputlet: outputlet => string
@@ -164,8 +190,6 @@ module type Printer = {
   let printProgram: (bool, program<sourceLocation>) => string
   let printProgramFull: (bool, program<sourceLocation>) => program<printAnn>
 }
-
-let getPrint: annotated<'a, printAnn> => print<sourceLocation>
 
 module SMoLPrinter: Printer
 module JSPrinter: Printer
