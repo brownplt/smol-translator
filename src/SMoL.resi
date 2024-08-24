@@ -13,7 +13,8 @@ module Print: {
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
   let pad: (string, annotated<t<'id>, option<'id>>, string) => t<'id>
-  let dummyAnn: t<'id> => print<'id>
+  let dummy: t<'id> => print<'id>
+  let s: (array<string>, array<print<'id>>) => t<'id>
 }
 
 type constant =

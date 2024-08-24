@@ -4,6 +4,7 @@ import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
 import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
+import * as Core__Array from "@rescript/core/src/Core__Array.mjs";
 import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
@@ -191,11 +192,74 @@ function pad(prefix, it, suffix) {
         };
 }
 
-function dummyAnn(it) {
+function dummy(it) {
   return {
           it: it,
           ann: undefined
         };
+}
+
+function s(strings, parameters) {
+  var s$1 = Core__Option.getExn(Core__Array.last(strings), undefined);
+  var ih = s$1 === "" ? /* [] */0 : ({
+        hd: {
+          it: {
+            TAG: "Plain",
+            _0: s$1
+          },
+          ann: undefined
+        },
+        tl: /* [] */0
+      });
+  return {
+          TAG: "Group",
+          _0: Core__Array.reduceRightWithIndex(parameters, ih, (function (ih, parameter, i) {
+                  var ih$1 = {
+                    hd: parameter,
+                    tl: ih
+                  };
+                  var s = Core__Option.getExn(strings[i], undefined);
+                  if (s === "") {
+                    return ih$1;
+                  } else {
+                    return {
+                            hd: {
+                              it: {
+                                TAG: "Plain",
+                                _0: s
+                              },
+                              ann: undefined
+                            },
+                            tl: ih$1
+                          };
+                  }
+                }))
+        };
+}
+
+function wrap(prefix, p, suffix) {
+  return s([
+              "",
+              "",
+              "",
+              ""
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: prefix
+                },
+                ann: undefined
+              },
+              p,
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: suffix
+                },
+                ann: undefined
+              }
+            ]);
 }
 
 function containsNL(it) {
@@ -2818,126 +2882,6 @@ function insertTopLevelPrint(p) {
         };
 }
 
-function op1(s1, p1, s2) {
-  return {
-          TAG: "Group",
-          _0: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: s1
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: p1,
-              tl: {
-                hd: {
-                  it: {
-                    TAG: "Plain",
-                    _0: s2
-                  },
-                  ann: undefined
-                },
-                tl: /* [] */0
-              }
-            }
-          }
-        };
-}
-
-function op2(s1, p1, s2, p2, s3) {
-  return {
-          TAG: "Group",
-          _0: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: s1
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: p1,
-              tl: {
-                hd: {
-                  it: {
-                    TAG: "Plain",
-                    _0: s2
-                  },
-                  ann: undefined
-                },
-                tl: {
-                  hd: p2,
-                  tl: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: s3
-                      },
-                      ann: undefined
-                    },
-                    tl: /* [] */0
-                  }
-                }
-              }
-            }
-          }
-        };
-}
-
-function op3(s1, p1, s2, p2, s3, p3, s4) {
-  return {
-          TAG: "Group",
-          _0: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: s1
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: p1,
-              tl: {
-                hd: {
-                  it: {
-                    TAG: "Plain",
-                    _0: s2
-                  },
-                  ann: undefined
-                },
-                tl: {
-                  hd: p2,
-                  tl: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: s3
-                      },
-                      ann: undefined
-                    },
-                    tl: {
-                      hd: p3,
-                      tl: {
-                        hd: {
-                          it: {
-                            TAG: "Plain",
-                            _0: s4
-                          },
-                          ann: undefined
-                        },
-                        tl: /* [] */0
-                      }
-                    }
-                  }
-                }
-              }
-            }
-          }
-        };
-}
-
 function printName$1(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
@@ -3169,7 +3113,14 @@ function exprAppPrmToString(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"))
+                      ann: consumeContext(s([
+                                "[ ",
+                                ", ",
+                                " ]"
+                              ], [
+                                getPrint(e1),
+                                getPrint(e2)
+                              ]))
                     };
             }
             
@@ -3186,7 +3137,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$1), "[0]"))
+                    ann: consumeContext(s([
+                              "",
+                              "[0]"
+                            ], [getPrint(e1$1)]))
                   };
           }
           break;
@@ -3201,7 +3155,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$2), "[1]"))
+                    ann: consumeContext(s([
+                              "",
+                              "[1]"
+                            ], [getPrint(e1$2)]))
                   };
           }
           break;
@@ -3222,7 +3179,14 @@ function exprAppPrmToString(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""))
+                      ann: consumeContextStat(s([
+                                "",
+                                "[0] = ",
+                                ""
+                              ], [
+                                getPrint(e1$3),
+                                getPrint(e2$1)
+                              ]))
                     };
             }
             
@@ -3245,7 +3209,14 @@ function exprAppPrmToString(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""))
+                      ann: consumeContextStat(s([
+                                "",
+                                "[1] = ",
+                                ""
+                              ], [
+                                getPrint(e1$4),
+                                getPrint(e2$2)
+                              ]))
                     };
             }
             
@@ -3260,12 +3231,15 @@ function exprAppPrmToString(p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: consumeContext(op1("[ ", {
-                            it: concat(", ", Core__List.map(es$1, (function (e) {
-                                        return getPrint(e);
-                                      }))),
-                            ann: undefined
-                          }, " ]"))
+                  ann: consumeContext(s([
+                            "[ ",
+                            " ]"
+                          ], [{
+                              it: concat(", ", Core__List.map(es$1, (function (e) {
+                                          return getPrint(e);
+                                        }))),
+                              ann: undefined
+                            }]))
                 };
       case "VecRef" :
           if (es) {
@@ -3284,7 +3258,14 @@ function exprAppPrmToString(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"))
+                      ann: consumeContext(s([
+                                "",
+                                "[",
+                                "]"
+                              ], [
+                                getPrint(e1$5),
+                                getPrint(e2$3)
+                              ]))
                     };
             }
             
@@ -3313,7 +3294,16 @@ function exprAppPrmToString(p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextStat(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""))
+                        ann: consumeContextStat(s([
+                                  "",
+                                  "[",
+                                  "] = ",
+                                  ""
+                                ], [
+                                  getPrint(e1$6),
+                                  getPrint(e2$4),
+                                  getPrint(e3)
+                                ]))
                       };
               }
               
@@ -3332,7 +3322,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext(op1("", getPrint(e1$7), ".length"))
+                    ann: consumeContext(s([
+                              "",
+                              ".length"
+                            ], [getPrint(e1$7)]))
                   };
           }
           break;
@@ -3347,7 +3340,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap(op1("throw ", getPrint(e1$8), ""))
+                    ann: consumeContextWrap(s([
+                              "throw ",
+                              ""
+                            ], [getPrint(e1$8)]))
                   };
           }
           break;
@@ -3362,7 +3358,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap(op1("! ", getPrint(e1$9), ""))
+                    ann: consumeContextWrap(s([
+                              "! ",
+                              ""
+                            ], [getPrint(e1$9)]))
                   };
           }
           break;
@@ -3377,7 +3376,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid(op1("console.log(", getPrint(e1$10), ")"))
+                    ann: consumeContextVoid(s([
+                              "console.log(",
+                              ")"
+                            ], [getPrint(e1$10)]))
                   };
           }
           break;
@@ -3392,7 +3394,10 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid(op1("", getPrint(e1$11), ".next()"))
+                    ann: consumeContextVoid(s([
+                              "",
+                              ".next()"
+                            ], [getPrint(e1$11)]))
                   };
           }
           break;
@@ -3481,7 +3486,22 @@ function exprAppPrmToString(p, es) {
                     }
                   }
                 ],
-                ann: consumeContext(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
+                ann: consumeContext(s([
+                          "",
+                          " ",
+                          " ",
+                          ""
+                        ], [
+                          getPrint(e1$12),
+                          {
+                            it: {
+                              TAG: "Plain",
+                              _0: os$1
+                            },
+                            ann: undefined
+                          },
+                          getPrint(e2$5)
+                        ]))
               };
       }
       
@@ -3497,10 +3517,25 @@ function exprAppPrmToString(p, es) {
 }
 
 function funLike(op, x, xs, e) {
-  return op2(op + " ", {
-              it: exprAppToString$1(x, xs),
-              ann: undefined
-            }, " {", indentBlock(e, 2), "\n}");
+  return s([
+              "",
+              " ",
+              " {",
+              "\n}"
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              {
+                it: exprAppToString$1(x, xs),
+                ann: undefined
+              },
+              indentBlock(e, 2)
+            ]);
 }
 
 function defvarToString$1(x, e) {
@@ -3540,7 +3575,10 @@ function exprGenToString$1(xs, b) {
 }
 
 function exprYieldToString$1(e) {
-  return op1("yield ", e, "");
+  return s([
+              "yield ",
+              ""
+            ], [e]);
 }
 
 function exprBgnToString$1(es, e) {
@@ -3572,7 +3610,14 @@ function exprCndToString$1(ebs, ob) {
         ]) : ebs;
   var ebs$2 = Core__List.map(ebs$1, (function (param) {
           return {
-                  it: op2("if (", param[0], ") {", indentBlock(param[1], 2), "\n}"),
+                  it: s([
+                        "if (",
+                        ") {",
+                        "\n}"
+                      ], [
+                        param[0],
+                        indentBlock(param[1], 2)
+                      ]),
                   ann: undefined
                 };
         }));
@@ -3580,7 +3625,16 @@ function exprCndToString$1(ebs, ob) {
 }
 
 function exprIfToString$1(e_cnd, e_thn, e_els) {
-  return op3("", e_cnd, " ? ", e_thn, " : ", e_els, "");
+  return s([
+              "",
+              " ? ",
+              " : ",
+              ""
+            ], [
+              e_cnd,
+              e_thn,
+              e_els
+            ]);
 }
 
 function symbolToString$1(param) {
@@ -4076,7 +4130,7 @@ function printTerm$1(param, ctx) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: op1(match[0], getDefinitionPrint(it$1), match[2])
+              print: wrap(match[0], getDefinitionPrint(it$1), match[2])
             }
           };
   }
@@ -4090,7 +4144,7 @@ function printTerm$1(param, ctx) {
           },
           ann: {
             sourceLocation: sourceLocation,
-            print: op1(match$1[0], getPrint(it$2), match$1[2])
+            print: wrap(match$1[0], getPrint(it$2), match$1[2])
           }
         };
 }
@@ -4172,7 +4226,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
               },
               ann: {
                 sourceLocation: sourceLocation,
-                print: op1("", getTermPrint(t), "")
+                print: wrap("", getTermPrint(t), "")
               }
             };
     }
@@ -4492,7 +4546,14 @@ function exprAppPrmToString$1(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$1(op2("[ ", getPrint(e1), ", ", getPrint(e2), " ]"))
+                      ann: consumeContext$1(s([
+                                "[ ",
+                                ", ",
+                                " ]"
+                              ], [
+                                getPrint(e1),
+                                getPrint(e2)
+                              ]))
                     };
             }
             
@@ -4509,7 +4570,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1(op1("", getPrint(e1$1), "[0]"))
+                    ann: consumeContext$1(s([
+                              "",
+                              "[0]"
+                            ], [getPrint(e1$1)]))
                   };
           }
           break;
@@ -4524,7 +4588,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1(op1("", getPrint(e1$2), "[1]"))
+                    ann: consumeContext$1(s([
+                              "",
+                              "[1]"
+                            ], [getPrint(e1$2)]))
                   };
           }
           break;
@@ -4545,7 +4612,14 @@ function exprAppPrmToString$1(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""))
+                      ann: consumeContextStat$1(s([
+                                "",
+                                "[0] = ",
+                                ""
+                              ], [
+                                getPrint(e1$3),
+                                getPrint(e2$1)
+                              ]))
                     };
             }
             
@@ -4568,7 +4642,14 @@ function exprAppPrmToString$1(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""))
+                      ann: consumeContextStat$1(s([
+                                "",
+                                "[1] = ",
+                                ""
+                              ], [
+                                getPrint(e1$4),
+                                getPrint(e2$2)
+                              ]))
                     };
             }
             
@@ -4583,12 +4664,15 @@ function exprAppPrmToString$1(p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: consumeContext$1(op1("[ ", {
-                            it: concat(", ", Belt_List.map(es$1, (function (e) {
-                                        return getPrint(e);
-                                      }))),
-                            ann: undefined
-                          }, " ]"))
+                  ann: consumeContext$1(s([
+                            "[ ",
+                            " ]"
+                          ], [{
+                              it: concat(", ", Belt_List.map(es$1, (function (e) {
+                                          return getPrint(e);
+                                        }))),
+                              ann: undefined
+                            }]))
                 };
       case "VecRef" :
           if (es) {
@@ -4607,7 +4691,14 @@ function exprAppPrmToString$1(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$1(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"))
+                      ann: consumeContext$1(s([
+                                "",
+                                "[",
+                                "]"
+                              ], [
+                                getPrint(e1$5),
+                                getPrint(e2$3)
+                              ]))
                     };
             }
             
@@ -4636,7 +4727,16 @@ function exprAppPrmToString$1(p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextStat$1(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""))
+                        ann: consumeContextStat$1(s([
+                                  "",
+                                  "[",
+                                  "] = ",
+                                  ""
+                                ], [
+                                  getPrint(e1$6),
+                                  getPrint(e2$4),
+                                  getPrint(e3)
+                                ]))
                       };
               }
               
@@ -4655,7 +4755,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$1(op1("len(", getPrint(e1$7), ")"))
+                    ann: consumeContext$1(s([
+                              "len(",
+                              ")"
+                            ], [getPrint(e1$7)]))
                   };
           }
           break;
@@ -4670,7 +4773,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$1(op1("raise ", getPrint(e1$8), ""))
+                    ann: consumeContextWrap$1(s([
+                              "raise ",
+                              ""
+                            ], [getPrint(e1$8)]))
                   };
           }
           break;
@@ -4685,7 +4791,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$1(op1("not ", getPrint(e1$9), ""))
+                    ann: consumeContextWrap$1(s([
+                              "not ",
+                              ""
+                            ], [getPrint(e1$9)]))
                   };
           }
           break;
@@ -4700,7 +4809,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$1(op1("print(", getPrint(e1$10), ")"))
+                    ann: consumeContextVoid$1(s([
+                              "print(",
+                              ")"
+                            ], [getPrint(e1$10)]))
                   };
           }
           break;
@@ -4715,7 +4827,10 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$1(op1("next(", getPrint(e1$11), ")"))
+                    ann: consumeContextVoid$1(s([
+                              "next(",
+                              ")"
+                            ], [getPrint(e1$11)]))
                   };
           }
           break;
@@ -4804,7 +4919,22 @@ function exprAppPrmToString$1(p, es) {
                     }
                   }
                 ],
-                ann: consumeContext$1(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
+                ann: consumeContext$1(s([
+                          "",
+                          " ",
+                          " ",
+                          ""
+                        ], [
+                          getPrint(e1$12),
+                          {
+                            it: {
+                              TAG: "Plain",
+                              _0: os$1
+                            },
+                            ann: undefined
+                          },
+                          getPrint(e2$5)
+                        ]))
               };
       }
       
@@ -4820,10 +4950,25 @@ function exprAppPrmToString$1(p, es) {
 }
 
 function funLike$1(op, x, xs, e) {
-  return op2(op + " ", {
-              it: exprAppToString$2(x, xs),
-              ann: undefined
-            }, ":", indentBlock(e, 4), "");
+  return s([
+              "",
+              " ",
+              ":",
+              ""
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              {
+                it: exprAppToString$2(x, xs),
+                ann: undefined
+              },
+              indentBlock(e, 4)
+            ]);
 }
 
 function defvarToString$2(x, e) {
@@ -4843,11 +4988,21 @@ function exprSetToString$2(x, e) {
 }
 
 function exprLamToString$2(xs, b) {
-  return op2("lambda ", xs, ": ", b, "");
+  return s([
+              "lambda ",
+              ": ",
+              ""
+            ], [
+              xs,
+              b
+            ]);
 }
 
 function exprYieldToString$2(e) {
-  return op1("yield ", e, "");
+  return s([
+              "yield ",
+              ""
+            ], [e]);
 }
 
 function exprCndToString$2(ebs, ob) {
@@ -4869,7 +5024,14 @@ function exprCndToString$2(ebs, ob) {
         ]) : ebs;
   var ebs$2 = Belt_List.map(ebs$1, (function (param) {
           return {
-                  it: op2("if ", param[0], ":", indentBlock(param[1], 4), "\n"),
+                  it: s([
+                        "if ",
+                        ":",
+                        "\n"
+                      ], [
+                        param[0],
+                        indentBlock(param[1], 4)
+                      ]),
                   ann: undefined
                 };
         }));
@@ -4877,7 +5039,16 @@ function exprCndToString$2(ebs, ob) {
 }
 
 function exprIfToString$2(e_cnd, e_thn, e_els) {
-  return op3("", e_thn, " if ", e_cnd, " else ", e_els, "");
+  return s([
+              "",
+              " if ",
+              " else ",
+              ""
+            ], [
+              e_thn,
+              e_cnd,
+              e_els
+            ]);
 }
 
 function symbolToString$2(param) {
@@ -5408,7 +5579,7 @@ function printTerm$2(param, env, ctx) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: op1(match[0], getDefinitionPrint(it$1), match[2])
+              print: wrap(match[0], getDefinitionPrint(it$1), match[2])
             }
           };
   }
@@ -5422,7 +5593,7 @@ function printTerm$2(param, env, ctx) {
           },
           ann: {
             sourceLocation: sourceLocation,
-            print: op1(match$1[0], getPrint(it$2), match$1[2])
+            print: wrap(match$1[0], getPrint(it$2), match$1[2])
           }
         };
 }
@@ -5510,7 +5681,10 @@ function printProgramFull$2(insertPrintTopLevel, p) {
               },
               ann: {
                 sourceLocation: sourceLocation,
-                print: op1("", getTermPrint(t), "")
+                print: s([
+                      "",
+                      ""
+                    ], [getTermPrint(t)])
               }
             };
     }
@@ -5782,7 +5956,14 @@ function exprAppPrmToString$2(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$2(op2("vec[", getPrint(e1), ", ", getPrint(e2), "]"))
+                      ann: consumeContext$2(s([
+                                "vec[",
+                                ", ",
+                                "]"
+                              ], [
+                                getPrint(e1),
+                                getPrint(e2)
+                              ]))
                     };
             }
             
@@ -5799,7 +5980,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$2(op1("", getPrint(e1$1), "[0]"))
+                    ann: consumeContext$2(s([
+                              "",
+                              "[0]"
+                            ], [getPrint(e1$1)]))
                   };
           }
           break;
@@ -5814,7 +5998,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$2(op1("", getPrint(e1$2), "[1]"))
+                    ann: consumeContext$2(s([
+                              "",
+                              "[1]"
+                            ], [getPrint(e1$2)]))
                   };
           }
           break;
@@ -5835,7 +6022,14 @@ function exprAppPrmToString$2(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextWrapVoid(op2("", getPrint(e1$3), "[0] = ", getPrint(e2$1), ""))
+                      ann: consumeContextWrapVoid(s([
+                                "",
+                                "[0] = ",
+                                ""
+                              ], [
+                                getPrint(e1$3),
+                                getPrint(e2$1)
+                              ]))
                     };
             }
             
@@ -5858,7 +6052,14 @@ function exprAppPrmToString$2(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextWrapVoid(op2("", getPrint(e1$4), "[1] = ", getPrint(e2$2), ""))
+                      ann: consumeContextWrapVoid(s([
+                                "",
+                                "[1] = ",
+                                ""
+                              ], [
+                                getPrint(e1$4),
+                                getPrint(e2$2)
+                              ]))
                     };
             }
             
@@ -5873,12 +6074,15 @@ function exprAppPrmToString$2(p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: consumeContext$2(op1("vec[", {
-                            it: concat(", ", Core__List.map(es$1, (function (e) {
-                                        return getPrint(e);
-                                      }))),
-                            ann: undefined
-                          }, "]"))
+                  ann: consumeContext$2(s([
+                            "vec[",
+                            "]"
+                          ], [{
+                              it: concat(", ", Core__List.map(es$1, (function (e) {
+                                          return getPrint(e);
+                                        }))),
+                              ann: undefined
+                            }]))
                 };
       case "VecRef" :
           if (es) {
@@ -5897,7 +6101,14 @@ function exprAppPrmToString$2(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$2(op2("", getPrint(e1$5), "[", getPrint(e2$3), "]"))
+                      ann: consumeContext$2(s([
+                                "",
+                                "[",
+                                "]"
+                              ], [
+                                getPrint(e1$5),
+                                getPrint(e2$3)
+                              ]))
                     };
             }
             
@@ -5926,7 +6137,16 @@ function exprAppPrmToString$2(p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextWrapVoid(op3("", getPrint(e1$6), "[", getPrint(e2$4), "] = ", getPrint(e3), ""))
+                        ann: consumeContextWrapVoid(s([
+                                  "",
+                                  "[",
+                                  "] = ",
+                                  ""
+                                ], [
+                                  getPrint(e1$6),
+                                  getPrint(e2$4),
+                                  getPrint(e3)
+                                ]))
                       };
               }
               
@@ -5945,7 +6165,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$2(op1("length(", getPrint(e1$7), ")"))
+                    ann: consumeContext$2(s([
+                              "length(",
+                              ")"
+                            ], [getPrint(e1$7)]))
                   };
           }
           break;
@@ -5960,7 +6183,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$2(op1("raise ", getPrint(e1$8), ""))
+                    ann: consumeContextWrap$2(s([
+                              "raise ",
+                              ""
+                            ], [getPrint(e1$8)]))
                   };
           }
           break;
@@ -5975,7 +6201,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$2(op1("! ", getPrint(e1$9), ""))
+                    ann: consumeContextWrap$2(s([
+                              "! ",
+                              ""
+                            ], [getPrint(e1$9)]))
                   };
           }
           break;
@@ -5990,7 +6219,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$2(op1("print(", getPrint(e1$10), ")"))
+                    ann: consumeContextVoid$2(s([
+                              "print(",
+                              ")"
+                            ], [getPrint(e1$10)]))
                   };
           }
           break;
@@ -6005,7 +6237,10 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$2(op1("next(", getPrint(e1$11), ")"))
+                    ann: consumeContextVoid$2(s([
+                              "next(",
+                              ")"
+                            ], [getPrint(e1$11)]))
                   };
           }
           break;
@@ -6094,7 +6329,22 @@ function exprAppPrmToString$2(p, es) {
                     }
                   }
                 ],
-                ann: consumeContext$2(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
+                ann: consumeContext$2(s([
+                          "",
+                          " ",
+                          " ",
+                          ""
+                        ], [
+                          getPrint(e1$12),
+                          {
+                            it: {
+                              TAG: "Plain",
+                              _0: os$1
+                            },
+                            ann: undefined
+                          },
+                          getPrint(e2$5)
+                        ]))
               };
       }
       
@@ -6110,10 +6360,25 @@ function exprAppPrmToString$2(p, es) {
 }
 
 function funLike$2(op, x, xs, e) {
-  return op2(op + " ", {
-              it: exprAppToString$3(x, xs),
-              ann: undefined
-            }, ":", indentBlock(e, 2), "\nend");
+  return s([
+              "",
+              " ",
+              ":",
+              "\nend"
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              {
+                it: exprAppToString$3(x, xs),
+                ann: undefined
+              },
+              indentBlock(e, 2)
+            ]);
 }
 
 function defvarToString$3(x, e) {
@@ -6153,7 +6418,10 @@ function exprGenToString$2(xs, b) {
 }
 
 function exprYieldToString$3(e) {
-  return op1("yield ", e, "");
+  return s([
+              "yield ",
+              ""
+            ], [e]);
 }
 
 function exprBgnToString$2(es, e) {
@@ -6185,18 +6453,37 @@ function exprCndToString$3(ebs, ob) {
         ]) : ebs;
   var ebs$2 = Core__List.map(ebs$1, (function (param) {
           return {
-                  it: op2("if ", param[0], ":", indentBlock(param[1], 2), "\n"),
+                  it: s([
+                        "if ",
+                        ":",
+                        "\n"
+                      ], [
+                        param[0],
+                        indentBlock(param[1], 2)
+                      ]),
                   ann: undefined
                 };
         }));
-  return op1("", {
-              it: concat(" els", ebs$2),
-              ann: undefined
-            }, "end");
+  return s([
+              "",
+              "end"
+            ], [{
+                it: concat(" els", ebs$2),
+                ann: undefined
+              }]);
 }
 
 function exprIfToString$3(e_cnd, e_thn, e_els) {
-  return op3("if ", e_cnd, " then ", e_thn, " else ", e_els, "");
+  return s([
+              "if ",
+              " then ",
+              " else ",
+              ""
+            ], [
+              e_cnd,
+              e_thn,
+              e_els
+            ]);
 }
 
 function letLike$1(op, xes, b) {
@@ -6831,7 +7118,7 @@ function printTerm$3(param, ctx) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: op1(match[0], getDefinitionPrint(it$1), match[2])
+              print: wrap(match[0], getDefinitionPrint(it$1), match[2])
             }
           };
   }
@@ -6845,7 +7132,7 @@ function printTerm$3(param, ctx) {
           },
           ann: {
             sourceLocation: sourceLocation,
-            print: op1(match$1[0], getPrint(it$2), match$1[2])
+            print: wrap(match$1[0], getPrint(it$2), match$1[2])
           }
         };
 }
@@ -6929,7 +7216,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
               },
               ann: {
                 sourceLocation: sourceLocation,
-                print: op1(prefix, getTermPrint(t), suffix)
+                print: wrap(prefix, getTermPrint(t), suffix)
               }
             };
     }
@@ -6943,7 +7230,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             ann: {
               sourceLocation: sourceLocation,
               print: concat2({
-                    it: op1(prefix, getTermPrint(t), suffix),
+                    it: wrap(prefix, getTermPrint(t), suffix),
                     ann: undefined
                   }, "\n", getProgramPrint(p$1))
             }
@@ -7203,7 +7490,22 @@ function exprAppPrmToString$3(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$3(op2(vecKeyword + "(", getPrint(e1), ", ", getPrint(e2), ")"))
+                      ann: consumeContext$3(s([
+                                "",
+                                "(",
+                                ", ",
+                                ")"
+                              ], [
+                                {
+                                  it: {
+                                    TAG: "Plain",
+                                    _0: vecKeyword
+                                  },
+                                  ann: undefined
+                                },
+                                getPrint(e1),
+                                getPrint(e2)
+                              ]))
                     };
             }
             
@@ -7220,7 +7522,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$3(op1("", getPrint(e1$1), "(0)"))
+                    ann: consumeContext$3(s([
+                              "",
+                              "(0)"
+                            ], [getPrint(e1$1)]))
                   };
           }
           break;
@@ -7235,7 +7540,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$3(op1("", getPrint(e1$2), "(1)"))
+                    ann: consumeContext$3(s([
+                              "",
+                              "(1)"
+                            ], [getPrint(e1$2)]))
                   };
           }
           break;
@@ -7256,7 +7564,14 @@ function exprAppPrmToString$3(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoid$3(op2("", getPrint(e1$3), "(0) = ", getPrint(e2$1), ""))
+                      ann: consumeContextVoid$3(s([
+                                "",
+                                "(0) = ",
+                                ""
+                              ], [
+                                getPrint(e1$3),
+                                getPrint(e2$1)
+                              ]))
                     };
             }
             
@@ -7279,7 +7594,14 @@ function exprAppPrmToString$3(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoid$3(op2("", getPrint(e1$4), "(1) = ", getPrint(e2$2), ""))
+                      ann: consumeContextVoid$3(s([
+                                "",
+                                "(1) = ",
+                                ""
+                              ], [
+                                getPrint(e1$4),
+                                getPrint(e2$2)
+                              ]))
                     };
             }
             
@@ -7295,12 +7617,25 @@ function exprAppPrmToString$3(p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: consumeContext$3(op1(vecKeyword$1 + "(", {
-                            it: concat(", ", Core__List.map(es$1, (function (e) {
-                                        return getPrint(e);
-                                      }))),
-                            ann: undefined
-                          }, ")"))
+                  ann: consumeContext$3(s([
+                            "",
+                            "(",
+                            ")"
+                          ], [
+                            {
+                              it: {
+                                TAG: "Plain",
+                                _0: vecKeyword$1
+                              },
+                              ann: undefined
+                            },
+                            {
+                              it: concat(", ", Core__List.map(es$1, (function (e) {
+                                          return getPrint(e);
+                                        }))),
+                              ann: undefined
+                            }
+                          ]))
                 };
       case "VecRef" :
           if (es) {
@@ -7319,7 +7654,14 @@ function exprAppPrmToString$3(p, es) {
                           }
                         }
                       ],
-                      ann: consumeContext$3(op2("", getPrint(e1$5), "(", getPrint(e2$3), ")"))
+                      ann: consumeContext$3(s([
+                                "",
+                                "(",
+                                ")"
+                              ], [
+                                getPrint(e1$5),
+                                getPrint(e2$3)
+                              ]))
                     };
             }
             
@@ -7348,7 +7690,16 @@ function exprAppPrmToString$3(p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextVoid$3(op3("", getPrint(e1$6), "(", getPrint(e2$4), ") = ", getPrint(e3), ""))
+                        ann: consumeContextVoid$3(s([
+                                  "",
+                                  "(",
+                                  ") = ",
+                                  ""
+                                ], [
+                                  getPrint(e1$6),
+                                  getPrint(e2$4),
+                                  getPrint(e3)
+                                ]))
                       };
               }
               
@@ -7367,7 +7718,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContext$3(op1("", getPrint(e1$7), ".length"))
+                    ann: consumeContext$3(s([
+                              "",
+                              ".length"
+                            ], [getPrint(e1$7)]))
                   };
           }
           break;
@@ -7382,7 +7736,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$3(op1("throw ", getPrint(e1$8), ""))
+                    ann: consumeContextWrap$3(s([
+                              "throw ",
+                              ""
+                            ], [getPrint(e1$8)]))
                   };
           }
           break;
@@ -7397,7 +7754,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$3(op1("! ", getPrint(e1$9), ""))
+                    ann: consumeContextWrap$3(s([
+                              "! ",
+                              ""
+                            ], [getPrint(e1$9)]))
                   };
           }
           break;
@@ -7412,7 +7772,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$3(op1("println(", getPrint(e1$10), ")"))
+                    ann: consumeContextVoid$3(s([
+                              "println(",
+                              ")"
+                            ], [getPrint(e1$10)]))
                   };
           }
           break;
@@ -7427,7 +7790,10 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$3(op1("next(", getPrint(e1$11), ")"))
+                    ann: consumeContextVoid$3(s([
+                              "next(",
+                              ")"
+                            ], [getPrint(e1$11)]))
                   };
           }
           break;
@@ -7516,7 +7882,22 @@ function exprAppPrmToString$3(p, es) {
                     }
                   }
                 ],
-                ann: consumeContext$3(op2("", getPrint(e1$12), " " + os$1 + " ", getPrint(e2$5), ""))
+                ann: consumeContext$3(s([
+                          "",
+                          " ",
+                          " ",
+                          ""
+                        ], [
+                          getPrint(e1$12),
+                          {
+                            it: {
+                              TAG: "Plain",
+                              _0: os$1
+                            },
+                            ann: undefined
+                          },
+                          getPrint(e2$5)
+                        ]))
               };
       }
       
@@ -7532,15 +7913,33 @@ function exprAppPrmToString$3(p, es) {
 }
 
 function funLike$3(op, x, xs, e) {
-  return op2(op + " ", {
-              it: exprAppToString$4(x, Core__List.map(xs, (function (x) {
-                          return {
-                                  it: op1("", x, " : Int"),
-                                  ann: undefined
-                                };
-                        }))),
-              ann: undefined
-            }, " =", indentBlock(e, 2), "");
+  return s([
+              "",
+              " ",
+              " =",
+              ""
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              {
+                it: exprAppToString$4(x, Core__List.map(xs, (function (x) {
+                            return {
+                                    it: s([
+                                          "",
+                                          " : Int"
+                                        ], [x]),
+                                    ann: undefined
+                                  };
+                          }))),
+                ann: undefined
+              },
+              indentBlock(e, 2)
+            ]);
 }
 
 function defvarToString$4(x, e) {
@@ -7561,25 +7960,37 @@ function exprSetToString$4(x, e) {
 }
 
 function exprLamToString$4(xs, b) {
-  return op2("(", {
-              it: concat(", ", Core__List.map(xs, (function (x) {
-                          return {
-                                  it: group2(x, {
-                                        it: {
-                                          TAG: "Plain",
-                                          _0: " : Int"
-                                        },
-                                        ann: undefined
-                                      }),
-                                  ann: undefined
-                                };
-                        }))),
-              ann: undefined
-            }, ") =>", indentBlock(b, 2), "");
+  var xs_it = concat(", ", Core__List.map(xs, (function (x) {
+              return {
+                      it: group2(x, {
+                            it: {
+                              TAG: "Plain",
+                              _0: " : Int"
+                            },
+                            ann: undefined
+                          }),
+                      ann: undefined
+                    };
+            })));
+  var xs$1 = {
+    it: xs_it,
+    ann: undefined
+  };
+  return s([
+              "(",
+              ") =>",
+              ""
+            ], [
+              xs$1,
+              indentBlock(b, 2)
+            ]);
 }
 
 function exprYieldToString$4(e) {
-  return op1("yield ", e, "");
+  return s([
+              "yield ",
+              ""
+            ], [e]);
 }
 
 function exprBgnToString$3(es, e) {
@@ -7611,7 +8022,14 @@ function exprCndToString$4(ebs, ob) {
         ]) : ebs;
   var ebs$2 = Core__List.map(ebs$1, (function (param) {
           return {
-                  it: op2("if ", param[0], ":", indentBlock(param[1], 2), "\nend"),
+                  it: s([
+                        "if ",
+                        ":",
+                        "\nend"
+                      ], [
+                        param[0],
+                        indentBlock(param[1], 2)
+                      ]),
                   ann: undefined
                 };
         }));
@@ -7619,7 +8037,16 @@ function exprCndToString$4(ebs, ob) {
 }
 
 function exprIfToString$4(e_cnd, e_thn, e_els) {
-  return op3("", e_cnd, " ? ", e_thn, " : ", e_els, "");
+  return s([
+              "",
+              " ? ",
+              " : ",
+              ""
+            ], [
+              e_cnd,
+              e_thn,
+              e_els
+            ]);
 }
 
 function symbolToString$4(param) {
@@ -8064,7 +8491,7 @@ function printTerm$4(param, ctx) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: op1(match[0], getDefinitionPrint(it$1), match[2])
+              print: wrap(match[0], getDefinitionPrint(it$1), match[2])
             }
           };
   }
@@ -8078,7 +8505,7 @@ function printTerm$4(param, ctx) {
           },
           ann: {
             sourceLocation: sourceLocation,
-            print: op1(match$1[0], getPrint(it$2), match$1[2])
+            print: wrap(match$1[0], getPrint(it$2), match$1[2])
           }
         };
 }
@@ -8132,9 +8559,9 @@ function printOutput$4(sepOpt, os) {
 
 function printProgramFull$4(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var s = printProgram(insertPrintTopLevel, p$1);
-  containsVarMutation.contents = Js_string.includes("(set!", s);
-  containsVecMutation.contents = Js_string.includes("vec-set!", s) || Js_string.includes("set-left!", s) || Js_string.includes("set-right!", s);
+  var s$1 = printProgram(insertPrintTopLevel, p$1);
+  containsVarMutation.contents = Js_string.includes("(set!", s$1);
+  containsVecMutation.contents = Js_string.includes("vec-set!", s$1) || Js_string.includes("set-left!", s$1) || Js_string.includes("set-right!", s$1);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -8174,7 +8601,10 @@ function printProgramFull$4(insertPrintTopLevel, p) {
               },
               ann: {
                 sourceLocation: sourceLocation,
-                print: op1("", getTermPrint(t), "")
+                print: s([
+                      "",
+                      ""
+                    ], [getTermPrint(t)])
               }
             };
     }
@@ -9071,7 +9501,8 @@ var Print = {
   concat2: concat2,
   concat: concat,
   pad: pad,
-  dummyAnn: dummyAnn
+  dummy: dummy,
+  s: s
 };
 
 var Parser = {
