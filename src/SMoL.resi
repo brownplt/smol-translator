@@ -1,5 +1,4 @@
 open SExpression
-open Belt
 
 type rec printNode<'id> =
   | Plain(string)
@@ -9,11 +8,8 @@ and print<'id> = annotated<printNode<'id>, option<'id>>
 module Print: {
   type t<'id> = printNode<'id>
   let toString: t<'id> => string
-  let toSourceMap: (
-    print<'id>,
-    Map.id<'id, 'entity>,
-  ) => Map.t<'id, SExpression.sourceLocation, 'entity>
-  let map: (string => string, t<'id>) => t<'id>
+  let toSourceMap: print<'id> => Map.t<'id, SExpression.sourceLocation>
+  let map: (string => string) => (t<'id>) => t<'id>
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
   let pad: (string, annotated<t<'id>, option<'id>>, string) => t<'id>
@@ -117,13 +113,13 @@ let xsOfBlock: block<'ann> => list<annotated<symbol, 'ann>>
 let xsOfProgram: program<'ann> => list<annotated<symbol, 'ann>>
 
 type nodeKind =
- | Name
- | Expression
- | Bind
- | Block
- | Definition
- | Term
- | Program
+  | Name
+  | Expression
+  | Bind
+  | Block
+  | Definition
+  | Term
+  | Program
 module NodeKind: {
   type t = nodeKind
   let toString: nodeKind => string
@@ -170,7 +166,7 @@ module Parser: {
 type exn += SMoLPrintError(string)
 type kindedSourceLocation = {
   nodeKind: nodeKind,
-  sourceLocation: sourceLocation
+  sourceLocation: sourceLocation,
 }
 type printAnn = {sourceLocation: sourceLocation, print: Print.t<kindedSourceLocation>}
 

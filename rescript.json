@@ -18,6 +18,10 @@
     ],
     "suffix": ".bs.js",
     "bs-dependencies": [
+        "@rescript/core",
         "@brownplt/s-expression"
+    ],
+    "bsc-flags": [
+        "-open RescriptCore"
     ]
 }

@@ -1,7 +1,6 @@
-open Belt
 open SExpression
 
-let mapAnn = (f, {ann, it}: annotated<_, _>): annotated<_, _> => {
+let mapAnn = f => ({ann, it}: annotated<_, _>): annotated<_, _> => {
   {
     ann,
     it: f(it),
@@ -15,8 +14,8 @@ and print<'id> = annotated<printNode<'id>, option<'id>>
 
 module Print = {
   type t<'id> = printNode<'id>
-  let toSourceMap = (t, id) => {
-    let hMap = ref(Map.make(~id))
+  let toSourceMap = (t) => {
+    let hMap = Map.make()
     let ln = ref(0)
     let ch = ref(0)
     let rec f = ({it, ann}) => {
@@ -24,9 +23,11 @@ module Print = {
       switch it {
       | Group(es) => es->List.forEach(f)
       | Plain(s) =>
-        s |> String.iter(c => {
+        s
+        ->String.split("")
+        ->Array.forEach(c => {
           switch c {
-          | '\n' => {
+          | "\n" => {
               ln := ln.contents + 1
               ch := 0
             }
@@ -36,28 +37,30 @@ module Print = {
       }
       let end = {ln: ln.contents, ch: ch.contents}
       ann->Option.forEach(ann => {
-        hMap := Map.set(hMap.contents, ann, {begin, end})
+        Map.set(hMap, ann, {begin, end})
       })
     }
     f(t)
-    hMap.contents
+    hMap
   }
   let rec toString = it => {
     switch it {
     | Plain(s) => s
     | Group(ts) =>
-      String.concat(
+      String.concatMany(
         "",
-        ts->List.map(({it}) => {
+        ts
+        ->List.map(({it}) => {
           toString(it)
-        }),
+        })
+        ->List.toArray,
       )
     }
   }
-  let rec map = (f, it) => {
+  let rec map = f => it => {
     switch it {
     | Plain(s) => Plain(f(s))
-    | Group(ts) => Group(ts->List.map(mapAnn(map(f))))
+    | Group(ts) => Group(ts->List.map(mapAnn(t => map(f)(t))))
     }
   }
   let concat2 = (p1, s, p2) => {
@@ -98,7 +101,7 @@ module Print = {
 
 let rec containsNL = it => {
   switch it {
-  | Plain(s) => String.contains(s, '\n')
+  | Plain(s) => String.includes(s, "\n")
   | Group(ts) =>
     ts->List.some(({it}) => {
       containsNL(it)
@@ -262,8 +265,8 @@ let xsOfTerm = t => {
   }
 }
 
-let xsOfBlock = b => List.flatten(termsOfBlock(b)->List.map(xsOfTerm))
-let xsOfProgram = p => List.flatten(termsOfProgram(p)->List.map(xsOfTerm))
+let xsOfBlock = b => List.flat(termsOfBlock(b)->List.map(xsOfTerm))
+let xsOfProgram = p => List.flat(termsOfProgram(p)->List.map(xsOfTerm))
 
 type nodeKind =
   | Name
@@ -340,7 +343,10 @@ module ParseError = {
     | SExprKindError(_kind, context, sexpr) =>
       `expecting a ${context}, given ${SExpr.toString(sexpr)}`
     | SExprArityError(_arity_expectation, context, es) =>
-      `expecting ${context}, given ${String.concat(" ", es->List.map(SExpr.toString))}`
+      `expecting ${context}, given ${String.concatMany(
+          " ",
+          es->List.map(SExpr.toString)->List.toArray,
+        )}`
     | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
     | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)}`
     | TermKindError(_term_kind, context, term) =>
@@ -438,8 +444,8 @@ module Parser = {
         let rec p = (e: sexpr): val => {
           switch e.it {
           | Atom(atom) => Con(constant_of_atom(atom))
-          | Sequence(Vector, _b, es) => Struct(None, Vec(es->List.map(p)))
-          | Sequence(List, _b, es) => Struct(None, Lst(es->List.map(p)))
+          | Sequence({sequenceKind: Vector, content}) => Struct(None, Vec(content->List.map(p)))
+          | Sequence({sequenceKind: List, content}) => Struct(None, Lst(content->List.map(p)))
           }
         }
         p(e)
@@ -451,11 +457,11 @@ module Parser = {
     let {ann, it} = e
     switch it {
     | Atom(atom) => {ann, it: Con(constant_of_atom(atom))}
-    | Sequence(Vector, _b, es) => {
-        let es = es->List.map(parseValue)
-        {ann, it: AppPrm(VecNew, es)}
+    | Sequence({sequenceKind: Vector, content}) => {
+        let content = content->List.map(parseValue)
+        {ann, it: AppPrm(VecNew, content)}
       }
-    | Sequence(List, _, _) => raiseParseError(LiteralListError(e))
+    | Sequence({sequenceKind: List}) => raiseParseError(LiteralListError(e))
     }
   }
 
@@ -469,7 +475,7 @@ module Parser = {
   let as_list = (context, e: sexpr) => {
     let {ann, it} = e
     switch it {
-    | Sequence(List, _b, ls) => {ann, it: ls}
+    | Sequence({sequenceKind: List, content}) => {ann, it: content}
     | _ => raiseParseError(SExprKindError(List, context, e))
     }
   }
@@ -537,7 +543,7 @@ module Parser = {
     | Sym(x) =>
       let e = {
         let tryNum = x->Float.fromString->Option.map(n => Con(Num(n)))
-        tryNum->Option.getWithDefault(Ref(x))
+        tryNum->Option.getOr(Ref(x))
       }
       e
     }
@@ -548,273 +554,303 @@ module Parser = {
     | list{} =>
       switch body.it {
       | BRet(e) => e
-      | _ => Let(list{}, body) |> ann
+      | _ => ann(Let(list{}, body))
       }
-    | list{xe} => Let(list{xe}, body) |> ann
-    | list{xe, ...xes} => Let(list{xe}, makeBlock(list{}, letstar(it => {
-            {
-              ann: {
-                begin: xes
-                ->List.head
-                ->Option.map(xe => xe.ann.begin)
-                ->Option.getWithDefault(body.ann.begin),
-                end: body.ann.end,
-              },
-              it,
-            }
-          }, xes, body))) |> ann
+    | list{xe} => ann(Let(list{xe}, body))
+    | list{xe, ...xes} => ann(Let(list{xe}, makeBlock(list{}, letstar(it => {
+              {
+                ann: {
+                  begin: xes
+                  ->List.head
+                  ->Option.map(xe => xe.ann.begin)
+                  ->Option.getOr(body.ann.begin),
+                  end: body.ann.end,
+                },
+                it,
+              }
+            }, xes, body))))
     }
   }
 
   let rec parseTerm = (e: sexpr): term<sourceLocation> => {
     let ann = it => {ann: e.ann, it}
-    switch e.it {
-    | Sequence(Vector, _b, es) => {
-        let es = es->List.map(parseValue)
-        Exp(AppPrm(VecNew, es) |> ann)
-      }
-    | Sequence(List, _b, list{{it: Atom(Sym("quote")), ann: _}, ...rest}) => {
-        let e = as_one("a quoted value", rest)
-        Exp(parseValue(e))
-      }
-    | Sequence(List, _b, list{{it: Atom(Sym("defvar")), ann: _}, ...rest}) => {
-        let (x, e) = as_two("a variable and an expression", rest)
-        let x = as_id("a variable name", x)
-        let e = as_expr("an expression", parseTerm(e))
-        Def(Var(x, e) |> ann)
-      }
+    ann(
+      switch e.it {
+      | Sequence({sequenceKind: Vector, content}) => {
+          let content = content->List.map(parseValue)
+          Exp(ann(AppPrm(VecNew, content)))
+        }
+      | Sequence({content: list{{it: Atom(Sym("quote")), ann: _}, ...rest}}) => {
+          let e = as_one("a quoted value", rest)
+          Exp(parseValue(e))
+        }
+      | Sequence({content: list{{it: Atom(Sym("defvar")), ann: _}, ...rest}}) => {
+          let (x, e) = as_two("a variable and an expression", rest)
+          let x = as_id("a variable name", x)
+          let e = as_expr("an expression", parseTerm(e))
+          Def(ann(Var(x, e)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("deffun")), ann: _}, ...rest}) => {
-        let (head, terms, result) = as_one_then_many_then_one("a function header and a body", rest)
-        let (fun, args) = as_one_then_many(
-          "function name followed by parameters",
-          as_list("function name and parameters", head).it,
-        )
-        let fun = as_id("a function name", fun)
-        let args = List.map(args, as_id("a parameter"))
-        let terms = Belt.List.map(terms, parseTerm)
-        let result = result |> parseTerm |> as_expr("an expression to be returned")
-        Def(Fun(fun, args, makeBlock(terms, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("deffun")), ann: _}, ...rest}}) => {
+          let (head, terms, result) = as_one_then_many_then_one(
+            "a function header and a body",
+            rest,
+          )
+          let (fun, args) = as_one_then_many(
+            "function name followed by parameters",
+            as_list("function name and parameters", head).it,
+          )
+          let fun = as_id("a function name", fun)
+          let args = List.map(args, arg => as_id("a parameter", arg))
+          let terms = Belt.List.map(terms, parseTerm)
+          let result = as_expr("an expression to be returned", parseTerm(result))
+          Def(ann(Fun(fun, args, makeBlock(terms, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("defgen")), ann: _}, ...rest}) => {
-        let (head, terms, result) = as_one_then_many_then_one("a generator header and a body", rest)
-        let (fun, args) = as_one_then_many(
-          "generator name followed by parameters",
-          as_list("generator name and parameters", head).it,
-        )
-        let fun = as_id("a generator name", fun)
-        let args = List.map(args, as_id("a parameter"))
-        let terms = Belt.List.map(terms, parseTerm)
-        let result = result |> parseTerm |> as_expr("an expression to be returned")
-        Def(GFun(fun, args, makeBlock(terms, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("defgen")), ann: _}, ...rest}}) => {
+          let (head, terms, result) = as_one_then_many_then_one(
+            "a generator header and a body",
+            rest,
+          )
+          let (fun, args) = as_one_then_many(
+            "generator name followed by parameters",
+            as_list("generator name and parameters", head).it,
+          )
+          let fun = as_id("a generator name", fun)
+          let args = List.map(args, arg => as_id("a parameter", arg))
+          let terms = Belt.List.map(terms, parseTerm)
+          let result = as_expr("an expression to be returned", parseTerm(result))
+          Def(ann(GFun(fun, args, makeBlock(terms, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("lambda")), ann: _}, ...rest}) => {
-        let (args, terms, result) = as_one_then_many_then_one(
-          "the function signature followed by the function body",
-          rest,
-        )
-        let args = as_list("function parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(parseTerm)
-        let result = result |> parseTerm |> as_expr("an expression to be returned")
-        Exp(Lam(args, makeBlock(terms, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("lambda")), ann: _}, ...rest}}) => {
+          let (args, terms, result) = as_one_then_many_then_one(
+            "the function signature followed by the function body",
+            rest,
+          )
+          let args =
+            as_list("function parameters", args).it->List.map(arg => as_id("a parameter", arg))
+          let terms = terms->List.map(parseTerm)
+          let result = as_expr("an expression to be returned", parseTerm(result))
+          Exp(ann(Lam(args, makeBlock(terms, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("generator")), ann: _}, ...rest}) => {
-        let (args, terms, result) = as_one_then_many_then_one(
-          "the generator signature followed by the function body",
-          rest,
-        )
-        let args = as_list("generator parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(parseTerm)
-        let result = result |> parseTerm |> as_expr("an expression to be returned")
-        Exp(GLam(args, makeBlock(terms, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("generator")), ann: _}, ...rest}}) => {
+          let (args, terms, result) = as_one_then_many_then_one(
+            "the generator signature followed by the function body",
+            rest,
+          )
+          let args =
+            as_list("generator parameters", args).it->List.map(arg => as_id("a parameter", arg))
+          let terms = terms->List.map(parseTerm)
+          let result = as_expr("an expression to be returned", parseTerm(result))
+          Exp(ann(GLam(args, makeBlock(terms, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("yield")), ann: _}, ...rest}) => {
-        let e = as_one("an expression", rest)
-        let e = as_expr("an expression", parseTerm(e))
-        Exp(Yield(e) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("yield")), ann: _}, ...rest}}) => {
+          let e = as_one("an expression", rest)
+          let e = as_expr("an expression", parseTerm(e))
+          Exp(ann(Yield(e)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("λ")), ann: _}, ...rest}) => {
-        let (args, terms, result) = as_one_then_many_then_one(
-          "the function signature followed by the function body",
-          rest,
-        )
-        let args = as_list("function parameters", args).it->List.map(as_id("a parameter"))
-        let terms = terms->List.map(parseTerm)
-        let result = result |> parseTerm |> as_expr("an expression to be returned")
-        Exp(Lam(args, makeBlock(terms, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("λ")), ann: _}, ...rest}}) => {
+          let (args, terms, result) = as_one_then_many_then_one(
+            "the function signature followed by the function body",
+            rest,
+          )
+          let args =
+            as_list("function parameters", args).it->List.map(arg => as_id("a parameter", arg))
+          let terms = terms->List.map(parseTerm)
+          let result = as_expr("an expression to be returned", parseTerm(result))
+          Exp(ann(Lam(args, makeBlock(terms, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("begin")), ann: _}, ...rest}) => {
-        let (terms, result) = as_many_then_one("one or more expressions", rest)
-        let terms = terms->List.map(parseTerm)->List.map(as_expr("an expression"))
-        let result = result->parseTerm |> as_expr("an expression")
-        Exp(Bgn(terms, result) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("begin")), ann: _}, ...rest}}) => {
+          let (terms, result) = as_many_then_one("one or more expressions", rest)
+          let terms = terms->List.map(parseTerm)->List.map(t => as_expr("an expression", t))
+          let result = as_expr("an expression", result->parseTerm)
+          Exp(ann(Bgn(terms, result)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("set!")), ann: _}, ...rest}) => {
-        let (x, e) = as_two("a variable and an expression", rest)
-        let x = as_id("a variable to be set", x)
-        let e = as_expr("an expression", parseTerm(e))
-        Exp(Set(x, e) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("set!")), ann: _}, ...rest}}) => {
+          let (x, e) = as_two("a variable and an expression", rest)
+          let x = as_id("a variable to be set", x)
+          let e = as_expr("an expression", parseTerm(e))
+          Exp(ann(Set(x, e)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("if")), ann: _}, ...rest}) => {
-        let (e_cnd, e_thn, e_els) = as_three(
-          "three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)",
-          rest,
-        )
-        let e_cnd = as_expr("a (conditional) expression", parseTerm(e_cnd))
-        let e_thn = as_expr("an expression", parseTerm(e_thn))
-        let e_els = as_expr("an expression", parseTerm(e_els))
-        Exp(If(e_cnd, e_thn, e_els) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("if")), ann: _}, ...rest}}) => {
+          let (e_cnd, e_thn, e_els) = as_three(
+            "three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)",
+            rest,
+          )
+          let e_cnd = as_expr("a (conditional) expression", parseTerm(e_cnd))
+          let e_thn = as_expr("an expression", parseTerm(e_thn))
+          let e_els = as_expr("an expression", parseTerm(e_els))
+          Exp(ann(If(e_cnd, e_thn, e_els)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("cond")), ann: _}, ...branches}) => {
-        let branches =
-          branches
-          ->List.map(v => as_list("a `cond` branch", v).it)
-          ->List.map(as_one_then_many_then_one("the condition followed by the branch"))
-        let rec loop = (parsed, branches) => {
-          switch branches {
-          | list{} => Exp(Cnd(List.reverse(parsed), None) |> ann)
-          | list{({it: Atom(Sym("else")), ann: _}: sexpr, terms, result)} => {
-              let terms = terms->List.map(parseTerm)
-              let result = result |> parseTerm |> as_expr("an expression")
-              Exp(Cnd(List.reverse(parsed), Some(makeBlock(terms, result))) |> ann)
-            }
+      | Sequence({content: list{{it: Atom(Sym("cond")), ann: _}, ...branches}}) => {
+          let branches =
+            branches
+            ->List.map(branch => as_list("a `cond` branch", branch).it)
+            ->List.map(branch =>
+              as_one_then_many_then_one("the condition followed by the branch", branch)
+            )
+          let rec loop = (parsed, branches) => {
+            switch branches {
+            | list{} => Exp(ann(Cnd(List.reverse(parsed), None)))
+            | list{({it: Atom(Sym("else")), ann: _}: sexpr, terms, result)} => {
+                let terms = terms->List.map(parseTerm)
+                let result = as_expr("an expression", parseTerm(result))
+                Exp(ann(Cnd(List.reverse(parsed), Some(makeBlock(terms, result)))))
+              }
 
-          | list{(case, terms, result), ...branches} => {
-              let case = case->parseTerm |> as_expr("a (conditional) expression")
-              let terms = terms->List.map(parseTerm)
-              let result = result |> parseTerm |> as_expr("an expression")
-              loop(list{(case, makeBlock(terms, result)), ...parsed}, branches)
+            | list{(case, terms, result), ...branches} => {
+                let case = as_expr("a (conditional) expression", case->parseTerm)
+                let terms = terms->List.map(parseTerm)
+                let result = as_expr("an expression", parseTerm(result))
+                loop(list{(case, makeBlock(terms, result)), ...parsed}, branches)
+              }
             }
           }
+          loop(list{}, branches)
         }
-        loop(list{}, branches)
-      }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("let")), ann: _}, ...rest}) => {
-        let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
-        let xes =
-          as_list("variable-expression pairs", xes).it
-          ->List.map(as_list("a variable and an expression"))
-          ->List.map(mapAnn(xe => xe |> as_two("a variable and an expression")))
-        let xes = xes->List.map(
-          mapAnn(((x, e)) => {
-            let x = as_id("a variable to be bound", x)
-            let e = parseTerm(e) |> as_expr("an expression")
-            (x, e)
-          }),
-        )
-        let ts = ts->List.map(parseTerm)
-        let result = parseTerm(result) |> as_expr("an expression to be return")
-        Exp(Let(xes, makeBlock(ts, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) => {
+          let (xes, ts, result) = as_one_then_many_then_one(
+            "the bindings followed by the body",
+            rest,
+          )
+          let xes =
+            as_list("variable-expression pairs", xes).it
+            ->List.map(xe => as_list("a variable and an expression", xe))
+            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
+          let xes = xes->List.map(
+            mapAnn(((x, e)) => {
+              let x = as_id("a variable to be bound", x)
+              let e = as_expr("an expression", parseTerm(e))
+              (x, e)
+            }),
+          )
+          let ts = ts->List.map(parseTerm)
+          let result = as_expr("an expression to be return", parseTerm(result))
+          Exp(ann(Let(xes, makeBlock(ts, result))))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("let*")), ann: _}, ...rest}) => {
-        let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
-        let xes =
-          as_list("variable-expression pairs", xes).it
-          ->List.map(as_list("a variable and an expression"))
-          ->List.map(mapAnn(as_two("a variable and an expression")))
-        let xes = xes->List.map(
-          mapAnn(((x, e)) => {
-            let x = as_id("a variable to be bound", x)
-            let e = parseTerm(e) |> as_expr("an expression")
-            (x, e)
-          }),
-        )
-        let ts = ts->List.map(parseTerm)
-        let result = parseTerm(result) |> as_expr("an expression to be return")
-        Exp(letstar(ann, xes, makeBlock(ts, result)))
-      }
+      | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) => {
+          let (xes, ts, result) = as_one_then_many_then_one(
+            "the bindings followed by the body",
+            rest,
+          )
+          let xes =
+            as_list("variable-expression pairs", xes).it
+            ->List.map(xe => as_list("a variable and an expression", xe))
+            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
+          let xes = xes->List.map(
+            mapAnn(((x, e)) => {
+              let x = as_id("a variable to be bound", x)
+              let e = as_expr("an expression", parseTerm(e))
+              (x, e)
+            }),
+          )
+          let ts = ts->List.map(parseTerm)
+          let result = as_expr("an expression to be return", parseTerm(result))
+          Exp(letstar(ann, xes, makeBlock(ts, result)))
+        }
 
-    | Sequence(List, _b, list{{it: Atom(Sym("letrec")), ann: _}, ...rest}) => {
-        let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
-        let xes =
-          as_list("variable-expression pairs", xes).it
-          ->List.map(as_list("a variable and an expression"))
-          ->List.map(mapAnn(as_two("a variable and an expression")))
-        let xes = xes->List.map(
-          mapAnn(((x, e)) => {
-            let x = as_id("a variable to be bound", x)
-            let e = parseTerm(e) |> as_expr("an expression")
-            (x, e)
-          }),
-        )
-        let ts = ts->List.map(parseTerm)
-        let result = parseTerm(result) |> as_expr("an expression to be return")
-        Exp(Letrec(xes, makeBlock(ts, result)) |> ann)
-      }
+      | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => {
+          let (xes, ts, result) = as_one_then_many_then_one(
+            "the bindings followed by the body",
+            rest,
+          )
+          let xes =
+            as_list("variable-expression pairs", xes).it
+            ->List.map(xe => as_list("a variable and an expression", xe))
+            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
+          let xes = xes->List.map(
+            mapAnn(((x, e)) => {
+              let x = as_id("a variable to be bound", x)
+              let e = as_expr("an expression", parseTerm(e))
+              (x, e)
+            }),
+          )
+          let ts = ts->List.map(parseTerm)
+          let result = as_expr("an expression to be return", parseTerm(result))
+          Exp(ann(Letrec(xes, makeBlock(ts, result))))
+        }
 
-    | Atom(atom) => Exp(expr_of_atom(atom) |> ann)
-    | Sequence(List, _b, list{{it: Atom(Sym("next")), ann: _}, ...es}) => makeAppPrm(ann, Next, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("+")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Arith(Add), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("-")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Arith(Sub), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("*")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Arith(Mul), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("/")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Arith(Div), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Lt), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Eq), es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Gt), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("<=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Le), es)
-    | Sequence(List, _b, list{{it: Atom(Sym(">=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Ge), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("!=")), ann: _}, ...es}) => makeAppPrm(ann, Cmp(Ne), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("pair")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairNew, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("mpair")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairNew, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("left")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairRefLeft, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("right")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairRefRight, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("set-left!")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairSetLeft, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("set-right!")), ann: _}, ...es}) =>
-      makeAppPrm(ann, PairSetRight, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("mvec")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecNew, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecRef, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vref")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecRef, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vec-set!")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecSet, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vset!")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecSet, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vec-len")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("vlen")), ann: _}, ...es}) =>
-      makeAppPrm(ann, VecLen, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("eq?")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Cmp(Eq), es)
-    | Sequence(List, _b, list{{it: Atom(Sym("error")), ann: _}, ...es}) => makeAppPrm(ann, Err, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("not")), ann: _}, ...es}) => makeAppPrm(ann, Not, es)
-    | Sequence(List, _b, list{{it: Atom(Sym("print")), ann: _}, ...es}) =>
-      makeAppPrm(ann, Print, es)
-    | Sequence(List, _b, es) => {
-        let (e, es) = as_one_then_many(
-          "a function call/application, which includes a function and then zero or more arguments",
-          es,
-        )
-        let e = e->parseTerm |> as_expr("a function")
-        let es = es->List.map(parseTerm)->List.map(as_expr("an argument"))
-        Exp(App(e, es) |> ann)
-      }
-    } |> ann
+      | Atom(atom) => Exp(ann(expr_of_atom(atom)))
+      | Sequence({content: list{{it: Atom(Sym("next")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Next, es)
+      | Sequence({content: list{{it: Atom(Sym("+")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Arith(Add), es)
+      | Sequence({content: list{{it: Atom(Sym("-")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Arith(Sub), es)
+      | Sequence({content: list{{it: Atom(Sym("*")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Arith(Mul), es)
+      | Sequence({content: list{{it: Atom(Sym("/")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Arith(Div), es)
+      | Sequence({content: list{{it: Atom(Sym("<")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Lt), es)
+      | Sequence({content: list{{it: Atom(Sym("=")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Eq), es)
+      | Sequence({content: list{{it: Atom(Sym(">")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Gt), es)
+      | Sequence({content: list{{it: Atom(Sym("<=")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Le), es)
+      | Sequence({content: list{{it: Atom(Sym(">=")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Ge), es)
+      | Sequence({content: list{{it: Atom(Sym("!=")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Ne), es)
+      | Sequence({content: list{{it: Atom(Sym("pair")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairNew, es)
+      | Sequence({content: list{{it: Atom(Sym("mpair")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairNew, es)
+      | Sequence({content: list{{it: Atom(Sym("left")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairRefLeft, es)
+      | Sequence({content: list{{it: Atom(Sym("right")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairRefRight, es)
+      | Sequence({content: list{{it: Atom(Sym("set-left!")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairSetLeft, es)
+      | Sequence({content: list{{it: Atom(Sym("set-right!")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, PairSetRight, es)
+      | Sequence({content: list{{it: Atom(Sym("mvec")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecNew, es)
+      | Sequence({content: list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecRef, es)
+      | Sequence({content: list{{it: Atom(Sym("vref")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecRef, es)
+      | Sequence({content: list{{it: Atom(Sym("vec-set!")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecSet, es)
+      | Sequence({content: list{{it: Atom(Sym("vset!")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecSet, es)
+      | Sequence({content: list{{it: Atom(Sym("vec-len")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecLen, es)
+      | Sequence({content: list{{it: Atom(Sym("vlen")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecLen, es)
+      | Sequence({content: list{{it: Atom(Sym("eq?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Eq), es)
+      | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Err, es)
+      | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
+      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Print, es)
+      | Sequence({content: es}) => {
+          let (e, es) = as_one_then_many(
+            "a function call/application, which includes a function and then zero or more arguments",
+            es,
+          )
+          let e = as_expr("a function", e->parseTerm)
+          let es = es->List.map(parseTerm)->List.map(e => as_expr("an argument", e))
+          Exp(ann(App(e, es)))
+        }
+      },
+    )
   }
   and makeAppPrm = (ann, p, es) => {
-    let es = es->List.map(parseTerm)->List.map(as_expr("an argument"))
-    Exp(AppPrm(p, es) |> ann)
+    let es = es->List.map(parseTerm)->List.map(e => as_expr("an argument", e))
+    Exp(ann(AppPrm(p, es)))
   }
 
   let parseTerms = (src: string) => {
@@ -881,11 +917,11 @@ let getProgramPrint = ({ann: {print, sourceLocation}}: program<printAnn>) => {
 
 let indent = (t: annotated<Print.t<'id>, option<'id>>, i): annotated<Print.t<'id>, option<'id>> => {
   let pad = Js.String.repeat(i, " ")
-  t |> mapAnn(Print.map(s => Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)))
+  mapAnn(Print.map(s => Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s)))(t)
 }
 let indentBlock = (s, i) => indent(group(list{Print.string("\n"), s}), i)
 let hcat = (s1, s2) => {
-  Group(list{s1, indent(s2, String.length(s1.it |> Print.toString))})
+  Group(list{s1, indent(s2, String.length(Print.toString(s1.it)))})
 }
 
 module SMoLPrinter = {
@@ -902,7 +938,7 @@ module SMoLPrinter = {
       } else {
         "#f"
       }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Str(s) => JSON.stringify(String(s))
     | Sym(s) => s
     }
   }
@@ -959,7 +995,7 @@ module SMoLPrinter = {
     Group(list{
       Print.string("("),
       Print.string(op),
-      indentBlock(Print.concat("\n", ts) |> Print.dummyAnn, 2),
+      indentBlock(Print.dummyAnn(Print.concat("\n", ts)), 2),
       Print.string(")"),
     })
     // `(${op}${)`
@@ -986,21 +1022,20 @@ module SMoLPrinter = {
     hcat(
       Print.string(`(if `),
       group2(
-        Print.concat("\n", list{e_cnd, e_thn, e_els}) |> Print.dummyAnn,
+        Print.dummyAnn(Print.concat("\n", list{e_cnd, e_thn, e_els})),
         Print.string(")"),
       )->Print.dummyAnn,
     )
-    // hcat(Print.string(`(if `), `${String.concat("\n", list{e_cnd, e_thn, e_els})})`)
+    // hcat(Print.string(`(if `), `${String.concatMany("\n", list{e_cnd, e_thn, e_els})})`)
   }
 
   let letLike = (op: string, xes: list<_>, b: _) => {
-    let xes = Print.concat("\n", xes) |> Print.dummyAnn
+    let xes = Print.dummyAnn(Print.concat("\n", xes))
     let xes = group(list{Print.string("("), indent(xes, 1), Print.string(")")})
     Group(list{
-      hcat(
-        group(list{Print.string("("), Print.string(op), Print.string(" ")}),
-        xes,
-      ) |> Print.dummyAnn,
+      Print.dummyAnn(
+        hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes),
+      ),
       indentBlock(b, 2),
       Print.string(")"),
     })
@@ -1175,8 +1210,8 @@ module SMoLPrinter = {
     let (x, e) = xe
     let (x, e) = (symbolToString(x), printExp(e))
     let print = hcat(
-      group2(Print.string("["), getNamePrint(x)) |> Print.dummyAnn,
-      group2(getPrint(e), Print.string("]")) |> Print.dummyAnn,
+      Print.dummyAnn(group2(Print.string("["), getNamePrint(x))),
+      Print.dummyAnn(group2(getPrint(e), Print.string("]"))),
     )
     {
       it: (x, e),
@@ -1241,16 +1276,16 @@ module SMoLPrinter = {
   let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
-      | Ref(i) => `#${i |> Int.toString}#`
+      | Ref(i) => `#${Int.toString(i)}#`
       | Con(c) => constantToString(c)
       | Struct(i, content) => {
           let i = switch i {
           | None => ""
-          | Some(i) => `#${i |> Int.toString}=`
+          | Some(i) => `#${Int.toString(i)}=`
           }
           let content = switch content {
-          | Lst(es) => `(${String.concat(" ", es->List.map(p))})`
-          | Vec(es) => `#(${String.concat(" ", es->List.map(p))})`
+          | Lst(es) => `(${String.concatMany(" ", es->List.map(p)->List.toArray)})`
+          | Vec(es) => `#(${String.concatMany(" ", es->List.map(p)->List.toArray)})`
           }
           `${i}${content}`
         }
@@ -1263,7 +1298,7 @@ module SMoLPrinter = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    os->List.map(printOutputlet) |> String.concat(sep)
+    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (_insertPrintTopLevel, p: program<sourceLocation>) => {
@@ -1442,7 +1477,7 @@ module JSPrinter: Printer = {
       } else {
         "false"
       }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Str(s) => JSON.stringify(String(s))
     | Sym(s) => s
     }
   }
@@ -1464,7 +1499,7 @@ module JSPrinter: Printer = {
   }
 
   let exprAppToString = (e, es) => {
-    group2(e, listToString(es) |> Print.dummyAnn)
+    group2(e, Print.dummyAnn(listToString(es)))
   }
 
   let consumeContext: consumer = e => {
@@ -1504,7 +1539,7 @@ module JSPrinter: Printer = {
   let consumeContextStat: consumer = e => {
     {
       expr: _ =>
-        raisePrintError(`${e |> Print.toString} can't be used as a expression in JavaScript`),
+        raisePrintError(`${Print.toString(e)} can't be used as a expression in JavaScript`),
       stat: consumeContextVoid(e).stat,
     }
   }
@@ -1583,7 +1618,7 @@ module JSPrinter: Printer = {
         {
           ann: op1(
             "[ ",
-            Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
+            Print.dummyAnn(Print.concat(`, `, es->List.map(e => getPrint(e)))),
             " ]",
           )->consumeContext,
           it: (VecNew, es),
@@ -1652,15 +1687,15 @@ module JSPrinter: Printer = {
     | (Cons, _) => raisePrintError("List is not supported by JavaScript")
     | _ =>
       raisePrintError(
-        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${List.length(
-            es,
-          ) |> Int.toString} parameter(s).`,
+        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
       )
     }
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, " {", indentBlock(e, 2), "\n}")
+    op2(`${op} `, Print.dummyAnn(exprAppToString(x, xs)), " {", indentBlock(e, 2), "\n}")
     // `${op} ${exprAppToString(x, xs)} {${}\n}`
   }
 
@@ -1700,7 +1735,7 @@ module JSPrinter: Printer = {
       }
     }
     let ebs =
-      ebs->List.map(((e, b)) => op2("if (", e, ") {", indentBlock(b, 2), "\n}") |> Print.dummyAnn)
+      ebs->List.map(((e, b)) => Print.dummyAnn(op2("if (", e, ") {", indentBlock(b, 2), "\n}")))
     Print.concat(" else ", ebs)
   }
 
@@ -1719,7 +1754,7 @@ module JSPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}) => {
-    let lift = ({it, ann: print}, sourceLocation) => {
+    let lift = ({it, ann: print}) => sourceLocation => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -1784,8 +1819,9 @@ module JSPrinter: Printer = {
         }
       }->lift
     | AppPrm(p, es) =>
+      // let es = es->List.map(%todo(""))
       {
-        let es = es->List.map((e, b) => e->printExp->asExpr(b))
+        let es = es->List.map(e => b => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
@@ -1809,10 +1845,9 @@ module JSPrinter: Printer = {
           let xes = xes->List.map(xeToString)
           let b = b->printBlock(ctx)
           let {it: print} = indentBlock(
-            Print.concat(
-              "\n",
-              list{...xes->List.map(xe => getBindPrint(xe)), getBlockPrint(b)},
-            ) |> Print.dummyAnn,
+            Print.dummyAnn(
+              Print.concat("\n", list{...xes->List.map(xe => getBindPrint(xe)), getBlockPrint(b)}),
+            ),
             2,
           )
           (
@@ -1964,11 +1999,7 @@ module JSPrinter: Printer = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = printBlock(b, context)
-        let print = Group(list{
-          getTermPrint(t),
-          Print.string("\n"),
-          getBlockPrint(b),
-        })
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
         {
           ann: {print, sourceLocation: ann},
           it: BCons(t, b),
@@ -2004,16 +2035,16 @@ module JSPrinter: Printer = {
   let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
-      | Ref(i) => `[Circular *${i |> Int.toString}]`
+      | Ref(i) => `[Circular *${Int.toString(i)}]`
       | Con(c) => constantToString(c)
       | Struct(i, content) => {
           let i = switch i {
           | None => ""
-          | Some(i) => `<ref *${i |> Int.toString}> `
+          | Some(i) => `<ref *${Int.toString(i)}> `
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
-          | Vec(es) => `[ ${String.concat(", ", es->List.map(p))} ]`
+          | Vec(es) => `[ ${String.concatMany(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
         }
@@ -2026,7 +2057,7 @@ module JSPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    os->List.map(printOutputlet) |> String.concat(sep)
+    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -2065,11 +2096,7 @@ module JSPrinter: Printer = {
               {
                 it: PCons(t, p),
                 ann: {
-                  print: Print.concat2(
-                    getTermPrint(t),
-                    "\n",
-                    getProgramPrint(p),
-                  ),
+                  print: Print.concat2(getTermPrint(t), "\n", getProgramPrint(p)),
                   sourceLocation,
                 },
               }
@@ -2082,20 +2109,22 @@ module JSPrinter: Printer = {
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
-    printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
   }
 
   let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
-    switch it {
-    | Def(it) => {
-        let (_, it, _) = printDef(it)
-        it.ann.print
-      }
-    | Exp(it) => {
-        let (_, it, _) = printExp(it)->asStat(Step)
-        it.ann.print
-      }
-    } |> Print.toString
+    Print.toString(
+      switch it {
+      | Def(it) => {
+          let (_, it, _) = printDef(it)
+          it.ann.print
+        }
+      | Exp(it) => {
+          let (_, it, _) = printExp(it)->asStat(Step)
+          it.ann.print
+        }
+      },
+    )
   }
 }
 
@@ -2119,6 +2148,7 @@ module PYPrinter: Printer = {
     }
   }
   open RefDecl
+  open! Belt
 
   type stringSet = HashSet.String.t
   type stringMap = HashMap.String.t<RefDecl.t>
@@ -2177,7 +2207,7 @@ module PYPrinter: Printer = {
       } else {
         "False"
       }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Str(s) => JSON.stringify(String(s))
     | Sym(s) => s
     }
   }
@@ -2199,7 +2229,7 @@ module PYPrinter: Printer = {
   }
 
   let exprAppToString = (e, es) => {
-    group2(e, listToString(es) |> Print.dummyAnn)
+    group2(e, Print.dummyAnn(listToString(es)))
   }
 
   let consumeContext: consumer = e => {
@@ -2238,7 +2268,7 @@ module PYPrinter: Printer = {
 
   let consumeContextStat: consumer = e => {
     {
-      expr: _ => raisePrintError(`${e |> Print.toString} can't be used as a expression in Python`),
+      expr: _ => raisePrintError(`${Print.toString(e)} can't be used as a expression in Python`),
       stat: consumeContextVoid(e).stat,
     }
   }
@@ -2317,7 +2347,7 @@ module PYPrinter: Printer = {
         {
           ann: op1(
             "[ ",
-            Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
+            Print.dummyAnn(Print.concat(`, `, es->List.map(e => getPrint(e)))),
             " ]",
           )->consumeContext,
           it: (VecNew, es),
@@ -2386,15 +2416,15 @@ module PYPrinter: Printer = {
     | (Cons, _) => raisePrintError("List is not supported by Python")
     | _ =>
       raisePrintError(
-        `Python doesn't let you use ${Primitive.toString(p)} on ${List.length(
-            es,
-          ) |> Int.toString} parameter(s).`,
+        `Python doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
       )
     }
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, ":", indentBlock(e, 4), "")
+    op2(`${op} `, Print.dummyAnn(exprAppToString(x, xs)), ":", indentBlock(e, 4), "")
     // `${op} ${exprAppToString(x, xs)} {${}\n}`
   }
 
@@ -2427,8 +2457,7 @@ module PYPrinter: Printer = {
       | Some(b) => list{...ebs, (Print.string("se:"), b)}
       }
     }
-    let ebs =
-      ebs->List.map(((e, b)) => op2("if ", e, ":", indentBlock(b, 4), "\n") |> Print.dummyAnn)
+    let ebs = ebs->List.map(((e, b)) => Print.dummyAnn(op2("if ", e, ":", indentBlock(b, 4), "\n")))
     Print.concat(" el", ebs)
   }
 
@@ -2447,7 +2476,7 @@ module PYPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}, env) => {
-    let lift = ({it, ann: print}, sourceLocation) => {
+    let lift = ({it, ann: print}) => sourceLocation => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -2648,11 +2677,7 @@ module PYPrinter: Printer = {
     | BCons(t, b) => {
         let t = printTerm(t, env, Step)
         let b = b->printBlockHelper(env, context)
-        let print = Group(list{
-          getTermPrint(t),
-          Print.string("\n"),
-          getBlockPrint(b),
-        })
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
         {
           ann: {print, sourceLocation: ann},
           it: BCons(t, b),
@@ -2755,7 +2780,7 @@ module PYPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in Python.")
-          | Vec(es) => `[${String.concat(", ", es->List.map(p))}]`
+          | Vec(es) => `[${String.concatMany(", ", es->List.map(p)->List.toArray)}]`
           }
           `${i}${content}`
         }
@@ -2768,7 +2793,7 @@ module PYPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    os->List.map(printOutputlet) |> String.concat(sep)
+    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -2809,11 +2834,7 @@ module PYPrinter: Printer = {
               {
                 it: PCons(t, p),
                 ann: {
-                  print: Print.concat2(
-                    getTermPrint(t),
-                    "\n",
-                    getProgramPrint(p),
-                  ),
+                  print: Print.concat2(getTermPrint(t), "\n", getProgramPrint(p)),
                   sourceLocation,
                 },
               }
@@ -2826,21 +2847,23 @@ module PYPrinter: Printer = {
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
-    printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
   }
 
   let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
     let globalEnv = G(HashSet.String.fromArray([]))
-    switch it {
-    | Def(it) => {
-        let (_, it, _) = printDef(it, globalEnv)
-        it.ann.print
-      }
-    | Exp(it) => {
-        let (_, it, _) = printExp(it, globalEnv)->asStat(Step)
-        it.ann.print
-      }
-    } |> Print.toString
+    Print.toString(
+      switch it {
+      | Def(it) => {
+          let (_, it, _) = printDef(it, globalEnv)
+          it.ann.print
+        }
+      | Exp(it) => {
+          let (_, it, _) = printExp(it, globalEnv)->asStat(Step)
+          it.ann.print
+        }
+      },
+    )
   }
 }
 
@@ -2858,7 +2881,7 @@ module PCPrinter: Printer = {
       } else {
         "False"
       }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Str(s) => JSON.stringify(String(s))
     | Sym(s) => s
     }
   }
@@ -2880,7 +2903,7 @@ module PCPrinter: Printer = {
   }
 
   let exprAppToString = (e, es) => {
-    group2(e, listToString(es) |> Print.dummyAnn)
+    group2(e, Print.dummyAnn(listToString(es)))
   }
 
   let consumeContext: consumer = e => {
@@ -3002,7 +3025,7 @@ module PCPrinter: Printer = {
         {
           ann: op1(
             "vec[",
-            Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
+            Print.dummyAnn(Print.concat(`, `, es->List.map(e => getPrint(e)))),
             "]",
           )->consumeContext,
           it: (VecNew, es),
@@ -3071,15 +3094,15 @@ module PCPrinter: Printer = {
     | (Cons, _) => raisePrintError("List is not supported by Pseudo")
     | _ =>
       raisePrintError(
-        `Pseudo doesn't let you use ${Primitive.toString(p)} on ${List.length(
-            es,
-          ) |> Int.toString} parameter(s).`,
+        `Pseudo doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
       )
     }
   }
 
   let funLike = (op, x, xs, e) => {
-    op2(`${op} `, exprAppToString(x, xs) |> Print.dummyAnn, ":", indentBlock(e, 2), "\nend")
+    op2(`${op} `, Print.dummyAnn(exprAppToString(x, xs)), ":", indentBlock(e, 2), "\nend")
   }
 
   let defvarToString = (x, e) => {
@@ -3117,8 +3140,7 @@ module PCPrinter: Printer = {
       | Some(b) => list{...ebs, (Print.string("e:"), b)}
       }
     }
-    let ebs =
-      ebs->List.map(((e, b)) => op2("if ", e, ":", indentBlock(b, 2), "\n") |> Print.dummyAnn)
+    let ebs = ebs->List.map(((e, b)) => Print.dummyAnn(op2("if ", e, ":", indentBlock(b, 2), "\n")))
     op1("", Print.concat(" els", ebs)->Print.dummyAnn, "end")
   }
 
@@ -3127,13 +3149,12 @@ module PCPrinter: Printer = {
   }
 
   let letLike = (op: string, xes: list<_>, b: _) => {
-    let xes = Print.concat("\n", xes) |> Print.dummyAnn
+    let xes = Print.dummyAnn(Print.concat("\n", xes))
     let xes = group(list{Print.string("("), indent(xes, 1), Print.string(")")})
     Group(list{
-      hcat(
-        group(list{Print.string("("), Print.string(op), Print.string(" ")}),
-        xes,
-      ) |> Print.dummyAnn,
+      Print.dummyAnn(
+        hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes),
+      ),
       indentBlock(b, 2),
       Print.string(")"),
     })
@@ -3156,7 +3177,7 @@ module PCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}) => {
-    let lift = ({it, ann: print}, sourceLocation) => {
+    let lift = ({it, ann: print}) => (sourceLocation) => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -3222,7 +3243,7 @@ module PCPrinter: Printer = {
       }->lift
     | AppPrm(p, es) =>
       {
-        let es = es->List.map((e, b) => e->printExp->asExpr(b))
+        let es = es->List.map((e) => (b) => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
@@ -3442,11 +3463,7 @@ module PCPrinter: Printer = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = printBlock(b, context)
-        let print = Group(list{
-          getTermPrint(t),
-          Print.string("\n"),
-          getBlockPrint(b),
-        })
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
         {
           ann: {print, sourceLocation: ann},
           it: BCons(t, b),
@@ -3481,16 +3498,16 @@ module PCPrinter: Printer = {
   let printOutputlet = o => {
     let rec p = (v: val): string => {
       switch v {
-      | Ref(i) => `#${i |> Int.toString}#`
+      | Ref(i) => `#${Int.toString(i)}#`
       | Con(c) => constantToString(c)
       | Struct(i, content) => {
           let i = switch i {
           | None => ""
-          | Some(i) => `#${i |> Int.toString}#=`
+          | Some(i) => `#${Int.toString(i)}#=`
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in Pseudo.")
-          | Vec(es) => `vec[${String.concat(", ", es->List.map(p))}]`
+          | Vec(es) => `vec[${String.concatMany(", ", es->List.map(p)->List.toArray)}]`
           }
           `${i}${content}`
         }
@@ -3503,7 +3520,7 @@ module PCPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    os->List.map(printOutputlet) |> String.concat(sep)
+    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -3545,7 +3562,7 @@ module PCPrinter: Printer = {
                 it: PCons(t, p),
                 ann: {
                   print: Print.concat2(
-                    op1(prefix, getTermPrint(t), suffix) |> Print.dummyAnn,
+                    Print.dummyAnn(op1(prefix, getTermPrint(t), suffix)),
                     "\n",
                     getProgramPrint(p),
                   ),
@@ -3561,20 +3578,22 @@ module PCPrinter: Printer = {
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
-    printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
   }
 
   let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
-    switch it {
-    | Def(it) => {
-        let (_, it, _) = printDef(it)
-        it.ann.print
-      }
-    | Exp(it) => {
-        let (_, it, _) = printExp(it)->asStat(Step)
-        it.ann.print
-      }
-    } |> Print.toString
+    Print.toString(
+      switch it {
+      | Def(it) => {
+          let (_, it, _) = printDef(it)
+          it.ann.print
+        }
+      | Exp(it) => {
+          let (_, it, _) = printExp(it)->asStat(Step)
+          it.ann.print
+        }
+      },
+    )
   }
 }
 
@@ -3605,7 +3624,7 @@ module SCPrinter: Printer = {
       } else {
         "false"
       }
-    | Str(s) => "\"" ++ String.escaped(s) ++ "\""
+    | Str(s) => JSON.stringify(String(s))
     | Sym(s) => s
     }
   }
@@ -3632,7 +3651,7 @@ module SCPrinter: Printer = {
       if es == list{} {
         Print.string("")
       } else {
-        listToString(es) |> Print.dummyAnn
+        Print.dummyAnn(listToString(es))
       },
     )
   }
@@ -3758,7 +3777,7 @@ module SCPrinter: Printer = {
         {
           ann: op1(
             `${vecKeyword}(`,
-            Print.concat(`, `, es->List.map(e => getPrint(e))) |> Print.dummyAnn,
+            Print.dummyAnn(Print.concat(`, `, es->List.map(e => getPrint(e)))),
             ")",
           )->consumeContext,
           it: (VecNew, es),
@@ -3827,9 +3846,9 @@ module SCPrinter: Printer = {
     | (Cons, _) => raisePrintError("List is not supported by Scala")
     | _ =>
       raisePrintError(
-        `Scala doesn't let you use ${Primitive.toString(p)} on ${List.length(
-            es,
-          ) |> Int.toString} parameter(s).`,
+        `Scala doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
       )
     }
   }
@@ -3837,10 +3856,7 @@ module SCPrinter: Printer = {
   let funLike = (op, x, xs, e) => {
     op2(
       `${op} `,
-      exprAppToString(
-        x,
-        xs->List.map(x => op1("", x, " : Int") |> Print.dummyAnn),
-      ) |> Print.dummyAnn,
+      Print.dummyAnn(exprAppToString(x, xs->List.map(x => Print.dummyAnn(op1("", x, " : Int"))))),
       " =",
       indentBlock(e, 2),
       "",
@@ -3871,10 +3887,9 @@ module SCPrinter: Printer = {
   let exprLamToString = (xs, b) => {
     op2(
       "(",
-      Print.concat(
-        ", ",
-        xs->List.map(x => group2(x, Print.string(" : Int")) |> Print.dummyAnn),
-      ) |> Print.dummyAnn,
+      Print.dummyAnn(
+        Print.concat(", ", xs->List.map(x => Print.dummyAnn(group2(x, Print.string(" : Int"))))),
+      ),
       ") =>",
       indentBlock(b, 2),
       "",
@@ -3897,7 +3912,7 @@ module SCPrinter: Printer = {
       }
     }
     let ebs =
-      ebs->List.map(((e, b)) => op2("if ", e, ":", indentBlock(b, 2), "\nend") |> Print.dummyAnn)
+      ebs->List.map(((e, b)) => Print.dummyAnn(op2("if ", e, ":", indentBlock(b, 2), "\nend")))
     Print.concat(" else ", ebs)
   }
 
@@ -3916,7 +3931,7 @@ module SCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}) => {
-    let lift = ({it, ann: print}, sourceLocation) => {
+    let lift = ({it, ann: print}) => (sourceLocation) => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -3982,7 +3997,7 @@ module SCPrinter: Printer = {
       }->lift
     | AppPrm(p, es) =>
       {
-        let es = es->List.map((e, b) => e->printExp->asExpr(b))
+        let es = es->List.map((e) => (b) => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
@@ -4124,11 +4139,7 @@ module SCPrinter: Printer = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = printBlock(b, context)
-        let print = Group(list{
-          getTermPrint(t),
-          Print.string("\n"),
-          getBlockPrint(b),
-        })
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
         {
           ann: {print, sourceLocation: ann},
           it: BCons(t, b),
@@ -4173,7 +4184,7 @@ module SCPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_es) => raisePrintError("Lists are not supported in Scala.")
-          | Vec(es) => `Buffer(${String.concat(", ", es->List.map(p))})`
+          | Vec(es) => `Buffer(${String.concatMany(", ", es->List.map(p)->List.toArray)})`
           }
           `${i}${content}`
         }
@@ -4186,7 +4197,7 @@ module SCPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    os->List.map(printOutputlet) |> String.concat(sep)
+    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -4232,11 +4243,7 @@ module SCPrinter: Printer = {
               {
                 it: PCons(t, p),
                 ann: {
-                  print: Print.concat2(
-                    getTermPrint(t),
-                    "\n",
-                    getProgramPrint(p),
-                  ),
+                  print: Print.concat2(getTermPrint(t), "\n", getProgramPrint(p)),
                   sourceLocation,
                 },
               }
@@ -4249,20 +4256,22 @@ module SCPrinter: Printer = {
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
-    printProgramFull(insertPrintTopLevel, p).ann.print |> Print.toString
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
   }
 
   let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
-    switch it {
-    | Def(it) => {
-        let (_, it, _) = printDef(it)
-        it.ann.print
-      }
-    | Exp(it) => {
-        let (_, it, _) = printExp(it)->asStat(Step)
-        it.ann.print
-      }
-    } |> Print.toString
+    Print.toString(
+      switch it {
+      | Def(it) => {
+          let (_, it, _) = printDef(it)
+          it.ann.print
+        }
+      | Exp(it) => {
+          let (_, it, _) = printExp(it)->asStat(Step)
+          it.ann.print
+        }
+      },
+    )
   }
 }
 
@@ -4314,7 +4323,7 @@ module MakeTranslator = (P: Printer) => {
     switch Parser.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
-      switch P.printStandAloneTerm(p |> programAsTerm) {
+      switch P.printStandAloneTerm(programAsTerm(p)) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | p => p
       }

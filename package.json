@@ -23,8 +23,9 @@
   "license": "MIT",
   "dependencies": {
     "@brownplt/s-expression": "github:brownplt/s-expression",
+    "@rescript/core": "^1.5.2",
     "install": "^0.13.0",
     "npm": "^10.8.2",
-    "rescript": "^10.1.4"
+    "rescript": "^11.1.3"
   }
 }
