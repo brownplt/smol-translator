@@ -12,6 +12,8 @@ type rec printNode<'id> =
   | Group(list<print<'id>>)
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
+let concat = (s, ss) => Array.join(ss, s)
+
 module Print = {
   type t<'id> = printNode<'id>
   let toSourceMap = (t) => {
@@ -47,7 +49,7 @@ module Print = {
     switch it {
     | Plain(s) => s
     | Group(ts) =>
-      String.concatMany(
+      concat(
         "",
         ts
         ->List.map(({it}) => {
@@ -343,7 +345,7 @@ module ParseError = {
     | SExprKindError(_kind, context, sexpr) =>
       `expecting a ${context}, given ${SExpr.toString(sexpr)}`
     | SExprArityError(_arity_expectation, context, es) =>
-      `expecting ${context}, given ${String.concatMany(
+      `expecting ${context}, given ${concat(
           " ",
           es->List.map(SExpr.toString)->List.toArray,
         )}`
@@ -944,7 +946,7 @@ module SMoLPrinter = {
   }
 
   let listToString = ss => {
-    open Print
+    open! Print
     pad("(", Print.dummyAnn(concat(" ", ss)), ")")
   }
 
@@ -1026,7 +1028,7 @@ module SMoLPrinter = {
         Print.string(")"),
       )->Print.dummyAnn,
     )
-    // hcat(Print.string(`(if `), `${String.concatMany("\n", list{e_cnd, e_thn, e_els})})`)
+    // hcat(Print.string(`(if `), `${concat("\n", list{e_cnd, e_thn, e_els})})`)
   }
 
   let letLike = (op: string, xes: list<_>, b: _) => {
@@ -1284,8 +1286,8 @@ module SMoLPrinter = {
           | Some(i) => `#${Int.toString(i)}=`
           }
           let content = switch content {
-          | Lst(es) => `(${String.concatMany(" ", es->List.map(p)->List.toArray)})`
-          | Vec(es) => `#(${String.concatMany(" ", es->List.map(p)->List.toArray)})`
+          | Lst(es) => `(${concat(" ", es->List.map(p)->List.toArray)})`
+          | Vec(es) => `#(${concat(" ", es->List.map(p)->List.toArray)})`
           }
           `${i}${content}`
         }
@@ -1298,7 +1300,7 @@ module SMoLPrinter = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (_insertPrintTopLevel, p: program<sourceLocation>) => {
@@ -2044,7 +2046,7 @@ module JSPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
-          | Vec(es) => `[ ${String.concatMany(", ", es->List.map(p)->List.toArray)} ]`
+          | Vec(es) => `[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
         }
@@ -2057,7 +2059,7 @@ module JSPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -2780,7 +2782,7 @@ module PYPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in Python.")
-          | Vec(es) => `[${String.concatMany(", ", es->List.map(p)->List.toArray)}]`
+          | Vec(es) => `[${concat(", ", es->List.map(p)->List.toArray)}]`
           }
           `${i}${content}`
         }
@@ -2793,7 +2795,7 @@ module PYPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -3507,7 +3509,7 @@ module PCPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in Pseudo.")
-          | Vec(es) => `vec[${String.concatMany(", ", es->List.map(p)->List.toArray)}]`
+          | Vec(es) => `vec[${concat(", ", es->List.map(p)->List.toArray)}]`
           }
           `${i}${content}`
         }
@@ -3520,7 +3522,7 @@ module PCPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {
@@ -4184,7 +4186,7 @@ module SCPrinter: Printer = {
           }
           let content = switch content {
           | Lst(_es) => raisePrintError("Lists are not supported in Scala.")
-          | Vec(es) => `Buffer(${String.concatMany(", ", es->List.map(p)->List.toArray)})`
+          | Vec(es) => `Buffer(${concat(", ", es->List.map(p)->List.toArray)})`
           }
           `${i}${content}`
         }
@@ -4197,7 +4199,7 @@ module SCPrinter: Printer = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    String.concatMany(sep, os->List.map(printOutputlet)->List.toArray)
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
   let printProgramFull = (insertPrintTopLevel, p) => {

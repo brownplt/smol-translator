@@ -2,11 +2,11 @@
 
 import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
-import * as Core__List from "@rescript/core/src/Core__List.bs.js";
+import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
-import * as Core__Float from "@rescript/core/src/Core__Float.bs.js";
-import * as SExpression from "@brownplt/s-expression/src/SExpression.bs.js";
-import * as Core__Option from "@rescript/core/src/Core__Option.bs.js";
+import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
+import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
+import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";

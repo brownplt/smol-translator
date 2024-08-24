@@ -1,7 +1,7 @@
 // This program translates SMoL programs to JavaScript
 //   and will do so for Python in the future.
 
-import * as SMoL from '../src/SMoL.bs.js';
+import * as SMoL from '../src/SMoL.mjs';
 import fs from "fs";
 
 const path = "./test/test_cases";
