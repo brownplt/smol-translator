@@ -169,6 +169,7 @@ module Primitive = {
     | Le
     | Ge
     | Ne
+    | Equal
   type t =
     | Arith(arith)
     | Cmp(cmp)
@@ -198,6 +199,7 @@ module Primitive = {
     | Cmp(Ge) => ">="
     | Cmp(Ne) => "!="
     | Cmp(Eq) => "eq?"
+    | Cmp(Equal) => "equal?"
     | PairNew => "mpair"
     | PairRefLeft => "left"
     | PairRefRight => "right"
@@ -850,6 +852,8 @@ module Parser = {
         makeAppPrm(ann, VecLen, es)
       | Sequence({content: list{{it: Atom(Sym("eq?")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Cmp(Eq), es)
+      | Sequence({content: list{{it: Atom(Sym("equal?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Equal), es)
       | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Err, es)
       | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
@@ -1568,6 +1572,7 @@ module JSPrinter: Printer = {
         | Le => "<="
         | Ge => ">="
         | Ne => "!="
+        | Equal => raisePrintError("JavaScript has limited support for equality")
         }
         let e1 = e1(true)
         let e2 = e2(true)
@@ -2279,11 +2284,12 @@ module PYPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
-        | Eq => "=="
+        | Eq => "is"
         | Gt => ">"
         | Le => "<="
         | Ge => ">="
         | Ne => "!="
+        | Equal => "=="
         }
         let e1 = e1(true)
         let e2 = e2(true)
@@ -2944,11 +2950,12 @@ module PCPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
-        | Eq => "=="
+        | Eq => "==="
         | Gt => ">"
         | Le => "<="
         | Ge => ">="
         | Ne => "!="
+        | Equal => "=="
         }
         let e1 = e1(true)
         let e2 = e2(true)
@@ -3674,11 +3681,12 @@ module SCPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
-        | Eq => "=="
+        | Eq => "eq"
         | Gt => ">"
         | Le => "<="
         | Ge => ">="
         | Ne => "!="
+        | Equal => "=="
         }
         let e1 = e1(true)
         let e2 = e2(true)

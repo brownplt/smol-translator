@@ -375,6 +375,8 @@ function toString$1(t) {
           return ">=";
       case "Ne" :
           return "!=";
+      case "Equal" :
+          return "equal?";
       
     }
   }
@@ -1298,6 +1300,12 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, {
                       TAG: "Cmp",
                       _0: "Eq"
+                    }, es.tl);
+                break;
+            case "equal?" :
+                tmp = makeAppPrm(ann, {
+                      TAG: "Cmp",
+                      _0: "Equal"
                     }, es.tl);
                 break;
             case "error" :
@@ -3468,6 +3476,12 @@ function exprAppPrmToString(p, es) {
           case "Ne" :
               os$1 = "!=";
               break;
+          case "Equal" :
+              throw {
+                    RE_EXN_ID: SMoLPrintError,
+                    _1: "JavaScript has limited support for equality",
+                    Error: new Error()
+                  };
           
         }
         var e1$12 = es.hd(true);
@@ -4887,7 +4901,7 @@ function exprAppPrmToString$1(p, es) {
               os$1 = "<";
               break;
           case "Eq" :
-              os$1 = "==";
+              os$1 = "is";
               break;
           case "Gt" :
               os$1 = ">";
@@ -4900,6 +4914,9 @@ function exprAppPrmToString$1(p, es) {
               break;
           case "Ne" :
               os$1 = "!=";
+              break;
+          case "Equal" :
+              os$1 = "==";
               break;
           
         }
@@ -6297,7 +6314,7 @@ function exprAppPrmToString$2(p, es) {
               os$1 = "<";
               break;
           case "Eq" :
-              os$1 = "==";
+              os$1 = "===";
               break;
           case "Gt" :
               os$1 = ">";
@@ -6310,6 +6327,9 @@ function exprAppPrmToString$2(p, es) {
               break;
           case "Ne" :
               os$1 = "!=";
+              break;
+          case "Equal" :
+              os$1 = "==";
               break;
           
         }
@@ -7850,7 +7870,7 @@ function exprAppPrmToString$3(p, es) {
               os$1 = "<";
               break;
           case "Eq" :
-              os$1 = "==";
+              os$1 = "eq";
               break;
           case "Gt" :
               os$1 = ">";
@@ -7863,6 +7883,9 @@ function exprAppPrmToString$3(p, es) {
               break;
           case "Ne" :
               os$1 = "!=";
+              break;
+          case "Equal" :
+              os$1 = "==";
               break;
           
         }
@@ -8284,10 +8307,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
-        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
+        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",

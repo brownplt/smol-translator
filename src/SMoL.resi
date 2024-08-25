@@ -50,6 +50,7 @@ module Primitive: {
     | Le
     | Ge
     | Ne
+    | Equal
   type t =
     | Arith(arith)
     | Cmp(cmp)
