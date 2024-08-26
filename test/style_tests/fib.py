@@ -1,6 +1,6 @@
 def fib(n):
     if n < 0:
-      return raise "The argument to fib must be non-negative"
+      raise "The argument to fib must be non-negative"
     elif n <= 1:
       return n
     else:

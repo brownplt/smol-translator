@@ -4596,6 +4596,23 @@ function consumeContextVoid$1(e) {
         };
 }
 
+function consumeContextEscapeWrap(e) {
+  return {
+          expr: consumeContextWrap$1(e).expr,
+          stat: (function (ctx) {
+              if (ctx === "Step") {
+                return consumeContext$1(e).stat(ctx);
+              } else {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              }
+            })
+        };
+}
+
 function consumeContextStat$1(e) {
   return {
           expr: (function (param) {
@@ -4857,7 +4874,7 @@ function exprAppPrmToString$1(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$1(s([
+                    ann: consumeContextEscapeWrap(s([
                               "raise ",
                               ""
                             ], [getPrint(e1$8)]))
@@ -6065,6 +6082,23 @@ function consumeContextVoid$2(e) {
         };
 }
 
+function consumeContextEscapeWrap$1(e) {
+  return {
+          expr: consumeContextWrap$2(e).expr,
+          stat: (function (ctx) {
+              if (ctx === "Step") {
+                return consumeContext$2(e).stat(ctx);
+              } else {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              }
+            })
+        };
+}
+
 function consumeContextWrapVoid(e) {
   return {
           expr: consumeContextWrap$2(e).expr,
@@ -6329,7 +6363,7 @@ function exprAppPrmToString$2(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$2(s([
+                    ann: consumeContextEscapeWrap$1(s([
                               "raise ",
                               ""
                             ], [getPrint(e1$8)]))
@@ -6583,43 +6617,56 @@ function exprBgnToString$2(es, e) {
                 ]));
 }
 
-function exprCndToString$3(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
+function ifStat$2(cnd, thn, els) {
+  return s([
+              "if ",
+              ":",
+              "",
+              ""
+            ], [
+              cnd,
+              indentBlock(thn, 2),
               {
-                it: {
-                  TAG: "Plain",
-                  _0: "e:"
-                },
+                it: els !== undefined ? s([
+                        "\nelse:",
+                        "\nend"
+                      ], [indentBlock(els, 2)]) : s([""], []),
                 ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Core__List.map(ebs$1, (function (param) {
+              }
+            ]);
+}
+
+function exprCndToString$3(ebs, ob) {
+  if (ebs === /* [] */0) {
+    throw {
+          RE_EXN_ID: SMoLPrintError,
+          _1: "`else`-only conditional is not supported by Pseudo.",
+          Error: new Error()
+        };
+  }
+  var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
-                  it: s([
-                        "if ",
-                        ":",
-                        "\n"
-                      ], [
-                        param[0],
-                        indentBlock(param[1], 2)
-                      ]),
+                  it: ifStat$2(param[0], param[1], undefined),
                   ann: undefined
                 };
         }));
-  return s([
-              "",
-              "end"
-            ], [{
-                it: concat(" els", ebs$2),
-                ann: undefined
-              }]);
+  var ebs$2 = concat("\nelse ", ebs$1);
+  return group2({
+              it: ebs$2,
+              ann: undefined
+            }, ob !== undefined ? ({
+                  it: s([
+                        "\nelse:",
+                        "\nend"
+                      ], [indentBlock(ob, 2)]),
+                  ann: undefined
+                }) : ({
+                  it: {
+                    TAG: "Plain",
+                    _0: "\nend"
+                  },
+                  ann: undefined
+                }));
 }
 
 function exprIfToString$3(e_cnd, e_thn, e_els) {
@@ -8172,36 +8219,45 @@ function exprBgnToString$3(es, e) {
                 ]));
 }
 
-function exprCndToString$4(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
+function ifStat$3(cnd, thn, els) {
+  return s([
+              "if (",
+              ") {",
+              "\n}",
+              ""
+            ], [
+              cnd,
+              indentBlock(thn, 2),
               {
-                it: {
-                  TAG: "Plain",
-                  _0: ""
-                },
+                it: els !== undefined ? s([
+                        " else {",
+                        "\n}"
+                      ], [indentBlock(els, 2)]) : s([""], []),
                 ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Core__List.map(ebs$1, (function (param) {
+              }
+            ]);
+}
+
+function exprCndToString$4(ebs, ob) {
+  var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
-                  it: s([
-                        "if ",
-                        ":",
-                        "\nend"
-                      ], [
-                        param[0],
-                        indentBlock(param[1], 2)
-                      ]),
+                  it: ifStat$3(param[0], param[1], undefined),
                   ann: undefined
                 };
         }));
+  var ebs$2 = ob !== undefined ? Belt_List.concatMany([
+          ebs$1,
+          {
+            hd: {
+              it: s([
+                    "{",
+                    "\n}"
+                  ], [indentBlock(ob, 2)]),
+              ann: undefined
+            },
+            tl: /* [] */0
+          }
+        ]) : ebs$1;
   return concat(" else ", ebs$2);
 }
 

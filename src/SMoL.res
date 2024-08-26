@@ -1741,10 +1741,10 @@ module JSPrinter: Printer = {
   }
 
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None) -> Print.dummy)
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
     let ebs = switch ob {
-      | None => ebs
-      | Some(b) => list{...ebs, Print.s`{${indentBlock(b, 2)}\n}` -> Print.dummy}
+    | None => ebs
+    | Some(b) => list{...ebs, (Print.s`{${indentBlock(b, 2)}\n}`)->Print.dummy}
     }
     Print.concat(" else ", ebs)
   }
@@ -2306,6 +2306,17 @@ module PYPrinter: Printer = {
     }
   }
 
+  let consumeContextEscapeWrap: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, "")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContextWrap(e).expr,
+    }
+  }
+
   let consumeContextStat: consumer = e => {
     {
       expr: _ => raisePrintError(`${Print.toString(e)} can't be used as a expression in Python`),
@@ -2419,7 +2430,7 @@ module PYPrinter: Printer = {
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextWrap,
+          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextEscapeWrap,
           it: (Err, list{e1}),
         }
       }
@@ -2480,7 +2491,6 @@ module PYPrinter: Printer = {
   let exprGenToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
-
   let ifStat = (cnd, thn, els) => {
     Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
     | None => Print.s``
@@ -2488,15 +2498,14 @@ module PYPrinter: Printer = {
     }->Print.dummy}`
   }
 
-
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    if (ebs == list{}) {
+    if ebs == list{} {
       raisePrintError("`else`-only conditional is not supported by Python.")
     }
-    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None) -> Print.dummy)
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
     let ebs = switch ob {
-      | None => ebs
-      | Some(b) => list{...ebs, Print.s`se:${indentBlock(b, 2)}` -> Print.dummy}
+    | None => ebs
+    | Some(b) => list{...ebs, (Print.s`se:${indentBlock(b, 2)}`)->Print.dummy}
     }
     Print.concat("\nel", ebs)
   }
@@ -3009,6 +3018,17 @@ module PCPrinter: Printer = {
     }
   }
 
+  let consumeContextEscapeWrap: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, "")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContextWrap(e).expr,
+    }
+  }
+
   let consumeContextWrapVoid: consumer = e => {
     {
       stat: ctx =>
@@ -3128,7 +3148,7 @@ module PCPrinter: Printer = {
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextWrap,
+          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextEscapeWrap,
           it: (Err, list{e1}),
         }
       }
@@ -3195,15 +3215,26 @@ module PCPrinter: Printer = {
     listToString(list{...es, e})
   }
 
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s`\nelse:${indentBlock(els, 2)}\nend`
+    }->Print.dummy}`
+  }
+
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    let ebs = {
-      switch ob {
-      | None => ebs
-      | Some(b) => list{...ebs, (Print.string("e:"), b)}
-      }
+    if ebs == list{} {
+      raisePrintError("`else`-only conditional is not supported by Pseudo.")
     }
-    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if ${e}:${indentBlock(b, 2)}\n`))
-    Print.s`${Print.concat(" els", ebs)->Print.dummy}end`
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
+    let ebs = Print.concat("\nelse ", ebs)
+    group2(
+      ebs->Print.dummy,
+      switch ob {
+      | None => Print.string("\nend")
+      | Some(b) => (Print.s`\nelse:${indentBlock(b, 2)}\nend`)->Print.dummy
+      },
+    )
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
@@ -3961,14 +3992,19 @@ module SCPrinter: Printer = {
     listToString(list{...es, e})
   }
 
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if (${cnd}) {${indentBlock(thn, 2)}\n}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s` else {${indentBlock(els, 2)}\n}`
+    }->Print.dummy}`
+  }
+
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    let ebs = {
-      switch ob {
-      | None => ebs
-      | Some(b) => list{...ebs, (Print.string(""), b)}
-      }
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
+    let ebs = switch ob {
+    | None => ebs
+    | Some(b) => list{...ebs, (Print.s`{${indentBlock(b, 2)}\n}`)->Print.dummy}
     }
-    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if ${e}:${indentBlock(b, 2)}\nend`))
     Print.concat(" else ", ebs)
   }
 
