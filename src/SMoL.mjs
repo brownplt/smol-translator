@@ -5112,6 +5112,13 @@ function ifStat$1(cnd, thn, els) {
 }
 
 function exprCndToString$2(ebs, ob) {
+  if (ebs === /* [] */0) {
+    throw {
+          RE_EXN_ID: SMoLPrintError,
+          _1: "`else`-only conditional is not supported by Python.",
+          Error: new Error()
+        };
+  }
   var ebs$1 = Belt_List.map(ebs, (function (param) {
           return {
                   it: ifStat$1(param[0], param[1], undefined),

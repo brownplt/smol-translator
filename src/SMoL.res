@@ -2490,6 +2490,9 @@ module PYPrinter: Printer = {
 
 
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
+    if (ebs == list{}) {
+      raisePrintError("`else`-only conditional is not supported by Python.")
+    }
     let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None) -> Print.dummy)
     let ebs = switch ob {
       | None => ebs
