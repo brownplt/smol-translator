@@ -3088,6 +3088,23 @@ function consumeContextVoid(e) {
         };
 }
 
+function consumeContextEscape(e) {
+  return {
+          expr: consumeContextWrap(e).expr,
+          stat: (function (ctx) {
+              if (ctx === "Step") {
+                return consumeContext(e).stat(ctx);
+              } else {
+                return [
+                        "",
+                        e,
+                        ";"
+                      ];
+              }
+            })
+        };
+}
+
 function consumeContextStat(e) {
   return {
           expr: (function (param) {
@@ -3349,7 +3366,7 @@ function exprAppPrmToString(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap(s([
+                    ann: consumeContextEscape(s([
                               "throw ",
                               ""
                             ], [getPrint(e1$8)]))
@@ -3626,35 +3643,25 @@ function ifStat(cnd, thn, els) {
 }
 
 function exprCndToString$1(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
-              {
-                it: {
-                  TAG: "Plain",
-                  _0: ""
-                },
-                ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Core__List.map(ebs$1, (function (param) {
+  var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
-                  it: s([
-                        "if (",
-                        ") {",
-                        "\n}"
-                      ], [
-                        param[0],
-                        indentBlock(param[1], 2)
-                      ]),
+                  it: ifStat(param[0], param[1], undefined),
                   ann: undefined
                 };
         }));
+  var ebs$2 = ob !== undefined ? Belt_List.concatMany([
+          ebs$1,
+          {
+            hd: {
+              it: s([
+                    "{",
+                    "\n}"
+                  ], [indentBlock(ob, 2)]),
+              ann: undefined
+            },
+            tl: /* [] */0
+          }
+        ]) : ebs$1;
   return concat(" else ", ebs$2);
 }
 
@@ -5085,37 +5092,46 @@ function exprYieldToString$2(e) {
             ], [e]);
 }
 
-function exprCndToString$2(ebs, ob) {
-  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
-          ebs,
-          {
-            hd: [
+function ifStat$1(cnd, thn, els) {
+  return s([
+              "if ",
+              ":",
+              "",
+              ""
+            ], [
+              cnd,
+              indentBlock(thn, 2),
               {
-                it: {
-                  TAG: "Plain",
-                  _0: "se:"
-                },
+                it: els !== undefined ? s([
+                        "\nelse:",
+                        ""
+                      ], [indentBlock(els, 2)]) : s([""], []),
                 ann: undefined
-              },
-              ob
-            ],
-            tl: /* [] */0
-          }
-        ]) : ebs;
-  var ebs$2 = Belt_List.map(ebs$1, (function (param) {
+              }
+            ]);
+}
+
+function exprCndToString$2(ebs, ob) {
+  var ebs$1 = Belt_List.map(ebs, (function (param) {
           return {
-                  it: s([
-                        "if ",
-                        ":",
-                        "\n"
-                      ], [
-                        param[0],
-                        indentBlock(param[1], 4)
-                      ]),
+                  it: ifStat$1(param[0], param[1], undefined),
                   ann: undefined
                 };
         }));
-  return concat(" el", ebs$2);
+  var ebs$2 = ob !== undefined ? Belt_List.concatMany([
+          ebs$1,
+          {
+            hd: {
+              it: s([
+                    "se:",
+                    ""
+                  ], [indentBlock(ob, 2)]),
+              ann: undefined
+            },
+            tl: /* [] */0
+          }
+        ]) : ebs$1;
+  return concat("\nel", ebs$2);
 }
 
 function exprIfToString$2(e_cnd, e_thn, e_els) {
@@ -5289,21 +5305,64 @@ function printExp$2(param, env) {
               Error: new Error()
             };
     case "If" :
-        var e$5 = printExp$2(it._0, env);
-        var e_cnd = e$5.expr(true);
-        var e$6 = printExp$2(it._1, env);
-        var e_thn = e$6.expr(true);
-        var e$7 = printExp$2(it._2, env);
-        var e_els = e$7.expr(true);
-        e = lift({
-              it: {
-                TAG: "If",
-                _0: e_cnd,
-                _1: e_thn,
-                _2: e_els
-              },
-              ann: consumeContextWrap$1(exprIfToString$2(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)))
-            });
+        var e_cnd = printExp$2(it._0, env);
+        var e_thn = printExp$2(it._1, env);
+        var e_els = printExp$2(it._2, env);
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(true);
+                        var e_thn$1 = e_thn.expr(true);
+                        var e_els$1 = e_els.expr(true);
+                        var e = consumeContextWrap$1(exprIfToString$2(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        return {
+                                it: {
+                                  TAG: "If",
+                                  _0: e_cnd$1,
+                                  _1: e_thn$1,
+                                  _2: e_els$1
+                                },
+                                ann: {
+                                  sourceLocation: sourceLocation,
+                                  print: e.expr(ctx)
+                                }
+                              };
+                      }),
+                    stat: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(false);
+                        var match = e_thn.stat(ctx);
+                        var e_thn$1 = match[1];
+                        var e_thn_print_it = wrap(match[0], getPrint(e_thn$1), match[2]);
+                        var e_thn_print = {
+                          it: e_thn_print_it,
+                          ann: undefined
+                        };
+                        var match$1 = e_els.stat(ctx);
+                        var e_els$1 = match$1[1];
+                        var e_els_print_it = wrap(match$1[0], getPrint(e_els$1), match$1[2]);
+                        var e_els_print = {
+                          it: e_els_print_it,
+                          ann: undefined
+                        };
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: "If",
+                                    _0: e_cnd$1,
+                                    _1: e_thn$1,
+                                    _2: e_els$1
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: ifStat$1(getPrint(e_cnd$1), e_thn_print, e_els_print)
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
         break;
     case "Cnd" :
         var ob = it._1;
@@ -5369,14 +5428,14 @@ function printExp$2(param, env) {
             });
         break;
     case "Yield" :
-        var e$8 = printExp$2(it._0, env);
-        var e$9 = e$8.expr(false);
+        var e$5 = printExp$2(it._0, env);
+        var e$6 = e$5.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
-                _0: e$9
+                _0: e$6
               },
-              ann: consumeContextWrap$1(exprYieldToString$2(getPrint(e$9)))
+              ann: consumeContextWrap$1(exprYieldToString$2(getPrint(e$6)))
             });
         break;
     
@@ -7552,6 +7611,23 @@ function consumeContextVoid$3(e) {
         };
 }
 
+function consumeContextEscape$1(e) {
+  return {
+          expr: consumeContextWrap$3(e).expr,
+          stat: (function (ctx) {
+              if (ctx === "Step") {
+                return consumeContext$3(e).stat(ctx);
+              } else {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              }
+            })
+        };
+}
+
 function exprAppPrmToString$3(p, es) {
   if (typeof p !== "object") {
     switch (p) {
@@ -7819,7 +7895,7 @@ function exprAppPrmToString$3(p, es) {
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextWrap$3(s([
+                    ann: consumeContextEscape$1(s([
                               "throw ",
                               ""
                             ], [getPrint(e1$8)]))
@@ -8370,10 +8446,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
+        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
-        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",

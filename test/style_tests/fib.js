@@ -1,9 +1,9 @@
 function fib(n) {
   if (n < 0) {
-    return throw "The argument to fib must be non-negative";
+    throw "The argument to fib must be non-negative";
   } else if (n <= 1) {
     return n;
-  } else if () {
+  } else {
     return fib(n - 1) + fib(n - 2);
   }
 }

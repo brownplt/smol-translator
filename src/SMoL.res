@@ -1541,6 +1541,17 @@ module JSPrinter: Printer = {
     }
   }
 
+  let consumeContextEscape: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, ";")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContextWrap(e).expr,
+    }
+  }
+
   let consumeContextStat: consumer = e => {
     {
       expr: _ =>
@@ -1655,7 +1666,7 @@ module JSPrinter: Printer = {
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextWrap,
+          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextEscape,
           it: (Err, list{e1}),
         }
       }
@@ -1730,13 +1741,11 @@ module JSPrinter: Printer = {
   }
 
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    let ebs = {
-      switch ob {
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None) -> Print.dummy)
+    let ebs = switch ob {
       | None => ebs
-      | Some(b) => list{...ebs, (Print.string(""), b)}
-      }
+      | Some(b) => list{...ebs, Print.s`{${indentBlock(b, 2)}\n}` -> Print.dummy}
     }
-    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if (${e}) {${indentBlock(b, 2)}\n}`))
     Print.concat(" else ", ebs)
   }
 
@@ -2471,15 +2480,22 @@ module PYPrinter: Printer = {
   let exprGenToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
+
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s`\nelse:${indentBlock(els, 2)}`
+    }->Print.dummy}`
+  }
+
+
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    let ebs = {
-      switch ob {
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None) -> Print.dummy)
+    let ebs = switch ob {
       | None => ebs
-      | Some(b) => list{...ebs, (Print.string("se:"), b)}
-      }
+      | Some(b) => list{...ebs, Print.s`se:${indentBlock(b, 2)}` -> Print.dummy}
     }
-    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if ${e}:${indentBlock(b, 4)}\n`))
-    Print.concat(" el", ebs)
+    Print.concat("\nel", ebs)
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
@@ -2608,20 +2624,49 @@ module PYPrinter: Printer = {
           )
         },
       }
-    | If(e_cnd, e_thn, e_els) =>
-      {
-        let e_cnd = e_cnd->printExp(env)->asExpr(true)
-        let e_thn = e_thn->printExp(env)->asExpr(true)
-        let e_els = e_els->printExp(env)->asExpr(true)
-        {
-          ann: exprIfToString(
-            getPrint(e_cnd),
-            getPrint(e_thn),
-            getPrint(e_els),
-          )->consumeContextWrap,
-          it: If(e_cnd, e_thn, e_els),
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp(env)
+        let e_thn = e_thn->printExp(env)
+        let e_els = e_els->printExp(env)
+        sourceLocation => {
+          expr: ctx => {
+            let e_cnd = e_cnd->asExpr(true)
+            let e_thn = e_thn->asExpr(true)
+            let e_els = e_els->asExpr(true)
+            {
+              ann: {
+                sourceLocation,
+                print: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
+                ->consumeContextWrap
+                ->asExpr(ctx),
+              },
+              it: If(e_cnd, e_thn, e_els),
+            }
+          },
+          stat: ctx => {
+            let e_cnd = e_cnd->asExpr(false)
+            let (e_thn, e_thn_print) = {
+              let (prefix, e_thn, suffix) = e_thn->asStat(ctx)
+              (e_thn, wrap(prefix, getPrint(e_thn), suffix)->Print.dummy)
+            }
+            let (e_els, e_els_print) = {
+              let (prefix, e_els, suffix) = e_els->asStat(ctx)
+              (e_els, wrap(prefix, getPrint(e_els), suffix)->Print.dummy)
+            }
+            (
+              "",
+              {
+                ann: {
+                  sourceLocation,
+                  print: ifStat(getPrint(e_cnd), e_thn_print, Some(e_els_print)),
+                },
+                it: If(e_cnd, e_thn, e_els),
+              },
+              "",
+            )
+          },
         }
-      }->lift
+      }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Python")
     }
     e(sourceLocation)
@@ -3705,6 +3750,17 @@ module SCPrinter: Printer = {
     }
   }
 
+  let consumeContextEscape: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, "")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContextWrap(e).expr,
+    }
+  }
+
   let exprAppPrmToString = (p: Primitive.t, es: list<bool => expression<printAnn>>) => {
     switch (p, es) {
     | (Arith(o), es) => {
@@ -3825,7 +3881,7 @@ module SCPrinter: Printer = {
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextWrap,
+          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextEscape,
           it: (Err, list{e1}),
         }
       }
