@@ -1458,9 +1458,6 @@ function parseTerm(e) {
                   }
                 };
                 break;
-            case "mvec" :
-                tmp = makeAppPrm(ann, "VecNew", es.tl);
-                break;
             case "next" :
                 tmp = makeAppPrm(ann, "Next", es.tl);
                 break;
@@ -1505,6 +1502,10 @@ function parseTerm(e) {
                 break;
             case "set-right!" :
                 tmp = makeAppPrm(ann, "PairSetRight", es.tl);
+                break;
+            case "mvec" :
+            case "vec" :
+                tmp = makeAppPrm(ann, "VecNew", es.tl);
                 break;
             case "vec-len" :
             case "vlen" :
@@ -3605,6 +3606,25 @@ function exprBgnToString$1(es, e) {
                 ]));
 }
 
+function ifStat(cnd, thn, els) {
+  return s([
+              "if (",
+              ") {",
+              "\n}",
+              ""
+            ], [
+              cnd,
+              indentBlock(thn, 2),
+              {
+                it: els !== undefined ? s([
+                        " else {",
+                        "\n}"
+                      ], [indentBlock(els, 2)]) : s([""], []),
+                ann: undefined
+              }
+            ]);
+}
+
 function exprCndToString$1(ebs, ob) {
   var ebs$1 = ob !== undefined ? Belt_List.concatMany([
           ebs,
@@ -3860,21 +3880,64 @@ function printExp$1(param) {
             });
         break;
     case "If" :
-        var e$7 = printExp$1(it._0);
-        var e_cnd = e$7.expr(true);
-        var e$8 = printExp$1(it._1);
-        var e_thn = e$8.expr(true);
-        var e$9 = printExp$1(it._2);
-        var e_els = e$9.expr(true);
-        e = lift({
-              it: {
-                TAG: "If",
-                _0: e_cnd,
-                _1: e_thn,
-                _2: e_els
-              },
-              ann: consumeContextWrap(exprIfToString$1(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)))
-            });
+        var e_cnd = printExp$1(it._0);
+        var e_thn = printExp$1(it._1);
+        var e_els = printExp$1(it._2);
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(true);
+                        var e_thn$1 = e_thn.expr(true);
+                        var e_els$1 = e_els.expr(true);
+                        var e = consumeContextWrap(exprIfToString$1(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        return {
+                                it: {
+                                  TAG: "If",
+                                  _0: e_cnd$1,
+                                  _1: e_thn$1,
+                                  _2: e_els$1
+                                },
+                                ann: {
+                                  sourceLocation: sourceLocation,
+                                  print: e.expr(ctx)
+                                }
+                              };
+                      }),
+                    stat: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(false);
+                        var match = e_thn.stat(ctx);
+                        var e_thn$1 = match[1];
+                        var e_thn_print_it = wrap(match[0], getPrint(e_thn$1), match[2]);
+                        var e_thn_print = {
+                          it: e_thn_print_it,
+                          ann: undefined
+                        };
+                        var match$1 = e_els.stat(ctx);
+                        var e_els$1 = match$1[1];
+                        var e_els_print_it = wrap(match$1[0], getPrint(e_els$1), match$1[2]);
+                        var e_els_print = {
+                          it: e_els_print_it,
+                          ann: undefined
+                        };
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: "If",
+                                    _0: e_cnd$1,
+                                    _1: e_thn$1,
+                                    _2: e_els$1
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: ifStat(getPrint(e_cnd$1), e_thn_print, e_els_print)
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
         break;
     case "Cnd" :
         var ob = it._1;
@@ -3938,14 +4001,14 @@ function printExp$1(param) {
             });
         break;
     case "Yield" :
-        var e$10 = printExp$1(it._0);
-        var e$11 = e$10.expr(false);
+        var e$7 = printExp$1(it._0);
+        var e$8 = e$7.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
-                _0: e$11
+                _0: e$8
               },
-              ann: consumeContextWrap(exprYieldToString$1(getPrint(e$11)))
+              ann: consumeContextWrap(exprYieldToString$1(getPrint(e$8)))
             });
         break;
     

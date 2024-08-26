@@ -1,4 +1,16 @@
-fun fact():
-  return if n === 0 then 1 else (fact(n - 1) * n)
+fun fib(n):
+  if n < 0:
+    return raise "The argument to fib must be non-negative"
+   elsif n <= 1:
+    return n
+   elsif e::
+    return fib(n - 1) + fib(n - 2)
+  end
 end
-print(fact(5))
+print(fib(0))
+print(fib(1))
+print(fib(2))
+print(fib(3))
+print(fib(4))
+print(fib(5))
+print(fib(6))

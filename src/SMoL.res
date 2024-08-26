@@ -16,7 +16,7 @@ let concat = (s, ss) => Array.join(ss, s)
 
 module Print = {
   type t<'id> = printNode<'id>
-  let toSourceMap = (t) => {
+  let toSourceMap = t => {
     let hMap = Map.make()
     let ln = ref(0)
     let ch = ref(0)
@@ -101,17 +101,20 @@ module Print = {
   let dummy = it => {it, ann: None}
 
   let s = (strings: array<string>, parameters: array<print<'id>>): t<'id> => {
-    let ih = switch Array.last(strings) -> Option.getExn {
-      | "" => list{}
-      | s => list{string(s)}
+    let ih = switch Array.last(strings)->Option.getExn {
+    | "" => list{}
+    | s => list{string(s)}
     }
     Group(
-      parameters
-      -> Array.reduceRightWithIndex(ih, (ih, parameter, i) => {
+      parameters->Array.reduceRightWithIndex(ih, (ih, parameter, i) => {
         let ih = list{parameter, ...ih}
-        let s = strings[i] -> Option.getExn
-        if (s == "") { ih } else { list{string(s), ...ih} }
-      })
+        let s = strings[i]->Option.getExn
+        if s == "" {
+          ih
+        } else {
+          list{string(s), ...ih}
+        }
+      }),
     )
   }
 }
@@ -364,10 +367,7 @@ module ParseError = {
     | SExprKindError(_kind, context, sexpr) =>
       `expecting a ${context}, given ${SExpr.toString(sexpr)}`
     | SExprArityError(_arity_expectation, context, es) =>
-      `expecting ${context}, given ${concat(
-          " ",
-          es->List.map(SExpr.toString)->List.toArray,
-        )}`
+      `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`
     | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
     | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)}`
     | TermKindError(_term_kind, context, term) =>
@@ -838,6 +838,8 @@ module Parser = {
         makeAppPrm(ann, PairSetRight, es)
       | Sequence({content: list{{it: Atom(Sym("mvec")), ann: _}, ...es}}) =>
         makeAppPrm(ann, VecNew, es)
+      | Sequence({content: list{{it: Atom(Sym("vec")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecNew, es)
       | Sequence({content: list{{it: Atom(Sym("vec-ref")), ann: _}, ...es}}) =>
         makeAppPrm(ann, VecRef, es)
       | Sequence({content: list{{it: Atom(Sym("vref")), ann: _}, ...es}}) =>
@@ -1056,9 +1058,7 @@ module SMoLPrinter = {
     let xes = Print.dummy(Print.concat("\n", xes))
     let xes = group(list{Print.string("("), indent(xes, 1), Print.string(")")})
     Group(list{
-      Print.dummy(
-        hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes),
-      ),
+      Print.dummy(hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes)),
       indentBlock(b, 2),
       Print.string(")"),
     })
@@ -1577,7 +1577,7 @@ module JSPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`->consumeContext,
+          ann: (Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`)->consumeContext,
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -1585,21 +1585,21 @@ module JSPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`[ ${getPrint(e1)}, ${getPrint(e2)} ]`->consumeContext,
+          ann: (Print.s`[ ${getPrint(e1)}, ${getPrint(e2)} ]`)->consumeContext,
           it: (PairNew, list{e1, e2}),
         }
       }
     | (PairRefLeft, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[0]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[0]`)->consumeContext,
           it: (PairRefLeft, list{e1}),
         }
       }
     | (PairRefRight, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[1]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[1]`)->consumeContext,
           it: (PairRefRight, list{e1}),
         }
       }
@@ -1607,7 +1607,7 @@ module JSPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`)->consumeContextStat,
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -1615,14 +1615,16 @@ module JSPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`)->consumeContextStat,
           it: (PairSetRight, list{e1, e2}),
         }
       }
     | (VecNew, es) => {
         let es = es->List.map(e => e(false))
         {
-          ann: Print.s`[ ${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))} ]`->consumeContext,
+          ann: (
+            Print.s`[ ${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))} ]`
+          )->consumeContext,
           it: (VecNew, es),
         }
       }
@@ -1630,7 +1632,7 @@ module JSPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}]`)->consumeContext,
           it: (VecRef, list{e1, e2}),
         }
       }
@@ -1639,42 +1641,42 @@ module JSPrinter: Printer = {
         let e2 = e2(false)
         let e3 = e3(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`)->consumeContextStat,
           it: (VecSet, list{e1, e2, e3}),
         }
       }
     | (VecLen, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`${getPrint(e1)}.length`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}.length`)->consumeContext,
           it: (VecLen, list{e1}),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`throw ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextWrap,
           it: (Err, list{e1}),
         }
       }
     | (Not, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`! ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`! ${getPrint(e1)}`)->consumeContextWrap,
           it: (Not, list{e1}),
         }
       }
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`console.log(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`console.log(${getPrint(e1)})`)->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
     | (Next, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`${getPrint(e1)}.next()`->consumeContextVoid,
+          ann: (Print.s`${getPrint(e1)}.next()`)->consumeContextVoid,
           it: (Next, list{e1}),
         }
       }
@@ -1689,7 +1691,7 @@ module JSPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${op |> Print.string} ${Print.dummy(exprAppToString(x, xs))} {${indentBlock(e, 2)}\n}`
+    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))} {${indentBlock(e, 2)}\n}`
   }
 
   let defvarToString = (x, e) => {
@@ -1720,6 +1722,13 @@ module JSPrinter: Printer = {
     listToString(list{...es, e})
   }
 
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if (${cnd}) {${indentBlock(thn, 2)}\n}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s` else {${indentBlock(els, 2)}\n}`
+    }->Print.dummy}`
+  }
+
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
     let ebs = {
       switch ob {
@@ -1727,8 +1736,7 @@ module JSPrinter: Printer = {
       | Some(b) => list{...ebs, (Print.string(""), b)}
       }
     }
-    let ebs =
-      ebs->List.map(((e, b)) => Print.dummy(Print.s`if (${e}) {${indentBlock(b, 2)}\n}`))
+    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if (${e}) {${indentBlock(b, 2)}\n}`))
     Print.concat(" else ", ebs)
   }
 
@@ -1813,6 +1821,7 @@ module JSPrinter: Printer = {
       }->lift
     | AppPrm(p, es) =>
       // let es = es->List.map(%todo(""))
+
       {
         let es = es->List.map(e => b => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
@@ -1882,20 +1891,49 @@ module JSPrinter: Printer = {
           )
         },
       }
-    | If(e_cnd, e_thn, e_els) =>
-      {
-        let e_cnd = e_cnd->printExp->asExpr(true)
-        let e_thn = e_thn->printExp->asExpr(true)
-        let e_els = e_els->printExp->asExpr(true)
-        {
-          ann: exprIfToString(
-            getPrint(e_cnd),
-            getPrint(e_thn),
-            getPrint(e_els),
-          )->consumeContextWrap,
-          it: If(e_cnd, e_thn, e_els),
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp
+        let e_thn = e_thn->printExp
+        let e_els = e_els->printExp
+        sourceLocation => {
+          expr: ctx => {
+            let e_cnd = e_cnd->asExpr(true)
+            let e_thn = e_thn->asExpr(true)
+            let e_els = e_els->asExpr(true)
+            {
+              ann: {
+                sourceLocation,
+                print: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
+                ->consumeContextWrap
+                ->asExpr(ctx),
+              },
+              it: If(e_cnd, e_thn, e_els),
+            }
+          },
+          stat: ctx => {
+            let e_cnd = e_cnd->asExpr(false)
+            let (e_thn, e_thn_print) = {
+              let (prefix, e_thn, suffix) = e_thn->asStat(ctx)
+              (e_thn, wrap(prefix, getPrint(e_thn), suffix)->Print.dummy)
+            }
+            let (e_els, e_els_print) = {
+              let (prefix, e_els, suffix) = e_els->asStat(ctx)
+              (e_els, wrap(prefix, getPrint(e_els), suffix)->Print.dummy)
+            }
+            (
+              "",
+              {
+                ann: {
+                  sourceLocation,
+                  print: ifStat(getPrint(e_cnd), e_thn_print, Some(e_els_print)),
+                },
+                it: If(e_cnd, e_thn, e_els),
+              },
+              "",
+            )
+          },
         }
-      }->lift
+      }
     | Bgn(es, e) =>
       {
         let es = es->List.map(e => e->printExp->asExpr(false))
@@ -2294,7 +2332,7 @@ module PYPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`->consumeContext,
+          ann: (Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`)->consumeContext,
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -2302,21 +2340,21 @@ module PYPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`[ ${getPrint(e1)}, ${getPrint(e2)} ]`->consumeContext,
+          ann: (Print.s`[ ${getPrint(e1)}, ${getPrint(e2)} ]`)->consumeContext,
           it: (PairNew, list{e1, e2}),
         }
       }
     | (PairRefLeft, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[0]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[0]`)->consumeContext,
           it: (PairRefLeft, list{e1}),
         }
       }
     | (PairRefRight, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[1]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[1]`)->consumeContext,
           it: (PairRefRight, list{e1}),
         }
       }
@@ -2324,7 +2362,7 @@ module PYPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`)->consumeContextStat,
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -2332,14 +2370,16 @@ module PYPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`)->consumeContextStat,
           it: (PairSetRight, list{e1, e2}),
         }
       }
     | (VecNew, es) => {
         let es = es->List.map(e => e(false))
         {
-          ann: Print.s`[ ${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))} ]`->consumeContext,
+          ann: (
+            Print.s`[ ${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))} ]`
+          )->consumeContext,
           it: (VecNew, es),
         }
       }
@@ -2347,7 +2387,7 @@ module PYPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}]`)->consumeContext,
           it: (VecRef, list{e1, e2}),
         }
       }
@@ -2356,42 +2396,42 @@ module PYPrinter: Printer = {
         let e2 = e2(false)
         let e3 = e3(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`->consumeContextStat,
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`)->consumeContextStat,
           it: (VecSet, list{e1, e2, e3}),
         }
       }
     | (VecLen, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`len(${getPrint(e1)})`->consumeContext,
+          ann: (Print.s`len(${getPrint(e1)})`)->consumeContext,
           it: (VecLen, list{e1}),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`raise ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextWrap,
           it: (Err, list{e1}),
         }
       }
     | (Not, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`not ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`not ${getPrint(e1)}`)->consumeContextWrap,
           it: (Not, list{e1}),
         }
       }
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`print(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`print(${getPrint(e1)})`)->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
     | (Next, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`next(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`next(${getPrint(e1)})`)->consumeContextVoid,
           it: (Next, list{e1}),
         }
       }
@@ -2406,7 +2446,7 @@ module PYPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${op |> Print.string} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 4)}`
+    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 4)}`
   }
 
   let defvarToString = (x, e) => {
@@ -2960,7 +3000,7 @@ module PCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`->consumeContext,
+          ann: (Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`)->consumeContext,
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -2968,21 +3008,21 @@ module PCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`vec[${getPrint(e1)}, ${getPrint(e2)}]`->consumeContext,
+          ann: (Print.s`vec[${getPrint(e1)}, ${getPrint(e2)}]`)->consumeContext,
           it: (PairNew, list{e1, e2}),
         }
       }
     | (PairRefLeft, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[0]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[0]`)->consumeContext,
           it: (PairRefLeft, list{e1}),
         }
       }
     | (PairRefRight, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}[1]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[1]`)->consumeContext,
           it: (PairRefRight, list{e1}),
         }
       }
@@ -2990,7 +3030,7 @@ module PCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`->consumeContextWrapVoid,
+          ann: (Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`)->consumeContextWrapVoid,
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -2998,14 +3038,16 @@ module PCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`->consumeContextWrapVoid,
+          ann: (Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`)->consumeContextWrapVoid,
           it: (PairSetRight, list{e1, e2}),
         }
       }
     | (VecNew, es) => {
         let es = es->List.map(e => e(false))
         {
-          ann: Print.s`vec[${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))}]`->consumeContext,
+          ann: (
+            Print.s`vec[${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))}]`
+          )->consumeContext,
           it: (VecNew, es),
         }
       }
@@ -3013,7 +3055,7 @@ module PCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}]`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}]`)->consumeContext,
           it: (VecRef, list{e1, e2}),
         }
       }
@@ -3022,42 +3064,44 @@ module PCPrinter: Printer = {
         let e2 = e2(false)
         let e3 = e3(false)
         {
-          ann: Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`->consumeContextWrapVoid,
+          ann: (
+            Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`
+          )->consumeContextWrapVoid,
           it: (VecSet, list{e1, e2, e3}),
         }
       }
     | (VecLen, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`length(${getPrint(e1)})`->consumeContext,
+          ann: (Print.s`length(${getPrint(e1)})`)->consumeContext,
           it: (VecLen, list{e1}),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`raise ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`raise ${getPrint(e1)}`)->consumeContextWrap,
           it: (Err, list{e1}),
         }
       }
     | (Not, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`! ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`! ${getPrint(e1)}`)->consumeContextWrap,
           it: (Not, list{e1}),
         }
       }
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`print(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`print(${getPrint(e1)})`)->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
     | (Next, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`next(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`next(${getPrint(e1)})`)->consumeContextVoid,
           it: (Next, list{e1}),
         }
       }
@@ -3072,7 +3116,7 @@ module PCPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${op |> Print.string} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}\nend`
+    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}\nend`
   }
 
   let defvarToString = (x, e) => {
@@ -3122,9 +3166,7 @@ module PCPrinter: Printer = {
     let xes = Print.dummy(Print.concat("\n", xes))
     let xes = group(list{Print.string("("), indent(xes, 1), Print.string(")")})
     Group(list{
-      Print.dummy(
-        hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes),
-      ),
+      Print.dummy(hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes)),
       indentBlock(b, 2),
       Print.string(")"),
     })
@@ -3147,7 +3189,7 @@ module PCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}) => {
-    let lift = ({it, ann: print}) => (sourceLocation) => {
+    let lift = ({it, ann: print}) => sourceLocation => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -3213,7 +3255,7 @@ module PCPrinter: Printer = {
       }->lift
     | AppPrm(p, es) =>
       {
-        let es = es->List.map((e) => (b) => e->printExp->asExpr(b))
+        let es = es->List.map(e => b => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
@@ -3691,7 +3733,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(true)
         {
-          ann: Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`->consumeContext,
+          ann: (Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`)->consumeContext,
           it: (Cmp(o), list{e1, e2}),
         }
       }
@@ -3704,21 +3746,23 @@ module SCPrinter: Printer = {
           ""
         }
         {
-          ann: Print.s`${vecKeyword|>Print.string}(${getPrint(e1)}, ${getPrint(e2)})`->consumeContext,
+          ann: (
+            Print.s`${Print.string(vecKeyword)}(${getPrint(e1)}, ${getPrint(e2)})`
+          )->consumeContext,
           it: (PairNew, list{e1, e2}),
         }
       }
     | (PairRefLeft, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}(0)`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}(0)`)->consumeContext,
           it: (PairRefLeft, list{e1}),
         }
       }
     | (PairRefRight, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`${getPrint(e1)}(1)`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}(1)`)->consumeContext,
           it: (PairRefRight, list{e1}),
         }
       }
@@ -3726,7 +3770,7 @@ module SCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}(0) = ${getPrint(e2)}`->consumeContextVoid,
+          ann: (Print.s`${getPrint(e1)}(0) = ${getPrint(e2)}`)->consumeContextVoid,
           it: (PairSetLeft, list{e1, e2}),
         }
       }
@@ -3734,7 +3778,7 @@ module SCPrinter: Printer = {
         let e1 = e1(false)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}(1) = ${getPrint(e2)}`->consumeContextVoid,
+          ann: (Print.s`${getPrint(e1)}(1) = ${getPrint(e2)}`)->consumeContextVoid,
           it: (PairSetRight, list{e1, e2}),
         }
       }
@@ -3746,7 +3790,11 @@ module SCPrinter: Printer = {
           ""
         }
         {
-          ann: Print.s`${vecKeyword |> Print.string}(${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))})`->consumeContext,
+          ann: (
+            Print.s`${Print.string(vecKeyword)}(${Print.dummy(
+              Print.concat(`, `, es->List.map(e => getPrint(e))),
+            )})`
+          )->consumeContext,
           it: (VecNew, es),
         }
       }
@@ -3754,7 +3802,7 @@ module SCPrinter: Printer = {
         let e1 = e1(true)
         let e2 = e2(false)
         {
-          ann: Print.s`${getPrint(e1)}(${getPrint(e2)})`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}(${getPrint(e2)})`)->consumeContext,
           it: (VecRef, list{e1, e2}),
         }
       }
@@ -3763,42 +3811,42 @@ module SCPrinter: Printer = {
         let e2 = e2(false)
         let e3 = e3(false)
         {
-          ann: Print.s`${getPrint(e1)}(${getPrint(e2)}) = ${getPrint(e3)}`->consumeContextVoid,
+          ann: (Print.s`${getPrint(e1)}(${getPrint(e2)}) = ${getPrint(e3)}`)->consumeContextVoid,
           it: (VecSet, list{e1, e2, e3}),
         }
       }
     | (VecLen, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`${getPrint(e1)}.length`->consumeContext,
+          ann: (Print.s`${getPrint(e1)}.length`)->consumeContext,
           it: (VecLen, list{e1}),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`throw ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextWrap,
           it: (Err, list{e1}),
         }
       }
     | (Not, list{e1}) => {
         let e1 = e1(true)
         {
-          ann: Print.s`! ${getPrint(e1)}`->consumeContextWrap,
+          ann: (Print.s`! ${getPrint(e1)}`)->consumeContextWrap,
           it: (Not, list{e1}),
         }
       }
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`println(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`println(${getPrint(e1)})`)->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
     | (Next, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: Print.s`next(${getPrint(e1)})`->consumeContextVoid,
+          ann: (Print.s`next(${getPrint(e1)})`)->consumeContextVoid,
           it: (Next, list{e1}),
         }
       }
@@ -3813,7 +3861,9 @@ module SCPrinter: Printer = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${op|>Print.string} ${Print.dummy(exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))))} =${indentBlock(e, 2)}`
+    Print.s`${Print.string(op)} ${Print.dummy(
+      exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))),
+    )} =${indentBlock(e, 2)}`
   }
 
   let defvarToString = (x, e) => {
@@ -3838,7 +3888,9 @@ module SCPrinter: Printer = {
   }
 
   let exprLamToString = (xs, b) => {
-    let xs = Print.dummy(Print.concat(", ", xs->List.map(x => Print.dummy(group2(x, Print.string(" : Int"))))))
+    let xs = Print.dummy(
+      Print.concat(", ", xs->List.map(x => Print.dummy(group2(x, Print.string(" : Int"))))),
+    )
     Print.s`(${xs}) =>${indentBlock(b, 2)}`
   }
   let exprGenToString = (_xs, _b) => {
@@ -3857,8 +3909,7 @@ module SCPrinter: Printer = {
       | Some(b) => list{...ebs, (Print.string(""), b)}
       }
     }
-    let ebs =
-      ebs->List.map(((e, b)) => Print.dummy(Print.s`if ${e}:${indentBlock(b, 2)}\nend`))
+    let ebs = ebs->List.map(((e, b)) => Print.dummy(Print.s`if ${e}:${indentBlock(b, 2)}\nend`))
     Print.concat(" else ", ebs)
   }
 
@@ -3877,7 +3928,7 @@ module SCPrinter: Printer = {
   }
 
   let rec printExp = ({it, ann: sourceLocation}) => {
-    let lift = ({it, ann: print}) => (sourceLocation) => {
+    let lift = ({it, ann: print}) => sourceLocation => {
       {
         expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
         stat: ctx => {
@@ -3943,7 +3994,7 @@ module SCPrinter: Printer = {
       }->lift
     | AppPrm(p, es) =>
       {
-        let es = es->List.map((e) => (b) => e->printExp->asExpr(b))
+        let es = es->List.map(e => b => e->printExp->asExpr(b))
         let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
         {
           it: AppPrm(p, es),
