@@ -2283,6 +2283,22 @@ module PYPrinter: Printer = {
     }
   }
 
+  let consumeContextWrapEvenReturn: consumer = e => {
+    {
+      expr: ctx =>
+        if ctx {
+          surround("(", e, ")")
+        } else {
+          consumeContext(e).expr(ctx)
+        },
+      stat: ctx =>
+        switch ctx {
+        | Step => ("", e, "")
+        | Return => ("return (", e, ")")
+        },
+    }
+  }
+
   let consumeContextWrap: consumer = e => {
     {
       expr: ctx =>
@@ -2586,7 +2602,7 @@ module PYPrinter: Printer = {
       {
         let e = e->printExp(env)->asExpr(false)
         {
-          ann: exprYieldToString(getPrint(e))->consumeContextWrap,
+          ann: exprYieldToString(getPrint(e))->consumeContextWrapEvenReturn,
           it: Yield(e),
         }
       }->lift
@@ -3444,20 +3460,49 @@ module PCPrinter: Printer = {
           )
         },
       }
-    | If(e_cnd, e_thn, e_els) =>
-      {
-        let e_cnd = e_cnd->printExp->asExpr(true)
-        let e_thn = e_thn->printExp->asExpr(true)
-        let e_els = e_els->printExp->asExpr(true)
-        {
-          ann: exprIfToString(
-            getPrint(e_cnd),
-            getPrint(e_thn),
-            getPrint(e_els),
-          )->consumeContextWrap,
-          it: If(e_cnd, e_thn, e_els),
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp
+        let e_thn = e_thn->printExp
+        let e_els = e_els->printExp
+        sourceLocation => {
+          expr: ctx => {
+            let e_cnd = e_cnd->asExpr(true)
+            let e_thn = e_thn->asExpr(true)
+            let e_els = e_els->asExpr(true)
+            {
+              ann: {
+                sourceLocation,
+                print: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
+                ->consumeContextWrap
+                ->asExpr(ctx),
+              },
+              it: If(e_cnd, e_thn, e_els),
+            }
+          },
+          stat: ctx => {
+            let e_cnd = e_cnd->asExpr(false)
+            let (e_thn, e_thn_print) = {
+              let (prefix, e_thn, suffix) = e_thn->asStat(ctx)
+              (e_thn, wrap(prefix, getPrint(e_thn), suffix)->Print.dummy)
+            }
+            let (e_els, e_els_print) = {
+              let (prefix, e_els, suffix) = e_els->asStat(ctx)
+              (e_els, wrap(prefix, getPrint(e_els), suffix)->Print.dummy)
+            }
+            (
+              "",
+              {
+                ann: {
+                  sourceLocation,
+                  print: ifStat(getPrint(e_cnd), e_thn_print, Some(e_els_print)),
+                },
+                it: If(e_cnd, e_thn, e_els),
+              },
+              "",
+            )
+          },
         }
-      }->lift
+      }
     | Bgn(es, e) =>
       {
         let es = es->List.map(e => e->printExp->asExpr(false))
@@ -3969,10 +4014,6 @@ module SCPrinter: Printer = {
     funLike("def", f, xs, b)
   }
 
-  let defgenToString = (f, xs, b) => {
-    funLike("gen def", f, xs, b)
-  }
-
   let exprSetToString = (x, e) => {
     defvarLike("", x, e)
   }
@@ -3986,7 +4027,6 @@ module SCPrinter: Printer = {
   let exprGenToString = (_xs, _b) => {
     raisePrintError("generators are not supported yet in Scala translation.")
   }
-  let exprYieldToString = e => Print.s`yield ${e}`
 
   let exprBgnToString = (es, e) => {
     listToString(list{...es, e})
@@ -4009,7 +4049,7 @@ module SCPrinter: Printer = {
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    Print.s`${e_cnd} ? ${e_thn} : ${e_els}`
+    exprCndToString(list{(e_cnd, e_thn)}, Some(e_els))
   }
 
   let symbolToString = ({it, ann}) => {
@@ -4079,14 +4119,7 @@ module SCPrinter: Printer = {
           it: GLam(xs, b),
         }
       }->lift
-    | Yield(e) =>
-      {
-        let e = e->printExp->asExpr(false)
-        {
-          ann: exprYieldToString(getPrint(e))->consumeContextWrap,
-          it: Yield(e),
-        }
-      }->lift
+    | Yield(_) => raisePrintError("Generators are not supported by Scala.")
     | AppPrm(p, es) =>
       {
         let es = es->List.map(e => b => e->printExp->asExpr(b))
@@ -4135,9 +4168,9 @@ module SCPrinter: Printer = {
       }
     | If(e_cnd, e_thn, e_els) =>
       {
-        let e_cnd = e_cnd->printExp->asExpr(true)
-        let e_thn = e_thn->printExp->asExpr(true)
-        let e_els = e_els->printExp->asExpr(true)
+        let e_cnd = e_cnd->printExp->asExpr(false)
+        let e_thn = e_thn->printExp->asExpr(false)
+        let e_els = e_els->printExp->asExpr(false)
         {
           ann: exprIfToString(
             getPrint(e_cnd),
@@ -4190,23 +4223,7 @@ module SCPrinter: Printer = {
           "",
         )
       }
-    | GFun(f, xs, b) => {
-        let f = f->symbolToString
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
-        (
-          "",
-          {
-            ann: defgenToString(
-              getNamePrint(f),
-              xs->List.map(x => getNamePrint(x)),
-              getBlockPrint(b),
-            ),
-            it: GFun(f, xs, b),
-          },
-          "",
-        )
-      }
+    | GFun(_f, _xs, _b) => raisePrintError("Generators are not supported by Scala")
     }
     let {ann: print, it} = d
     (prefix, {ann: {print, sourceLocation}, it}, suffix)

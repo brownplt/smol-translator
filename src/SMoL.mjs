@@ -4566,6 +4566,33 @@ function consumeContext$1(e) {
         };
 }
 
+function consumeContextWrapEvenReturn(e) {
+  return {
+          expr: (function (ctx) {
+              if (ctx) {
+                return surround("(", e, ")");
+              } else {
+                return consumeContext$1(e).expr(ctx);
+              }
+            }),
+          stat: (function (ctx) {
+              if (ctx === "Step") {
+                return [
+                        "",
+                        e,
+                        ""
+                      ];
+              } else {
+                return [
+                        "return (",
+                        e,
+                        ")"
+                      ];
+              }
+            })
+        };
+}
+
 function consumeContextWrap$1(e) {
   return {
           expr: (function (ctx) {
@@ -5459,7 +5486,7 @@ function printExp$2(param, env) {
                 TAG: "Yield",
                 _0: e$6
               },
-              ann: consumeContextWrap$1(exprYieldToString$2(getPrint(e$6)))
+              ann: consumeContextWrapEvenReturn(exprYieldToString$2(getPrint(e$6)))
             });
         break;
     
@@ -7030,21 +7057,64 @@ function printExp$3(param) {
             });
         break;
     case "If" :
-        var e$7 = printExp$3(it._0);
-        var e_cnd = e$7.expr(true);
-        var e$8 = printExp$3(it._1);
-        var e_thn = e$8.expr(true);
-        var e$9 = printExp$3(it._2);
-        var e_els = e$9.expr(true);
-        e = lift({
-              it: {
-                TAG: "If",
-                _0: e_cnd,
-                _1: e_thn,
-                _2: e_els
-              },
-              ann: consumeContextWrap$2(exprIfToString$3(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)))
-            });
+        var e_cnd = printExp$3(it._0);
+        var e_thn = printExp$3(it._1);
+        var e_els = printExp$3(it._2);
+        e = (function (sourceLocation) {
+            return {
+                    expr: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(true);
+                        var e_thn$1 = e_thn.expr(true);
+                        var e_els$1 = e_els.expr(true);
+                        var e = consumeContextWrap$2(exprIfToString$3(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        return {
+                                it: {
+                                  TAG: "If",
+                                  _0: e_cnd$1,
+                                  _1: e_thn$1,
+                                  _2: e_els$1
+                                },
+                                ann: {
+                                  sourceLocation: sourceLocation,
+                                  print: e.expr(ctx)
+                                }
+                              };
+                      }),
+                    stat: (function (ctx) {
+                        var e_cnd$1 = e_cnd.expr(false);
+                        var match = e_thn.stat(ctx);
+                        var e_thn$1 = match[1];
+                        var e_thn_print_it = wrap(match[0], getPrint(e_thn$1), match[2]);
+                        var e_thn_print = {
+                          it: e_thn_print_it,
+                          ann: undefined
+                        };
+                        var match$1 = e_els.stat(ctx);
+                        var e_els$1 = match$1[1];
+                        var e_els_print_it = wrap(match$1[0], getPrint(e_els$1), match$1[2]);
+                        var e_els_print = {
+                          it: e_els_print_it,
+                          ann: undefined
+                        };
+                        return [
+                                "",
+                                {
+                                  it: {
+                                    TAG: "If",
+                                    _0: e_cnd$1,
+                                    _1: e_thn$1,
+                                    _2: e_els$1
+                                  },
+                                  ann: {
+                                    sourceLocation: sourceLocation,
+                                    print: ifStat$2(getPrint(e_cnd$1), e_thn_print, e_els_print)
+                                  }
+                                },
+                                ""
+                              ];
+                      })
+                  };
+          });
         break;
     case "Cnd" :
         var ob = it._1;
@@ -7108,14 +7178,14 @@ function printExp$3(param) {
             });
         break;
     case "Yield" :
-        var e$10 = printExp$3(it._0);
-        var e$11 = e$10.expr(false);
+        var e$7 = printExp$3(it._0);
+        var e$8 = e$7.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
-                _0: e$11
+                _0: e$8
               },
-              ann: consumeContextWrap$2(exprYieldToString$3(getPrint(e$11)))
+              ann: consumeContextWrap$2(exprYieldToString$3(getPrint(e$8)))
             });
         break;
     
@@ -8128,7 +8198,13 @@ function exprAppPrmToString$3(p, es) {
       };
 }
 
-function funLike$3(op, x, xs, e) {
+function defvarToString$4(x, e) {
+  var keyword = containsVarMutation.contents ? "var" : "val";
+  return defvarLike$4(keyword + " ", x, e);
+}
+
+function deffunToString$4(f, xs, b) {
+  var op = "def";
   return s([
               "",
               " ",
@@ -8143,7 +8219,7 @@ function funLike$3(op, x, xs, e) {
                 ann: undefined
               },
               {
-                it: exprAppToString$4(x, Core__List.map(xs, (function (x) {
+                it: exprAppToString$4(f, Core__List.map(xs, (function (x) {
                             return {
                                     it: s([
                                           "",
@@ -8154,21 +8230,8 @@ function funLike$3(op, x, xs, e) {
                           }))),
                 ann: undefined
               },
-              indentBlock(e, 2)
+              indentBlock(b, 2)
             ]);
-}
-
-function defvarToString$4(x, e) {
-  var keyword = containsVarMutation.contents ? "var" : "val";
-  return defvarLike$4(keyword + " ", x, e);
-}
-
-function deffunToString$4(f, xs, b) {
-  return funLike$3("def", f, xs, b);
-}
-
-function defgenToString$4(f, xs, b) {
-  return funLike$3("gen def", f, xs, b);
 }
 
 function exprSetToString$4(x, e) {
@@ -8200,13 +8263,6 @@ function exprLamToString$4(xs, b) {
               xs$1,
               indentBlock(b, 2)
             ]);
-}
-
-function exprYieldToString$4(e) {
-  return s([
-              "yield ",
-              ""
-            ], [e]);
 }
 
 function exprBgnToString$3(es, e) {
@@ -8262,16 +8318,13 @@ function exprCndToString$4(ebs, ob) {
 }
 
 function exprIfToString$4(e_cnd, e_thn, e_els) {
-  return s([
-              "",
-              " ? ",
-              " : ",
-              ""
-            ], [
-              e_cnd,
-              e_thn,
-              e_els
-            ]);
+  return exprCndToString$4({
+              hd: [
+                e_cnd,
+                e_thn
+              ],
+              tl: /* [] */0
+            }, e_els);
 }
 
 function symbolToString$4(param) {
@@ -8444,11 +8497,11 @@ function printExp$4(param) {
         break;
     case "If" :
         var e$7 = printExp$4(it._0);
-        var e_cnd = e$7.expr(true);
+        var e_cnd = e$7.expr(false);
         var e$8 = printExp$4(it._1);
-        var e_thn = e$8.expr(true);
+        var e_thn = e$8.expr(false);
         var e$9 = printExp$4(it._2);
-        var e_els = e$9.expr(true);
+        var e_els = e$9.expr(false);
         e = lift({
               it: {
                 TAG: "If",
@@ -8509,10 +8562,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
-        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
+        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -8528,16 +8581,11 @@ function printExp$4(param) {
             });
         break;
     case "Yield" :
-        var e$10 = printExp$4(it._0);
-        var e$11 = e$10.expr(false);
-        e = lift({
-              it: {
-                TAG: "Yield",
-                _0: e$11
-              },
-              ann: consumeContextWrap$3(exprYieldToString$4(getPrint(e$11)))
-            });
-        break;
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators are not supported by Scala.",
+              Error: new Error()
+            };
     
   }
   return e(param.ann);
@@ -8585,25 +8633,11 @@ function printDef$4(param) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$4(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$4);
-        var b$1 = printBlock$4(d._2, "Return");
-        match = [
-          "",
-          {
-            it: {
-              TAG: "GFun",
-              _0: f$1,
-              _1: xs$1,
-              _2: b$1
-            },
-            ann: defgenToString$4(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
-                        return getNamePrint(x);
-                      })), getBlockPrint(b$1))
-          },
-          ""
-        ];
-        break;
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators are not supported by Scala",
+              Error: new Error()
+            };
     
   }
   var d$1 = match[1];

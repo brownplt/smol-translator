@@ -5,7 +5,7 @@
   "type": "module",
   "main": "src/SMoL.bs.js",
   "scripts": {
-    "clean": "rm -rf test/test_cases/*",
+    "clean": "rm -rf test/test_cases/* test/style_tests/*.{js,py,scala,cm}*",
     "prepare-test:get-programs": "node --experimental-modules test/extract_programs_from_tutorials.js",
     "prepare-test:translate": "node --experimental-modules test/translate_test_programs.js",
     "prepare-test": "npm run prepare-test:get-programs && npm run prepare-test:translate",

@@ -1,4 +1,8 @@
 fun fact(n):
-  return if n === 0 then 1 else (fact(n - 1) * n)
+  if n === 0:
+    return 1
+  else:
+    return fact(n - 1) * n
+  end
 end
 print(fact(5))
