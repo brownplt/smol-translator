@@ -16,7 +16,7 @@ let concat = (s, ss) => Array.join(ss, s)
 
 module Print = {
   type t<'id> = printNode<'id>
-  let toSourceMap = t => {
+  let toSourceMap = (t, stringOfKey) => {
     let hMap = Map.make()
     let ln = ref(0)
     let ch = ref(0)
@@ -39,7 +39,7 @@ module Print = {
       }
       let end = {ln: ln.contents, ch: ch.contents}
       ann->Option.forEach(ann => {
-        Map.set(hMap, ann, {begin, end})
+        Map.set(hMap, stringOfKey(ann), {begin, end})
       })
     }
     f(t)

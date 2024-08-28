@@ -8,7 +8,7 @@ and print<'id> = annotated<printNode<'id>, option<'id>>
 module Print: {
   type t<'id> = printNode<'id>
   let toString: t<'id> => string
-  let toSourceMap: print<'id> => Map.t<'id, SExpression.sourceLocation>
+  let toSourceMap: (print<'id>, 'id => string) => Map.t<string, SExpression.sourceLocation>
   let map: (string => string) => (t<'id>) => t<'id>
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
