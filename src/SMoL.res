@@ -167,6 +167,7 @@ module Primitive = {
     | Div
   type cmp =
     | Lt
+    | NumEq
     | Eq
     | Gt
     | Le
@@ -201,6 +202,7 @@ module Primitive = {
     | Cmp(Le) => "<="
     | Cmp(Ge) => ">="
     | Cmp(Ne) => "!="
+    | Cmp(NumEq) => "="
     | Cmp(Eq) => "eq?"
     | Cmp(Equal) => "equal?"
     | PairNew => "mpair"
@@ -815,7 +817,7 @@ module Parser = {
       | Sequence({content: list{{it: Atom(Sym("<")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Cmp(Lt), es)
       | Sequence({content: list{{it: Atom(Sym("=")), ann: _}, ...es}}) =>
-        makeAppPrm(ann, Cmp(Eq), es)
+        makeAppPrm(ann, Cmp(NumEq), es)
       | Sequence({content: list{{it: Atom(Sym(">")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Cmp(Gt), es)
       | Sequence({content: list{{it: Atom(Sym("<=")), ann: _}, ...es}}) =>
@@ -1578,7 +1580,8 @@ module JSPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
-        | Eq => "=="
+        | NumEq => "=="
+        | Eq => "==="
         | Gt => ">"
         | Le => "<="
         | Ge => ">="
@@ -2358,6 +2361,7 @@ module PYPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
+        | NumEq => "=="
         | Eq => "is"
         | Gt => ">"
         | Le => "<="
@@ -3074,6 +3078,7 @@ module PCPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
+        | NumEq => "=="
         | Eq => "==="
         | Gt => ">"
         | Le => "<="
@@ -3858,6 +3863,7 @@ module SCPrinter: Printer = {
     | (Cmp(o), list{e1, e2}) => {
         let os = switch o {
         | Lt => "<"
+        | NumEq => "=="
         | Eq => "eq"
         | Gt => ">"
         | Le => "<="

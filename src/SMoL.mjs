@@ -365,6 +365,8 @@ function toString$1(t) {
     switch (t._0) {
       case "Lt" :
           return "<";
+      case "NumEq" :
+          return "=";
       case "Eq" :
           return "eq?";
       case "Gt" :
@@ -1135,6 +1137,12 @@ function parseTerm(e) {
                       _0: "Le"
                     }, es.tl);
                 break;
+            case "=" :
+                tmp = makeAppPrm(ann, {
+                      TAG: "Cmp",
+                      _0: "NumEq"
+                    }, es.tl);
+                break;
             case ">" :
                 tmp = makeAppPrm(ann, {
                       TAG: "Cmp",
@@ -1295,7 +1303,6 @@ function parseTerm(e) {
                   }
                 };
                 break;
-            case "=" :
             case "eq?" :
                 tmp = makeAppPrm(ann, {
                       TAG: "Cmp",
@@ -3479,8 +3486,11 @@ function exprAppPrmToString(p, es) {
           case "Lt" :
               os$1 = "<";
               break;
-          case "Eq" :
+          case "NumEq" :
               os$1 = "==";
+              break;
+          case "Eq" :
+              os$1 = "===";
               break;
           case "Gt" :
               os$1 = ">";
@@ -5029,6 +5039,7 @@ function exprAppPrmToString$1(p, es) {
           case "Ne" :
               os$1 = "!=";
               break;
+          case "NumEq" :
           case "Equal" :
               os$1 = "==";
               break;
@@ -6518,6 +6529,7 @@ function exprAppPrmToString$2(p, es) {
           case "Ne" :
               os$1 = "!=";
               break;
+          case "NumEq" :
           case "Equal" :
               os$1 = "==";
               break;
@@ -8147,6 +8159,7 @@ function exprAppPrmToString$3(p, es) {
           case "Ne" :
               os$1 = "!=";
               break;
+          case "NumEq" :
           case "Equal" :
               os$1 = "==";
               break;

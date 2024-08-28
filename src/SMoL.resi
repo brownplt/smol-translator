@@ -45,6 +45,7 @@ module Primitive: {
     | Div
   type cmp =
     | Lt
+    | NumEq
     | Eq
     | Gt
     | Le
