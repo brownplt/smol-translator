@@ -6,6 +6,7 @@ import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.mjs";
 import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
+import * as PervasivesU from "rescript/lib/es6/pervasivesU.js";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
@@ -1659,6 +1660,11 @@ function parseOutput(src) {
     }
     throw err;
   }
+}
+
+function inferTypes(p) {
+  new Set();
+  return PervasivesU.failwith("todo");
 }
 
 var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
@@ -9790,6 +9796,7 @@ export {
   ParseError ,
   SMoLParseError ,
   Parser ,
+  inferTypes ,
   SMoLPrintError ,
   getPrint ,
   getNamePrint ,

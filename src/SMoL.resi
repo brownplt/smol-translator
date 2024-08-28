@@ -9,7 +9,7 @@ module Print: {
   type t<'id> = printNode<'id>
   let toString: t<'id> => string
   let toSourceMap: print<'id> => Map.t<'id, SExpression.sourceLocation>
-  let map: (string => string) => (t<'id>) => t<'id>
+  let map: (string => string) => t<'id> => t<'id>
   let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
   let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
   let pad: (string, annotated<t<'id>, option<'id>>, string) => t<'id>
@@ -162,6 +162,14 @@ module Parser: {
   let parseOutput: string => output
   let parseProgram: string => program<sourceLocation>
 }
+
+// Infer Type
+type rec ty = Num | Boolean | String
+  | Vecof(ty)
+  | Listof(ty)
+  | Funof({isGen: bool, args: list<ty>, out: ty})
+type typed<'ann> = {ty: ty, ann: 'ann}
+let inferTypes: program<'ann> => program<typed<'ann>>
 
 // Print
 

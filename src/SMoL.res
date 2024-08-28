@@ -900,6 +900,28 @@ module Parser = {
   }
 }
 
+// Infer Type
+type rec ty =
+  | Num
+  | Boolean
+  | String
+  | Vecof(ty)
+  | Listof(ty)
+  | Funof({isGen: bool, args: list<ty>, out: ty})
+type typed<'ann> = {ty: ty, ann: 'ann}
+type rec tye =
+  | Var(string)
+  | Num
+  | Boolean
+  | String
+  | Vecof(ty)
+  | Listof(ty)
+  | Funof({isGen: bool, args: list<ty>, out: ty})
+let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (p, getKey: 'ann => string) => {
+  let constraints = ref(Set.make())
+  failwith("todo")
+}
+
 type exn += SMoLPrintError(string)
 let raisePrintError = err => raise(SMoLPrintError(err))
 
