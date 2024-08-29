@@ -1938,12 +1938,23 @@ module TypedSMoLPrinter = {
     }
   }
 
-  let symbolToString = ({it, ann}: annotated<symbol, typed<sourceLocation>>) => {
+  let symbolDefToString = ({it, ann}: annotated<symbol, typed<sourceLocation>>) => {
     {
       it,
       ann: {
         sourceLocation: ann.ann,
-        print: Print.s`${Print.string(it)} : ${Print.string(tyToString(ann.ty))}`,
+        print: Print.s`[${Print.string(it)} : ${Print.string(tyToString(ann.ty))}]`,
+      },
+    }
+  }
+
+
+  let symbolRefToString = ({it, ann}: annotated<symbol, typed<sourceLocation>>) => {
+    {
+      it,
+      ann: {
+        sourceLocation: ann.ann,
+        print: Print.s`${Print.string(it)}`,
       },
     }
   }
@@ -1961,7 +1972,7 @@ module TypedSMoLPrinter = {
         ann: Plain(x),
       }
     | Set(x, e) => {
-        let x = symbolToString(x)
+        let x = symbolRefToString(x)
         let e = e->printExp
         {
           ann: exprSetToString(getNamePrint(x), getPrint(e)),
@@ -1969,7 +1980,7 @@ module TypedSMoLPrinter = {
         }
       }
     | Lam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
+        let xs = xs->List.map(symbolDefToString)
         let b = b->printBlock
         {
           ann: exprLamToString(xs->List.map(x => getNamePrint(x)), getBlockPrint(b)),
@@ -1977,7 +1988,7 @@ module TypedSMoLPrinter = {
         }
       }
     | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
+        let xs = xs->List.map(symbolDefToString)
         let b = b->printBlock
         {
           ann: exprGenToString(xs->List.map(x => getNamePrint(x)), getBlockPrint(b)),
@@ -2059,7 +2070,7 @@ module TypedSMoLPrinter = {
   ): definition<printAnn> => {
     let d = switch d {
     | Var(x, e) => {
-        let x = symbolToString(x)
+        let x = symbolDefToString(x)
         let e = e->printExp
         {
           ann: defvarToString(getNamePrint(x), getPrint(e)),
@@ -2067,8 +2078,8 @@ module TypedSMoLPrinter = {
         }
       }
     | Fun(f, xs, b) => {
-        let f = f->symbolToString
-        let xs = xs->List.map(symbolToString)
+        let f = f->symbolRefToString
+        let xs = xs->List.map(symbolDefToString)
         let b = b->printBlock
         {
           ann: deffunToString(
@@ -2080,8 +2091,8 @@ module TypedSMoLPrinter = {
         }
       }
     | GFun(f, xs, b) => {
-        let f = f->symbolToString
-        let xs = xs->List.map(symbolToString)
+        let f = f->symbolRefToString
+        let xs = xs->List.map(symbolDefToString)
         let b = b->printBlock
         {
           ann: defgenToString(
@@ -2100,7 +2111,7 @@ module TypedSMoLPrinter = {
     printAnn,
   > => {
     let (x, e) = xe
-    let (x, e) = (symbolToString(x), printExp(e))
+    let (x, e) = (symbolDefToString(x), printExp(e))
     let print = hcat(
       Print.dummy(group2(Print.string("["), getNamePrint(x))),
       Print.dummy(group2(getPrint(e), Print.string("]"))),

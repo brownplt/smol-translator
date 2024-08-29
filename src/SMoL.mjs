@@ -4098,7 +4098,7 @@ function tyToString(ty) {
   }
 }
 
-function symbolToString$1(param) {
+function symbolDefToString(param) {
   var ann = param.ann;
   var it = param.it;
   var it$1 = tyToString(ann.ty);
@@ -4107,9 +4107,9 @@ function symbolToString$1(param) {
           ann: {
             sourceLocation: ann.ann,
             print: s([
-                  "",
+                  "[",
                   " : ",
-                  ""
+                  "]"
                 ], [
                   {
                     it: {
@@ -4126,6 +4126,26 @@ function symbolToString$1(param) {
                     ann: undefined
                   }
                 ])
+          }
+        };
+}
+
+function symbolRefToString(param) {
+  var it = param.it;
+  return {
+          it: it,
+          ann: {
+            sourceLocation: param.ann.ann,
+            print: s([
+                  "",
+                  ""
+                ], [{
+                    it: {
+                      TAG: "Plain",
+                      _0: it
+                    },
+                    ann: undefined
+                  }])
           }
         };
 }
@@ -4161,7 +4181,7 @@ function printExp$1(param) {
         };
         break;
     case "Set" :
-        var x$1 = symbolToString$1(it._0);
+        var x$1 = symbolRefToString(it._0);
         var e$1 = printExp$1(it._1);
         e = {
           it: {
@@ -4173,7 +4193,7 @@ function printExp$1(param) {
         };
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$1);
+        var xs = Core__List.map(it._0, symbolDefToString);
         var b = printBlock$1(it._1);
         e = {
           it: {
@@ -4297,7 +4317,7 @@ function printExp$1(param) {
         };
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$1);
+        var xs$1 = Core__List.map(it._0, symbolDefToString);
         var b$3 = printBlock$1(it._1);
         e = {
           it: {
@@ -4336,7 +4356,7 @@ function printDef$1(param) {
   var d$1;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$1(d._0);
+        var x = symbolDefToString(d._0);
         var e = printExp$1(d._1);
         d$1 = {
           it: {
@@ -4348,8 +4368,8 @@ function printDef$1(param) {
         };
         break;
     case "Fun" :
-        var f = symbolToString$1(d._0);
-        var xs = Core__List.map(d._1, symbolToString$1);
+        var f = symbolRefToString(d._0);
+        var xs = Core__List.map(d._1, symbolDefToString);
         var b = printBlock$1(d._2);
         d$1 = {
           it: {
@@ -4364,8 +4384,8 @@ function printDef$1(param) {
         };
         break;
     case "GFun" :
-        var f$1 = symbolToString$1(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$1);
+        var f$1 = symbolRefToString(d._0);
+        var xs$1 = Core__List.map(d._1, symbolDefToString);
         var b$1 = printBlock$1(d._2);
         d$1 = {
           it: {
@@ -4392,7 +4412,7 @@ function printDef$1(param) {
 
 function xeToString$1(param) {
   var xe = param.it;
-  var x = symbolToString$1(xe[0]);
+  var x = symbolDefToString(xe[0]);
   var e = printExp$1(xe[1]);
   var print = hcat({
         it: group2({
@@ -5595,7 +5615,7 @@ function exprIfToString$2(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function symbolToString$2(param) {
+function symbolToString$1(param) {
   var it = param.it;
   return {
           it: it,
@@ -5671,7 +5691,7 @@ function printExp$2(param) {
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$2(it._0);
+        var x$1 = symbolToString$1(it._0);
         var e$1 = printExp$2(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
@@ -5684,7 +5704,7 @@ function printExp$2(param) {
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$2);
+        var xs = Core__List.map(it._0, symbolToString$1);
         var b = printBlock$2(it._1, "Return");
         e = lift({
               it: {
@@ -5911,7 +5931,7 @@ function printExp$2(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$2);
+        var xs$1 = Core__List.map(it._0, symbolToString$1);
         var b$2 = printBlock$2(it._1, "Return");
         e = lift({
               it: {
@@ -5945,7 +5965,7 @@ function printDef$2(param) {
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$2(d._0);
+        var x = symbolToString$1(d._0);
         var e = printExp$2(d._1);
         var e$1 = e.expr(false);
         match = [
@@ -5962,8 +5982,8 @@ function printDef$2(param) {
         ];
         break;
     case "Fun" :
-        var f = symbolToString$2(d._0);
-        var xs = Core__List.map(d._1, symbolToString$2);
+        var f = symbolToString$1(d._0);
+        var xs = Core__List.map(d._1, symbolToString$1);
         var b = printBlock$2(d._2, "Return");
         match = [
           "",
@@ -5982,8 +6002,8 @@ function printDef$2(param) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$2(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$2);
+        var f$1 = symbolToString$1(d._0);
+        var xs$1 = Core__List.map(d._1, symbolToString$1);
         var b$1 = printBlock$2(d._2, "Return");
         match = [
           "",
@@ -6019,7 +6039,7 @@ function printDef$2(param) {
 
 function xeToString$2(param) {
   var xe = param.it;
-  var x = symbolToString$2(xe[0]);
+  var x = symbolToString$1(xe[0]);
   var e = printExp$2(xe[1]);
   var e$1 = e.expr(false);
   var print = defvarToString$2(getNamePrint(x), getPrint(e$1));
@@ -7115,7 +7135,7 @@ function exprIfToString$3(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function symbolToString$3(param) {
+function symbolToString$2(param) {
   var it = param.it;
   return {
           it: it,
@@ -7193,7 +7213,7 @@ function printExp$3(param, env) {
     case "Set" :
         var x$1 = it._0;
         refMut(env, x$1.it);
-        var x$2 = symbolToString$3(x$1);
+        var x$2 = symbolToString$2(x$1);
         var e$1 = printExp$3(it._1, env);
         var e$2 = e$1.expr(false);
         e = lift({
@@ -7206,7 +7226,7 @@ function printExp$3(param, env) {
             });
         break;
     case "Lam" :
-        var xs = Belt_List.map(it._0, symbolToString$3);
+        var xs = Belt_List.map(it._0, symbolToString$2);
         var b = printLamBody(it._1, xs, env);
         e = lift({
               it: {
@@ -7381,7 +7401,7 @@ function printExp$3(param, env) {
           });
         break;
     case "GLam" :
-        var xs$1 = Belt_List.map(it._0, symbolToString$3);
+        var xs$1 = Belt_List.map(it._0, symbolToString$2);
         var b$1 = printLamBody(it._1, xs$1, env);
         e = lift({
               it: {
@@ -7416,7 +7436,7 @@ function printDef$3(param, env) {
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$3(d._0);
+        var x = symbolToString$2(d._0);
         var e = printExp$3(d._1, env);
         var e$1 = e.expr(false);
         match = [
@@ -7433,8 +7453,8 @@ function printDef$3(param, env) {
         ];
         break;
     case "Fun" :
-        var f = symbolToString$3(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$3);
+        var f = symbolToString$2(d._0);
+        var xs = Belt_List.map(d._1, symbolToString$2);
         var b = printDefBody(d._2, xs, env);
         match = [
           "",
@@ -7453,8 +7473,8 @@ function printDef$3(param, env) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$3(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$3);
+        var f$1 = symbolToString$2(d._0);
+        var xs$1 = Belt_List.map(d._1, symbolToString$2);
         var b$1 = printDefBody(d._2, xs$1, env);
         match = [
           "",
@@ -8729,7 +8749,7 @@ function exprLetrecToString$2(xes, b) {
   return letLike$2("letrec", xes, b);
 }
 
-function symbolToString$4(param) {
+function symbolToString$3(param) {
   var it = param.it;
   return {
           it: it,
@@ -8805,7 +8825,7 @@ function printExp$4(param) {
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$4(it._0);
+        var x$1 = symbolToString$3(it._0);
         var e$1 = printExp$4(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
@@ -8818,7 +8838,7 @@ function printExp$4(param) {
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$4);
+        var xs = Core__List.map(it._0, symbolToString$3);
         var b = printBlock$4(it._1, "Return");
         e = lift({
               it: {
@@ -9081,7 +9101,7 @@ function printExp$4(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$4);
+        var xs$1 = Core__List.map(it._0, symbolToString$3);
         var b$3 = printBlock$4(it._1, "Return");
         e = lift({
               it: {
@@ -9115,7 +9135,7 @@ function printDef$4(param) {
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$4(d._0);
+        var x = symbolToString$3(d._0);
         var e = printExp$4(d._1);
         var e$1 = e.expr(false);
         match = [
@@ -9132,8 +9152,8 @@ function printDef$4(param) {
         ];
         break;
     case "Fun" :
-        var f = symbolToString$4(d._0);
-        var xs = Core__List.map(d._1, symbolToString$4);
+        var f = symbolToString$3(d._0);
+        var xs = Core__List.map(d._1, symbolToString$3);
         var b = printBlock$4(d._2, "Return");
         match = [
           "",
@@ -9152,8 +9172,8 @@ function printDef$4(param) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$4(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$4);
+        var f$1 = symbolToString$3(d._0);
+        var xs$1 = Core__List.map(d._1, symbolToString$3);
         var b$1 = printBlock$4(d._2, "Return");
         match = [
           "",
@@ -9189,7 +9209,7 @@ function printDef$4(param) {
 
 function xeToString$3(param) {
   var xe = param.it;
-  var x = symbolToString$4(xe[0]);
+  var x = symbolToString$3(xe[0]);
   var e = printExp$4(xe[1]);
   var e$1 = e.expr(false);
   var print = defvarToString$4(getNamePrint(x), getPrint(e$1));
@@ -10244,7 +10264,7 @@ function exprIfToString$5(e_cnd, e_thn, e_els) {
             }, e_els);
 }
 
-function symbolToString$5(param) {
+function symbolToString$4(param) {
   var it = param.it;
   return {
           it: it,
@@ -10320,7 +10340,7 @@ function printExp$5(param) {
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$5(it._0);
+        var x$1 = symbolToString$4(it._0);
         var e$1 = printExp$5(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
@@ -10333,7 +10353,7 @@ function printExp$5(param) {
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$5);
+        var xs = Core__List.map(it._0, symbolToString$4);
         var b = printBlock$5(it._1, "Return");
         e = lift({
               it: {
@@ -10477,12 +10497,12 @@ function printExp$5(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$5);
+        var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$5(it._1, "Return");
-        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
+        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -10513,7 +10533,7 @@ function printDef$5(param) {
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$5(d._0);
+        var x = symbolToString$4(d._0);
         var e = printExp$5(d._1);
         var e$1 = e.expr(false);
         match = [
@@ -10530,8 +10550,8 @@ function printDef$5(param) {
         ];
         break;
     case "Fun" :
-        var f = symbolToString$5(d._0);
-        var xs = Core__List.map(d._1, symbolToString$5);
+        var f = symbolToString$4(d._0);
+        var xs = Core__List.map(d._1, symbolToString$4);
         var b = printBlock$5(d._2, "Return");
         match = [
           "",
