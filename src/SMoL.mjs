@@ -1706,147 +1706,47 @@ function inferTypes(p, getKey) {
       tl: constraints.contents
     };
   };
-  var ge = function (env, _e) {
-    while(true) {
-      var e = _e;
-      var c = e.it;
-      switch (c.TAG) {
-        case "Con" :
-            var c$1 = c._0;
-            if (typeof c$1 !== "object") {
-              if (c$1 === "Uni") {
-                return "TUni";
-              }
-              throw {
-                    RE_EXN_ID: SMoLTypeError,
-                    _1: {
-                      TAG: "NotSupported",
-                      _0: "lists"
-                    },
-                    Error: new Error()
-                  };
-            } else {
-              switch (c$1.TAG) {
-                case "Num" :
-                    return "Num";
-                case "Lgc" :
-                    return "Boolean";
-                case "Str" :
-                    return "String";
-                case "Sym" :
-                    throw {
-                          RE_EXN_ID: SMoLTypeError,
-                          _1: {
-                            TAG: "NotSupported",
-                            _0: "symbol"
-                          },
-                          Error: new Error()
-                        };
-                
-              }
-            }
-        case "Ref" :
-            return lookup(env, c._0);
-        case "Set" :
-            addConstraint(lookup(env, c._0.it), ge(env, c._1));
-            return "TUni";
-        case "Lam" :
-            var b = c._1;
-            var xs = c._0;
-            return {
-                    TAG: "Funof",
-                    args: Core__List.map(xs, (function (x) {
-                            return {
-                                    TAG: "TVar",
-                                    _0: getKey(x.ann)
-                                  };
-                          })),
-                    out: gb(extend(env, Belt_List.concatMany([
-                                  xs,
-                                  xsOfBlock(b)
-                                ])), b)
-                  };
-        case "Let" :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "NotSupported",
-                    _0: "let"
-                  },
-                  Error: new Error()
-                };
-        case "Letrec" :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "NotSupported",
-                    _0: "letrec"
-                  },
-                  Error: new Error()
-                };
-        case "AppPrm" :
-            return PervasivesU.failwith("todo");
-        case "App" :
-            var out = {
-              TAG: "TVar",
-              _0: getKey(e.ann)
-            };
-            addConstraint(ge(env, c._0), {
-                  TAG: "Funof",
-                  args: Core__List.map(c._1, (function (arg) {
-                          return ge(env, arg);
-                        })),
-                  out: out
-                });
-            return out;
-        case "Bgn" :
-            Core__List.forEach(c._0, (function (e) {
-                    ge(env, e);
-                  }));
-            _e = c._1;
-            continue ;
-        case "If" :
-            addConstraint("Boolean", ge(env, c._0));
-            var t_thn = ge(env, c._1);
-            var t_els = ge(env, c._2);
-            addConstraint(t_thn, t_els);
-            return t_els;
-        case "Cnd" :
-            var ob = c._1;
-            var t = ob !== undefined ? gb(env, ob) : "TUni";
-            Core__List.forEach(c._0, (function(t){
-                return function (param) {
-                  var b = param[1];
-                  addConstraint("Boolean", ge(env, param[0]));
-                  addConstraint(t, gb(extend(env, xsOfBlock(b)), b));
-                }
-                }(t)));
-            return t;
-        case "GLam" :
-        case "Yield" :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "NotSupported",
-                    _0: "generators"
-                  },
-                  Error: new Error()
-                };
-        
-      }
-    };
+  var i = {
+    contents: 0
   };
-  var gb = function (env, _b) {
-    while(true) {
-      var b = _b;
-      var e = b.it;
-      if (e.TAG === "BRet") {
-        return ge(env, e._0);
-      }
-      gt(env, e._0);
-      _b = e._1;
-      continue ;
+  var freshVar = function () {
+    var t = {
+      TAG: "TVar",
+      _0: "fresh-" + i.contents.toString()
     };
+    i.contents = 1 + i.contents | 0;
+    return t;
+  };
+  var asVec = function (t1) {
+    if (typeof t1 === "object") {
+      switch (t1.TAG) {
+        case "TVar" :
+            var t2 = freshVar();
+            addConstraint(t1, {
+                  TAG: "Vecof",
+                  _0: t2
+                });
+            return t2;
+        case "Vecof" :
+            return t1._0;
+        default:
+          
+      }
+    }
+    var err_1 = {
+      TAG: "Vecof",
+      _0: freshVar()
+    };
+    var err = {
+      TAG: "Incompatible",
+      _0: t1,
+      _1: err_1
+    };
+    throw {
+          RE_EXN_ID: SMoLTypeError,
+          _1: err,
+          Error: new Error()
+        };
   };
   var gt = function (env, t) {
     var d = t.it;
@@ -1886,6 +1786,337 @@ function inferTypes(p, getKey) {
     }
     ge(env, d._0);
   };
+  var gb = function (env, _b) {
+    while(true) {
+      var b = _b;
+      var e = b.it;
+      if (e.TAG === "BRet") {
+        return ge(env, e._0);
+      }
+      gt(env, e._0);
+      _b = e._1;
+      continue ;
+    };
+  };
+  var ge = function (env, e) {
+    var c = e.it;
+    var t;
+    switch (c.TAG) {
+      case "Con" :
+          t = gc(c._0);
+          break;
+      case "Ref" :
+          t = lookup(env, c._0);
+          break;
+      case "Set" :
+          addConstraint(lookup(env, c._0.it), ge(env, c._1));
+          t = "TUni";
+          break;
+      case "Lam" :
+          var b = c._1;
+          var xs = c._0;
+          t = {
+            TAG: "Funof",
+            args: Core__List.map(xs, (function (x) {
+                    return {
+                            TAG: "TVar",
+                            _0: getKey(x.ann)
+                          };
+                  })),
+            out: gb(extend(env, Belt_List.concatMany([
+                          xs,
+                          xsOfBlock(b)
+                        ])), b)
+          };
+          break;
+      case "Let" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "let"
+                },
+                Error: new Error()
+              };
+      case "Letrec" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "letrec"
+                },
+                Error: new Error()
+              };
+      case "AppPrm" :
+          t = ga(c._0, Core__List.map(c._1, (function (e) {
+                      return ge(env, e);
+                    })));
+          break;
+      case "App" :
+          var out = {
+            TAG: "TVar",
+            _0: getKey(e.ann)
+          };
+          addConstraint(ge(env, c._0), {
+                TAG: "Funof",
+                args: Core__List.map(c._1, (function (arg) {
+                        return ge(env, arg);
+                      })),
+                out: out
+              });
+          t = out;
+          break;
+      case "Bgn" :
+          Core__List.forEach(c._0, (function (e) {
+                  ge(env, e);
+                }));
+          t = ge(env, c._1);
+          break;
+      case "If" :
+          addConstraint("Boolean", ge(env, c._0));
+          var t_thn = ge(env, c._1);
+          var t_els = ge(env, c._2);
+          addConstraint(t_thn, t_els);
+          t = t_els;
+          break;
+      case "Cnd" :
+          var ob = c._1;
+          var t$1 = ob !== undefined ? gb(env, ob) : "TUni";
+          Core__List.forEach(c._0, (function (param) {
+                  var b = param[1];
+                  addConstraint("Boolean", ge(env, param[0]));
+                  addConstraint(t$1, gb(extend(env, xsOfBlock(b)), b));
+                }));
+          t = t$1;
+          break;
+      case "GLam" :
+      case "Yield" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "generators"
+                },
+                Error: new Error()
+              };
+      
+    }
+    addConstraint({
+          TAG: "TVar",
+          _0: getKey(e.ann)
+        }, t);
+    return t;
+  };
+  var gc = function (c) {
+    if (typeof c !== "object") {
+      if (c === "Uni") {
+        return "TUni";
+      }
+      throw {
+            RE_EXN_ID: SMoLTypeError,
+            _1: {
+              TAG: "NotSupported",
+              _0: "lists"
+            },
+            Error: new Error()
+          };
+    } else {
+      switch (c.TAG) {
+        case "Num" :
+            return "Num";
+        case "Lgc" :
+            return "Boolean";
+        case "Str" :
+            return "String";
+        case "Sym" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "symbol"
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    }
+  };
+  var ga = function (p, vs) {
+    var exit = 0;
+    if (typeof p !== "object") {
+      switch (p) {
+        case "PairNew" :
+            if (vs) {
+              var match = vs.tl;
+              if (match && !match.tl) {
+                var v1 = vs.hd;
+                addConstraint(v1, match.hd);
+                return {
+                        TAG: "Vecof",
+                        _0: v1
+                      };
+              }
+              
+            }
+            break;
+        case "PairRefLeft" :
+        case "PairRefRight" :
+            exit = 2;
+            break;
+        case "PairSetLeft" :
+        case "PairSetRight" :
+            exit = 3;
+            break;
+        case "VecNew" :
+            var te = freshVar();
+            Core__List.forEach(vs, (function (v) {
+                    addConstraint(te, v);
+                  }));
+            return {
+                    TAG: "Vecof",
+                    _0: te
+                  };
+        case "VecRef" :
+            if (vs) {
+              var match$1 = vs.tl;
+              if (match$1 && !match$1.tl) {
+                var te$1 = asVec(vs.hd);
+                addConstraint("Num", match$1.hd);
+                return te$1;
+              }
+              
+            }
+            break;
+        case "VecSet" :
+            if (vs) {
+              var match$2 = vs.tl;
+              if (match$2) {
+                var match$3 = match$2.tl;
+                if (match$3 && !match$3.tl) {
+                  addConstraint(vs.hd, {
+                        TAG: "Vecof",
+                        _0: match$3.hd
+                      });
+                  addConstraint(match$2.hd, "Num");
+                  return "TUni";
+                }
+                
+              }
+              
+            }
+            break;
+        case "VecLen" :
+            if (vs && !vs.tl) {
+              asVec(vs.hd);
+              return "Num";
+            }
+            break;
+        case "Err" :
+            if (vs && !vs.tl) {
+              addConstraint("String", vs.hd);
+              return freshVar();
+            }
+            break;
+        case "Not" :
+            if (vs && !vs.tl) {
+              addConstraint("Boolean", vs.hd);
+              return "Boolean";
+            }
+            break;
+        case "Print" :
+            if (vs && !vs.tl) {
+              return "TUni";
+            }
+            break;
+        case "Next" :
+            if (vs && !vs.tl) {
+              throw {
+                    RE_EXN_ID: SMoLTypeError,
+                    _1: {
+                      TAG: "NotSupported",
+                      _0: "generator"
+                    },
+                    Error: new Error()
+                  };
+            }
+            break;
+        case "Cons" :
+            break;
+        
+      }
+    } else {
+      if (p.TAG === "Arith") {
+        Core__List.forEach(vs, (function (v) {
+                addConstraint("Num", v);
+              }));
+        return "Num";
+      }
+      Core__List.forEach(vs, (function (v) {
+              addConstraint("Num", v);
+            }));
+      return "Boolean";
+    }
+    switch (exit) {
+      case 2 :
+          if (vs && !vs.tl) {
+            return asVec(vs.hd);
+          }
+          break;
+      case 3 :
+          if (vs) {
+            var match$4 = vs.tl;
+            if (match$4 && !match$4.tl) {
+              addConstraint(vs.hd, {
+                    TAG: "Vecof",
+                    _0: match$4.hd
+                  });
+              return "TUni";
+            }
+            
+          }
+          break;
+      
+    }
+    var err = {
+      TAG: "NotSupported",
+      _0: "Internal error with " + toString$1(p)
+    };
+    throw {
+          RE_EXN_ID: SMoLTypeError,
+          _1: err,
+          Error: new Error()
+        };
+  };
+  var gatherConstraints = function (p) {
+    var xs = xsOfProgram(p);
+    var globalEnv_0 = new Map(Core__List.toArray(xs).map(function (x) {
+              return [
+                      x.it,
+                      {
+                        TAG: "TVar",
+                        _0: getKey(x.ann)
+                      }
+                    ];
+            }));
+    var globalEnv = {
+      hd: globalEnv_0,
+      tl: /* [] */0
+    };
+    var _p = p;
+    while(true) {
+      var p$1 = _p;
+      var match = p$1.it;
+      if (typeof match !== "object") {
+        return ;
+      }
+      gt(globalEnv, match._0);
+      _p = match._1;
+      continue ;
+    };
+  };
+  gatherConstraints(p);
+  new Map();
+  PervasivesU.failwith("todo");
   return PervasivesU.failwith("todo");
 }
 

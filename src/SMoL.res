@@ -900,10 +900,6 @@ module Parser = {
   }
 }
 
-type typeError = UnboundId(string) | NotSupported(string)
-type exn += SMoLTypeError(typeError)
-let raiseTypeError = err => raise(SMoLTypeError(err))
-
 // Infer Type
 // type values
 type rec ty =
@@ -926,6 +922,11 @@ type rec tye =
   | Listof(tye)
   | Funof({args: list<tye>, out: tye})
 type rec typeEnv = list<Map.t<string, tye>>
+
+type typeError = UnboundId(string) | NotSupported(string) | Incompatible(tye, tye)
+type exn += SMoLTypeError(typeError)
+let raiseTypeError = err => raise(SMoLTypeError(err))
+
 let rec lookup = (env: typeEnv, x): tye => {
   switch env {
   | list{} => raiseTypeError(UnboundId(x))
@@ -953,6 +954,25 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
     let constraints = ref(list{})
     let addConstraint = (t1: tye, t2: tye) => {
       constraints := list{(t1, t2), ...constraints.contents}
+    }
+    let freshVar = {
+      let i = ref(0)
+      () => {
+        let t = TVar(`fresh-${Int.toString(i.contents)}`)
+        i := 1 + i.contents
+        t
+      }
+    }
+    let asVec = t1 => {
+      switch t1 {
+      | TVar(_) => {
+          let t2 = freshVar()
+          addConstraint(t1, Vecof(t2))
+          t2
+        }
+      | Vecof(t) => t
+      | _ => raiseTypeError(Incompatible(t1, Vecof(freshVar())))
+      }
     }
     let rec gatherConstraints = (p: program<'ann>) => {
       let xs = xsOfProgram(p)
@@ -996,7 +1016,7 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
       }
     }
     and ge = (env, e: expression<'ann>): tye => {
-      switch e.it {
+      let t = switch e.it {
       | Con(c) => gc(c)
       | Ref(x) => lookup(env, x)
       | Set(x, e) =>
@@ -1009,7 +1029,7 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
         })
       | Let(_bs, _b) => raiseTypeError(NotSupported("let"))
       | Letrec(_bs, _b) => raiseTypeError(NotSupported("letrec"))
-      | AppPrm(p, es) => ga(env, p, es->List.map(e => ge(env, e)))
+      | AppPrm(p, es) => ga(p, es->List.map(e => ge(env, e)))
       | App(f, args) => {
           let out = TVar(getKey(e.ann))
           addConstraint(
@@ -1045,113 +1065,75 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
       | GLam(_, _) => raiseTypeError(NotSupported("generators"))
       | Yield(_) => raiseTypeError(NotSupported("generators"))
       }
+      addConstraint(TVar(getKey(e.ann)), t)
+      t
     }
-    and ga = (env, p, vs) =>
+    and ga = (p, vs): tye =>
       switch (p, vs) {
-      | (Arith(Add), list{v, ...vs}) => return(deltaNum1((a, b) => a +. b, v, vs))
-      | (Arith(Sub), list{v1, v2, ...vs}) => return(deltaNum2((a, b) => a -. b, v1, v2, vs))
-      | (Arith(Mul), list{v, ...vs}) => return(deltaNum1((a, b) => a *. b, v, vs))
-      | (Arith(Div), list{v1, v2, ...vs}) => return(deltaNum2((a, b) => {
-            if b == 0. {
-              raise(RuntimeError(DivisionByZero))
-            } else {
-              a /. b
-            }
-          }, v1, v2, vs))
-      | (Cmp(Lt), list{v, ...vs}) => return(deltaCmp((a, b) => a < b, v, vs))
-      | (Cmp(Eq), list{v, ...vs}) => return(deltaEq(eqv2, v, vs))
-      | (Cmp(Equal), list{v, ...vs}) => return(deltaEq(equal2, v, vs))
-      | (Cmp(Gt), list{v, ...vs}) => return(deltaCmp((a, b) => a > b, v, vs))
-      | (Cmp(Le), list{v, ...vs}) => return(deltaCmp((a, b) => a <= b, v, vs))
-      | (Cmp(Ge), list{v, ...vs}) => return(deltaCmp((a, b) => a >= b, v, vs))
-      | (Cmp(Ne), list{v, ...vs}) => return(deltaCmp((a, b) => a != b, v, vs))
+      | (Arith(_), vs) => {
+          vs->List.forEach(v => addConstraint(Num, v))
+          Num
+        }
+      | (Cmp(_), vs) => {
+          vs->List.forEach(v => addConstraint(Num, v))
+          Boolean
+        }
       | (VecNew, vs) => {
-          let id = newHavId()
-          let v = Vec({id, contents: vs->List.map(v => (false, v))->List.toArray})
-          allHavs := list{v, ...allHavs.contents}
-          return(v)
+          let te = freshVar()
+          vs->List.forEach(v => addConstraint(te, v))
+          Vecof(te)
         }
       | (VecRef, list{v_vec, v_ind}) => {
-          let {contents: vs} = asVec(v_vec)
-          let v_ind = asNum(v_ind)->Float.toInt
-          switch vs[v_ind] {
-          | None => raise(RuntimeError(OutOfBound(Array.length(vs), v_ind)))
-          | Some((_, v)) => return(v)
-          }
+          let te = asVec(v_vec)
+          addConstraint(Num, v_ind)
+          te
         }
 
       | (VecLen, list{v}) => {
-          let {contents: vs} = asVec(v)
-          return(Con(Num(vs->Array.length->Int.toFloat)))
+          ignore(asVec(v))
+          Num
         }
 
       | (VecSet, list{v_vec, v_ind, v_val}) => {
-          let v_vec = asVec(v_vec)
-          let v_ind = asNum(v_ind)->Float.toInt
-          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+          addConstraint(v_vec, Vecof(v_val))
+          addConstraint(v_ind, Num)
+          TUni
         }
 
       | (Err, list{v}) => {
-          let v = asStr(v)
-          _stk => Terminated(Err(AnyError(v)))
+          addConstraint(String, v)
+          freshVar()
         }
 
       | (Not, list{v}) => {
-          let v = asLgc(v)
-          return(Con(Lgc(!v)))
+          addConstraint(Boolean, v)
+          Boolean
         }
 
-      | (PairNew, list{v1, v2}) => make_vector(list{v1, v2})
-
-      | (PairRefLeft, list{v}) => {
-          let {contents: vs} = asPair(v)
-          let v_ind = 0
-          switch vs[v_ind] {
-          | None => raise(Impossible("we have checked that this value is a pair"))
-          | Some((_, v)) => return(v)
-          }
+      | (PairNew, list{v1, v2}) => {
+          addConstraint(v1, v2)
+          Vecof(v1)
         }
 
-      | (PairRefRight, list{v}) => {
-          let {contents: vs} = asPair(v)
-          let v_ind = 1
-          switch vs[v_ind] {
-          | None => raise(Impossible("we have checked that this value is a pair"))
-          | Some((_, v)) => return(v)
-          }
-        }
+      | (PairRefLeft, list{v}) => asVec(v)
+
+      | (PairRefRight, list{v}) => asVec(v)
 
       | (PairSetLeft, list{v_vec, v_val}) => {
-          let v_vec = asPair(v_vec)
-          let v_ind = 0
-          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+          addConstraint(v_vec, Vecof(v_val))
+          TUni
         }
 
       | (PairSetRight, list{v_vec, v_val}) => {
-          let v_vec = asPair(v_vec)
-          let v_ind = 1
-          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+          addConstraint(v_vec, Vecof(v_val))
+          TUni
         }
 
-      | (Print, list{v}) => stk => Continuing(Reducing(Printing(v), stk))
+      | (Print, list{_}) => TUni
 
-      // Js.Console.log(outputletOfValue(v))
-      // return(Con(Uni))
+      | (Next, list{_}) => raiseTypeError(NotSupported("generator"))
 
-      | (Next, list{v}) =>
-        stk => {
-          Continuing(Reducing(Nexting(asGen(v)), stk))
-        }
-
-      | _otherwise => {
-          let wantedArity = arityOf(p)
-          let actualArity = List.length(vs)
-          if RTArity.minimalArity(wantedArity) != actualArity {
-            raise(RuntimeError(ArityMismatch(wantedArity, actualArity)))
-          } else {
-            raise(RuntimeError(AnyError(`Internal error with ${SMoL.Primitive.toString(p)}`)))
-          }
-        }
+      | _otherwise => raiseTypeError(NotSupported(`Internal error with ${Primitive.toString(p)}`))
       }
 
     and gc = (c: constant): tye => {
@@ -1173,9 +1155,17 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
         }
       }
     }
+    gatherConstraints(p)
     constraints.contents
   }
-
+  let solution = {
+    let map: Map.t<string, tye> = Map.make()
+    let solve = constraints => {
+      failwith("todo")
+    }
+    solve(constraints)
+    map
+  }
   failwith("todo")
 }
 
