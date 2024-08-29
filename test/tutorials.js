@@ -1,11 +1,11 @@
-export const tutorials =
-{
+export const tutorials = {
   "def1": {
     "misconceptions": [
       "IsolatedFun"
     ],
     "order": [
       "intro_smol",
+      "intro_question",
       "intro_defvar",
       "warmup_defvar",
       "intro_deffun_1",
@@ -19,7 +19,10 @@ export const tutorials =
     ],
     "questions": {
       "intro_smol": {
-        "confirm": "This series of tutorials revolve around a central idea, **SMoL**, the Standard Model of Languages.\nThis is the embodiment of the computational core of many of our widely-used programming languages,\nfrom C# and Java to JavaScript, and Python to Scala and Racket. All these languages (and many others),\nto a large extent, have a common computational core:\n\n- lexical scope\n- nested scope\n- eager evaluation\n- sequential evaluation (per “thread”)\n- mutable first-order variables\n- mutable first-class structures (objects, vectors, etc.)\n- higher-order functions that close over bindings\n- automated memory management (e.g., garbage collection)\n\nWhat goes in SMoL is, of course, a judgment call:\nwhen a feature isn't present across a large number of diverse languages (like static types),\nor shows too much variation between languages that have it (like objects),\nwe do not include that in the *standard* model.\nBut it is not a value judgment:\nthe standard model is about what languages *are*, rather than what languages *should be*.\n"
+        "confirm": "This series of tutorials revolve around a central idea, **SMoL**, the **S**tandard **M**odel **o**f **L**anguages.\nThis is the embodiment of the computational core of many of our widely-used programming languages,\nfrom C# and Java to JavaScript, and Python to Scala and Racket. All these languages (and many others),\nto a large extent, have a common computational core:\n\n- lexical scope\n- nested scope\n- eager evaluation\n- sequential evaluation (per “thread”)\n- mutable first-order variables\n- mutable first-class structures (objects, vectors, etc.)\n- higher-order functions that close over bindings\n- automated memory management (e.g., garbage collection)\n\nOver the course of the SMoL Tutor, you will become familiar with these language features through reading and evaluating programs.\nWhat goes in SMoL is, of course, a judgment call:\nwhen a feature isn't present across a large number of diverse languages (like static types),\nor shows too much variation between languages that have it (like objects),\nwe do not include that in the *standard* model.\nBut it is not a value judgment:\nthe standard model is about what languages *are*, rather than what languages *should be*.\n"
+      },
+      "intro_question": {
+        "confirm": "The Tutor often presents programs in two distinct languages as follows.\n\n```\n(+ 1 1)\n```\n\nYou can switch the language of the program on the right by clicking the button in the top-right corner.\n\nThese programs should be equivalent unless otherwise noted, so you can answer Tutor questions based on any one of them. However, we recommend reading the code in at least two different languages to help generalize your understanding across multiple programming languages.\n"
       },
       "intro_defvar": {
         "confirm": "In this tutorial, we will learn about **definitions**.\n\nThe following program illustrates **variable definitions**.\n\n```\n(defvar x 1)\n(defvar y 2)\nx\ny\n(+ x y)\n```\n\nIn this program, the first variable definition **binds** var`x` to `1`, and\nthe second variable definition binds var`y` to `2`.\n\nThis program produces three values:\nthe value of var`x`, the value of var`y`, and the value of term`(+ x y)`.\nThese values are `1`, `2`, and `3`, respectively.\nIn this Tutor, we will write the result of running this program on a single line as\n\n`1 2 3`\n\nrather than\n\n<code>1\n2\n3\n</code>\n"
@@ -61,7 +64,7 @@ export const tutorials =
         "emphasize": "We have two kinds of places where a definition might happen: the top-level **block** and\nfunction bodies (which are also **blocks**).\nA block is a sequence of definitions and expressions.\n\nBlocks form a tree-like structure in a program.\nFor example, we have four blocks in the following program:\n\n```\n(defvar n 42)\n\n(deffun (f x)\n  (defvar y 1)\n  (+ x y))\n\n(deffun (g)\n  (deffun (h m)\n    (* 2 m))\n  (f (h 3)))\n\n(g)\n```\n\nThe blocks are:\n\n- the top-level block, where the definitions of var`n`, var`f`, and var`g` appear\n- the body of var`f`, where the definition of var`y` appears, which is a sub-block of the top-level block\n- the body of var`g`, where the definition of var`h` appears, which is also a sub-block of the top-level block, and\n- the body of var`h`, where no local definition appears, which is a sub-block of the body of var`g`\n"
       },
       "intro_error": {
-        "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is `23 error`\nbecause you can't \"call\" a number, so the program stops executing as soon as it runs into an error.\n\n```\n(defvar x 23)\nx\n(x 0)\nx\n```\n"
+        "confirm": "We use the term **values** to refer to the typical result computations.\nThese include numbers, strings, booleans, etc.\nHowever, running a program can also produce an **error**.\n\nFor example, the result of the following program is `23 error`\nbecause you can't divide a number by `0`, so the program stops executing as soon as it runs into an error.\n\n```\n(defvar x 23)\nx\n(/ x 0)\nx\n```\n"
       },
       "warmup_error": {
         "program": "(defvar xyz 42)\nabc\n",
@@ -142,7 +145,8 @@ export const tutorials =
         "misconceptions": {
           "2": {
             "misconception": "FlatEnv",
-            "feedback": "term`(defvar x 2)` binds var`x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of var`g`.\nThe var`x` in the body of var`f` refers to the var`x` defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n"
+            "feedback": "term`(defvar x 2)` binds var`x` to `2`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of var`g`.\nThe var`x` in the body of var`f` refers to the var`x` defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/FlatEnv/page0.html"
           },
           "error": {
             "misconception": "IsolatedFun",
@@ -159,6 +163,9 @@ export const tutorials =
         "answer": "error",
         "feedback": "term`(+ (f 2) y)` is evaluated in the top-level block, where var`y` is not defined.\nSo, this program errors.\n",
         "misconceptions": {
+          "3": {
+            "misconception": "Other"
+          },
           "4": {
             "misconception": "FlatEnv",
             "feedback": "term`(defvar y 1)` binds var`y` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of var`g`.\nterm`(+ (f 2) y)` appears in the top-level block, so it tries to refer to\na var`y` defined in the top-level block. But var`y` is not defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n"
@@ -233,7 +240,7 @@ export const tutorials =
         "feedback": "The scope of the top-level var`x` includes the whole program *except* the body of var`f`.\nThe scope of the var`x` defined in var`f` is the body of var`f`.\n\nThe var`x` defined in var`f` shadows the top-level var`x` rather than the other way around.\n"
       },
       "keyframe_lexical_scope_1": {
-        "prompt": "Here is a program that confused many students\n\n```\n(defvar x 1)\n(deffun (foo)\n  x)\n(deffun (bar)\n  (defvar x 2)\n  (foo))\n\n(bar)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+        "prompt": "Here is a program that confused many students\n\n```\n(defvar x 1)\n(deffun (foo)\n  x)\n(deffun (bar)\n  (defvar x 2)\n  (foo))\n\n(bar)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking one of the <span style=\"color: white; background-color: black; text-decoration: underline;\">[Run ▶️]</span> buttons above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
       },
       "keyframe_lexical_scope_2": {
         "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
@@ -263,32 +270,44 @@ export const tutorials =
         "confirm": "In this tutorial, we will learn even more about definitions.\n"
       },
       "defvar_binding_cause_evaluation": {
-        "program": "(defvar x (12 54))\n3\n",
+        "program": "(defvar x (/ 12 0))\n3\n",
         "answer": "error",
-        "feedback": "When you define a variable (in this case, var`x`), you have to bind it to a value, no\nmatter whether or not you need the value of that variable later in the program.\nThe program errors when it tries to evaluate term`(12 54)`.\n",
+        "feedback": "When you define a variable (in this case, var`x`), you have to bind it to a value, no\nmatter whether or not you need the value of that variable later in the program.\nThe program errors when it tries to evaluate term`(/ 12 0)`.\n",
+        "incompatible": {
+          "JavaScript": {
+            "answer": "3",
+            "reason": "In JavaScript, dividing an number by zero does not error.\n"
+          }
+        },
         "misconceptions": {
           "3": {
             "misconception": "Lazy",
-            "feedback": "You might think term`(12 54)` is not evaluated because var`x` is not needed.\nHowever, this is not the case.\nIn SMoL, every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program.\n"
+            "feedback": "You might think term`(/ 12 0)` is not evaluated because var`x` is not needed.\nHowever, this is not the case.\nIn SMoL, every variable definition evaluates the expression immediately and binds the variable to the value, even if the variable is not used later in the program.\n"
           }
         },
         "again": {
-          "program": "(defvar b (79 6))\n1\n",
+          "program": "(defvar b (/ 79 0))\n1\n",
           "answer": "error"
         }
       },
       "funcall_binding_cause_evaluation": {
-        "program": "(deffun (f x)\n  3)\n(f (7 5))\n",
+        "program": "(deffun (f x)\n  3)\n(f (/ 7 0))\n",
         "answer": "error",
-        "feedback": "Function calls bind their formal parameters\n(in this case, there is one formal parameter, var`x`)\nto the values of actual parameters\n(in this case, there is one actual parameter, term`(7 5)`).\nThe program errors when it tries to evaluate term`(7 5)`.\n",
+        "feedback": "Function calls bind their formal parameters\n(in this case, there is one formal parameter, var`x`)\nto the values of actual parameters\n(in this case, there is one actual parameter, term`(/ 7 0)`).\nThe program errors when it tries to evaluate term`(/ 7 0)`.\n",
+        "incompatible": {
+          "JavaScript": {
+            "answer": "3",
+            "reason": "In JavaScript, dividing an number by zero does not error.\n"
+          }
+        },
         "misconceptions": {
           "3": {
             "misconception": "Lazy",
-            "feedback": "You might think term`(7 5)` is not evaluated because var`x` is not needed in the function.\nHowever, this is not the case.\nIn SMoL, every function call evaluates the actual parameters immediately and binds the values to formal parameters, even when the formal parameter is not used in the function.\n"
+            "feedback": "You might think term`(/ 7 0)` is not evaluated because var`x` is not needed in the function.\nHowever, this is not the case.\nIn SMoL, every function call evaluates the actual parameters immediately and binds the values to formal parameters, even when the formal parameter is not used in the function.\n"
           }
         },
         "again": {
-          "program": "(deffun (z y)\n  5)\n(z (78 92))\n",
+          "program": "(deffun (z y)\n  5)\n(z (/ 78 0))\n",
           "answer": "error"
         }
       },
@@ -299,7 +318,8 @@ export const tutorials =
         "misconceptions": {
           "3 2": {
             "misconception": "Lazy",
-            "feedback": "You might think term`(+ y 1)` is able to refer to var`y` and hence evaluate to a value.\nHowever, var`y` has not been bound to a value when term`(+ y 1)` is evaluated.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n"
+            "feedback": "You might think term`(+ y 1)` is able to refer to var`y` and hence evaluate to a value.\nHowever, var`y` has not been bound to a value when term`(+ y 1)` is evaluated.\nIn SMoL, every block evaluates its definitions and expressions in reading order (i.e., top-to-bottom and left-to-right).\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/Delayed/page0.html"
           }
         },
         "again": {
@@ -320,7 +340,7 @@ export const tutorials =
         "select_and_comment": "Please scroll back and select 1-3 programs that together make these points.\n\n> - Every block evaluates in top-to-bottom, left-to-right order.\n\nYou don't need to select all such programs.\n"
       },
       "keyframe_order_of_computation_1": {
-        "prompt": "Here is a program that confused many students\n\n```\n(deffun (addy x)\n  (+ x y))\n(defvar s (addy 1))\n(defvar y 2)\n\ns\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+        "prompt": "Here is a program that confused many students\n\n```\n(deffun (addy x)\n  (+ x y))\n(defvar s (addy 1))\n(defvar y 2)\n\ns\n```\n\nPlease\n\n1. Run this program in the stacker by clicking one of the <span style=\"color: white; background-color: black; text-decoration: underline;\">[Run ▶️]</span> buttons above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
       },
       "keyframe_order_of_computation_2": {
         "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
@@ -429,7 +449,8 @@ export const tutorials =
         "misconceptions": {
           "52": {
             "misconception": "DefCopyStruct",
-            "feedback": "You might think var`x` and var`y` refer to different vectors,\nso changing var`x` doesn't change var`y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable,\nand binding a vector to a new variable does not create a copy of that vector.\n"
+            "feedback": "You might think var`x` and var`y` refer to different vectors,\nso changing var`x` doesn't change var`y`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable,\nand binding a vector to a new variable does not create a copy of that vector.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/CopyStruct/DefCopyStruct/page0.html"
           }
         },
         "again": {
@@ -457,9 +478,10 @@ export const tutorials =
         "answer": "32",
         "feedback": "The program first creates a three-element vector, where the `0`-th element is `10`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f x)` replaces the `0`-th vector element with `32`.\nAfter that, the vector is printed. So the\nresult is `32`.\n",
         "misconceptions": {
-          "71": {
+          "10": {
             "misconception": "CallCopyStruct",
-            "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`y` doesn't change var`x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n"
+            "feedback": "You might think var`x` and var`y` refer to different vectors, so changing var`y` doesn't change var`x`.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by more than one variable, and vectors that are passed to a function in a function call do not get copied..\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/CopyStruct/CallCopyStruct/page0.html"
           }
         },
         "again": {
@@ -504,11 +526,12 @@ export const tutorials =
       "alias_mvec_in_mpair": {
         "program": "(defvar x (mvec 19 73 28))\n(defvar y (mvec x x))\n(vec-set! (vec-ref y 0) 0 64)\n(vec-ref y 1)\n",
         "answer": "#(64 73 28)",
-        "feedback": "This program first creates a three-element vector and binds it to var`v`.\nAfter that, the program creates a two-element vector. Both elements refer to the first vector.\nAfter that, the `0`-th element of the three-element vector is replaced with `64`.\nFinally, the three-element vector is printed.\n",
+        "feedback": "This program first creates a three-element vector and binds it to var`x`.\nAfter that, the program creates a two-element vector. Both elements refer to the first vector.\nAfter that, the `0`-th element of the three-element vector is replaced with `64`.\nFinally, the three-element vector is printed.\n",
         "misconceptions": {
-          "#(51 73 28)": {
+          "#(19 73 28)": {
             "misconception": "StructCopyStruct",
-            "feedback": "You might think the two elements of var`v` refer to different vectors, so changing one doesn't change the other.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n"
+            "feedback": "You might think the two elements of var`x` refer to different vectors, so changing one doesn't change the other.\nHowever, they refer to the same vector.\nIn SMoL, a vector can be referred to by multiple places, and creating new vectors that refer to existing ones does not create new copies of the existing vectors.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/CopyStruct/StructCopyStruct/page0.html"
           }
         },
         "again": {
@@ -589,10 +612,10 @@ export const tutorials =
         "prompt": "The following program defines two variables but\ncreates nothing on the heap.\n\n```\n(defvar x 2)\n(defvar y 3)\nx\ny\n```\n\nThe following program defines no variables but\ncreates two things on the heap.\n\n```\n(mvec 1 (mvec 2 3))\n```\n\nWhat did you learn from this pair of programs?\n"
       },
       "goal_heap_not_env": {
-        "emphasize": "- Creating a vector does not inherently create a binding.\n- Creating a binding does not necessarily alter the heap.\n"
+        "emphasize": "\n- Creating a vector does not inherently create a binding.\n- Creating a binding does not necessarily alter the heap.\n"
       },
       "keyframe_vector_aliasing_1": {
-        "prompt": "Here is a program that confused many students\n\n```\n(defvar v (mvec 1 2 3 4))\n(defvar vv (mvec v v))\n(vec-set! (vec-ref vv 1) 0 100)\nvv\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+        "prompt": "Here is a program that confused many students\n\n```\n(defvar v (mvec 1 2 3 4))\n(defvar vv (mvec v v))\n(vec-set! (vec-ref vv 1) 0 100)\nvv\n```\n\nPlease\n\n1. Run this program in the stacker by clicking one of the <span style=\"color: white; background-color: black; text-decoration: underline;\">[Run ▶️]</span> buttons above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
       },
       "keyframe_vector_aliasing_2": {
         "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
@@ -702,12 +725,7 @@ export const tutorials =
       "intro_mutvars",
       "warmup_set",
       [
-        "not_aliased_by_defvar_1",
-        "not_aliased_by_defvar_2",
-        "not_aliased_by_funarg_2",
-        "new_not_aliased_by_funarg",
-        "alias_var_in_mvec",
-        "new_alias_mvec_in_mvec_trick"
+        "refactor_DefByRef"
       ],
       "reflect_mutvars_1",
       "goal_mutvars_1",
@@ -715,16 +733,38 @@ export const tutorials =
     ],
     "questions": {
       "intro_mutvars": {
-        "confirm": "In this tutorial, we will learn about **variable assignments** and **mutable variables**.\n\nThe following program illustrates the new concepts.\n\n```\n(defvar x 2)\nx\n(set! x (+ x 1))\nx\n(set! x (* x 2))\nx\n```\n\nThis program produces `2 3 6`.\nIt first defines var`x` and binds var`x` to `2`.\nThe first variable assignment term`(set! x (+ x 1))` **mutates** (the binding of) var`x`.\nAfter that, var`x` is bound to the value of term`(+ x 1)`; this uses the new value of var`x`, which is `2`, resulting in term`(+ 2 1)`, which is `3`.\nThe next variable assignment again mutates var`x` and binds var`x` to the value of term`(* 3 2)`, which is `6`.\n"
+        "confirm": "In this tutorial, we will learn about **variable assignments** and **mutable variables**.\n\nThe following program illustrates the new concepts.\n\n```\n(defvar x 2)\nx\n(set! x (+ x 1))\nx\n(set! x (* x 2))\nx\n```\n\nThis program produces `2 3 6`.\nIt first defines var`x` and binds var`x` to `2`.\nThe first variable assignment term`(set! x (+ x 1))` **mutates** (the binding of) var`x`.\nAfter that, var`x` is bound to the value of term`(+ x 1)`, which is `3`.\nThe next variable assignment again mutates var`x` and binds var`x` to the value of term`(* x 2)`; this uses the new value of var`x`, which is `3`, resulting in term`(* 3 2)`, which is `6`.\n"
       },
       "warmup_set": {
         "program": "(defvar rent 10)\n(set! rent (* 10 2))\nrent\n",
         "answer": "20",
-        "feedback": "var`rent` is bound to `10` initially.\nThe `set!` mutates var`rent` to `20`.\nSo, when we print the value of var`rent` after the `set!`,\nwe see `20`.\n",
+        "feedback": "var`rent` is bound to `10` initially.\nThe variable assignment mutates var`rent` to `20`.\nSo, when we print the value of var`rent` after the variable assignment,\nwe see `20`.\n",
         "again": {
           "program": "(defvar discount 10)\n(set! discount (+ 10 15))\ndiscount\n",
           "answer": "25"
         }
+      },
+      "refactor_DefByRef": {
+        "prompt": "Imagine that you and your colleagues are given a large codebase. One of your colleagues would like to make a change to the following lines in a program.\n\n```\n(defvar x 80)\n(defvar y 80)\n```\n\nWhich **one(s)** of the following changes **must not affect the rest of the program**, regardless of what the full program is? (You can assume the variable var`tmp` is never used elsewhere in the program.)\n",
+        "checkboxes": [
+          [
+            true,
+            "```\n(defvar x 80)\n(defvar y x)\n```\n"
+          ],
+          [
+            true,
+            "```\n(defvar y 80)\n(defvar x 80)\n```\n"
+          ],
+          [
+            false,
+            "```\n(defvar x y)\n(defvar y x)\n```\n"
+          ],
+          [
+            true,
+            "```\n(defvar tmp 80)\n(defvar y tmp)\n(defvar x tmp)\n```\n"
+          ]
+        ],
+        "feedback": "Variables do not alias each other, furthermore, because numbers are immutable, you can't tell the difference between two `80`s. Therefore, all of the following three code snippets are equivalent under any program context.\n\n```\n(defvar x 80)\n(defvar y 80)\n```\n\n```\n(defvar x 80)\n(defvar y x)\n```\n\n```\n(defvar tmp 80)\n(defvar x tmp)\n(defvar y tmp)\n```\n"
       },
       "not_aliased_by_defvar_1": {
         "program": "(defvar x 80)\n(defvar y x)\n(set! x 32)\nx\ny\n",
@@ -733,7 +773,8 @@ export const tutorials =
         "misconceptions": {
           "32 32": {
             "misconception": "DefByRef",
-            "feedback": "You might think term`(defvar y x)` binds var`y` to var`x`, so changing var`x` will change var`y`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to the `80`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
+            "feedback": "You might think term`(defvar y x)` binds var`y` to var`x`, so changing var`x` will change var`y`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to the `80`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/ByRef/DefByRef/page0.html"
           }
         },
         "again": {
@@ -760,10 +801,17 @@ export const tutorials =
         "program": "(defvar x 12)\n(deffun (f y)\n  (set! y 0)\n  x)\n(f x)\n",
         "answer": "12",
         "feedback": "The function call binds var`y` to `12`.\nThe variable assignment mutates the value of var`y` to `0`, but var`x` is still bound to `12`.\n",
+        "incompatible": {
+          "Scala 3": {
+            "answer": "error",
+            "reason": "In Scala, function parameters are not mutable.\n"
+          }
+        },
         "misconceptions": {
           "0": {
             "misconception": "CallByRef",
-            "feedback": "You might think the function call term`(f x)` binds var`y` to var`x`, so\nchanging var`y` will change var`x`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to `12`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
+            "feedback": "You might think the function call term`(f x)` binds var`y` to var`x`, so\nchanging var`y` will change var`x`.\nHowever, we learned in previous tutorials that variables are bound to values, so var`y` is bound to `12`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/ByRef/CallByRef/page0.html"
           },
           "error": {
             "misconception": "IsolatedFun",
@@ -790,8 +838,8 @@ export const tutorials =
           }
         },
         "again": {
-          "program": "(defvar a 1)\n(deffun (foobar b)\n  (set! a 2)\n  b)\n(foobar a)\na\n",
-          "answer": "1 2"
+          "program": "(defvar a 1)\n(deffun (foobar b)\n  (set! a 2)\n  b)\n(foobar a)\n",
+          "answer": "1"
         }
       },
       "alias_var_in_mvec": {
@@ -801,7 +849,8 @@ export const tutorials =
         "misconceptions": {
           "#(68 57 74)": {
             "misconception": "StructByRef",
-            "feedback": "You might think the `2`-th and last element of the vector refers to var`x`.\nHowever, vectors refer to values, so it actually refers to `59`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
+            "feedback": "You might think the `2`-th and last element of the vector refers to var`x`.\nHowever, vectors refer to values, so it actually refers to `59`, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/ByRef/StructByRef_Num/page0.html"
           }
         },
         "again": {
@@ -816,7 +865,8 @@ export const tutorials =
         "misconceptions": {
           "#(#(66) 55 55)": {
             "misconception": "StructByRef",
-            "feedback": "You might think the `0`-th and first element of var`v` refers to var`x`.\nHowever, vectors refer to values, so it actually refers to the one-element vector, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n"
+            "feedback": "You might think the `0`-th and first element of var`v` refers to var`x`.\nHowever, vectors refer to values, so it actually refers to the one-element vector, i.e., *the value of* var`x`.\nIn SMoL, variable assignments change *only* the mutated variables.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/ByRef/StructByRef_Struct/page0.html"
           }
         },
         "again": {
@@ -867,6 +917,12 @@ export const tutorials =
         "program": "(set! foobar 2)\nfoobar\n",
         "answer": "error",
         "feedback": "Mutating an undefined variable (in this case, var`foobar`) errors rather than defining the variable.\nSo, this program errors.\n",
+        "incompatible": {
+          "Python": {
+            "answer": "2",
+            "reason": "Python uses the same syntax (e.g., verb`x = f(5)`) for variable definitions and assignments.\n"
+          }
+        },
         "misconceptions": {
           "2": {
             "misconception": "DefOrSet",
@@ -904,7 +960,8 @@ export const tutorials =
         "misconceptions": {
           "12 1": {
             "misconception": "DefOrSet",
-            "feedback": "You might think term`(set! x 0)` defines var`x`.\nHowever, it will mutate the variable defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n"
+            "feedback": "You might think term`(set! x 0)` defines var`x`.\nHowever, it will mutate the variable defined outside the functions.\nIn SMoL, variable assignments mutate existing bindings and never create new bindings.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/DefOrSet/page0.html"
           },
           "12 12": {
             "misconception": "DeepClosure",
@@ -983,7 +1040,7 @@ export const tutorials =
         "feedback": "Only variable assignments mutate bindings.\nDefinitions and function calls create new bindings but don't mutate existing bindings.\n"
       },
       "keyframe_mutable_variables_1": {
-        "prompt": "Here is a program that confused many students\n\n```\n(defvar x 5)\n(deffun (f x y)\n  (set! x y))\n(f x 6)\nx\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+        "prompt": "Here is a program that confused many students\n\n```\n(defvar x 5)\n(deffun (f x y)\n  (set! x y))\n(f x 6)\nx\n```\n\nPlease\n\n1. Run this program in the stacker by clicking one of the <span style=\"color: white; background-color: black; text-decoration: underline;\">[Run ▶️]</span> buttons above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
       },
       "keyframe_mutable_variables_2": {
         "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
@@ -1150,7 +1207,8 @@ export const tutorials =
           },
           "1 1 1": {
             "misconception": "DeepClosure",
-            "feedback": "You are right that var`n` is bound to `0` when var`bar` is bound to a function.\nYou might think the function remembers the value `0`.\nHowever, var`bar` does not remember the value of var`n`. Rather, it remembers the environment and hence always refers to the latest value of var`n`.\nvar`foo` is called twice, so two environments are created.\nterm`(f)` mutates the first, while term`(g)` mutates the second.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n"
+            "feedback": "You are right that var`n` is bound to `0` when var`bar` is bound to a function.\nYou might think the function remembers the value `0`.\nHowever, var`bar` does not remember the value of var`n`. Rather, it remembers the environment and hence always refers to the latest value of var`n`.\nvar`foo` is called twice, so two environments are created.\nterm`(f)` mutates the first, while term`(g)` mutates the second.\nIn SMoL, functions refer to the latest values of variables defined outside their definitions.\n",
+            "feedback_stacker": "https://lukuangchen.github.io/diff-machines/DeepClosure/page0.html"
           },
           "error": {
             "misconception": "DefOrSet,FunNotVal,IsolatedFun"
@@ -1192,7 +1250,7 @@ export const tutorials =
     ],
     "questions": {
       "intro_lambda": {
-        "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function.\n\n```term\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThis program program produces `3`. The top-level block contains one expression, a function call. The only (actual) parameter of the function call is `2`. The function of the function call is created by\n\n```term\n(lambda (n)\n  (+ n 1))\n```\n\nThis function takes only one parameter var`n`, and returns (the value of) term`(+ n 1)`.\nSo, the result of the whole program is the value of term`(+ 2 1)`, which is `3`.\n"
+        "emphasize": "In this tutorial, we will learn about **lambda expressions**, which are expressions that create functions.\n\nThe following program illustrates how to create a function without giving it a name and then call it immediately.\n\n```term\n((lambda (n)\n   (+ n 1))\n 2)\n```\n\nThe function is created by a lambda expression.\nThis function increase it parameter by one.\n\n```term\n(lambda (n)\n  (+ n 1))\n```\n"
       },
       "warmup_lambda": {
         "program": "(deffun (f x)\n  (lambda (y) (+ x y)))\n(defvar x 0)\n((f 2) 1)\n",
@@ -1264,14 +1322,14 @@ export const tutorials =
         }
       },
       "goal_lambda": {
-        "emphasize": "term`(deffun (f x y z) body)` is a shorthand for term`(defvar f (lambda (x y z) body))`.\n"
+        "emphasize": "```term\n(deffun (f x y z) body)\n```\n\nis a \"shorthand\" for\n\n```term\n(defvar f (lambda (x y z) body))\n```\n"
       },
       "practice_translate": {
-        "prompt": "Please rewrite this function definition with as a variable definition that binds lambda function.\n\n```\n(deffun (f x) (+ x 1))\n```\n",
-        "feedback": "The correct answer is term`(defvar f (lambda (x) (+ x 1)))`.\n\nThe following are common wrong answers:\n\n- term`(deffun f (lambda (x) (+ x 1)))`, which didn't replace the definition keyword\n- term`(defvar f (lambda (f x) (+ x 1)))`, which makes var`f` a function that takes two parameters rather than one\n"
+        "prompt": "Please rewrite this function definition as a variable definition that binds lambda function.\n\n```\n(deffun (f x) (+ x 1))\n```\n",
+        "feedback": "The correct answer is\n\n```term\n(defvar f (lambda (x) (+ x 1)))\n```\n\nA common wrong answer is\n\n```term\n(defvar f (lambda (f x) (+ x 1)))\n```\n\nwhich makes var`f` a function that takes two parameters rather than one\n"
       },
       "keyframe_counter_1": {
-        "prompt": "Here is a program that confused many students\n\n```\n(deffun (foo n)\n  (deffun (bar)\n    (set! n (+ n 1))\n    n)\n  bar)\n(defvar f (foo 0))\n(defvar g (foo 0))\n\n(f)\n(f)\n(g)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking the green run button above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
+        "prompt": "Here is a program that confused many students\n\n```\n(deffun (foo n)\n  (deffun (bar)\n    (set! n (+ n 1))\n    n)\n  bar)\n(defvar f (foo 0))\n(defvar g (foo 0))\n\n(f)\n(f)\n(g)\n```\n\nPlease\n\n1. Run this program in the stacker by clicking one of the <span style=\"color: white; background-color: black; text-decoration: underline;\">[Run ▶️]</span> buttons above;\n2. The stacker would show how this program produces its result(s);\n3. Keep clicking <button disabled>⏭ Next</button> until you reach a configuration that you find particularly helpful;\n4. Click <button disabled>🔗 Share This Configuration</button> to get a link to your configuration;\n5. Submit your link below;\n"
       },
       "keyframe_counter_2": {
         "prompt": "Please write a couple of sentences to explain how your configuration explains the result(s) of the program.\n"
@@ -1634,6 +1692,9 @@ export const tutorials =
         "answer": "error",
         "feedback": "term`(+ (k 3) b)` is evaluated in the top-level block, where var`b` is not defined.\nSo, this program errors.\n",
         "misconceptions": {
+          "4": {
+            "misconception": "Other"
+          },
           "5": {
             "misconception": "FlatEnv",
             "feedback": "term`(defvar b 1)` binds var`b` to `1`.\nYou might think the binding applies everywhere.\nHowever, it only applies to the body of var`k`.\nterm`(+ (k 3) b)` appears in the top-level block, so it tries to refer to\na var`b` defined in the top-level block. But var`b` is not defined in the top-level block.\nIn SMoL, variable references follow the hierarchical structure of blocks.\n"
@@ -1740,7 +1801,7 @@ export const tutorials =
         }
       },
       "post_alias_with_funcall": {
-        "program": "(defvar m1 (mvec 77 77))\n(deffun (f m2)\n  (vec-set! m2 0 43))\n(f m1)\nm1\n",
+        "program": "(defvar m1 (mvec 77 77))\n(deffun (f m2)\n  (vec-set! m2 0 43)\n  (vec-ref m2 0))\n(defvar foo (f m1))\nm1\n",
         "answer": "#(43 77)",
         "feedback": "The program first creates a two-element vector. The elements are both `77`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f m1)` replaces the first vector element with `43`.\nAfter that, the vector is printed. The vector now refers `43` and `77`, so the\nresult is `#(43 77)`.\n",
         "misconceptions": {
@@ -1750,7 +1811,7 @@ export const tutorials =
           }
         },
         "again": {
-          "program": "(defvar a (mvec 55 17))\n(deffun (foobar b)\n  (vec-set! b 0 52))\n(foobar a)\na\n",
+          "program": "(defvar a (mvec 55 17))\n(deffun (foobar b)\n  (vec-set! b 0 52)\n  (vec-ref b 0))\n(defvar c (foobar a))\na\n",
           "answer": "#(52 17)"
         }
       },
@@ -1823,7 +1884,7 @@ export const tutorials =
         }
       },
       "post_alias_with_funcall": {
-        "program": "(defvar zz (mvec 88 88))\n(deffun (f aa)\n  (vec-set! aa 0 97))\n(f zz)\nzz\n",
+        "program": "(defvar zz (mvec 88 88))\n(deffun (f aa)\n  (vec-set! aa 0 97)\n  (vec-ref aa 0))\n(defvar oo (f zz))\nzz\n",
         "answer": "#(97 88)",
         "feedback": "The program first creates a two-element vector. The elements are both `88`.\nAfter that, the program defines a function var`f`.\nThe function call term`(f zz)` replaces the first vector element with `97`.\nAfter that, the vector is printed. The vector now refers `97` and `88`, so the\nresult is `#(97 88)`.\n",
         "misconceptions": {
@@ -1833,7 +1894,7 @@ export const tutorials =
           }
         },
         "again": {
-          "program": "(defvar a (mvec 55 17))\n(deffun (foobar b)\n  (vec-set! b 0 52))\n(foobar a)\na\n",
+          "program": "(defvar a (mvec 55 17))\n(deffun (foobar b)\n  (vec-set! b 0 52)\n  (vec-ref b 0))\n(defvar m (foobar a))\na\n",
           "answer": "#(52 17)"
         }
       },
@@ -1893,7 +1954,7 @@ export const tutorials =
       "post_not_aliased_by_defvar_1": {
         "program": "(defvar a 6)\n(defvar b a)\n(set! a 5)\na\nb\n",
         "answer": "5 6",
-        "feedback": "The first definition binds var`a` to `6`.\nThe second definition binds var`b` to the value of var`a`, which is `6`.\nThe `set!` mutates the binding of var`a`, so var`a` is now bound to `5`.\nBut var`b` is still bound to `6`.\n",
+        "feedback": "The first definition binds var`a` to `6`.\nThe second definition binds var`b` to the value of var`a`, which is `6`.\nThe variable assignment mutates the binding of var`a`, so var`a` is now bound to `5`.\nBut var`b` is still bound to `6`.\n",
         "misconceptions": {
           "5 5": {
             "misconception": "DefByRef",
@@ -1908,7 +1969,13 @@ export const tutorials =
       "post_not_aliased_by_funarg_2": {
         "program": "(defvar a 5)\n(deffun (k b)\n  (set! b 3)\n  a)\n(k a)\n",
         "answer": "5",
-        "feedback": "The function call binds var`b` to `5`.\nThe `set!` mutates the value of var`b` to `3`, but var`a` is still bound to `5`.\n",
+        "feedback": "The function call binds var`b` to `5`.\nThe variable assignment mutates the value of var`b` to `3`, but var`a` is still bound to `5`.\n",
+        "incompatible": {
+          "Scala 3": {
+            "answer": "error",
+            "reason": "In Scala, function parameters are not mutable.\n"
+          }
+        },
         "misconceptions": {
           "3": {
             "misconception": "CallByRef",
@@ -1986,7 +2053,7 @@ export const tutorials =
       "post_not_aliased_by_defvar_1": {
         "program": "(defvar n 3)\n(defvar m n)\n(set! n 6)\nn\nm\n",
         "answer": "6 3",
-        "feedback": "The first definition binds var`n` to `3`.\nThe second definition binds var`m` to the value of var`n`, which is `3`.\nThe `set!` mutates the binding of var`n`, so var`n` is now bound to `6`.\nBut var`m` is still bound to `3`.\n",
+        "feedback": "The first definition binds var`n` to `3`.\nThe second definition binds var`m` to the value of var`n`, which is `3`.\nThe variable assignment mutates the binding of var`n`, so var`n` is now bound to `6`.\nBut var`m` is still bound to `3`.\n",
         "misconceptions": {
           "6 6": {
             "misconception": "DefByRef",
@@ -2001,7 +2068,13 @@ export const tutorials =
       "post_not_aliased_by_funarg_2": {
         "program": "(defvar n 2)\n(deffun (h m)\n  (set! m 7)\n  n)\n(h n)\n",
         "answer": "2",
-        "feedback": "The function call binds var`m` to `2`.\nThe `set!` mutates the value of var`m` to `7`, but var`n` is still bound to `2`.\n",
+        "feedback": "The function call binds var`m` to `2`.\nThe variable assignment mutates the value of var`m` to `7`, but var`n` is still bound to `2`.\n",
+        "incompatible": {
+          "Scala 3": {
+            "answer": "error",
+            "reason": "In Scala, function parameters are not mutable.\n"
+          }
+        },
         "misconceptions": {
           "7": {
             "misconception": "CallByRef",
@@ -2072,4 +2145,4 @@ export const tutorials =
       }
     }
   }
-}
+};
