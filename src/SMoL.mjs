@@ -2066,11 +2066,17 @@ function inferTypes(p, getKey) {
       var match = d$1.it;
       switch (match.TAG) {
         case "Var" :
-            return addConstraint(lookup(env, match._0.it), ge(env, match._1));
+            return addConstraint({
+                        TAG: "TVar",
+                        _0: getKey(match._0.ann)
+                      }, ge(env, match._1));
         case "Fun" :
             var b = match._2;
             var xs = match._1;
-            return addConstraint(lookup(env, match._0.it), {
+            return addConstraint({
+                        TAG: "TVar",
+                        _0: getKey(match._0.ann)
+                      }, {
                         TAG: "Funof",
                         args: Core__List.map(xs, (function (x) {
                                 return {
@@ -2256,7 +2262,7 @@ function inferTypes(p, getKey) {
                       exit = 1;
                       break;
                   case "Funof" :
-                      if (Core__List.length(e1$1.args) === Core__List.length(e1$1.args)) {
+                      if (Core__List.length(e1$1.args) === Core__List.length(e2$1.args)) {
                         Core__List.forEach2(e1$1.args, e2$1.args, unify);
                         _e2 = e2$1.out;
                         _e1 = e1$1.out;

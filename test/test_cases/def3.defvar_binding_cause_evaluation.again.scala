@@ -1,2 +1,2 @@
-val b = 79(6)
+val b = 79 / 0
 println(1)

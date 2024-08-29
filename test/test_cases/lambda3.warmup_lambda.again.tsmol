@@ -1,0 +1,3 @@
+(deffun (g [a : Number])
+  (lambda ([b : Number]) (+ a b)))
+((g 3) 2)

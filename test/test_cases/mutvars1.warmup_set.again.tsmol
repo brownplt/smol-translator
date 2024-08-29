@@ -1,0 +1,3 @@
+(defvar [discount : Number] 10)
+(set! discount (+ 10 15))
+discount

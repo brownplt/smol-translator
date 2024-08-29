@@ -58,13 +58,13 @@ for (const path of paths) {
                 const outputs = fs.readFileSync(outputsFile, 'utf8');
                 if (!outputs.includes("@")) {
                     try {
-                        fs.writeFileSync(`${path}/${name}.tsml`, SMoL.TypedSMoLTranslator.translateProgram(true, program));
-                        fs.writeFileSync(`${path}/${name}.tsml.txt`, SMoL.TypedSMoLTranslator.translateOutput(outputs));
+                        fs.writeFileSync(`${path}/${name}.tsmol`, SMoL.TypedSMoLTranslator.translateProgram(true, program));
+                        fs.writeFileSync(`${path}/${name}.tsmol.txt`, SMoL.TypedSMoLTranslator.translateOutput(outputs));
                     } catch (err) {
-                        fs.writeFileSync(`${path}/${name}.tsml.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                        fs.writeFileSync(`${path}/${name}.tsmol.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
                     }
                 } else {
-                    fs.writeFileSync(`${path}/${name}.tsml.err`, "Skipped translation because the outputs include `@`.");
+                    fs.writeFileSync(`${path}/${name}.tsmol.err`, "Skipped translation because the outputs include `@`.");
                 }
             } catch (err) {
                 console.log(name);

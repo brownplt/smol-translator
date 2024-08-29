@@ -1,0 +1,5 @@
+(defvar [o : Number] 1)
+(deffun (u [t : Number])
+  (+ o t))
+(set! o 9)
+(u 5)

@@ -1,0 +1,4 @@
+(defvar [x : Number] (+ y 1))
+(defvar [y : Number] 2)
+x
+y

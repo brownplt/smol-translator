@@ -1,0 +1,6 @@
+(deffun (inc [n : Number])
+  (+ n 1))
+(deffun (dec [n : Number])
+  (- n 1))
+(defvar [v : (Vectorof (=> Number Number))] (mvec inc dec))
+((vec-ref v 1) 2)

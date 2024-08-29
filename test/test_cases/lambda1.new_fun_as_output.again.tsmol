@@ -1,0 +1,6 @@
+(deffun (fun1)
+  (deffun (average [x : Number] [y : Number])
+    (/ (+ x y) 2))
+  average)
+(defvar [x : (=> Number Number Number)] (fun1))
+(x 20 40)

@@ -1,0 +1,3 @@
+(deffun (f [x : Number])
+  3)
+(f (/ 7 0))

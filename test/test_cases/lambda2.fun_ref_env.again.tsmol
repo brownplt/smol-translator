@@ -1,0 +1,8 @@
+(deffun (f [n : Number])
+  (deffun (g [m : Number])
+    (* m n))
+  g)
+(defvar [fun1 : (=> Number Number)] (f 10))
+(defvar [fun2 : (=> Number Number)] (f 1))
+(fun1 4)
+(fun2 4)

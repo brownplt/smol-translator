@@ -1,7 +1,7 @@
 let zz = vec[88, 88]
 fun f(aa):
   aa[0] = 97
-  return
+  return aa[0]
 end
-print(f(zz))
+let oo = f(zz)
 print(zz)

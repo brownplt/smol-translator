@@ -1,5 +1,6 @@
 (defvar m1 (mvec 77 77))
 (deffun (f m2)
-  (vec-set! m2 0 43))
-(f m1)
+  (vec-set! m2 0 43)
+  (vec-ref m2 0))
+(defvar foo (f m1))
 m1

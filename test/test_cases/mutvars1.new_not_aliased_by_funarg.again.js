@@ -4,4 +4,3 @@ function foobar(b) {
   return b;
 }
 console.log(foobar(a));
-console.log(a);

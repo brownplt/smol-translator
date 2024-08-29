@@ -1,0 +1,5 @@
+(defvar [cat : Number] 7)
+(deffun (k [dog : Number])
+  (defvar [cat : Number] 4)
+  (+ cat dog))
+(+ (k 1) cat)

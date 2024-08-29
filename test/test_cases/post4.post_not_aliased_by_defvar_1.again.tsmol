@@ -1,0 +1,5 @@
+(defvar [a : Number] 1)
+(defvar [b : Number] a)
+(set! a 2)
+a
+b

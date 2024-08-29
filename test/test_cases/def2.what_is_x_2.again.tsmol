@@ -1,0 +1,7 @@
+(defvar [s : Number] 21)
+(deffun (i)
+  s)
+(deffun (j)
+  (defvar [s : Number] 76)
+  (i))
+(j)

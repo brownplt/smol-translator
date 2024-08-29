@@ -1,0 +1,6 @@
+(defvar [a : Number] 1)
+(deffun (foo)
+  (lambda ([b : Number]) (+ a b)))
+(defvar [bar : (=> Number Number)] (foo))
+(set! a 3)
+(bar 0)

@@ -1,0 +1,5 @@
+(defvar [zzz : Number] 1)
+(defvar [abc : Number] zzz)
+(set! abc 2)
+zzz
+abc

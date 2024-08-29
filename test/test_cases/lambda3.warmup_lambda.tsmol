@@ -1,0 +1,4 @@
+(deffun (f [x : Number])
+  (lambda ([y : Number]) (+ x y)))
+(defvar [x : Number] 0)
+((f 2) 1)

@@ -1008,10 +1008,10 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
     }
     and gd = (env, d: definition<'ann>) => {
       switch d.it {
-      | Var(x, e) => addConstraint(lookup(env, x.it), ge(env, e))
+      | Var(x, e) => addConstraint(TVar(getKey(x.ann)), ge(env, e))
       | Fun(f, xs, b) =>
         addConstraint(
-          lookup(env, f.it),
+          TVar(getKey(f.ann)),
           Funof({
             args: xs->List.map(x => TVar(getKey(x.ann))),
             out: gb(extend(env, list{...xs, ...xsOfBlock(b)}), b),
@@ -1194,7 +1194,7 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
       | (Vecof(e1), Vecof(e2)) => unify(e1, e2)
       | (Listof(e1), Listof(e2)) => unify(e1, e2)
       | (Funof(e1), Funof(e2)) =>
-        if List.length(e1.args) == List.length(e1.args) {
+        if List.length(e1.args) == List.length(e2.args) {
           List.forEach2(e1.args, e2.args, unify)
           unify(e1.out, e2.out)
         } else {
@@ -1947,7 +1947,6 @@ module TypedSMoLPrinter = {
       },
     }
   }
-
 
   let symbolRefToString = ({it, ann}: annotated<symbol, typed<sourceLocation>>) => {
     {

@@ -1,0 +1,5 @@
+(deffun (twice [f : (=> Number Number)] [x : Number])
+  (f (f x)))
+(deffun (double [x : Number])
+  (+ x x))
+(twice double 1)

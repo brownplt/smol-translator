@@ -1,0 +1,4 @@
+(defvar [n : Number] (* m 4))
+(defvar [m : Number] 3)
+n
+m

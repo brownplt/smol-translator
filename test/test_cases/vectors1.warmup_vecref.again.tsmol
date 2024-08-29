@@ -1,0 +1,2 @@
+(defvar [v : (Vectorof (Vectorof Number))] (mvec (mvec 81 82 83) (mvec 84 85 86) (mvec 87 88 89)))
+(vec-ref (vec-ref v 2) 1)

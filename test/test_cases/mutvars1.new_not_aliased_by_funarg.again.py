@@ -4,4 +4,3 @@ def foobar(b):
     a = 2
     return b
 print(foobar(a))
-print(a)

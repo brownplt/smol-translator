@@ -1,7 +1,7 @@
 let a = vec[55, 17]
 fun foobar(b):
   b[0] = 52
-  return
+  return b[0]
 end
-print(foobar(a))
+let c = foobar(a)
 print(a)

@@ -1,0 +1,6 @@
+(deffun (inc [x : Number])
+  (+ x 1))
+(deffun (g)
+  inc)
+(defvar [f : (=> Number Number)] (g))
+(f 10)

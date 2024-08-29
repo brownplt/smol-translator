@@ -1,0 +1,3 @@
+(deffun (z [y : Number])
+  5)
+(z (/ 78 0))

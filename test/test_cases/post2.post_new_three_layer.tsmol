@@ -1,0 +1,7 @@
+(defvar [n : Number] 5)
+(deffun (f1 [m : Number])
+  (deffun (f2)
+    (defvar [l : Number] 4)
+    (+ n m l))
+  (f2))
+(+ (f1 1) 3)

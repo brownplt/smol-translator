@@ -1,0 +1,7 @@
+(defvar [aa : Number] 3)
+(deffun (abc [bb : Number])
+  (deffun (h)
+    (defvar [cc : Number] 2)
+    (* aa bb cc))
+  (h))
+(* (abc 4) 1)

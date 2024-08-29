@@ -1,0 +1,2 @@
+(defvar [b : Number] (/ 79 0))
+1

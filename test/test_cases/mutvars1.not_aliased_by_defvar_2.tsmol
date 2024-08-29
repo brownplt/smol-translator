@@ -1,0 +1,5 @@
+(defvar [m : Number] 40)
+(defvar [n : Number] m)
+(set! n 22)
+m
+n

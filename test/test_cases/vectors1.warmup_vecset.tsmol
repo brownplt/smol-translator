@@ -1,0 +1,3 @@
+(defvar [x : (Vectorof Number)] (mvec 92 73))
+(vec-set! x 0 67)
+x

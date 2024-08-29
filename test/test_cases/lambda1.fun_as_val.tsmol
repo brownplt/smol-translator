@@ -1,0 +1,5 @@
+(deffun (f)
+  42)
+(defvar [g : (=> Number)] f)
+(defvar [h : (=> Number)] g)
+(h)

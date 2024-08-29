@@ -1,0 +1,4 @@
+(defvar [x : (Vectorof Number)] (mvec 19 73 28))
+(defvar [y : (Vectorof (Vectorof Number))] (mvec x x))
+(vec-set! (vec-ref y 0) 0 64)
+(vec-ref y 1)

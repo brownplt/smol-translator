@@ -1,0 +1,6 @@
+(defvar [a : Number] 2)
+(deffun (make)
+  (lambda ([b : Number]) (+ a b)))
+(defvar [fun : (=> Number Number)] (make))
+(set! a 1)
+(fun 1)

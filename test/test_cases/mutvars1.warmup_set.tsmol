@@ -1,0 +1,3 @@
+(defvar [rent : Number] 10)
+(set! rent (* 10 2))
+rent

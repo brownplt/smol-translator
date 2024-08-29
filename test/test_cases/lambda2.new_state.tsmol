@@ -1,0 +1,8 @@
+(defvar [x : Number] 1)
+(deffun (f)
+  (deffun (addx [y : Number])
+    (+ x y))
+  addx)
+(defvar [g : (=> Number Number)] (f))
+(set! x 2)
+(g 0)

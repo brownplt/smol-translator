@@ -1,7 +1,7 @@
 let a = [ 55, 17 ];
 function foobar(b) {
   b[0] = 52;
-  return;
+  return b[0];
 }
-console.log(foobar(a));
+let m = foobar(a);
 console.log(a);

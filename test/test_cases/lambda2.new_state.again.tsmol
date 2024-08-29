@@ -1,0 +1,8 @@
+(defvar [a : Number] 2)
+(deffun (make)
+  (deffun (f [b : Number])
+    (+ a b))
+  f)
+(defvar [g : (=> Number Number)] (make))
+(set! a 1)
+(g 1)

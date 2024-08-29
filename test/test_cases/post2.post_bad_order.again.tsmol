@@ -1,0 +1,4 @@
+(defvar [baz : Number] (+ bar 1))
+(defvar [bar : Number] 2)
+baz
+bar

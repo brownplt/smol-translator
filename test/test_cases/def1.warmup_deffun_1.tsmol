@@ -1,0 +1,3 @@
+(deffun (f [x : Number] [y : Number] [z : Number])
+  (+ x (+ y z)))
+(f 2 1 3)

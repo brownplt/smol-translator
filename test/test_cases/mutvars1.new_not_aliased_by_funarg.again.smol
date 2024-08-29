@@ -3,4 +3,3 @@
   (set! a 2)
   b)
 (foobar a)
-a

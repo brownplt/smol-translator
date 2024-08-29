@@ -1,0 +1,6 @@
+(deffun (bar [y : Number])
+  (lambda ([x : Number]) (+ x y)))
+(defvar [f : (=> Number Number)] (bar 2))
+(defvar [g : (=> Number Number)] (bar 4))
+(f 2)
+(g 2)

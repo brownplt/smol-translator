@@ -1,0 +1,8 @@
+(deffun (bar [y : Number])
+  (deffun (addy [x : Number])
+    (+ x y))
+  addy)
+(defvar [f : (=> Number Number)] (bar 2))
+(defvar [g : (=> Number Number)] (bar 4))
+(f 2)
+(g 2)

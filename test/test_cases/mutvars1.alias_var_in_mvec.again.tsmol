@@ -1,0 +1,4 @@
+(defvar [x : Number] 66)
+(defvar [v : (Vectorof Number)] (mvec 82 x 93))
+(set! x 1)
+v

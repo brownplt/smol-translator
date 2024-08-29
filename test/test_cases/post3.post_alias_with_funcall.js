@@ -1,7 +1,7 @@
 let zz = [ 88, 88 ];
 function f(aa) {
   aa[0] = 97;
-  return;
+  return aa[0];
 }
-console.log(f(zz));
+let oo = f(zz);
 console.log(zz);

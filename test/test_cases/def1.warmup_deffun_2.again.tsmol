@@ -1,0 +1,4 @@
+(deffun (f [a : Number] [b : Number] [c : Number])
+  (defvar [q : Number] (+ b c))
+  (* a q))
+(f 3 2 1)

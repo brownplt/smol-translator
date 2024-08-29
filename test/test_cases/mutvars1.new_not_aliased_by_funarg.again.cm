@@ -4,4 +4,3 @@ fun foobar(b):
   return b
 end
 print(foobar(a))
-print(a)

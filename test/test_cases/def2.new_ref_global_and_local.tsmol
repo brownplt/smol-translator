@@ -1,0 +1,7 @@
+(defvar [x : Number] 1)
+(deffun (f)
+  (defvar [y : Number] 2)
+  (deffun (g)
+    (+ x y))
+  (g))
+(f)
