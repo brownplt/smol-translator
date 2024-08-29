@@ -901,6 +901,7 @@ module Parser = {
 }
 
 // Infer Type
+// type values
 type rec ty =
   | Num
   | Boolean
@@ -908,17 +909,45 @@ type rec ty =
   | Vecof(ty)
   | Listof(ty)
   | Funof({isGen: bool, args: list<ty>, out: ty})
+// type expressions
 type typed<'ann> = {ty: ty, ann: 'ann}
 type rec tye =
-  | Var(string)
+  | TVar(string)
   | Num
   | Boolean
   | String
-  | Vecof(ty)
-  | Listof(ty)
-  | Funof({isGen: bool, args: list<ty>, out: ty})
+  | Vecof(tye)
+  | Listof(tye)
+  | Funof({isGen: bool, args: list<tye>, out: tye})
+type rec typeEnv = list<Map.t<string, tye>>
 let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (p, getKey: 'ann => string) => {
-  let constraints = ref(Set.make())
+  let constraints = {
+    let constraints = ref(list{})
+    let rec gatherConstraints = (p: program<'ann>) => {
+      let xs = xsOfProgram(p)
+      let globalEnv: typeEnv = list{
+        Map.fromArray(
+          xs
+          -> List.toArray
+          -> Array.map((x) => {
+            (x.it, TVar(getKey(x.ann)))
+          })
+        )
+      }
+      gp(globalEnv, p)
+    }
+    and gp = (env, p: program<'ann>) => {
+      switch p.it {
+        | PNil => ()
+        | PCons(t, p) => gt(env, t); gp(env, p)
+      }
+    }
+    and gt = (env, t: term<'ann>) => {
+      failwith("todo")
+    }
+    constraints.contents
+  }
+
   failwith("todo")
 }
 

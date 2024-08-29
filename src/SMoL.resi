@@ -169,7 +169,7 @@ type rec ty = Num | Boolean | String
   | Listof(ty)
   | Funof({isGen: bool, args: list<ty>, out: ty})
 type typed<'ann> = {ty: ty, ann: 'ann}
-let inferTypes: program<'ann> => program<typed<'ann>>
+let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>>
 
 // Print
 

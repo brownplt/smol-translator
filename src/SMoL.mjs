@@ -1662,8 +1662,7 @@ function parseOutput(src) {
   }
 }
 
-function inferTypes(p) {
-  new Set();
+function inferTypes(p, getKey) {
   return PervasivesU.failwith("todo");
 }
 
@@ -8568,10 +8567,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
+        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
-        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
