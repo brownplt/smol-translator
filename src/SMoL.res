@@ -903,6 +903,7 @@ module Parser = {
 // Infer Type
 // type values
 type rec ty =
+  | Top
   | TUni
   | Num
   | Boolean
@@ -923,33 +924,37 @@ type rec tye =
   | Funof({args: list<tye>, out: tye})
 type rec typeEnv = list<Map.t<string, tye>>
 
-type typeError = UnboundId(string) | NotSupported(string) | Incompatible(tye, tye)
+type typeError =
+  | RecursiveType
+  | UnboundId(string)
+  | NotSupported(string)
+  | Incompatible(tye, tye)
 type exn += SMoLTypeError(typeError)
 let raiseTypeError = err => raise(SMoLTypeError(err))
 
-let rec lookup = (env: typeEnv, x): tye => {
-  switch env {
-  | list{} => raiseTypeError(UnboundId(x))
-  | list{f, ...env} =>
-    switch Map.get(f, x) {
-    | None => lookup(env, x)
-    | Some(tye) => tye
-    }
-  }
-}
-let extend = (env: typeEnv, xs): typeEnv => {
-  list{
-    xs
-    ->List.map(failwith("todo"))
-    ->List.toArray
-    ->Map.fromArray,
-    ...env,
-  }
-}
 let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
   p,
   getKey: 'ann => string,
 ) => {
+  let rec lookup = (env: typeEnv, x): tye => {
+    switch env {
+    | list{} => raiseTypeError(UnboundId(x))
+    | list{f, ...env} =>
+      switch Map.get(f, x) {
+      | None => lookup(env, x)
+      | Some(tye) => tye
+      }
+    }
+  }
+  let extend = (env: typeEnv, xs): typeEnv => {
+    list{
+      xs
+      ->List.map(x => (x.it, TVar(getKey(x.ann))))
+      ->List.toArray
+      ->Map.fromArray,
+      ...env,
+    }
+  }
   let constraints = {
     let constraints = ref(list{})
     let addConstraint = (t1: tye, t2: tye) => {
@@ -1158,15 +1163,166 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
     gatherConstraints(p)
     constraints.contents
   }
-  let solution = {
+  let solution: Map.t<string, ty> = {
     let map: Map.t<string, tye> = Map.make()
-    let solve = constraints => {
-      failwith("todo")
+    let rec walk = e => {
+      // find the head-normal form
+      switch e {
+      | TVar(x) =>
+        switch Map.get(map, x) {
+        | None => e
+        | Some(e) => walk(e)
+        }
+      | e => e
+      }
     }
-    solve(constraints)
+    let rec unify = (e1: tye, e2: tye) => {
+      let e1 = walk(e1)
+      let e2 = walk(e2)
+      switch (e1, e2) {
+      | (TVar(x1), TVar(x2)) =>
+        if x1 != x2 {
+          Map.set(map, x1, e2)
+        }
+      | (TVar(x), e) => Map.set(map, x, e)
+      | (e, TVar(x)) => Map.set(map, x, e)
+      | (Num, Num) => ()
+      | (TUni, TUni) => ()
+      | (Boolean, Boolean) => ()
+      | (String, String) => ()
+      | (Vecof(e1), Vecof(e2)) => unify(e1, e2)
+      | (Listof(e1), Listof(e2)) => unify(e1, e2)
+      | (Funof(e1), Funof(e2)) =>
+        if List.length(e1.args) == List.length(e1.args) {
+          List.forEach2(e1.args, e2.args, unify)
+          unify(e1.out, e2.out)
+        } else {
+          raiseTypeError(Incompatible(Funof(e1), Funof(e2)))
+        }
+      | _ => raiseTypeError(Incompatible(e1, e2))
+      }
+    }
+    constraints->List.forEach(((e1, e2)) => unify(e1, e2))
+    let ground = (e: tye): ty => {
+      let visited = Set.make()
+      let rec g = e => {
+        switch e {
+        | TVar(x) =>
+          if Set.has(visited, x) {
+            raiseTypeError(RecursiveType)
+          } else {
+            Set.add(visited, x)
+            switch Map.get(map, x) {
+            | None => Top
+            | Some(e) => g(e)
+            }
+          }
+        | TUni => TUni
+        | Num => Num
+        | Boolean => Boolean
+        | String => String
+        | Vecof(e) => Vecof(g(e))
+        | Listof(e) => Listof(g(e))
+        | Funof({args, out}) =>
+          Funof({
+            args: args->List.map(g),
+            out: g(out),
+          })
+        }
+      }
+      g(e)
+    }
     map
+    ->Map.entries
+    ->Array.fromIterator
+    ->Array.map(((k, v)) => (k, ground(v)))
+    ->Map.fromArray
   }
-  failwith("todo")
+
+  // attach type
+  let ax = ({ann, it}) => {
+    {
+      ann: {ann, ty: Map.get(solution, getKey(ann))->Option.getExn},
+      it,
+    }
+  }
+  let rec ap = ({ann, it}: program<'ann>): program<typed<'ann>> => {
+    {
+      ann: {ann, ty: TUni},
+      it: switch it {
+      | PNil => PNil
+      | PCons(t, p) => PCons(at(t), ap(p))
+      },
+    }
+  }
+  and at = ({ann, it}) => {
+    {
+      ann: {ann, ty: TUni},
+      it: switch it {
+      | Def(d) => Def(ad(d))
+      | Exp(e) => Exp(ae(e))
+      },
+    }
+  }
+  and ad = ({ann, it}) => {
+    {
+      ann: {ann, ty: TUni},
+      it: switch it {
+      | Var(x, e) => Var(ax(x), ae(e))
+      | Fun(f, xs, b) => Fun(ax(f), List.map(xs, ax), ab(b))
+      | GFun(f, xs, b) => GFun(ax(f), List.map(xs, ax), ab(b))
+      },
+    }
+  }
+  and ae = ({ann, it}) => {
+    {
+      ann: {ann, ty: Map.get(solution, getKey(ann))->Option.getExn},
+      it: switch it {
+      | Con(c) => Con(c)
+      | Ref(x) => Ref(x)
+      | Set(x, e) => Set(ax(x), ae(e))
+      | Lam(xs, b) => Lam(List.map(xs, ax), ab(b))
+      | Let(xes, b) => Let(List.map(xes, axe), ab(b))
+      | Letrec(xes, b) => Letrec(List.map(xes, axe), ab(b))
+      | AppPrm(p, es) => AppPrm(p, List.map(es, ae))
+      | App(e, es) => App(ae(e), List.map(es, ae))
+      | Bgn(es, e) => Bgn(List.map(es, ae), ae(e))
+      | If(e_cnd, e_thn, e_els) => If(ae(e_cnd), ae(e_thn), ae(e_els))
+      | Cnd(ebs, ob) => Cnd(List.map(ebs, aeb), Option.map(ob, ab))
+      | GLam(xs, b) => GLam(List.map(xs, ax), ab(b))
+      | Yield(e) => Yield(ae(e))
+      },
+    }
+  }
+  and axe = ({ann, it: (x, e)}) => {
+    {
+      ann: {ann, ty: TUni},
+      it: (ax(x), ae(e)),
+    }
+  }
+  and aeb = ((e, b)) => {
+    (ae(e), ab(b))
+  }
+  and ab = ({ann, it}) => {
+    switch it {
+    | BRet(e) => {
+        let e = ae(e)
+        {
+          ann: {ann, ty: e.ann.ty},
+          it: BRet(e),
+        }
+      }
+    | BCons(t, b) => {
+        let t = at(t)
+        let b = ab(b)
+        {
+          ann: {ann, ty: b.ann.ty},
+          it: BCons(t, b),
+        }
+      }
+    }
+  }
+  ap(p)
 }
 
 type exn += SMoLPrintError(string)
@@ -1642,6 +1798,453 @@ module SMoLPrinter = {
 
   let printStandAloneTerm = t => {
     printTerm(t).ann.print->Print.toString
+  }
+}
+
+module TypedSMoLPrinter = {
+  let printName = x => x
+
+  let constantToString = c => {
+    switch c {
+    | Uni => "#<void>"
+    | Nil => "#<empty>"
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "#t"
+      } else {
+        "#f"
+      }
+    | Str(s) => JSON.stringify(String(s))
+    | Sym(s) => s
+    }
+  }
+
+  let listToString = ss => {
+    open! Print
+    pad("(", Print.dummy(concat(" ", ss)), ")")
+  }
+
+  let defvarLike = (op, x: annotated<_, _>, e: annotated<_, _>) => {
+    if containsNL(e.it) || op == "deffun" || op == "defgen" {
+      Group(list{
+        Print.string("("),
+        Print.string(op),
+        Print.string(" "),
+        x,
+        indentBlock(e, 2),
+        Print.string(")"),
+      })
+    } else {
+      listToString(list{Print.string(op), x, e})
+    }
+  }
+
+  let defvarToString = (x, e) => {
+    defvarLike("defvar", x, e)
+  }
+
+  let deffunToString = (f, xs, b) => {
+    defvarLike("deffun", Print.dummy(listToString(list{f, ...xs})), b)
+  }
+
+  let defgenToString = (f, xs, b) => {
+    defvarLike("defgen", Print.dummy(listToString(list{f, ...xs})), b)
+  }
+
+  let exprSetToString = (x: print<kindedSourceLocation>, e) => {
+    defvarLike("set!", x, e)
+  }
+
+  let exprLamToString = (xs, b) => {
+    defvarLike("lambda", Print.dummy(listToString(xs)), b)
+  }
+  let exprGenToString = (xs, b) => {
+    defvarLike("generator", Print.dummy(listToString(xs)), b)
+  }
+  let exprYieldToString = e => Group({list{Print.string("(yield "), e, Print.string(")")}})
+
+  let exprAppToString = (e, es) => {
+    listToString(list{e, ...es})
+  }
+
+  let beginLike = (op, ts) => {
+    Group(list{
+      Print.string("("),
+      Print.string(op),
+      indentBlock(Print.dummy(Print.concat("\n", ts)), 2),
+      Print.string(")"),
+    })
+    // `(${op}${)`
+  }
+  let exprBgnToString = (es, e) => {
+    beginLike("begin", list{...es, e})
+  }
+
+  let exprCndToString = (ebs: list<(annotated<_, _>, annotated<_, _>)>, ob) => {
+    let ebs = {
+      switch ob {
+      | None => ebs
+      | Some(b) => list{...ebs, (Print.string("else"), b)}
+      }
+    }
+    let ebs =
+      ebs->List.map(((e, b)) =>
+        group(list{Print.string("["), e, indentBlock(b, 1), Print.string("]")})
+      )
+    beginLike("cond", ebs)
+  }
+
+  let exprIfToString = (e_cnd, e_thn, e_els) => {
+    hcat(
+      Print.string(`(if `),
+      group2(
+        Print.dummy(Print.concat("\n", list{e_cnd, e_thn, e_els})),
+        Print.string(")"),
+      )->Print.dummy,
+    )
+    // hcat(Print.string(`(if `), `${concat("\n", list{e_cnd, e_thn, e_els})})`)
+  }
+
+  let letLike = (op: string, xes: list<_>, b: _) => {
+    let xes = Print.dummy(Print.concat("\n", xes))
+    let xes = group(list{Print.string("("), indent(xes, 1), Print.string(")")})
+    Group(list{
+      Print.dummy(hcat(group(list{Print.string("("), Print.string(op), Print.string(" ")}), xes)),
+      indentBlock(b, 2),
+      Print.string(")"),
+    })
+    // hcat(`(${op} `, `${xes}`) ++ `${indentBlock(b, 2)})`
+  }
+  let exprLetToString = (xes, b) => {
+    letLike("let", xes, b)
+  }
+  let exprLetrecToString = (xes, b) => {
+    letLike("letrec", xes, b)
+  }
+
+  let rec tyToString = ty => {
+    switch ty {
+    | Top => "Any"
+    | TUni => "Nothing"
+    | Num => "Number"
+    | Boolean => "Boolean"
+    | String => "String"
+    | Vecof(ty) => `(Vectorof ${tyToString(ty)})`
+    | Listof(ty) => `(Listof ${tyToString(ty)})`
+    | Funof(ty) =>
+      `(=> ${Array.join(List.map(list{...ty.args, ty.out}, tyToString)->List.toArray, " ")})`
+    }
+  }
+
+  let symbolToString = ({it, ann}: annotated<symbol, typed<sourceLocation>>) => {
+    {
+      it,
+      ann: {
+        sourceLocation: ann.ann,
+        print: Print.s`${Print.string(it)} : ${Print.string(tyToString(ann.ty))}`,
+      },
+    }
+  }
+
+  let rec printExp = (
+    {it, ann: {ann: sourceLocation}}: expression<typed<sourceLocation>>,
+  ): expression<printAnn> => {
+    let e = switch it {
+    | Con(c) => {
+        it: Con(c),
+        ann: Plain(constantToString(c)),
+      }
+    | Ref(x) => {
+        it: Ref(x),
+        ann: Plain(x),
+      }
+    | Set(x, e) => {
+        let x = symbolToString(x)
+        let e = e->printExp
+        {
+          ann: exprSetToString(getNamePrint(x), getPrint(e)),
+          it: Set(x, e),
+        }
+      }
+    | Lam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: exprLamToString(xs->List.map(x => getNamePrint(x)), getBlockPrint(b)),
+          it: Lam(xs, b),
+        }
+      }
+    | GLam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: exprGenToString(xs->List.map(x => getNamePrint(x)), getBlockPrint(b)),
+          it: Lam(xs, b),
+        }
+      }
+    | Yield(e) => {
+        let e = e->printExp
+        {
+          ann: exprYieldToString(getPrint(e)),
+          it: Yield(e),
+        }
+      }
+    | AppPrm(p, es) => {
+        let es = es->List.map(printExp)
+        {
+          ann: exprAppToString(Print.string(Primitive.toString(p)), es->List.map(e => getPrint(e))),
+          it: AppPrm(p, es),
+        }
+      }
+    | App(e, es) => {
+        let e = e->printExp
+        let es = es->List.map(printExp)
+        {
+          ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e))),
+          it: App(e, es),
+        }
+      }
+    | Let(xes, b) => {
+        let xes = xes->List.map(xeToString)
+        let b = b->printBlock
+        {
+          ann: exprLetToString(xes->List.map(xe => getBindPrint(xe)), getBlockPrint(b)),
+          it: Let(xes, b),
+        }
+      }
+    | Letrec(xes, b) => {
+        let xes = xes->List.map(xeToString)
+        let b = b->printBlock
+        {
+          ann: exprLetrecToString(xes->List.map(xe => getBindPrint(xe)), getBlockPrint(b)),
+          it: Letrec(xes, b),
+        }
+      }
+    | Cnd(ebs, ob) => {
+        let ebs = ebs->List.map(ebToString)
+        let ob = ob->obToString
+        {
+          ann: exprCndToString(
+            ebs->List.map(((e, b)) => (getPrint(e), getBlockPrint(b))),
+            ob->Option.map(b => getBlockPrint(b)),
+          ),
+          it: Cnd(ebs, ob),
+        }
+      }
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp
+        let e_thn = e_thn->printExp
+        let e_els = e_els->printExp
+        {
+          ann: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)),
+          it: If(e_cnd, e_thn, e_els),
+        }
+      }
+    | Bgn(es, e) => {
+        let es = es->List.map(printExp)
+        let e = e->printExp
+        {
+          ann: exprBgnToString(es->List.map(e => getPrint(e)), getPrint(e)),
+          it: Bgn(es, e),
+        }
+      }
+    }
+    let {ann: print, it} = e
+    {ann: {print, sourceLocation}, it}
+  }
+  and printDef = (
+    {ann: {ann: sourceLocation}, it: d}: definition<typed<sourceLocation>>,
+  ): definition<printAnn> => {
+    let d = switch d {
+    | Var(x, e) => {
+        let x = symbolToString(x)
+        let e = e->printExp
+        {
+          ann: defvarToString(getNamePrint(x), getPrint(e)),
+          it: Var(x, e),
+        }
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: deffunToString(
+            getNamePrint(f),
+            xs->List.map(x => getNamePrint(x)),
+            getBlockPrint(b),
+          ),
+          it: Fun(f, xs, b),
+        }
+      }
+    | GFun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock
+        {
+          ann: defgenToString(
+            getNamePrint(f),
+            xs->List.map(x => getNamePrint(x)),
+            getBlockPrint(b),
+          ),
+          it: GFun(f, xs, b),
+        }
+      }
+    }
+    let {ann: print, it} = d
+    {ann: {print, sourceLocation}, it}
+  }
+  and xeToString = ({it: xe, ann: {ann: sourceLocation}}: bind<typed<sourceLocation>>): bind<
+    printAnn,
+  > => {
+    let (x, e) = xe
+    let (x, e) = (symbolToString(x), printExp(e))
+    let print = hcat(
+      Print.dummy(group2(Print.string("["), getNamePrint(x))),
+      Print.dummy(group2(getPrint(e), Print.string("]"))),
+    )
+    {
+      it: (x, e),
+      ann: {
+        print,
+        sourceLocation,
+      },
+    }
+  }
+  and ebToString = eb => {
+    let (e, b) = eb
+    (printExp(e), printBlock(b))
+  }
+  and obToString = ob => {
+    ob->Option.map(printBlock)
+  }
+  and printBlock = ({ann: {ann: sourceLocation}, it: b}) => {
+    switch b {
+    | BRet(e) => {
+        let e = printExp(e)
+        {
+          ann: e.ann,
+          it: BRet(e),
+        }
+      }
+    | BCons(t, b) => {
+        let t = printTerm(t)
+        let b = printBlock(b)
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
+        {
+          ann: {print, sourceLocation},
+          it: BCons(t, b),
+        }
+      }
+    }
+  }
+  and printTerm = ({ann: {ann: sourceLocation}, it: t}: term<typed<sourceLocation>>): term<
+    printAnn,
+  > => {
+    switch t {
+    | Exp(it) => {
+        let it = printExp(it)
+        {
+          it: Exp(it),
+          ann: {
+            sourceLocation,
+            print: Group(list{getPrint(it)}),
+          },
+        }
+      }
+    | Def(it) => {
+        let it = printDef(it)
+        {
+          it: Def(it),
+          ann: {
+            sourceLocation,
+            print: Group(list{getDefinitionPrint(it)}),
+          },
+        }
+      }
+    }
+  }
+
+  let printOutputlet = o => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Ref(i) => `#${Int.toString(i)}#`
+      | Con(c) => constantToString(c)
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(i) => `#${Int.toString(i)}=`
+          }
+          let content = switch content {
+          | Lst(es) => `(${concat(" ", es->List.map(p)->List.toArray)})`
+          | Vec(es) => `#(${concat(" ", es->List.map(p)->List.toArray)})`
+          }
+          `${i}${content}`
+        }
+      }
+    }
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
+  }
+
+  let printProgramFull = (_insertPrintTopLevel, p: program<sourceLocation>) => {
+    let rec print = ({it, ann: {ann: sourceLocation}}: program<typed<sourceLocation>>): program<
+      printAnn,
+    > => {
+      switch it {
+      | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
+      | PCons(t, p) => {
+          let t = printTerm(t)
+          switch p {
+          | {it: PNil} => {
+              it: PCons(
+                t,
+                {
+                  it: PNil,
+                  ann: {
+                    print: Plain(""),
+                    sourceLocation: {
+                      begin: sourceLocation.end,
+                      end: sourceLocation.end,
+                    },
+                  },
+                },
+              ),
+              ann: {
+                print: getTermPrint(t).it,
+                sourceLocation,
+              },
+            }
+          | _ => {
+              let p = print(p)
+              {
+                it: PCons(t, p),
+                ann: {
+                  print: Print.concat2(getTermPrint(t), "\n", getProgramPrint(p)),
+                  sourceLocation,
+                },
+              }
+            }
+          }
+        }
+      }
+    }
+    print(inferTypes(p, SourceLocation.toString))
+  }
+
+  let printProgram = (insertPrintTopLevel, p) => {
+    printProgramFull(insertPrintTopLevel, p).ann.print->Print.toString
+  }
+
+  let printStandAloneTerm = _t => {
+    raisePrintError("Can't print stand-alone term of typed language")
   }
 }
 
@@ -4730,6 +5333,7 @@ module MakeTranslator = (P: Printer) => {
 }
 
 module SMoLTranslator = MakeTranslator(SMoLPrinter)
+module TypedSMoLTranslator = MakeTranslator(TypedSMoLPrinter)
 module JSTranslator = MakeTranslator(JSPrinter)
 module PYTranslator = MakeTranslator(PYPrinter)
 module PCTranslator = MakeTranslator(PCPrinter)

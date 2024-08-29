@@ -165,6 +165,7 @@ module Parser: {
 
 // Infer Type
 type rec ty =
+  | Top
   | TUni
   | Num
   | Boolean
@@ -203,6 +204,7 @@ module type Printer = {
 }
 
 module SMoLPrinter: Printer
+module TypedSMoLPrinter: Printer
 module JSPrinter: Printer
 module PYPrinter: Printer
 module PCPrinter: Printer
@@ -224,6 +226,7 @@ module type Translator = {
   let translateProgramFull: (bool, string) => program<printAnn>
 }
 module SMoLTranslator: Translator
+module TypedSMoLTranslator: Translator
 module JSTranslator: Translator
 module PYTranslator: Translator
 module PCTranslator: Translator

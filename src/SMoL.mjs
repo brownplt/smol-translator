@@ -6,7 +6,6 @@ import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as Core__Array from "@rescript/core/src/Core__Array.mjs";
 import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
-import * as PervasivesU from "rescript/lib/es6/pervasivesU.js";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
@@ -1664,36 +1663,42 @@ function parseOutput(src) {
 
 var SMoLTypeError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTypeError");
 
-function lookup(_env, x) {
-  while(true) {
-    var env = _env;
-    if (env) {
-      var tye = env.hd.get(x);
-      if (tye !== undefined) {
-        return tye;
-      }
-      _env = env.tl;
-      continue ;
-    }
-    throw {
-          RE_EXN_ID: SMoLTypeError,
-          _1: {
-            TAG: "UnboundId",
-            _0: x
-          },
-          Error: new Error()
-        };
-  };
-}
-
-function extend(env, xs) {
-  return {
-          hd: new Map(Core__List.toArray(Core__List.map(xs, PervasivesU.failwith("todo")))),
-          tl: env
-        };
-}
-
 function inferTypes(p, getKey) {
+  var lookup = function (_env, x) {
+    while(true) {
+      var env = _env;
+      if (env) {
+        var tye = env.hd.get(x);
+        if (tye !== undefined) {
+          return tye;
+        }
+        _env = env.tl;
+        continue ;
+      }
+      throw {
+            RE_EXN_ID: SMoLTypeError,
+            _1: {
+              TAG: "UnboundId",
+              _0: x
+            },
+            Error: new Error()
+          };
+    };
+  };
+  var extend = function (env, xs) {
+    return {
+            hd: new Map(Core__List.toArray(Core__List.map(xs, (function (x) {
+                            return [
+                                    x.it,
+                                    {
+                                      TAG: "TVar",
+                                      _0: getKey(x.ann)
+                                    }
+                                  ];
+                          })))),
+            tl: env
+          };
+  };
   var constraints = {
     contents: /* [] */0
   };
@@ -1747,56 +1752,6 @@ function inferTypes(p, getKey) {
           _1: err,
           Error: new Error()
         };
-  };
-  var gt = function (env, t) {
-    var d = t.it;
-    if (d.TAG === "Def") {
-      var d$1 = d._0;
-      var match = d$1.it;
-      switch (match.TAG) {
-        case "Var" :
-            return addConstraint(lookup(env, match._0.it), ge(env, match._1));
-        case "Fun" :
-            var b = match._2;
-            var xs = match._1;
-            return addConstraint(lookup(env, match._0.it), {
-                        TAG: "Funof",
-                        args: Core__List.map(xs, (function (x) {
-                                return {
-                                        TAG: "TVar",
-                                        _0: getKey(x.ann)
-                                      };
-                              })),
-                        out: gb(extend(env, Belt_List.concatMany([
-                                      xs,
-                                      xsOfBlock(b)
-                                    ])), b)
-                      });
-        case "GFun" :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "NotSupported",
-                    _0: "generator"
-                  },
-                  Error: new Error()
-                };
-        
-      }
-    }
-    ge(env, d._0);
-  };
-  var gb = function (env, _b) {
-    while(true) {
-      var b = _b;
-      var e = b.it;
-      if (e.TAG === "BRet") {
-        return ge(env, e._0);
-      }
-      gt(env, e._0);
-      _b = e._1;
-      continue ;
-    };
   };
   var ge = function (env, e) {
     var c = e.it;
@@ -1907,39 +1862,17 @@ function inferTypes(p, getKey) {
         }, t);
     return t;
   };
-  var gc = function (c) {
-    if (typeof c !== "object") {
-      if (c === "Uni") {
-        return "TUni";
+  var gb = function (env, _b) {
+    while(true) {
+      var b = _b;
+      var e = b.it;
+      if (e.TAG === "BRet") {
+        return ge(env, e._0);
       }
-      throw {
-            RE_EXN_ID: SMoLTypeError,
-            _1: {
-              TAG: "NotSupported",
-              _0: "lists"
-            },
-            Error: new Error()
-          };
-    } else {
-      switch (c.TAG) {
-        case "Num" :
-            return "Num";
-        case "Lgc" :
-            return "Boolean";
-        case "Str" :
-            return "String";
-        case "Sym" :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "NotSupported",
-                    _0: "symbol"
-                  },
-                  Error: new Error()
-                };
-        
-      }
-    }
+      gt(env, e._0);
+      _b = e._1;
+      continue ;
+    };
   };
   var ga = function (p, vs) {
     var exit = 0;
@@ -2087,6 +2020,78 @@ function inferTypes(p, getKey) {
           Error: new Error()
         };
   };
+  var gc = function (c) {
+    if (typeof c !== "object") {
+      if (c === "Uni") {
+        return "TUni";
+      }
+      throw {
+            RE_EXN_ID: SMoLTypeError,
+            _1: {
+              TAG: "NotSupported",
+              _0: "lists"
+            },
+            Error: new Error()
+          };
+    } else {
+      switch (c.TAG) {
+        case "Num" :
+            return "Num";
+        case "Lgc" :
+            return "Boolean";
+        case "Str" :
+            return "String";
+        case "Sym" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "symbol"
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    }
+  };
+  var gt = function (env, t) {
+    var d = t.it;
+    if (d.TAG === "Def") {
+      var d$1 = d._0;
+      var match = d$1.it;
+      switch (match.TAG) {
+        case "Var" :
+            return addConstraint(lookup(env, match._0.it), ge(env, match._1));
+        case "Fun" :
+            var b = match._2;
+            var xs = match._1;
+            return addConstraint(lookup(env, match._0.it), {
+                        TAG: "Funof",
+                        args: Core__List.map(xs, (function (x) {
+                                return {
+                                        TAG: "TVar",
+                                        _0: getKey(x.ann)
+                                      };
+                              })),
+                        out: gb(extend(env, Belt_List.concatMany([
+                                      xs,
+                                      xsOfBlock(b)
+                                    ])), b)
+                      });
+        case "GFun" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "generator"
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    }
+    ge(env, d._0);
+  };
   var gatherConstraints = function (p) {
     var xs = xsOfProgram(p);
     var globalEnv_0 = new Map(Core__List.toArray(xs).map(function (x) {
@@ -2115,9 +2120,480 @@ function inferTypes(p, getKey) {
     };
   };
   gatherConstraints(p);
-  new Map();
-  PervasivesU.failwith("todo");
-  return PervasivesU.failwith("todo");
+  var constraints$1 = constraints.contents;
+  var map = new Map();
+  var walk = function (_e) {
+    while(true) {
+      var e = _e;
+      if (typeof e !== "object") {
+        return e;
+      }
+      if (e.TAG !== "TVar") {
+        return e;
+      }
+      var e$1 = map.get(e._0);
+      if (e$1 === undefined) {
+        return e;
+      }
+      _e = e$1;
+      continue ;
+    };
+  };
+  var unify = function (_e1, _e2) {
+    while(true) {
+      var e2 = _e2;
+      var e1 = _e1;
+      var e1$1 = walk(e1);
+      var e2$1 = walk(e2);
+      var exit = 0;
+      if (typeof e1$1 !== "object") {
+        switch (e1$1) {
+          case "Num" :
+              if (typeof e2$1 !== "object") {
+                if (e2$1 === "Num") {
+                  return ;
+                }
+                exit = 2;
+              } else {
+                exit = e2$1.TAG === "TVar" ? 1 : 2;
+              }
+              break;
+          case "TUni" :
+              if (typeof e2$1 !== "object") {
+                if (e2$1 === "TUni") {
+                  return ;
+                }
+                exit = 2;
+              } else {
+                exit = e2$1.TAG === "TVar" ? 1 : 2;
+              }
+              break;
+          case "Boolean" :
+              if (typeof e2$1 !== "object") {
+                if (e2$1 === "Boolean") {
+                  return ;
+                }
+                exit = 2;
+              } else {
+                exit = e2$1.TAG === "TVar" ? 1 : 2;
+              }
+              break;
+          case "String" :
+              if (typeof e2$1 !== "object") {
+                if (e2$1 === "String") {
+                  return ;
+                }
+                exit = 2;
+              } else {
+                exit = e2$1.TAG === "TVar" ? 1 : 2;
+              }
+              break;
+          
+        }
+      } else {
+        switch (e1$1.TAG) {
+          case "TVar" :
+              var x1 = e1$1._0;
+              if (typeof e2$1 !== "object") {
+                map.set(x1, e2$1);
+                return ;
+              }
+              if (e2$1.TAG === "TVar") {
+                if (x1 !== e2$1._0) {
+                  map.set(x1, e2$1);
+                  return ;
+                } else {
+                  return ;
+                }
+              }
+              map.set(x1, e2$1);
+              return ;
+          case "Vecof" :
+              if (typeof e2$1 !== "object") {
+                exit = 2;
+              } else {
+                switch (e2$1.TAG) {
+                  case "TVar" :
+                      exit = 1;
+                      break;
+                  case "Vecof" :
+                      _e2 = e2$1._0;
+                      _e1 = e1$1._0;
+                      continue ;
+                  default:
+                    exit = 2;
+                }
+              }
+              break;
+          case "Listof" :
+              if (typeof e2$1 !== "object") {
+                exit = 2;
+              } else {
+                switch (e2$1.TAG) {
+                  case "TVar" :
+                      exit = 1;
+                      break;
+                  case "Listof" :
+                      _e2 = e2$1._0;
+                      _e1 = e1$1._0;
+                      continue ;
+                  default:
+                    exit = 2;
+                }
+              }
+              break;
+          case "Funof" :
+              if (typeof e2$1 !== "object") {
+                exit = 2;
+              } else {
+                switch (e2$1.TAG) {
+                  case "TVar" :
+                      exit = 1;
+                      break;
+                  case "Funof" :
+                      if (Core__List.length(e1$1.args) === Core__List.length(e1$1.args)) {
+                        Core__List.forEach2(e1$1.args, e2$1.args, unify);
+                        _e2 = e2$1.out;
+                        _e1 = e1$1.out;
+                        continue ;
+                      }
+                      throw {
+                            RE_EXN_ID: SMoLTypeError,
+                            _1: {
+                              TAG: "Incompatible",
+                              _0: e1$1,
+                              _1: e2$1
+                            },
+                            Error: new Error()
+                          };
+                  default:
+                    exit = 2;
+                }
+              }
+              break;
+          
+        }
+      }
+      switch (exit) {
+        case 1 :
+            map.set(e2$1._0, e1$1);
+            return ;
+        case 2 :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "Incompatible",
+                    _0: e1$1,
+                    _1: e2$1
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    };
+  };
+  Core__List.forEach(constraints$1, (function (param) {
+          unify(param[0], param[1]);
+        }));
+  var ground = function (e) {
+    var visited = new Set();
+    var g = function (_e) {
+      while(true) {
+        var e = _e;
+        if (typeof e !== "object") {
+          switch (e) {
+            case "Num" :
+                return "Num";
+            case "TUni" :
+                return "TUni";
+            case "Boolean" :
+                return "Boolean";
+            case "String" :
+                return "String";
+            
+          }
+        } else {
+          switch (e.TAG) {
+            case "TVar" :
+                var x = e._0;
+                if (visited.has(x)) {
+                  throw {
+                        RE_EXN_ID: SMoLTypeError,
+                        _1: "RecursiveType",
+                        Error: new Error()
+                      };
+                }
+                visited.add(x);
+                var e$1 = map.get(x);
+                if (e$1 === undefined) {
+                  return "Top";
+                }
+                _e = e$1;
+                continue ;
+            case "Vecof" :
+                return {
+                        TAG: "Vecof",
+                        _0: g(e._0)
+                      };
+            case "Listof" :
+                return {
+                        TAG: "Listof",
+                        _0: g(e._0)
+                      };
+            case "Funof" :
+                return {
+                        TAG: "Funof",
+                        args: Core__List.map(e.args, g),
+                        out: g(e.out)
+                      };
+            
+          }
+        }
+      };
+    };
+    return g(e);
+  };
+  var solution = new Map(Array.from(map.entries()).map(function (param) {
+            return [
+                    param[0],
+                    ground(param[1])
+                  ];
+          }));
+  var ax = function (param) {
+    var ann = param.ann;
+    return {
+            it: param.it,
+            ann: {
+              ty: Core__Option.getExn(solution.get(getKey(ann)), undefined),
+              ann: ann
+            }
+          };
+  };
+  var ap = function (param) {
+    var it = param.it;
+    var tmp;
+    tmp = typeof it !== "object" ? "PNil" : ({
+          TAG: "PCons",
+          _0: at(it._0),
+          _1: ap(it._1)
+        });
+    return {
+            it: tmp,
+            ann: {
+              ty: "TUni",
+              ann: param.ann
+            }
+          };
+  };
+  var at = function (param) {
+    var it = param.it;
+    var tmp;
+    tmp = it.TAG === "Def" ? ({
+          TAG: "Def",
+          _0: ad(it._0)
+        }) : ({
+          TAG: "Exp",
+          _0: ae(it._0)
+        });
+    return {
+            it: tmp,
+            ann: {
+              ty: "TUni",
+              ann: param.ann
+            }
+          };
+  };
+  var ad = function (param) {
+    var it = param.it;
+    var tmp;
+    switch (it.TAG) {
+      case "Var" :
+          tmp = {
+            TAG: "Var",
+            _0: ax(it._0),
+            _1: ae(it._1)
+          };
+          break;
+      case "Fun" :
+          tmp = {
+            TAG: "Fun",
+            _0: ax(it._0),
+            _1: Core__List.map(it._1, ax),
+            _2: ab(it._2)
+          };
+          break;
+      case "GFun" :
+          tmp = {
+            TAG: "GFun",
+            _0: ax(it._0),
+            _1: Core__List.map(it._1, ax),
+            _2: ab(it._2)
+          };
+          break;
+      
+    }
+    return {
+            it: tmp,
+            ann: {
+              ty: "TUni",
+              ann: param.ann
+            }
+          };
+  };
+  var ae = function (param) {
+    var ann = param.ann;
+    var it = param.it;
+    var tmp;
+    switch (it.TAG) {
+      case "Con" :
+          tmp = {
+            TAG: "Con",
+            _0: it._0
+          };
+          break;
+      case "Ref" :
+          tmp = {
+            TAG: "Ref",
+            _0: it._0
+          };
+          break;
+      case "Set" :
+          tmp = {
+            TAG: "Set",
+            _0: ax(it._0),
+            _1: ae(it._1)
+          };
+          break;
+      case "Lam" :
+          tmp = {
+            TAG: "Lam",
+            _0: Core__List.map(it._0, ax),
+            _1: ab(it._1)
+          };
+          break;
+      case "Let" :
+          tmp = {
+            TAG: "Let",
+            _0: Core__List.map(it._0, axe),
+            _1: ab(it._1)
+          };
+          break;
+      case "Letrec" :
+          tmp = {
+            TAG: "Letrec",
+            _0: Core__List.map(it._0, axe),
+            _1: ab(it._1)
+          };
+          break;
+      case "AppPrm" :
+          tmp = {
+            TAG: "AppPrm",
+            _0: it._0,
+            _1: Core__List.map(it._1, ae)
+          };
+          break;
+      case "App" :
+          tmp = {
+            TAG: "App",
+            _0: ae(it._0),
+            _1: Core__List.map(it._1, ae)
+          };
+          break;
+      case "Bgn" :
+          tmp = {
+            TAG: "Bgn",
+            _0: Core__List.map(it._0, ae),
+            _1: ae(it._1)
+          };
+          break;
+      case "If" :
+          tmp = {
+            TAG: "If",
+            _0: ae(it._0),
+            _1: ae(it._1),
+            _2: ae(it._2)
+          };
+          break;
+      case "Cnd" :
+          tmp = {
+            TAG: "Cnd",
+            _0: Core__List.map(it._0, aeb),
+            _1: Core__Option.map(it._1, ab)
+          };
+          break;
+      case "GLam" :
+          tmp = {
+            TAG: "GLam",
+            _0: Core__List.map(it._0, ax),
+            _1: ab(it._1)
+          };
+          break;
+      case "Yield" :
+          tmp = {
+            TAG: "Yield",
+            _0: ae(it._0)
+          };
+          break;
+      
+    }
+    return {
+            it: tmp,
+            ann: {
+              ty: Core__Option.getExn(solution.get(getKey(ann)), undefined),
+              ann: ann
+            }
+          };
+  };
+  var axe = function (param) {
+    var match = param.it;
+    return {
+            it: [
+              ax(match[0]),
+              ae(match[1])
+            ],
+            ann: {
+              ty: "TUni",
+              ann: param.ann
+            }
+          };
+  };
+  var aeb = function (param) {
+    return [
+            ae(param[0]),
+            ab(param[1])
+          ];
+  };
+  var ab = function (param) {
+    var ann = param.ann;
+    var it = param.it;
+    if (it.TAG === "BRet") {
+      var e = ae(it._0);
+      return {
+              it: {
+                TAG: "BRet",
+                _0: e
+              },
+              ann: {
+                ty: e.ann.ty,
+                ann: ann
+              }
+            };
+    }
+    var t = at(it._0);
+    var b = ab(it._1);
+    return {
+            it: {
+              TAG: "BCons",
+              _0: t,
+              _1: b
+            },
+            ann: {
+              ty: b.ann.ty,
+              ann: ann
+            }
+          };
+  };
+  return ap(p);
 }
 
 var SMoLPrintError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLPrintError");
@@ -3162,6 +3638,983 @@ function printStandAloneTerm(t) {
   return toString(printTerm(t).ann.print);
 }
 
+function printName$1(x) {
+  return x;
+}
+
+function constantToString$1(c) {
+  if (typeof c !== "object") {
+    if (c === "Uni") {
+      return "#<void>";
+    } else {
+      return "#<empty>";
+    }
+  }
+  switch (c.TAG) {
+    case "Num" :
+        return c._0.toString();
+    case "Lgc" :
+        if (c._0) {
+          return "#t";
+        } else {
+          return "#f";
+        }
+    case "Str" :
+        return JSON.stringify(c._0);
+    case "Sym" :
+        return c._0;
+    
+  }
+}
+
+function listToString$1(ss) {
+  return pad("(", {
+              it: concat(" ", ss),
+              ann: undefined
+            }, ")");
+}
+
+function defvarLike$1(op, x, e) {
+  if (containsNL(e.it) || op === "deffun" || op === "defgen") {
+    return {
+            TAG: "Group",
+            _0: {
+              hd: {
+                it: {
+                  TAG: "Plain",
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: {
+                    TAG: "Plain",
+                    _0: op
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: "Plain",
+                      _0: " "
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: x,
+                    tl: {
+                      hd: indentBlock(e, 2),
+                      tl: {
+                        hd: {
+                          it: {
+                            TAG: "Plain",
+                            _0: ")"
+                          },
+                          ann: undefined
+                        },
+                        tl: /* [] */0
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          };
+  } else {
+    return listToString$1({
+                hd: {
+                  it: {
+                    TAG: "Plain",
+                    _0: op
+                  },
+                  ann: undefined
+                },
+                tl: {
+                  hd: x,
+                  tl: {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                }
+              });
+  }
+}
+
+function defvarToString$1(x, e) {
+  return defvarLike$1("defvar", x, e);
+}
+
+function deffunToString$1(f, xs, b) {
+  return defvarLike$1("deffun", {
+              it: listToString$1({
+                    hd: f,
+                    tl: xs
+                  }),
+              ann: undefined
+            }, b);
+}
+
+function defgenToString$1(f, xs, b) {
+  return defvarLike$1("defgen", {
+              it: listToString$1({
+                    hd: f,
+                    tl: xs
+                  }),
+              ann: undefined
+            }, b);
+}
+
+function exprSetToString$1(x, e) {
+  return defvarLike$1("set!", x, e);
+}
+
+function exprLamToString$1(xs, b) {
+  return defvarLike$1("lambda", {
+              it: listToString$1(xs),
+              ann: undefined
+            }, b);
+}
+
+function exprGenToString$1(xs, b) {
+  return defvarLike$1("generator", {
+              it: listToString$1(xs),
+              ann: undefined
+            }, b);
+}
+
+function exprYieldToString$1(e) {
+  return {
+          TAG: "Group",
+          _0: {
+            hd: {
+              it: {
+                TAG: "Plain",
+                _0: "(yield "
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: e,
+              tl: {
+                hd: {
+                  it: {
+                    TAG: "Plain",
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
+}
+
+function exprAppToString$1(e, es) {
+  return listToString$1({
+              hd: e,
+              tl: es
+            });
+}
+
+function beginLike$1(op, ts) {
+  return {
+          TAG: "Group",
+          _0: {
+            hd: {
+              it: {
+                TAG: "Plain",
+                _0: "("
+              },
+              ann: undefined
+            },
+            tl: {
+              hd: {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: concat("\n", ts),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: "Plain",
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          }
+        };
+}
+
+function exprBgnToString$1(es, e) {
+  return beginLike$1("begin", Belt_List.concatMany([
+                  es,
+                  {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                ]));
+}
+
+function exprCndToString$1(ebs, ob) {
+  var ebs$1 = ob !== undefined ? Belt_List.concatMany([
+          ebs,
+          {
+            hd: [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: "else"
+                },
+                ann: undefined
+              },
+              ob
+            ],
+            tl: /* [] */0
+          }
+        ]) : ebs;
+  var ebs$2 = Core__List.map(ebs$1, (function (param) {
+          var ss_0 = {
+            it: {
+              TAG: "Plain",
+              _0: "["
+            },
+            ann: undefined
+          };
+          var ss_1 = {
+            hd: param[0],
+            tl: {
+              hd: indentBlock(param[1], 1),
+              tl: {
+                hd: {
+                  it: {
+                    TAG: "Plain",
+                    _0: "]"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          };
+          var ss = {
+            hd: ss_0,
+            tl: ss_1
+          };
+          return {
+                  it: {
+                    TAG: "Group",
+                    _0: ss
+                  },
+                  ann: undefined
+                };
+        }));
+  return beginLike$1("cond", ebs$2);
+}
+
+function exprIfToString$1(e_cnd, e_thn, e_els) {
+  return hcat({
+              it: {
+                TAG: "Plain",
+                _0: "(if "
+              },
+              ann: undefined
+            }, {
+              it: group2({
+                    it: concat("\n", {
+                          hd: e_cnd,
+                          tl: {
+                            hd: e_thn,
+                            tl: {
+                              hd: e_els,
+                              tl: /* [] */0
+                            }
+                          }
+                        }),
+                    ann: undefined
+                  }, {
+                    it: {
+                      TAG: "Plain",
+                      _0: ")"
+                    },
+                    ann: undefined
+                  }),
+              ann: undefined
+            });
+}
+
+function letLike$1(op, xes, b) {
+  var xes_it = concat("\n", xes);
+  var xes$1 = {
+    it: xes_it,
+    ann: undefined
+  };
+  var ss_0 = {
+    it: {
+      TAG: "Plain",
+      _0: "("
+    },
+    ann: undefined
+  };
+  var ss_1 = {
+    hd: indent(xes$1, 1),
+    tl: {
+      hd: {
+        it: {
+          TAG: "Plain",
+          _0: ")"
+        },
+        ann: undefined
+      },
+      tl: /* [] */0
+    }
+  };
+  var ss = {
+    hd: ss_0,
+    tl: ss_1
+  };
+  var xes_it$1 = {
+    TAG: "Group",
+    _0: ss
+  };
+  var xes$2 = {
+    it: xes_it$1,
+    ann: undefined
+  };
+  return {
+          TAG: "Group",
+          _0: {
+            hd: {
+              it: hcat({
+                    it: {
+                      TAG: "Group",
+                      _0: {
+                        hd: {
+                          it: {
+                            TAG: "Plain",
+                            _0: "("
+                          },
+                          ann: undefined
+                        },
+                        tl: {
+                          hd: {
+                            it: {
+                              TAG: "Plain",
+                              _0: op
+                            },
+                            ann: undefined
+                          },
+                          tl: {
+                            hd: {
+                              it: {
+                                TAG: "Plain",
+                                _0: " "
+                              },
+                              ann: undefined
+                            },
+                            tl: /* [] */0
+                          }
+                        }
+                      }
+                    },
+                    ann: undefined
+                  }, xes$2),
+              ann: undefined
+            },
+            tl: {
+              hd: indentBlock(b, 2),
+              tl: {
+                hd: {
+                  it: {
+                    TAG: "Plain",
+                    _0: ")"
+                  },
+                  ann: undefined
+                },
+                tl: /* [] */0
+              }
+            }
+          }
+        };
+}
+
+function exprLetToString$1(xes, b) {
+  return letLike$1("let", xes, b);
+}
+
+function exprLetrecToString$1(xes, b) {
+  return letLike$1("letrec", xes, b);
+}
+
+function tyToString(ty) {
+  if (typeof ty !== "object") {
+    switch (ty) {
+      case "Top" :
+          return "Any";
+      case "TUni" :
+          return "Nothing";
+      case "Num" :
+          return "Number";
+      case "Boolean" :
+          return "Boolean";
+      case "String" :
+          return "String";
+      
+    }
+  } else {
+    switch (ty.TAG) {
+      case "Vecof" :
+          return "(Vectorof " + tyToString(ty._0) + ")";
+      case "Listof" :
+          return "(Listof " + tyToString(ty._0) + ")";
+      case "Funof" :
+          return "(=> " + Core__List.toArray(Core__List.map(Belt_List.concatMany([
+                                ty.args,
+                                {
+                                  hd: ty.out,
+                                  tl: /* [] */0
+                                }
+                              ]), tyToString)).join(" ") + ")";
+      
+    }
+  }
+}
+
+function symbolToString$1(param) {
+  var ann = param.ann;
+  var it = param.it;
+  var it$1 = tyToString(ann.ty);
+  return {
+          it: it,
+          ann: {
+            sourceLocation: ann.ann,
+            print: s([
+                  "",
+                  " : ",
+                  ""
+                ], [
+                  {
+                    it: {
+                      TAG: "Plain",
+                      _0: it
+                    },
+                    ann: undefined
+                  },
+                  {
+                    it: {
+                      TAG: "Plain",
+                      _0: it$1
+                    },
+                    ann: undefined
+                  }
+                ])
+          }
+        };
+}
+
+function printExp$1(param) {
+  var it = param.it;
+  var e;
+  switch (it.TAG) {
+    case "Con" :
+        var c = it._0;
+        e = {
+          it: {
+            TAG: "Con",
+            _0: c
+          },
+          ann: {
+            TAG: "Plain",
+            _0: constantToString$1(c)
+          }
+        };
+        break;
+    case "Ref" :
+        var x = it._0;
+        e = {
+          it: {
+            TAG: "Ref",
+            _0: x
+          },
+          ann: {
+            TAG: "Plain",
+            _0: x
+          }
+        };
+        break;
+    case "Set" :
+        var x$1 = symbolToString$1(it._0);
+        var e$1 = printExp$1(it._1);
+        e = {
+          it: {
+            TAG: "Set",
+            _0: x$1,
+            _1: e$1
+          },
+          ann: exprSetToString$1(getNamePrint(x$1), getPrint(e$1))
+        };
+        break;
+    case "Lam" :
+        var xs = Core__List.map(it._0, symbolToString$1);
+        var b = printBlock$1(it._1);
+        e = {
+          it: {
+            TAG: "Lam",
+            _0: xs,
+            _1: b
+          },
+          ann: exprLamToString$1(Core__List.map(xs, (function (x) {
+                      return getNamePrint(x);
+                    })), getBlockPrint(b))
+        };
+        break;
+    case "Let" :
+        var xes = Core__List.map(it._0, xeToString$1);
+        var b$1 = printBlock$1(it._1);
+        e = {
+          it: {
+            TAG: "Let",
+            _0: xes,
+            _1: b$1
+          },
+          ann: exprLetToString$1(Core__List.map(xes, (function (xe) {
+                      return getBindPrint(xe);
+                    })), getBlockPrint(b$1))
+        };
+        break;
+    case "Letrec" :
+        var xes$1 = Core__List.map(it._0, xeToString$1);
+        var b$2 = printBlock$1(it._1);
+        e = {
+          it: {
+            TAG: "Letrec",
+            _0: xes$1,
+            _1: b$2
+          },
+          ann: exprLetrecToString$1(Core__List.map(xes$1, (function (xe) {
+                      return getBindPrint(xe);
+                    })), getBlockPrint(b$2))
+        };
+        break;
+    case "AppPrm" :
+        var p = it._0;
+        var es = Core__List.map(it._1, printExp$1);
+        var it$1 = toString$1(p);
+        e = {
+          it: {
+            TAG: "AppPrm",
+            _0: p,
+            _1: es
+          },
+          ann: exprAppToString$1({
+                it: {
+                  TAG: "Plain",
+                  _0: it$1
+                },
+                ann: undefined
+              }, Core__List.map(es, (function (e) {
+                      return getPrint(e);
+                    })))
+        };
+        break;
+    case "App" :
+        var e$2 = printExp$1(it._0);
+        var es$1 = Core__List.map(it._1, printExp$1);
+        e = {
+          it: {
+            TAG: "App",
+            _0: e$2,
+            _1: es$1
+          },
+          ann: exprAppToString$1(getPrint(e$2), Core__List.map(es$1, (function (e) {
+                      return getPrint(e);
+                    })))
+        };
+        break;
+    case "Bgn" :
+        var es$2 = Core__List.map(it._0, printExp$1);
+        var e$3 = printExp$1(it._1);
+        e = {
+          it: {
+            TAG: "Bgn",
+            _0: es$2,
+            _1: e$3
+          },
+          ann: exprBgnToString$1(Core__List.map(es$2, (function (e) {
+                      return getPrint(e);
+                    })), getPrint(e$3))
+        };
+        break;
+    case "If" :
+        var e_cnd = printExp$1(it._0);
+        var e_thn = printExp$1(it._1);
+        var e_els = printExp$1(it._2);
+        e = {
+          it: {
+            TAG: "If",
+            _0: e_cnd,
+            _1: e_thn,
+            _2: e_els
+          },
+          ann: exprIfToString$1(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
+        };
+        break;
+    case "Cnd" :
+        var ebs = Core__List.map(it._0, ebToString$1);
+        var ob = Core__Option.map(it._1, printBlock$1);
+        e = {
+          it: {
+            TAG: "Cnd",
+            _0: ebs,
+            _1: ob
+          },
+          ann: exprCndToString$1(Core__List.map(ebs, (function (param) {
+                      return [
+                              getPrint(param[0]),
+                              getBlockPrint(param[1])
+                            ];
+                    })), Core__Option.map(ob, (function (b) {
+                      return getBlockPrint(b);
+                    })))
+        };
+        break;
+    case "GLam" :
+        var xs$1 = Core__List.map(it._0, symbolToString$1);
+        var b$3 = printBlock$1(it._1);
+        e = {
+          it: {
+            TAG: "Lam",
+            _0: xs$1,
+            _1: b$3
+          },
+          ann: exprGenToString$1(Core__List.map(xs$1, (function (x) {
+                      return getNamePrint(x);
+                    })), getBlockPrint(b$3))
+        };
+        break;
+    case "Yield" :
+        var e$4 = printExp$1(it._0);
+        e = {
+          it: {
+            TAG: "Yield",
+            _0: e$4
+          },
+          ann: exprYieldToString$1(getPrint(e$4))
+        };
+        break;
+    
+  }
+  return {
+          it: e.it,
+          ann: {
+            sourceLocation: param.ann.ann,
+            print: e.ann
+          }
+        };
+}
+
+function printDef$1(param) {
+  var d = param.it;
+  var d$1;
+  switch (d.TAG) {
+    case "Var" :
+        var x = symbolToString$1(d._0);
+        var e = printExp$1(d._1);
+        d$1 = {
+          it: {
+            TAG: "Var",
+            _0: x,
+            _1: e
+          },
+          ann: defvarToString$1(getNamePrint(x), getPrint(e))
+        };
+        break;
+    case "Fun" :
+        var f = symbolToString$1(d._0);
+        var xs = Core__List.map(d._1, symbolToString$1);
+        var b = printBlock$1(d._2);
+        d$1 = {
+          it: {
+            TAG: "Fun",
+            _0: f,
+            _1: xs,
+            _2: b
+          },
+          ann: deffunToString$1(getNamePrint(f), Core__List.map(xs, (function (x) {
+                      return getNamePrint(x);
+                    })), getBlockPrint(b))
+        };
+        break;
+    case "GFun" :
+        var f$1 = symbolToString$1(d._0);
+        var xs$1 = Core__List.map(d._1, symbolToString$1);
+        var b$1 = printBlock$1(d._2);
+        d$1 = {
+          it: {
+            TAG: "GFun",
+            _0: f$1,
+            _1: xs$1,
+            _2: b$1
+          },
+          ann: defgenToString$1(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
+                      return getNamePrint(x);
+                    })), getBlockPrint(b$1))
+        };
+        break;
+    
+  }
+  return {
+          it: d$1.it,
+          ann: {
+            sourceLocation: param.ann.ann,
+            print: d$1.ann
+          }
+        };
+}
+
+function xeToString$1(param) {
+  var xe = param.it;
+  var x = symbolToString$1(xe[0]);
+  var e = printExp$1(xe[1]);
+  var print = hcat({
+        it: group2({
+              it: {
+                TAG: "Plain",
+                _0: "["
+              },
+              ann: undefined
+            }, getNamePrint(x)),
+        ann: undefined
+      }, {
+        it: group2(getPrint(e), {
+              it: {
+                TAG: "Plain",
+                _0: "]"
+              },
+              ann: undefined
+            }),
+        ann: undefined
+      });
+  return {
+          it: [
+            x,
+            e
+          ],
+          ann: {
+            sourceLocation: param.ann.ann,
+            print: print
+          }
+        };
+}
+
+function ebToString$1(eb) {
+  return [
+          printExp$1(eb[0]),
+          printBlock$1(eb[1])
+        ];
+}
+
+function printBlock$1(param) {
+  var b = param.it;
+  if (b.TAG === "BRet") {
+    var e = printExp$1(b._0);
+    return {
+            it: {
+              TAG: "BRet",
+              _0: e
+            },
+            ann: e.ann
+          };
+  }
+  var t = printTerm$1(b._0);
+  var b$1 = printBlock$1(b._1);
+  var print = {
+    TAG: "Group",
+    _0: {
+      hd: getTermPrint(t),
+      tl: {
+        hd: {
+          it: {
+            TAG: "Plain",
+            _0: "\n"
+          },
+          ann: undefined
+        },
+        tl: {
+          hd: getBlockPrint(b$1),
+          tl: /* [] */0
+        }
+      }
+    }
+  };
+  return {
+          it: {
+            TAG: "BCons",
+            _0: t,
+            _1: b$1
+          },
+          ann: {
+            sourceLocation: param.ann.ann,
+            print: print
+          }
+        };
+}
+
+function printTerm$1(param) {
+  var sourceLocation = param.ann.ann;
+  var t = param.it;
+  if (t.TAG === "Def") {
+    var it = printDef$1(t._0);
+    return {
+            it: {
+              TAG: "Def",
+              _0: it
+            },
+            ann: {
+              sourceLocation: sourceLocation,
+              print: {
+                TAG: "Group",
+                _0: {
+                  hd: getDefinitionPrint(it),
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
+  }
+  var it$1 = printExp$1(t._0);
+  return {
+          it: {
+            TAG: "Exp",
+            _0: it$1
+          },
+          ann: {
+            sourceLocation: sourceLocation,
+            print: {
+              TAG: "Group",
+              _0: {
+                hd: getPrint(it$1),
+                tl: /* [] */0
+              }
+            }
+          }
+        };
+}
+
+function printOutputlet$1(o) {
+  var p = function (v) {
+    switch (v.TAG) {
+      case "Ref" :
+          return "#" + v._0.toString() + "#";
+      case "Con" :
+          return constantToString$1(v._0);
+      case "Struct" :
+          var content = v._1;
+          var i = v._0;
+          var i$1 = i !== undefined ? "#" + i.toString() + "=" : "";
+          var content$1;
+          content$1 = content.TAG === "Lst" ? "(" + Core__List.toArray(Core__List.map(content._0, p)).join(" ") + ")" : "#(" + Core__List.toArray(Core__List.map(content._0, p)).join(" ") + ")";
+          return i$1 + content$1;
+      
+    }
+  };
+  if (typeof o !== "object") {
+    return "error";
+  } else {
+    return p(o._0);
+  }
+}
+
+function printOutput$1(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return Core__List.toArray(Core__List.map(os, printOutputlet$1)).join(sep);
+}
+
+function printProgramFull$1(_insertPrintTopLevel, p) {
+  var print = function (param) {
+    var sourceLocation = param.ann.ann;
+    var it = param.it;
+    if (typeof it !== "object") {
+      return {
+              it: "PNil",
+              ann: {
+                sourceLocation: sourceLocation,
+                print: {
+                  TAG: "Group",
+                  _0: /* [] */0
+                }
+              }
+            };
+    }
+    var p = it._1;
+    var t = printTerm$1(it._0);
+    var tmp = p.it;
+    if (typeof tmp !== "object") {
+      return {
+              it: {
+                TAG: "PCons",
+                _0: t,
+                _1: {
+                  it: "PNil",
+                  ann: {
+                    sourceLocation: {
+                      begin: sourceLocation.end,
+                      end: sourceLocation.end
+                    },
+                    print: {
+                      TAG: "Plain",
+                      _0: ""
+                    }
+                  }
+                }
+              },
+              ann: {
+                sourceLocation: sourceLocation,
+                print: getTermPrint(t).it
+              }
+            };
+    }
+    var p$1 = print(p);
+    return {
+            it: {
+              TAG: "PCons",
+              _0: t,
+              _1: p$1
+            },
+            ann: {
+              sourceLocation: sourceLocation,
+              print: concat2(getTermPrint(t), "\n", getProgramPrint(p$1))
+            }
+          };
+  };
+  return print(inferTypes(p, SExpression.SourceLocation.toString));
+}
+
+function printProgram$1(insertPrintTopLevel, p) {
+  return toString(printProgramFull$1(insertPrintTopLevel, p).ann.print);
+}
+
+function printStandAloneTerm$1(_t) {
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: "Can't print stand-alone term of typed language",
+        Error: new Error()
+      };
+}
+
 function moveBeginChByOne(sourceLocation) {
   var init = sourceLocation.begin;
   return {
@@ -3350,7 +4803,7 @@ function insertTopLevelPrint(p) {
         };
 }
 
-function printName$1(x) {
+function printName$2(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -3363,7 +4816,7 @@ function printName$1(x) {
   }
 }
 
-function constantToString$1(c) {
+function constantToString$2(c) {
   if (typeof c !== "object") {
     if (c === "Uni") {
       return "null";
@@ -3392,7 +4845,7 @@ function constantToString$1(c) {
   }
 }
 
-function listToString$1(es) {
+function listToString$2(es) {
   if (Core__List.some(es, (function (e) {
             return containsNL(e.it);
           }))) {
@@ -3456,7 +4909,7 @@ function listToString$1(es) {
   }
 }
 
-function defvarLike$1(op, x, e) {
+function defvarLike$2(op, x, e) {
   return {
           TAG: "Group",
           _0: {
@@ -3487,9 +4940,9 @@ function defvarLike$1(op, x, e) {
         };
 }
 
-function exprAppToString$1(e, es) {
+function exprAppToString$2(e, es) {
   return group2(e, {
-              it: listToString$1(es),
+              it: listToString$2(es),
               ann: undefined
             });
 }
@@ -4022,30 +5475,30 @@ function funLike(op, x, xs, e) {
                 ann: undefined
               },
               {
-                it: exprAppToString$1(x, xs),
+                it: exprAppToString$2(x, xs),
                 ann: undefined
               },
               indentBlock(e, 2)
             ]);
 }
 
-function defvarToString$1(x, e) {
-  return defvarLike$1("let ", x, e);
+function defvarToString$2(x, e) {
+  return defvarLike$2("let ", x, e);
 }
 
-function deffunToString$1(f, xs, b) {
+function deffunToString$2(f, xs, b) {
   return funLike("function", f, xs, b);
 }
 
-function defgenToString$1(f, xs, b) {
+function defgenToString$2(f, xs, b) {
   return funLike("function*", f, xs, b);
 }
 
-function exprSetToString$1(x, e) {
-  return defvarLike$1("", x, e);
+function exprSetToString$2(x, e) {
+  return defvarLike$2("", x, e);
 }
 
-function exprLamToString$1(xs, b) {
+function exprLamToString$2(xs, b) {
   return funLike("function", {
               it: {
                 TAG: "Plain",
@@ -4055,7 +5508,7 @@ function exprLamToString$1(xs, b) {
             }, xs, b);
 }
 
-function exprGenToString$1(xs, b) {
+function exprGenToString$2(xs, b) {
   return funLike("function*", {
               it: {
                 TAG: "Plain",
@@ -4065,15 +5518,15 @@ function exprGenToString$1(xs, b) {
             }, xs, b);
 }
 
-function exprYieldToString$1(e) {
+function exprYieldToString$2(e) {
   return s([
               "yield ",
               ""
             ], [e]);
 }
 
-function exprBgnToString$1(es, e) {
-  return listToString$1(Belt_List.concatMany([
+function exprBgnToString$2(es, e) {
+  return listToString$2(Belt_List.concatMany([
                   es,
                   {
                     hd: e,
@@ -4101,7 +5554,7 @@ function ifStat(cnd, thn, els) {
             ]);
 }
 
-function exprCndToString$1(ebs, ob) {
+function exprCndToString$2(ebs, ob) {
   var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
                   it: ifStat(param[0], param[1], undefined),
@@ -4124,7 +5577,7 @@ function exprCndToString$1(ebs, ob) {
   return concat(" else ", ebs$2);
 }
 
-function exprIfToString$1(e_cnd, e_thn, e_els) {
+function exprIfToString$2(e_cnd, e_thn, e_els) {
   return s([
               "",
               " ? ",
@@ -4137,7 +5590,7 @@ function exprIfToString$1(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function symbolToString$1(param) {
+function symbolToString$2(param) {
   var it = param.it;
   return {
           it: it,
@@ -4145,13 +5598,13 @@ function symbolToString$1(param) {
             sourceLocation: param.ann,
             print: {
               TAG: "Plain",
-              _0: printName$1(it)
+              _0: printName$2(it)
             }
           }
         };
 }
 
-function printExp$1(param) {
+function printExp$2(param) {
   var it = param.it;
   var lift = function (param) {
     var print = param.ann;
@@ -4195,7 +5648,7 @@ function printExp$1(param) {
               },
               ann: consumeContext({
                     TAG: "Plain",
-                    _0: constantToString$1(c)
+                    _0: constantToString$2(c)
                   })
             });
         break;
@@ -4208,13 +5661,13 @@ function printExp$1(param) {
               },
               ann: consumeContext({
                     TAG: "Plain",
-                    _0: printName$1(x)
+                    _0: printName$2(x)
                   })
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$1(it._0);
-        var e$1 = printExp$1(it._1);
+        var x$1 = symbolToString$2(it._0);
+        var e$1 = printExp$2(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
               it: {
@@ -4222,19 +5675,19 @@ function printExp$1(param) {
                 _0: x$1,
                 _1: e$2
               },
-              ann: consumeContextStat(exprSetToString$1(getNamePrint(x$1), getPrint(e$2)))
+              ann: consumeContextStat(exprSetToString$2(getNamePrint(x$1), getPrint(e$2)))
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$1);
-        var b = printBlock$1(it._1, "Return");
+        var xs = Core__List.map(it._0, symbolToString$2);
+        var b = printBlock$2(it._1, "Return");
         e = lift({
               it: {
                 TAG: "Lam",
                 _0: xs,
                 _1: b
               },
-              ann: consumeContextWrap(exprLamToString$1(Core__List.map(xs, (function (x) {
+              ann: consumeContextWrap(exprLamToString$2(Core__List.map(xs, (function (x) {
                               return getNamePrint(x);
                             })), getBlockPrint(b)))
             });
@@ -4258,8 +5711,8 @@ function printExp$1(param) {
                             };
                       }),
                     stat: (function (ctx) {
-                        var xes$1 = Core__List.map(xes, xeToString$1);
-                        var b$2 = printBlock$1(b$1, ctx);
+                        var xes$1 = Core__List.map(xes, xeToString$2);
+                        var b$2 = printBlock$2(b$1, ctx);
                         var match = indentBlock({
                               it: concat("\n", Belt_List.concatMany([
                                         Core__List.map(xes$1, (function (xe) {
@@ -4294,7 +5747,7 @@ function printExp$1(param) {
     case "AppPrm" :
         var es = Core__List.map(it._1, (function (e) {
                 return function (b) {
-                  var e$1 = printExp$1(e);
+                  var e$1 = printExp$2(e);
                   return e$1.expr(b);
                 };
               }));
@@ -4310,10 +5763,10 @@ function printExp$1(param) {
             });
         break;
     case "App" :
-        var e$3 = printExp$1(it._0);
+        var e$3 = printExp$2(it._0);
         var e$4 = e$3.expr(true);
         var es$1 = Core__List.map(it._1, (function (e) {
-                var e$1 = printExp$1(e);
+                var e$1 = printExp$2(e);
                 return e$1.expr(false);
               }));
         e = lift({
@@ -4322,17 +5775,17 @@ function printExp$1(param) {
                 _0: e$4,
                 _1: es$1
               },
-              ann: consumeContext(exprAppToString$1(getPrint(e$4), Core__List.map(es$1, (function (e) {
+              ann: consumeContext(exprAppToString$2(getPrint(e$4), Core__List.map(es$1, (function (e) {
                               return getPrint(e);
                             }))))
             });
         break;
     case "Bgn" :
         var es$2 = Core__List.map(it._0, (function (e) {
-                var e$1 = printExp$1(e);
+                var e$1 = printExp$2(e);
                 return e$1.expr(false);
               }));
-        var e$5 = printExp$1(it._1);
+        var e$5 = printExp$2(it._1);
         var e$6 = e$5.expr(false);
         e = lift({
               it: {
@@ -4340,22 +5793,22 @@ function printExp$1(param) {
                 _0: es$2,
                 _1: e$6
               },
-              ann: consumeContext(exprBgnToString$1(Core__List.map(es$2, (function (e) {
+              ann: consumeContext(exprBgnToString$2(Core__List.map(es$2, (function (e) {
                               return getPrint(e);
                             })), getPrint(e$6)))
             });
         break;
     case "If" :
-        var e_cnd = printExp$1(it._0);
-        var e_thn = printExp$1(it._1);
-        var e_els = printExp$1(it._2);
+        var e_cnd = printExp$2(it._0);
+        var e_thn = printExp$2(it._1);
+        var e_els = printExp$2(it._2);
         e = (function (sourceLocation) {
             return {
                     expr: (function (ctx) {
                         var e_cnd$1 = e_cnd.expr(true);
                         var e_thn$1 = e_thn.expr(true);
                         var e_els$1 = e_els.expr(true);
-                        var e = consumeContextWrap(exprIfToString$1(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        var e = consumeContextWrap(exprIfToString$2(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
                         return {
                                 it: {
                                   TAG: "If",
@@ -4419,10 +5872,10 @@ function printExp$1(param) {
                       }),
                     stat: (function (ctx) {
                         var ebs$1 = Core__List.map(ebs, (function (eb) {
-                                var e = printExp$1(eb[0]);
+                                var e = printExp$2(eb[0]);
                                 return [
                                         e.expr(false),
-                                        printBlock$1(eb[1], ctx)
+                                        printBlock$2(eb[1], ctx)
                                       ];
                               }));
                         var ob$1 = obToString(ob, ctx);
@@ -4436,7 +5889,7 @@ function printExp$1(param) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprCndToString$1(Core__List.map(ebs$1, (function (param) {
+                                    print: exprCndToString$2(Core__List.map(ebs$1, (function (param) {
                                                 return [
                                                         getPrint(param[0]),
                                                         getBlockPrint(param[1])
@@ -4453,28 +5906,28 @@ function printExp$1(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$1);
-        var b$2 = printBlock$1(it._1, "Return");
+        var xs$1 = Core__List.map(it._0, symbolToString$2);
+        var b$2 = printBlock$2(it._1, "Return");
         e = lift({
               it: {
                 TAG: "GLam",
                 _0: xs$1,
                 _1: b$2
               },
-              ann: consumeContextWrap(exprGenToString$1(Core__List.map(xs$1, (function (x) {
+              ann: consumeContextWrap(exprGenToString$2(Core__List.map(xs$1, (function (x) {
                               return getNamePrint(x);
                             })), getBlockPrint(b$2)))
             });
         break;
     case "Yield" :
-        var e$7 = printExp$1(it._0);
+        var e$7 = printExp$2(it._0);
         var e$8 = e$7.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
                 _0: e$8
               },
-              ann: consumeContextWrap(exprYieldToString$1(getPrint(e$8)))
+              ann: consumeContextWrap(exprYieldToString$2(getPrint(e$8)))
             });
         break;
     
@@ -4482,13 +5935,13 @@ function printExp$1(param) {
   return e(param.ann);
 }
 
-function printDef$1(param) {
+function printDef$2(param) {
   var d = param.it;
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$1(d._0);
-        var e = printExp$1(d._1);
+        var x = symbolToString$2(d._0);
+        var e = printExp$2(d._1);
         var e$1 = e.expr(false);
         match = [
           "",
@@ -4498,15 +5951,15 @@ function printDef$1(param) {
               _0: x,
               _1: e$1
             },
-            ann: defvarToString$1(getNamePrint(x), getPrint(e$1))
+            ann: defvarToString$2(getNamePrint(x), getPrint(e$1))
           },
           ";"
         ];
         break;
     case "Fun" :
-        var f = symbolToString$1(d._0);
-        var xs = Core__List.map(d._1, symbolToString$1);
-        var b = printBlock$1(d._2, "Return");
+        var f = symbolToString$2(d._0);
+        var xs = Core__List.map(d._1, symbolToString$2);
+        var b = printBlock$2(d._2, "Return");
         match = [
           "",
           {
@@ -4516,7 +5969,7 @@ function printDef$1(param) {
               _1: xs,
               _2: b
             },
-            ann: deffunToString$1(getNamePrint(f), Core__List.map(xs, (function (x) {
+            ann: deffunToString$2(getNamePrint(f), Core__List.map(xs, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b))
           },
@@ -4524,9 +5977,9 @@ function printDef$1(param) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$1(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$1);
-        var b$1 = printBlock$1(d._2, "Return");
+        var f$1 = symbolToString$2(d._0);
+        var xs$1 = Core__List.map(d._1, symbolToString$2);
+        var b$1 = printBlock$2(d._2, "Return");
         match = [
           "",
           {
@@ -4536,7 +5989,7 @@ function printDef$1(param) {
               _1: xs$1,
               _2: b$1
             },
-            ann: defgenToString$1(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
+            ann: defgenToString$2(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b$1))
           },
@@ -4559,12 +6012,12 @@ function printDef$1(param) {
         ];
 }
 
-function xeToString$1(param) {
+function xeToString$2(param) {
   var xe = param.it;
-  var x = symbolToString$1(xe[0]);
-  var e = printExp$1(xe[1]);
+  var x = symbolToString$2(xe[0]);
+  var e = printExp$2(xe[1]);
   var e$1 = e.expr(false);
-  var print = defvarToString$1(getNamePrint(x), getPrint(e$1));
+  var print = defvarToString$2(getNamePrint(x), getPrint(e$1));
   return {
           it: [
             x,
@@ -4579,15 +6032,15 @@ function xeToString$1(param) {
 
 function obToString(ob, ctx) {
   return Core__Option.map(ob, (function (b) {
-                return printBlock$1(b, ctx);
+                return printBlock$2(b, ctx);
               }));
 }
 
-function printBlock$1(param, context) {
+function printBlock$2(param, context) {
   var ann = param.ann;
   var b = param.it;
   if (b.TAG === "BRet") {
-    var e = printExp$1(b._0);
+    var e = printExp$2(b._0);
     var match = e.stat(context);
     var e$1 = match[1];
     var print = {
@@ -4626,8 +6079,8 @@ function printBlock$1(param, context) {
             }
           };
   }
-  var t = printTerm$1(b._0, "Step");
-  var b$1 = printBlock$1(b._1, context);
+  var t = printTerm$2(b._0, "Step");
+  var b$1 = printBlock$2(b._1, context);
   var print$1 = {
     TAG: "Group",
     _0: {
@@ -4660,11 +6113,11 @@ function printBlock$1(param, context) {
         };
 }
 
-function printTerm$1(param, ctx) {
+function printTerm$2(param, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
   if (it.TAG === "Def") {
-    var match = printDef$1(it._0);
+    var match = printDef$2(it._0);
     var it$1 = match[1];
     return {
             it: {
@@ -4677,7 +6130,7 @@ function printTerm$1(param, ctx) {
             }
           };
   }
-  var e = printExp$1(it._0);
+  var e = printExp$2(it._0);
   var match$1 = e.stat(ctx);
   var it$2 = match$1[1];
   return {
@@ -4692,13 +6145,13 @@ function printTerm$1(param, ctx) {
         };
 }
 
-function printOutputlet$1(o) {
+function printOutputlet$2(o) {
   var p = function (v) {
     switch (v.TAG) {
       case "Ref" :
           return "[Circular *" + v._0.toString() + "]";
       case "Con" :
-          return constantToString$1(v._0);
+          return constantToString$2(v._0);
       case "Struct" :
           var content = v._1;
           var i = v._0;
@@ -4723,12 +6176,12 @@ function printOutputlet$1(o) {
   }
 }
 
-function printOutput$1(sepOpt, os) {
+function printOutput$2(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
-  return Core__List.toArray(Core__List.map(os, printOutputlet$1)).join(sep);
+  return Core__List.toArray(Core__List.map(os, printOutputlet$2)).join(sep);
 }
 
-function printProgramFull$1(insertPrintTopLevel, p) {
+function printProgramFull$2(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var print = function (param) {
     var sourceLocation = param.ann;
@@ -4746,7 +6199,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$1(it._0, "Step");
+    var t = printTerm$2(it._0, "Step");
     var tmp = p.it;
     if (typeof tmp !== "object") {
       return {
@@ -4789,18 +6242,18 @@ function printProgramFull$1(insertPrintTopLevel, p) {
   return print(p$1);
 }
 
-function printProgram$1(insertPrintTopLevel, p) {
-  return toString(printProgramFull$1(insertPrintTopLevel, p).ann.print);
+function printProgram$2(insertPrintTopLevel, p) {
+  return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
 }
 
-function printStandAloneTerm$1(param) {
+function printStandAloneTerm$2(param) {
   var it = param.it;
   var tmp;
   if (it.TAG === "Def") {
-    var match = printDef$1(it._0);
+    var match = printDef$2(it._0);
     tmp = match[1].ann.print;
   } else {
-    var e = printExp$1(it._0);
+    var e = printExp$2(it._0);
     var match$1 = e.stat("Step");
     tmp = match$1[1].ann.print;
   }
@@ -4808,12 +6261,12 @@ function printStandAloneTerm$1(param) {
 }
 
 var JSPrinter = {
-  printName: printName$1,
-  printOutputlet: printOutputlet$1,
-  printOutput: printOutput$1,
-  printStandAloneTerm: printStandAloneTerm$1,
-  printProgram: printProgram$1,
-  printProgramFull: printProgramFull$1
+  printName: printName$2,
+  printOutputlet: printOutputlet$2,
+  printOutput: printOutput$2,
+  printStandAloneTerm: printStandAloneTerm$2,
+  printProgram: printProgram$2,
+  printProgramFull: printProgramFull$2
 };
 
 function toString$7(x) {
@@ -4850,7 +6303,7 @@ function refMut(env, x) {
   
 }
 
-function extend$1(ss, env) {
+function extend(ss, env) {
   var refs = Belt_HashMapString.make(0);
   return [
           refs,
@@ -4863,7 +6316,7 @@ function extend$1(ss, env) {
         ];
 }
 
-function printName$2(x) {
+function printName$3(x) {
   var re = /-/g;
   var matchFn = function (_matchPart, _offset, _wholeString) {
     return "_";
@@ -4871,7 +6324,7 @@ function printName$2(x) {
   return x.replace(re, matchFn);
 }
 
-function constantToString$2(c) {
+function constantToString$3(c) {
   if (typeof c !== "object") {
     if (c === "Uni") {
       return "None";
@@ -4900,7 +6353,7 @@ function constantToString$2(c) {
   }
 }
 
-function listToString$2(es) {
+function listToString$3(es) {
   if (Belt_List.some(es, (function (e) {
             return containsNL(e.it);
           }))) {
@@ -4964,7 +6417,7 @@ function listToString$2(es) {
   }
 }
 
-function defvarLike$2(op, x, e) {
+function defvarLike$3(op, x, e) {
   return {
           TAG: "Group",
           _0: {
@@ -4995,9 +6448,9 @@ function defvarLike$2(op, x, e) {
         };
 }
 
-function exprAppToString$2(e, es) {
+function exprAppToString$3(e, es) {
   return group2(e, {
-              it: listToString$2(es),
+              it: listToString$3(es),
               ann: undefined
             });
 }
@@ -5554,30 +7007,30 @@ function funLike$1(op, x, xs, e) {
                 ann: undefined
               },
               {
-                it: exprAppToString$2(x, xs),
+                it: exprAppToString$3(x, xs),
                 ann: undefined
               },
               indentBlock(e, 4)
             ]);
 }
 
-function defvarToString$2(x, e) {
-  return defvarLike$2("", x, e);
+function defvarToString$3(x, e) {
+  return defvarLike$3("", x, e);
 }
 
-function deffunToString$2(f, xs, b) {
+function deffunToString$3(f, xs, b) {
   return funLike$1("def", f, xs, b);
 }
 
-function defgenToString$2(f, xs, b) {
+function defgenToString$3(f, xs, b) {
   return funLike$1("def", f, xs, b);
 }
 
-function exprSetToString$2(x, e) {
-  return defvarLike$2("", x, e);
+function exprSetToString$3(x, e) {
+  return defvarLike$3("", x, e);
 }
 
-function exprLamToString$2(xs, b) {
+function exprLamToString$3(xs, b) {
   return s([
               "lambda ",
               ": ",
@@ -5588,7 +7041,7 @@ function exprLamToString$2(xs, b) {
             ]);
 }
 
-function exprYieldToString$2(e) {
+function exprYieldToString$3(e) {
   return s([
               "yield ",
               ""
@@ -5614,7 +7067,7 @@ function ifStat$1(cnd, thn, els) {
             ]);
 }
 
-function exprCndToString$2(ebs, ob) {
+function exprCndToString$3(ebs, ob) {
   if (ebs === /* [] */0) {
     throw {
           RE_EXN_ID: SMoLPrintError,
@@ -5644,7 +7097,7 @@ function exprCndToString$2(ebs, ob) {
   return concat("\nel", ebs$2);
 }
 
-function exprIfToString$2(e_cnd, e_thn, e_els) {
+function exprIfToString$3(e_cnd, e_thn, e_els) {
   return s([
               "",
               " if ",
@@ -5657,7 +7110,7 @@ function exprIfToString$2(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function symbolToString$2(param) {
+function symbolToString$3(param) {
   var it = param.it;
   return {
           it: it,
@@ -5665,13 +7118,13 @@ function symbolToString$2(param) {
             sourceLocation: param.ann,
             print: {
               TAG: "Plain",
-              _0: printName$2(it)
+              _0: printName$3(it)
             }
           }
         };
 }
 
-function printExp$2(param, env) {
+function printExp$3(param, env) {
   var it = param.it;
   var lift = function (param) {
     var print = param.ann;
@@ -5715,7 +7168,7 @@ function printExp$2(param, env) {
               },
               ann: consumeContext$1({
                     TAG: "Plain",
-                    _0: constantToString$2(c)
+                    _0: constantToString$3(c)
                   })
             });
         break;
@@ -5728,15 +7181,15 @@ function printExp$2(param, env) {
               },
               ann: consumeContext$1({
                     TAG: "Plain",
-                    _0: printName$2(x)
+                    _0: printName$3(x)
                   })
             });
         break;
     case "Set" :
         var x$1 = it._0;
         refMut(env, x$1.it);
-        var x$2 = symbolToString$2(x$1);
-        var e$1 = printExp$2(it._1, env);
+        var x$2 = symbolToString$3(x$1);
+        var e$1 = printExp$3(it._1, env);
         var e$2 = e$1.expr(false);
         e = lift({
               it: {
@@ -5744,11 +7197,11 @@ function printExp$2(param, env) {
                 _0: x$2,
                 _1: e$2
               },
-              ann: consumeContextStat$1(exprSetToString$2(getNamePrint(x$2), getPrint(e$2)))
+              ann: consumeContextStat$1(exprSetToString$3(getNamePrint(x$2), getPrint(e$2)))
             });
         break;
     case "Lam" :
-        var xs = Belt_List.map(it._0, symbolToString$2);
+        var xs = Belt_List.map(it._0, symbolToString$3);
         var b = printLamBody(it._1, xs, env);
         e = lift({
               it: {
@@ -5756,7 +7209,7 @@ function printExp$2(param, env) {
                 _0: xs,
                 _1: b
               },
-              ann: consumeContextWrap$1(exprLamToString$2({
+              ann: consumeContextWrap$1(exprLamToString$3({
                         it: concat(",", Belt_List.map(xs, getNamePrint)),
                         ann: undefined
                       }, getBlockPrint(b)))
@@ -5776,7 +7229,7 @@ function printExp$2(param, env) {
             };
     case "AppPrm" :
         var es = Belt_List.map(it._1, (function (e, b) {
-                var e$1 = printExp$2(e, env);
+                var e$1 = printExp$3(e, env);
                 return e$1.expr(b);
               }));
         var match = exprAppPrmToString$1(it._0, es);
@@ -5791,10 +7244,10 @@ function printExp$2(param, env) {
             });
         break;
     case "App" :
-        var e$3 = printExp$2(it._0, env);
+        var e$3 = printExp$3(it._0, env);
         var e$4 = e$3.expr(true);
         var es$1 = Belt_List.map(it._1, (function (e) {
-                var e$1 = printExp$2(e, env);
+                var e$1 = printExp$3(e, env);
                 return e$1.expr(false);
               }));
         e = lift({
@@ -5803,7 +7256,7 @@ function printExp$2(param, env) {
                 _0: e$4,
                 _1: es$1
               },
-              ann: consumeContext$1(exprAppToString$2(getPrint(e$4), Belt_List.map(es$1, (function (e) {
+              ann: consumeContext$1(exprAppToString$3(getPrint(e$4), Belt_List.map(es$1, (function (e) {
                               return getPrint(e);
                             }))))
             });
@@ -5815,16 +7268,16 @@ function printExp$2(param, env) {
               Error: new Error()
             };
     case "If" :
-        var e_cnd = printExp$2(it._0, env);
-        var e_thn = printExp$2(it._1, env);
-        var e_els = printExp$2(it._2, env);
+        var e_cnd = printExp$3(it._0, env);
+        var e_thn = printExp$3(it._1, env);
+        var e_els = printExp$3(it._2, env);
         e = (function (sourceLocation) {
             return {
                     expr: (function (ctx) {
                         var e_cnd$1 = e_cnd.expr(true);
                         var e_thn$1 = e_thn.expr(true);
                         var e_els$1 = e_els.expr(true);
-                        var e = consumeContextWrap$1(exprIfToString$2(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        var e = consumeContextWrap$1(exprIfToString$3(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
                         return {
                                 it: {
                                   TAG: "If",
@@ -5888,8 +7341,8 @@ function printExp$2(param, env) {
                       }),
                     stat: (function (ctx) {
                         var ebs$1 = Belt_List.map(ebs, (function (eb) {
-                                var e = printExp$2(eb[0], env);
-                                var e$1 = printBlock$2(eb[1], env);
+                                var e = printExp$3(eb[0], env);
+                                var e$1 = printBlock$3(eb[1], env);
                                 return [
                                         e.expr(false),
                                         e$1.stat(ctx)
@@ -5906,7 +7359,7 @@ function printExp$2(param, env) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprCndToString$2(Belt_List.map(ebs$1, (function (param) {
+                                    print: exprCndToString$3(Belt_List.map(ebs$1, (function (param) {
                                                 return [
                                                         getPrint(param[0]),
                                                         getBlockPrint(param[1])
@@ -5923,7 +7376,7 @@ function printExp$2(param, env) {
           });
         break;
     case "GLam" :
-        var xs$1 = Belt_List.map(it._0, symbolToString$2);
+        var xs$1 = Belt_List.map(it._0, symbolToString$3);
         var b$1 = printLamBody(it._1, xs$1, env);
         e = lift({
               it: {
@@ -5931,21 +7384,21 @@ function printExp$2(param, env) {
                 _0: xs$1,
                 _1: b$1
               },
-              ann: consumeContextWrap$1(exprLamToString$2({
+              ann: consumeContextWrap$1(exprLamToString$3({
                         it: concat(",", Belt_List.map(xs$1, getNamePrint)),
                         ann: undefined
                       }, getBlockPrint(b$1)))
             });
         break;
     case "Yield" :
-        var e$5 = printExp$2(it._0, env);
+        var e$5 = printExp$3(it._0, env);
         var e$6 = e$5.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
                 _0: e$6
               },
-              ann: consumeContextWrapEvenReturn(exprYieldToString$2(getPrint(e$6)))
+              ann: consumeContextWrapEvenReturn(exprYieldToString$3(getPrint(e$6)))
             });
         break;
     
@@ -5953,13 +7406,13 @@ function printExp$2(param, env) {
   return e(param.ann);
 }
 
-function printDef$2(param, env) {
+function printDef$3(param, env) {
   var d = param.it;
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$2(d._0);
-        var e = printExp$2(d._1, env);
+        var x = symbolToString$3(d._0);
+        var e = printExp$3(d._1, env);
         var e$1 = e.expr(false);
         match = [
           "",
@@ -5969,14 +7422,14 @@ function printDef$2(param, env) {
               _0: x,
               _1: e$1
             },
-            ann: defvarToString$2(getNamePrint(x), getPrint(e$1))
+            ann: defvarToString$3(getNamePrint(x), getPrint(e$1))
           },
           ""
         ];
         break;
     case "Fun" :
-        var f = symbolToString$2(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$2);
+        var f = symbolToString$3(d._0);
+        var xs = Belt_List.map(d._1, symbolToString$3);
         var b = printDefBody(d._2, xs, env);
         match = [
           "",
@@ -5987,7 +7440,7 @@ function printDef$2(param, env) {
               _1: xs,
               _2: b
             },
-            ann: deffunToString$2(getNamePrint(f), Belt_List.map(xs, (function (x) {
+            ann: deffunToString$3(getNamePrint(f), Belt_List.map(xs, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b))
           },
@@ -5995,8 +7448,8 @@ function printDef$2(param, env) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$2(d._0);
-        var xs$1 = Belt_List.map(d._1, symbolToString$2);
+        var f$1 = symbolToString$3(d._0);
+        var xs$1 = Belt_List.map(d._1, symbolToString$3);
         var b$1 = printDefBody(d._2, xs$1, env);
         match = [
           "",
@@ -6007,7 +7460,7 @@ function printDef$2(param, env) {
               _1: xs$1,
               _2: b$1
             },
-            ann: defgenToString$2(getNamePrint(f$1), Belt_List.map(xs$1, (function (x) {
+            ann: defgenToString$3(getNamePrint(f$1), Belt_List.map(xs$1, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b$1))
           },
@@ -6032,7 +7485,7 @@ function printDef$2(param, env) {
 
 function obToString$1(ob, ctx, env) {
   return Belt_Option.map(ob, (function (b) {
-                var e = printBlock$2(b, env);
+                var e = printBlock$3(b, env);
                 return e.stat(ctx);
               }));
 }
@@ -6041,7 +7494,7 @@ function printBlockHelper(param, env, context) {
   var ann = param.ann;
   var b = param.it;
   if (b.TAG === "BRet") {
-    var e = printExp$2(b._0, env);
+    var e = printExp$3(b._0, env);
     var match = e.stat(context);
     var e$1 = match[1];
     var print = {
@@ -6080,7 +7533,7 @@ function printBlockHelper(param, env, context) {
             }
           };
   }
-  var t = printTerm$2(b._0, env, "Step");
+  var t = printTerm$3(b._0, env, "Step");
   var b$1 = printBlockHelper(b._1, env, context);
   var print$1 = {
     TAG: "Group",
@@ -6114,12 +7567,12 @@ function printBlockHelper(param, env, context) {
         };
 }
 
-function printBlock$2(b, env) {
+function printBlock$3(b, env) {
   return {
           expr: (function (ctx) {
               var e = b.it;
               if (e.TAG === "BRet") {
-                var e$1 = printExp$2(e._0, env);
+                var e$1 = printExp$3(e._0, env);
                 var match = e$1.expr(ctx);
                 var ann = match.ann;
                 return {
@@ -6159,8 +7612,8 @@ function printLamBody(b, args, env) {
     var args$1 = Belt_List.map(args, (function (x) {
             return x.it;
           }));
-    var match = extend$1(args$1, env);
-    var e$1 = printExp$2(e._0, match[1]);
+    var match = extend(args$1, env);
+    var e$1 = printExp$3(e._0, match[1]);
     var match$1 = e$1.expr(false);
     var ann = match$1.ann;
     return {
@@ -6188,7 +7641,7 @@ function printDefBody(b, args, env) {
   var args$1 = Belt_List.map(args, (function (x) {
           return x.it;
         }));
-  var match = extend$1(Belt_List.concat(locs, args$1), env);
+  var match = extend(Belt_List.concat(locs, args$1), env);
   var b$1 = printBlockHelper(b, match[1], "Return");
   var print = concat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
@@ -6215,11 +7668,11 @@ function printDefBody(b, args, env) {
         };
 }
 
-function printTerm$2(param, env, ctx) {
+function printTerm$3(param, env, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
   if (it.TAG === "Def") {
-    var match = printDef$2(it._0, env);
+    var match = printDef$3(it._0, env);
     var it$1 = match[1];
     return {
             it: {
@@ -6232,7 +7685,7 @@ function printTerm$2(param, env, ctx) {
             }
           };
   }
-  var e = printExp$2(it._0, env);
+  var e = printExp$3(it._0, env);
   var match$1 = e.stat(ctx);
   var it$2 = match$1[1];
   return {
@@ -6247,13 +7700,13 @@ function printTerm$2(param, env, ctx) {
         };
 }
 
-function printOutputlet$2(o) {
+function printOutputlet$3(o) {
   var p = function (v) {
     switch (v.TAG) {
       case "Ref" :
           return "[...]";
       case "Con" :
-          return constantToString$2(v._0);
+          return constantToString$3(v._0);
       case "Struct" :
           var content = v._1;
           var i = "";
@@ -6277,12 +7730,12 @@ function printOutputlet$2(o) {
   }
 }
 
-function printOutput$2(sepOpt, os) {
+function printOutput$3(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
-  return Belt_List.toArray(Belt_List.map(os, printOutputlet$2)).join(sep);
+  return Belt_List.toArray(Belt_List.map(os, printOutputlet$3)).join(sep);
 }
 
-function printProgramFull$2(insertPrintTopLevel, p) {
+function printProgramFull$3(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var xs = xsOfProgram(p$1);
   var env = {
@@ -6307,7 +7760,7 @@ function printProgramFull$2(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$2(it._0, env, "Step");
+    var t = printTerm$3(it._0, env, "Step");
     var tmp = p.it;
     if (typeof tmp !== "object") {
       return {
@@ -6353,11 +7806,11 @@ function printProgramFull$2(insertPrintTopLevel, p) {
   return print(p$1);
 }
 
-function printProgram$2(insertPrintTopLevel, p) {
-  return toString(printProgramFull$2(insertPrintTopLevel, p).ann.print);
+function printProgram$3(insertPrintTopLevel, p) {
+  return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
 }
 
-function printStandAloneTerm$2(param) {
+function printStandAloneTerm$3(param) {
   var it = param.it;
   var globalEnv = {
     TAG: "G",
@@ -6365,10 +7818,10 @@ function printStandAloneTerm$2(param) {
   };
   var tmp;
   if (it.TAG === "Def") {
-    var match = printDef$2(it._0, globalEnv);
+    var match = printDef$3(it._0, globalEnv);
     tmp = match[1].ann.print;
   } else {
-    var e = printExp$2(it._0, globalEnv);
+    var e = printExp$3(it._0, globalEnv);
     var match$1 = e.stat("Step");
     tmp = match$1[1].ann.print;
   }
@@ -6376,19 +7829,19 @@ function printStandAloneTerm$2(param) {
 }
 
 var PYPrinter = {
-  printName: printName$2,
-  printOutputlet: printOutputlet$2,
-  printOutput: printOutput$2,
-  printStandAloneTerm: printStandAloneTerm$2,
-  printProgram: printProgram$2,
-  printProgramFull: printProgramFull$2
+  printName: printName$3,
+  printOutputlet: printOutputlet$3,
+  printOutput: printOutput$3,
+  printStandAloneTerm: printStandAloneTerm$3,
+  printProgram: printProgram$3,
+  printProgramFull: printProgramFull$3
 };
 
-function printName$3(x) {
+function printName$4(x) {
   return x;
 }
 
-function constantToString$3(c) {
+function constantToString$4(c) {
   if (typeof c !== "object") {
     if (c === "Uni") {
       return "Unit";
@@ -6413,7 +7866,7 @@ function constantToString$3(c) {
   }
 }
 
-function listToString$3(es) {
+function listToString$4(es) {
   if (Core__List.some(es, (function (e) {
             return containsNL(e.it);
           }))) {
@@ -6477,7 +7930,7 @@ function listToString$3(es) {
   }
 }
 
-function defvarLike$3(op, x, e) {
+function defvarLike$4(op, x, e) {
   return {
           TAG: "Group",
           _0: {
@@ -6508,9 +7961,9 @@ function defvarLike$3(op, x, e) {
         };
 }
 
-function exprAppToString$3(e, es) {
+function exprAppToString$4(e, es) {
   return group2(e, {
-              it: listToString$3(es),
+              it: listToString$4(es),
               ann: undefined
             });
 }
@@ -7043,30 +8496,30 @@ function funLike$2(op, x, xs, e) {
                 ann: undefined
               },
               {
-                it: exprAppToString$3(x, xs),
+                it: exprAppToString$4(x, xs),
                 ann: undefined
               },
               indentBlock(e, 2)
             ]);
 }
 
-function defvarToString$3(x, e) {
-  return defvarLike$3("let ", x, e);
+function defvarToString$4(x, e) {
+  return defvarLike$4("let ", x, e);
 }
 
-function deffunToString$3(f, xs, b) {
+function deffunToString$4(f, xs, b) {
   return funLike$2("fun", f, xs, b);
 }
 
-function defgenToString$3(f, xs, b) {
+function defgenToString$4(f, xs, b) {
   return funLike$2("gen fun", f, xs, b);
 }
 
-function exprSetToString$3(x, e) {
-  return defvarLike$3("", x, e);
+function exprSetToString$4(x, e) {
+  return defvarLike$4("", x, e);
 }
 
-function exprLamToString$3(xs, b) {
+function exprLamToString$4(xs, b) {
   return funLike$2("lam", {
               it: {
                 TAG: "Plain",
@@ -7076,7 +8529,7 @@ function exprLamToString$3(xs, b) {
             }, xs, b);
 }
 
-function exprGenToString$2(xs, b) {
+function exprGenToString$3(xs, b) {
   return funLike$2("gen lam", {
               it: {
                 TAG: "Plain",
@@ -7086,15 +8539,15 @@ function exprGenToString$2(xs, b) {
             }, xs, b);
 }
 
-function exprYieldToString$3(e) {
+function exprYieldToString$4(e) {
   return s([
               "yield ",
               ""
             ], [e]);
 }
 
-function exprBgnToString$2(es, e) {
-  return listToString$3(Belt_List.concatMany([
+function exprBgnToString$3(es, e) {
+  return listToString$4(Belt_List.concatMany([
                   es,
                   {
                     hd: e,
@@ -7122,7 +8575,7 @@ function ifStat$2(cnd, thn, els) {
             ]);
 }
 
-function exprCndToString$3(ebs, ob) {
+function exprCndToString$4(ebs, ob) {
   if (ebs === /* [] */0) {
     throw {
           RE_EXN_ID: SMoLPrintError,
@@ -7155,7 +8608,7 @@ function exprCndToString$3(ebs, ob) {
                 }));
 }
 
-function exprIfToString$3(e_cnd, e_thn, e_els) {
+function exprIfToString$4(e_cnd, e_thn, e_els) {
   return s([
               "if ",
               " then ",
@@ -7168,7 +8621,7 @@ function exprIfToString$3(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function letLike$1(op, xes, b) {
+function letLike$2(op, xes, b) {
   var xes_it = concat("\n", xes);
   var xes$1 = {
     it: xes_it,
@@ -7263,15 +8716,15 @@ function letLike$1(op, xes, b) {
         };
 }
 
-function exprLetToString$1(xes, b) {
-  return letLike$1("let", xes, b);
+function exprLetToString$2(xes, b) {
+  return letLike$2("let", xes, b);
 }
 
-function exprLetrecToString$1(xes, b) {
-  return letLike$1("letrec", xes, b);
+function exprLetrecToString$2(xes, b) {
+  return letLike$2("letrec", xes, b);
 }
 
-function symbolToString$3(param) {
+function symbolToString$4(param) {
   var it = param.it;
   return {
           it: it,
@@ -7285,7 +8738,7 @@ function symbolToString$3(param) {
         };
 }
 
-function printExp$3(param) {
+function printExp$4(param) {
   var it = param.it;
   var lift = function (param) {
     var print = param.ann;
@@ -7329,7 +8782,7 @@ function printExp$3(param) {
               },
               ann: consumeContext$2({
                     TAG: "Plain",
-                    _0: constantToString$3(c)
+                    _0: constantToString$4(c)
                   })
             });
         break;
@@ -7347,8 +8800,8 @@ function printExp$3(param) {
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$3(it._0);
-        var e$1 = printExp$3(it._1);
+        var x$1 = symbolToString$4(it._0);
+        var e$1 = printExp$4(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
               it: {
@@ -7356,30 +8809,30 @@ function printExp$3(param) {
                 _0: x$1,
                 _1: e$2
               },
-              ann: consumeContextWrapVoid(exprSetToString$3(getNamePrint(x$1), getPrint(e$2)))
+              ann: consumeContextWrapVoid(exprSetToString$4(getNamePrint(x$1), getPrint(e$2)))
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$3);
-        var b = printBlock$3(it._1, "Return");
+        var xs = Core__List.map(it._0, symbolToString$4);
+        var b = printBlock$4(it._1, "Return");
         e = lift({
               it: {
                 TAG: "Lam",
                 _0: xs,
                 _1: b
               },
-              ann: consumeContextWrap$2(exprLamToString$3(Core__List.map(xs, (function (x) {
+              ann: consumeContextWrap$2(exprLamToString$4(Core__List.map(xs, (function (x) {
                               return getNamePrint(x);
                             })), getBlockPrint(b)))
             });
         break;
     case "Let" :
         var b$1 = it._1;
-        var xes = Core__List.map(it._0, xeToString$2);
+        var xes = Core__List.map(it._0, xeToString$3);
         e = (function (sourceLocation) {
             return {
                     expr: (function (param) {
-                        var b$2 = printBlock$3(b$1, "Step");
+                        var b$2 = printBlock$4(b$1, "Step");
                         return {
                                 it: {
                                   TAG: "Let",
@@ -7388,14 +8841,14 @@ function printExp$3(param) {
                                 },
                                 ann: {
                                   sourceLocation: sourceLocation,
-                                  print: exprLetToString$1(Core__List.map(xes, (function (xe) {
+                                  print: exprLetToString$2(Core__List.map(xes, (function (xe) {
                                               return getBindPrint(xe);
                                             })), getBlockPrint(b$2))
                                 }
                               };
                       }),
                     stat: (function (ctx) {
-                        var b$2 = printBlock$3(b$1, ctx);
+                        var b$2 = printBlock$4(b$1, ctx);
                         return [
                                 "",
                                 {
@@ -7406,7 +8859,7 @@ function printExp$3(param) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprLetToString$1(Core__List.map(xes, (function (xe) {
+                                    print: exprLetToString$2(Core__List.map(xes, (function (xe) {
                                                 return getBindPrint(xe);
                                               })), getBlockPrint(b$2))
                                   }
@@ -7419,11 +8872,11 @@ function printExp$3(param) {
         break;
     case "Letrec" :
         var b$2 = it._1;
-        var xes$1 = Core__List.map(it._0, xeToString$2);
+        var xes$1 = Core__List.map(it._0, xeToString$3);
         e = (function (sourceLocation) {
             return {
                     expr: (function (param) {
-                        var b$3 = printBlock$3(b$2, "Step");
+                        var b$3 = printBlock$4(b$2, "Step");
                         return {
                                 it: {
                                   TAG: "Letrec",
@@ -7432,14 +8885,14 @@ function printExp$3(param) {
                                 },
                                 ann: {
                                   sourceLocation: sourceLocation,
-                                  print: exprLetrecToString$1(Core__List.map(xes$1, (function (xe) {
+                                  print: exprLetrecToString$2(Core__List.map(xes$1, (function (xe) {
                                               return getBindPrint(xe);
                                             })), getBlockPrint(b$3))
                                 }
                               };
                       }),
                     stat: (function (ctx) {
-                        var b$3 = printBlock$3(b$2, ctx);
+                        var b$3 = printBlock$4(b$2, ctx);
                         return [
                                 "",
                                 {
@@ -7450,7 +8903,7 @@ function printExp$3(param) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprLetrecToString$1(Core__List.map(xes$1, (function (xe) {
+                                    print: exprLetrecToString$2(Core__List.map(xes$1, (function (xe) {
                                                 return getBindPrint(xe);
                                               })), getBlockPrint(b$3))
                                   }
@@ -7464,7 +8917,7 @@ function printExp$3(param) {
     case "AppPrm" :
         var es = Core__List.map(it._1, (function (e) {
                 return function (b) {
-                  var e$1 = printExp$3(e);
+                  var e$1 = printExp$4(e);
                   return e$1.expr(b);
                 };
               }));
@@ -7480,10 +8933,10 @@ function printExp$3(param) {
             });
         break;
     case "App" :
-        var e$3 = printExp$3(it._0);
+        var e$3 = printExp$4(it._0);
         var e$4 = e$3.expr(true);
         var es$1 = Core__List.map(it._1, (function (e) {
-                var e$1 = printExp$3(e);
+                var e$1 = printExp$4(e);
                 return e$1.expr(false);
               }));
         e = lift({
@@ -7492,17 +8945,17 @@ function printExp$3(param) {
                 _0: e$4,
                 _1: es$1
               },
-              ann: consumeContext$2(exprAppToString$3(getPrint(e$4), Core__List.map(es$1, (function (e) {
+              ann: consumeContext$2(exprAppToString$4(getPrint(e$4), Core__List.map(es$1, (function (e) {
                               return getPrint(e);
                             }))))
             });
         break;
     case "Bgn" :
         var es$2 = Core__List.map(it._0, (function (e) {
-                var e$1 = printExp$3(e);
+                var e$1 = printExp$4(e);
                 return e$1.expr(false);
               }));
-        var e$5 = printExp$3(it._1);
+        var e$5 = printExp$4(it._1);
         var e$6 = e$5.expr(false);
         e = lift({
               it: {
@@ -7510,22 +8963,22 @@ function printExp$3(param) {
                 _0: es$2,
                 _1: e$6
               },
-              ann: consumeContext$2(exprBgnToString$2(Core__List.map(es$2, (function (e) {
+              ann: consumeContext$2(exprBgnToString$3(Core__List.map(es$2, (function (e) {
                               return getPrint(e);
                             })), getPrint(e$6)))
             });
         break;
     case "If" :
-        var e_cnd = printExp$3(it._0);
-        var e_thn = printExp$3(it._1);
-        var e_els = printExp$3(it._2);
+        var e_cnd = printExp$4(it._0);
+        var e_thn = printExp$4(it._1);
+        var e_els = printExp$4(it._2);
         e = (function (sourceLocation) {
             return {
                     expr: (function (ctx) {
                         var e_cnd$1 = e_cnd.expr(true);
                         var e_thn$1 = e_thn.expr(true);
                         var e_els$1 = e_els.expr(true);
-                        var e = consumeContextWrap$2(exprIfToString$3(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
+                        var e = consumeContextWrap$2(exprIfToString$4(getPrint(e_cnd$1), getPrint(e_thn$1), getPrint(e_els$1)));
                         return {
                                 it: {
                                   TAG: "If",
@@ -7589,10 +9042,10 @@ function printExp$3(param) {
                       }),
                     stat: (function (ctx) {
                         var ebs$1 = Core__List.map(ebs, (function (eb) {
-                                var e = printExp$3(eb[0]);
+                                var e = printExp$4(eb[0]);
                                 return [
                                         e.expr(false),
-                                        printBlock$3(eb[1], ctx)
+                                        printBlock$4(eb[1], ctx)
                                       ];
                               }));
                         var ob$1 = obToString$2(ob, ctx);
@@ -7606,7 +9059,7 @@ function printExp$3(param) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprCndToString$3(Core__List.map(ebs$1, (function (param) {
+                                    print: exprCndToString$4(Core__List.map(ebs$1, (function (param) {
                                                 return [
                                                         getPrint(param[0]),
                                                         getBlockPrint(param[1])
@@ -7623,28 +9076,28 @@ function printExp$3(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$3);
-        var b$3 = printBlock$3(it._1, "Return");
+        var xs$1 = Core__List.map(it._0, symbolToString$4);
+        var b$3 = printBlock$4(it._1, "Return");
         e = lift({
               it: {
                 TAG: "GLam",
                 _0: xs$1,
                 _1: b$3
               },
-              ann: consumeContextWrap$2(exprGenToString$2(Core__List.map(xs$1, (function (x) {
+              ann: consumeContextWrap$2(exprGenToString$3(Core__List.map(xs$1, (function (x) {
                               return getNamePrint(x);
                             })), getBlockPrint(b$3)))
             });
         break;
     case "Yield" :
-        var e$7 = printExp$3(it._0);
+        var e$7 = printExp$4(it._0);
         var e$8 = e$7.expr(false);
         e = lift({
               it: {
                 TAG: "Yield",
                 _0: e$8
               },
-              ann: consumeContextWrap$2(exprYieldToString$3(getPrint(e$8)))
+              ann: consumeContextWrap$2(exprYieldToString$4(getPrint(e$8)))
             });
         break;
     
@@ -7652,13 +9105,13 @@ function printExp$3(param) {
   return e(param.ann);
 }
 
-function printDef$3(param) {
+function printDef$4(param) {
   var d = param.it;
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$3(d._0);
-        var e = printExp$3(d._1);
+        var x = symbolToString$4(d._0);
+        var e = printExp$4(d._1);
         var e$1 = e.expr(false);
         match = [
           "",
@@ -7668,15 +9121,15 @@ function printDef$3(param) {
               _0: x,
               _1: e$1
             },
-            ann: defvarToString$3(getNamePrint(x), getPrint(e$1))
+            ann: defvarToString$4(getNamePrint(x), getPrint(e$1))
           },
           ""
         ];
         break;
     case "Fun" :
-        var f = symbolToString$3(d._0);
-        var xs = Core__List.map(d._1, symbolToString$3);
-        var b = printBlock$3(d._2, "Return");
+        var f = symbolToString$4(d._0);
+        var xs = Core__List.map(d._1, symbolToString$4);
+        var b = printBlock$4(d._2, "Return");
         match = [
           "",
           {
@@ -7686,7 +9139,7 @@ function printDef$3(param) {
               _1: xs,
               _2: b
             },
-            ann: deffunToString$3(getNamePrint(f), Core__List.map(xs, (function (x) {
+            ann: deffunToString$4(getNamePrint(f), Core__List.map(xs, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b))
           },
@@ -7694,9 +9147,9 @@ function printDef$3(param) {
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$3(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$3);
-        var b$1 = printBlock$3(d._2, "Return");
+        var f$1 = symbolToString$4(d._0);
+        var xs$1 = Core__List.map(d._1, symbolToString$4);
+        var b$1 = printBlock$4(d._2, "Return");
         match = [
           "",
           {
@@ -7706,7 +9159,7 @@ function printDef$3(param) {
               _1: xs$1,
               _2: b$1
             },
-            ann: defgenToString$3(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
+            ann: defgenToString$4(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b$1))
           },
@@ -7729,12 +9182,12 @@ function printDef$3(param) {
         ];
 }
 
-function xeToString$2(param) {
+function xeToString$3(param) {
   var xe = param.it;
-  var x = symbolToString$3(xe[0]);
-  var e = printExp$3(xe[1]);
+  var x = symbolToString$4(xe[0]);
+  var e = printExp$4(xe[1]);
   var e$1 = e.expr(false);
-  var print = defvarToString$3(getNamePrint(x), getPrint(e$1));
+  var print = defvarToString$4(getNamePrint(x), getPrint(e$1));
   return {
           it: [
             x,
@@ -7749,15 +9202,15 @@ function xeToString$2(param) {
 
 function obToString$2(ob, ctx) {
   return Core__Option.map(ob, (function (b) {
-                return printBlock$3(b, ctx);
+                return printBlock$4(b, ctx);
               }));
 }
 
-function printBlock$3(param, context) {
+function printBlock$4(param, context) {
   var ann = param.ann;
   var b = param.it;
   if (b.TAG === "BRet") {
-    var e = printExp$3(b._0);
+    var e = printExp$4(b._0);
     var match = e.stat(context);
     var e$1 = match[1];
     var print = {
@@ -7796,8 +9249,8 @@ function printBlock$3(param, context) {
             }
           };
   }
-  var t = printTerm$3(b._0, "Step");
-  var b$1 = printBlock$3(b._1, context);
+  var t = printTerm$4(b._0, "Step");
+  var b$1 = printBlock$4(b._1, context);
   var print$1 = {
     TAG: "Group",
     _0: {
@@ -7830,11 +9283,11 @@ function printBlock$3(param, context) {
         };
 }
 
-function printTerm$3(param, ctx) {
+function printTerm$4(param, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
   if (it.TAG === "Def") {
-    var match = printDef$3(it._0);
+    var match = printDef$4(it._0);
     var it$1 = match[1];
     return {
             it: {
@@ -7847,7 +9300,7 @@ function printTerm$3(param, ctx) {
             }
           };
   }
-  var e = printExp$3(it._0);
+  var e = printExp$4(it._0);
   var match$1 = e.stat(ctx);
   var it$2 = match$1[1];
   return {
@@ -7862,13 +9315,13 @@ function printTerm$3(param, ctx) {
         };
 }
 
-function printOutputlet$3(o) {
+function printOutputlet$4(o) {
   var p = function (v) {
     switch (v.TAG) {
       case "Ref" :
           return "#" + v._0.toString() + "#";
       case "Con" :
-          return constantToString$3(v._0);
+          return constantToString$4(v._0);
       case "Struct" :
           var content = v._1;
           var i = v._0;
@@ -7893,12 +9346,12 @@ function printOutputlet$3(o) {
   }
 }
 
-function printOutput$3(sepOpt, os) {
+function printOutput$4(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
-  return Core__List.toArray(Core__List.map(os, printOutputlet$3)).join(sep);
+  return Core__List.toArray(Core__List.map(os, printOutputlet$4)).join(sep);
 }
 
-function printProgramFull$3(insertPrintTopLevel, p) {
+function printProgramFull$4(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var print = function (param) {
     var sourceLocation = param.ann;
@@ -7916,7 +9369,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$3(it._0, "Step");
+    var t = printTerm$4(it._0, "Step");
     var prefix = "";
     var suffix = "";
     var tmp = p.it;
@@ -7964,18 +9417,18 @@ function printProgramFull$3(insertPrintTopLevel, p) {
   return print(p$1);
 }
 
-function printProgram$3(insertPrintTopLevel, p) {
-  return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
+function printProgram$4(insertPrintTopLevel, p) {
+  return toString(printProgramFull$4(insertPrintTopLevel, p).ann.print);
 }
 
-function printStandAloneTerm$3(param) {
+function printStandAloneTerm$4(param) {
   var it = param.it;
   var tmp;
   if (it.TAG === "Def") {
-    var match = printDef$3(it._0);
+    var match = printDef$4(it._0);
     tmp = match[1].ann.print;
   } else {
-    var e = printExp$3(it._0);
+    var e = printExp$4(it._0);
     var match$1 = e.stat("Step");
     tmp = match$1[1].ann.print;
   }
@@ -7983,15 +9436,15 @@ function printStandAloneTerm$3(param) {
 }
 
 var PCPrinter = {
-  printName: printName$3,
-  printOutputlet: printOutputlet$3,
-  printOutput: printOutput$3,
-  printStandAloneTerm: printStandAloneTerm$3,
-  printProgram: printProgram$3,
-  printProgramFull: printProgramFull$3
+  printName: printName$4,
+  printOutputlet: printOutputlet$4,
+  printOutput: printOutput$4,
+  printStandAloneTerm: printStandAloneTerm$4,
+  printProgram: printProgram$4,
+  printProgramFull: printProgramFull$4
 };
 
-function printName$4(x) {
+function printName$5(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
@@ -8004,7 +9457,7 @@ function printName$4(x) {
   }
 }
 
-function constantToString$4(c) {
+function constantToString$5(c) {
   if (typeof c !== "object") {
     if (c === "Uni") {
       return "null";
@@ -8033,7 +9486,7 @@ function constantToString$4(c) {
   }
 }
 
-function listToString$4(es) {
+function listToString$5(es) {
   if (Core__List.some(es, (function (e) {
             return containsNL(e.it);
           }))) {
@@ -8097,7 +9550,7 @@ function listToString$4(es) {
   }
 }
 
-function defvarLike$4(op, x, e) {
+function defvarLike$5(op, x, e) {
   return {
           TAG: "Group",
           _0: {
@@ -8128,7 +9581,7 @@ function defvarLike$4(op, x, e) {
         };
 }
 
-function exprAppToString$4(e, es) {
+function exprAppToString$5(e, es) {
   return group2(e, es === /* [] */0 ? ({
                   it: {
                     TAG: "Plain",
@@ -8136,7 +9589,7 @@ function exprAppToString$4(e, es) {
                   },
                   ann: undefined
                 }) : ({
-                  it: listToString$4(es),
+                  it: listToString$5(es),
                   ann: undefined
                 }));
 }
@@ -8657,12 +10110,12 @@ function exprAppPrmToString$3(p, es) {
       };
 }
 
-function defvarToString$4(x, e) {
+function defvarToString$5(x, e) {
   var keyword = containsVarMutation.contents ? "var" : "val";
-  return defvarLike$4(keyword + " ", x, e);
+  return defvarLike$5(keyword + " ", x, e);
 }
 
-function deffunToString$4(f, xs, b) {
+function deffunToString$5(f, xs, b) {
   var op = "def";
   return s([
               "",
@@ -8678,7 +10131,7 @@ function deffunToString$4(f, xs, b) {
                 ann: undefined
               },
               {
-                it: exprAppToString$4(f, Core__List.map(xs, (function (x) {
+                it: exprAppToString$5(f, Core__List.map(xs, (function (x) {
                             return {
                                     it: s([
                                           "",
@@ -8693,11 +10146,11 @@ function deffunToString$4(f, xs, b) {
             ]);
 }
 
-function exprSetToString$4(x, e) {
-  return defvarLike$4("", x, e);
+function exprSetToString$5(x, e) {
+  return defvarLike$5("", x, e);
 }
 
-function exprLamToString$4(xs, b) {
+function exprLamToString$5(xs, b) {
   var xs_it = concat(", ", Core__List.map(xs, (function (x) {
               return {
                       it: group2(x, {
@@ -8724,8 +10177,8 @@ function exprLamToString$4(xs, b) {
             ]);
 }
 
-function exprBgnToString$3(es, e) {
-  return listToString$4(Belt_List.concatMany([
+function exprBgnToString$4(es, e) {
+  return listToString$5(Belt_List.concatMany([
                   es,
                   {
                     hd: e,
@@ -8753,7 +10206,7 @@ function ifStat$3(cnd, thn, els) {
             ]);
 }
 
-function exprCndToString$4(ebs, ob) {
+function exprCndToString$5(ebs, ob) {
   var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
                   it: ifStat$3(param[0], param[1], undefined),
@@ -8776,8 +10229,8 @@ function exprCndToString$4(ebs, ob) {
   return concat(" else ", ebs$2);
 }
 
-function exprIfToString$4(e_cnd, e_thn, e_els) {
-  return exprCndToString$4({
+function exprIfToString$5(e_cnd, e_thn, e_els) {
+  return exprCndToString$5({
               hd: [
                 e_cnd,
                 e_thn
@@ -8786,7 +10239,7 @@ function exprIfToString$4(e_cnd, e_thn, e_els) {
             }, e_els);
 }
 
-function symbolToString$4(param) {
+function symbolToString$5(param) {
   var it = param.it;
   return {
           it: it,
@@ -8794,13 +10247,13 @@ function symbolToString$4(param) {
             sourceLocation: param.ann,
             print: {
               TAG: "Plain",
-              _0: printName$4(it)
+              _0: printName$5(it)
             }
           }
         };
 }
 
-function printExp$4(param) {
+function printExp$5(param) {
   var it = param.it;
   var lift = function (param) {
     var print = param.ann;
@@ -8844,7 +10297,7 @@ function printExp$4(param) {
               },
               ann: consumeContext$3({
                     TAG: "Plain",
-                    _0: constantToString$4(c)
+                    _0: constantToString$5(c)
                   })
             });
         break;
@@ -8857,13 +10310,13 @@ function printExp$4(param) {
               },
               ann: consumeContext$3({
                     TAG: "Plain",
-                    _0: printName$4(x)
+                    _0: printName$5(x)
                   })
             });
         break;
     case "Set" :
-        var x$1 = symbolToString$4(it._0);
-        var e$1 = printExp$4(it._1);
+        var x$1 = symbolToString$5(it._0);
+        var e$1 = printExp$5(it._1);
         var e$2 = e$1.expr(false);
         e = lift({
               it: {
@@ -8871,19 +10324,19 @@ function printExp$4(param) {
                 _0: x$1,
                 _1: e$2
               },
-              ann: consumeContextVoid$3(exprSetToString$4(getNamePrint(x$1), getPrint(e$2)))
+              ann: consumeContextVoid$3(exprSetToString$5(getNamePrint(x$1), getPrint(e$2)))
             });
         break;
     case "Lam" :
-        var xs = Core__List.map(it._0, symbolToString$4);
-        var b = printBlock$4(it._1, "Return");
+        var xs = Core__List.map(it._0, symbolToString$5);
+        var b = printBlock$5(it._1, "Return");
         e = lift({
               it: {
                 TAG: "Lam",
                 _0: xs,
                 _1: b
               },
-              ann: consumeContextWrap$3(exprLamToString$4(Core__List.map(xs, (function (x) {
+              ann: consumeContextWrap$3(exprLamToString$5(Core__List.map(xs, (function (x) {
                               return getNamePrint(x);
                             })), getBlockPrint(b)))
             });
@@ -8903,7 +10356,7 @@ function printExp$4(param) {
     case "AppPrm" :
         var es = Core__List.map(it._1, (function (e) {
                 return function (b) {
-                  var e$1 = printExp$4(e);
+                  var e$1 = printExp$5(e);
                   return e$1.expr(b);
                 };
               }));
@@ -8919,10 +10372,10 @@ function printExp$4(param) {
             });
         break;
     case "App" :
-        var e$3 = printExp$4(it._0);
+        var e$3 = printExp$5(it._0);
         var e$4 = e$3.expr(true);
         var es$1 = Core__List.map(it._1, (function (e) {
-                var e$1 = printExp$4(e);
+                var e$1 = printExp$5(e);
                 return e$1.expr(false);
               }));
         e = lift({
@@ -8931,17 +10384,17 @@ function printExp$4(param) {
                 _0: e$4,
                 _1: es$1
               },
-              ann: consumeContext$3(exprAppToString$4(getPrint(e$4), Core__List.map(es$1, (function (e) {
+              ann: consumeContext$3(exprAppToString$5(getPrint(e$4), Core__List.map(es$1, (function (e) {
                               return getPrint(e);
                             }))))
             });
         break;
     case "Bgn" :
         var es$2 = Core__List.map(it._0, (function (e) {
-                var e$1 = printExp$4(e);
+                var e$1 = printExp$5(e);
                 return e$1.expr(false);
               }));
-        var e$5 = printExp$4(it._1);
+        var e$5 = printExp$5(it._1);
         var e$6 = e$5.expr(false);
         e = lift({
               it: {
@@ -8949,17 +10402,17 @@ function printExp$4(param) {
                 _0: es$2,
                 _1: e$6
               },
-              ann: consumeContext$3(exprBgnToString$3(Core__List.map(es$2, (function (e) {
+              ann: consumeContext$3(exprBgnToString$4(Core__List.map(es$2, (function (e) {
                               return getPrint(e);
                             })), getPrint(e$6)))
             });
         break;
     case "If" :
-        var e$7 = printExp$4(it._0);
+        var e$7 = printExp$5(it._0);
         var e_cnd = e$7.expr(false);
-        var e$8 = printExp$4(it._1);
+        var e$8 = printExp$5(it._1);
         var e_thn = e$8.expr(false);
-        var e$9 = printExp$4(it._2);
+        var e$9 = printExp$5(it._2);
         var e_els = e$9.expr(false);
         e = lift({
               it: {
@@ -8968,7 +10421,7 @@ function printExp$4(param) {
                 _1: e_thn,
                 _2: e_els
               },
-              ann: consumeContextWrap$3(exprIfToString$4(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)))
+              ann: consumeContextWrap$3(exprIfToString$5(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els)))
             });
         break;
     case "Cnd" :
@@ -8985,10 +10438,10 @@ function printExp$4(param) {
                       }),
                     stat: (function (ctx) {
                         var ebs$1 = Core__List.map(ebs, (function (eb) {
-                                var e = printExp$4(eb[0]);
+                                var e = printExp$5(eb[0]);
                                 return [
                                         e.expr(false),
-                                        printBlock$4(eb[1], ctx)
+                                        printBlock$5(eb[1], ctx)
                                       ];
                               }));
                         var ob$1 = obToString$3(ob, ctx);
@@ -9002,7 +10455,7 @@ function printExp$4(param) {
                                   },
                                   ann: {
                                     sourceLocation: sourceLocation,
-                                    print: exprCndToString$4(Core__List.map(ebs$1, (function (param) {
+                                    print: exprCndToString$5(Core__List.map(ebs$1, (function (param) {
                                                 return [
                                                         getPrint(param[0]),
                                                         getBlockPrint(param[1])
@@ -9019,12 +10472,12 @@ function printExp$4(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$4);
-        var b$1 = printBlock$4(it._1, "Return");
+        var xs$1 = Core__List.map(it._0, symbolToString$5);
+        var b$1 = printBlock$5(it._1, "Return");
+        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
-        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
@@ -9050,13 +10503,13 @@ function printExp$4(param) {
   return e(param.ann);
 }
 
-function printDef$4(param) {
+function printDef$5(param) {
   var d = param.it;
   var match;
   switch (d.TAG) {
     case "Var" :
-        var x = symbolToString$4(d._0);
-        var e = printExp$4(d._1);
+        var x = symbolToString$5(d._0);
+        var e = printExp$5(d._1);
         var e$1 = e.expr(false);
         match = [
           "",
@@ -9066,15 +10519,15 @@ function printDef$4(param) {
               _0: x,
               _1: e$1
             },
-            ann: defvarToString$4(getNamePrint(x), getPrint(e$1))
+            ann: defvarToString$5(getNamePrint(x), getPrint(e$1))
           },
           ""
         ];
         break;
     case "Fun" :
-        var f = symbolToString$4(d._0);
-        var xs = Core__List.map(d._1, symbolToString$4);
-        var b = printBlock$4(d._2, "Return");
+        var f = symbolToString$5(d._0);
+        var xs = Core__List.map(d._1, symbolToString$5);
+        var b = printBlock$5(d._2, "Return");
         match = [
           "",
           {
@@ -9084,7 +10537,7 @@ function printDef$4(param) {
               _1: xs,
               _2: b
             },
-            ann: deffunToString$4(getNamePrint(f), Core__List.map(xs, (function (x) {
+            ann: deffunToString$5(getNamePrint(f), Core__List.map(xs, (function (x) {
                         return getNamePrint(x);
                       })), getBlockPrint(b))
           },
@@ -9115,15 +10568,15 @@ function printDef$4(param) {
 
 function obToString$3(ob, ctx) {
   return Core__Option.map(ob, (function (b) {
-                return printBlock$4(b, ctx);
+                return printBlock$5(b, ctx);
               }));
 }
 
-function printBlock$4(param, context) {
+function printBlock$5(param, context) {
   var ann = param.ann;
   var b = param.it;
   if (b.TAG === "BRet") {
-    var e = printExp$4(b._0);
+    var e = printExp$5(b._0);
     var match = e.stat(context);
     var e$1 = match[1];
     var print = {
@@ -9162,8 +10615,8 @@ function printBlock$4(param, context) {
             }
           };
   }
-  var t = printTerm$4(b._0, "Step");
-  var b$1 = printBlock$4(b._1, context);
+  var t = printTerm$5(b._0, "Step");
+  var b$1 = printBlock$5(b._1, context);
   var print$1 = {
     TAG: "Group",
     _0: {
@@ -9196,11 +10649,11 @@ function printBlock$4(param, context) {
         };
 }
 
-function printTerm$4(param, ctx) {
+function printTerm$5(param, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
   if (it.TAG === "Def") {
-    var match = printDef$4(it._0);
+    var match = printDef$5(it._0);
     var it$1 = match[1];
     return {
             it: {
@@ -9213,7 +10666,7 @@ function printTerm$4(param, ctx) {
             }
           };
   }
-  var e = printExp$4(it._0);
+  var e = printExp$5(it._0);
   var match$1 = e.stat(ctx);
   var it$2 = match$1[1];
   return {
@@ -9228,7 +10681,7 @@ function printTerm$4(param, ctx) {
         };
 }
 
-function printOutputlet$4(o) {
+function printOutputlet$5(o) {
   var p = function (v) {
     switch (v.TAG) {
       case "Ref" :
@@ -9238,7 +10691,7 @@ function printOutputlet$4(o) {
                 Error: new Error()
               };
       case "Con" :
-          return constantToString$4(v._0);
+          return constantToString$5(v._0);
       case "Struct" :
           var content = v._1;
           var i;
@@ -9270,12 +10723,12 @@ function printOutputlet$4(o) {
   }
 }
 
-function printOutput$4(sepOpt, os) {
+function printOutput$5(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
-  return Core__List.toArray(Core__List.map(os, printOutputlet$4)).join(sep);
+  return Core__List.toArray(Core__List.map(os, printOutputlet$5)).join(sep);
 }
 
-function printProgramFull$4(insertPrintTopLevel, p) {
+function printProgramFull$5(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
   var s$1 = printProgram(insertPrintTopLevel, p$1);
   containsVarMutation.contents = Js_string.includes("(set!", s$1);
@@ -9296,7 +10749,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
             };
     }
     var p = it._1;
-    var t = printTerm$4(it._0, "Step");
+    var t = printTerm$5(it._0, "Step");
     var tmp = p.it;
     if (typeof tmp !== "object") {
       return {
@@ -9342,18 +10795,18 @@ function printProgramFull$4(insertPrintTopLevel, p) {
   return print(p$1);
 }
 
-function printProgram$4(insertPrintTopLevel, p) {
-  return toString(printProgramFull$4(insertPrintTopLevel, p).ann.print);
+function printProgram$5(insertPrintTopLevel, p) {
+  return toString(printProgramFull$5(insertPrintTopLevel, p).ann.print);
 }
 
-function printStandAloneTerm$4(param) {
+function printStandAloneTerm$5(param) {
   var it = param.it;
   var tmp;
   if (it.TAG === "Def") {
-    var match = printDef$4(it._0);
+    var match = printDef$5(it._0);
     tmp = match[1].ann.print;
   } else {
-    var e = printExp$4(it._0);
+    var e = printExp$5(it._0);
     var match$1 = e.stat("Step");
     tmp = match$1[1].ann.print;
   }
@@ -9361,12 +10814,12 @@ function printStandAloneTerm$4(param) {
 }
 
 var SCPrinter = {
-  printName: printName$4,
-  printOutputlet: printOutputlet$4,
-  printOutput: printOutput$4,
-  printStandAloneTerm: printStandAloneTerm$4,
-  printProgram: printProgram$4,
-  printProgramFull: printProgramFull$4
+  printName: printName$5,
+  printOutputlet: printOutputlet$5,
+  printOutput: printOutput$5,
+  printStandAloneTerm: printStandAloneTerm$5,
+  printProgram: printProgram$5,
+  printProgramFull: printProgramFull$5
 };
 
 function toString$8(t) {
@@ -9630,7 +11083,12 @@ function translateStandAloneTerm$1(src) {
     throw err;
   }
   try {
-    return printStandAloneTerm$1(programAsTerm(p));
+    programAsTerm(p);
+    throw {
+          RE_EXN_ID: SMoLPrintError,
+          _1: "Can't print stand-alone term of typed language",
+          Error: new Error()
+        };
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -9724,7 +11182,7 @@ function translateProgramFull$1(printTopLevel, src) {
   }
 }
 
-var JSTranslator = {
+var TypedSMoLTranslator = {
   translateName: printName$1,
   translateOutput: translateOutput$1,
   translateStandAloneTerm: translateStandAloneTerm$1,
@@ -9884,7 +11342,7 @@ function translateProgramFull$2(printTopLevel, src) {
   }
 }
 
-var PYTranslator = {
+var JSTranslator = {
   translateName: printName$2,
   translateOutput: translateOutput$2,
   translateStandAloneTerm: translateStandAloneTerm$2,
@@ -10044,7 +11502,7 @@ function translateProgramFull$3(printTopLevel, src) {
   }
 }
 
-var PCTranslator = {
+var PYTranslator = {
   translateName: printName$3,
   translateOutput: translateOutput$3,
   translateStandAloneTerm: translateStandAloneTerm$3,
@@ -10204,12 +11662,172 @@ function translateProgramFull$4(printTopLevel, src) {
   }
 }
 
-var SCTranslator = {
+var PCTranslator = {
   translateName: printName$4,
   translateOutput: translateOutput$4,
   translateStandAloneTerm: translateStandAloneTerm$4,
   translateProgram: translateProgram$4,
   translateProgramFull: translateProgramFull$4
+};
+
+function translateOutput$5(src) {
+  var output;
+  try {
+    output = parseOutput(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printOutput$5(undefined, output);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateStandAloneTerm$5(src) {
+  var p;
+  try {
+    p = parseProgram(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printStandAloneTerm$5(programAsTerm(p));
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgram$5(printTopLevel, src) {
+  var p;
+  try {
+    p = parseProgram(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgram$5(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+function translateProgramFull$5(printTopLevel, src) {
+  var p;
+  try {
+    p = parseProgram(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  try {
+    return printProgramFull$5(printTopLevel, p);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
+var SCTranslator = {
+  translateName: printName$5,
+  translateOutput: translateOutput$5,
+  translateStandAloneTerm: translateStandAloneTerm$5,
+  translateProgram: translateProgram$5,
+  translateProgramFull: translateProgramFull$5
 };
 
 var Print = {
@@ -10237,6 +11855,15 @@ var SMoLPrinter = {
   printProgramFull: printProgramFull
 };
 
+var TypedSMoLPrinter = {
+  printName: printName$1,
+  printOutputlet: printOutputlet$1,
+  printOutput: printOutput$1,
+  printStandAloneTerm: printStandAloneTerm$1,
+  printProgram: printProgram$1,
+  printProgramFull: printProgramFull$1
+};
+
 export {
   Print ,
   Primitive ,
@@ -10259,6 +11886,7 @@ export {
   getTermPrint ,
   getProgramPrint ,
   SMoLPrinter ,
+  TypedSMoLPrinter ,
   JSPrinter ,
   PYPrinter ,
   PCPrinter ,
@@ -10266,6 +11894,7 @@ export {
   TranslateError ,
   SMoLTranslateError ,
   SMoLTranslator ,
+  TypedSMoLTranslator ,
   JSTranslator ,
   PYTranslator ,
   PCTranslator ,
