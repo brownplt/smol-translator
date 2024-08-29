@@ -164,10 +164,15 @@ module Parser: {
 }
 
 // Infer Type
-type rec ty = Num | Boolean | String
+type rec ty =
+  | TUni
+  | Num
+  | Boolean
+  | String
   | Vecof(ty)
   | Listof(ty)
-  | Funof({isGen: bool, args: list<ty>, out: ty})
+  | Funof({args: list<ty>, out: ty})
+// type expressions
 type typed<'ann> = {ty: ty, ann: 'ann}
 let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>>
 

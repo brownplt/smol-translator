@@ -900,50 +900,278 @@ module Parser = {
   }
 }
 
+type typeError = UnboundId(string) | NotSupported(string)
+type exn += SMoLTypeError(typeError)
+let raiseTypeError = err => raise(SMoLTypeError(err))
+
 // Infer Type
 // type values
 type rec ty =
+  | TUni
   | Num
   | Boolean
   | String
   | Vecof(ty)
   | Listof(ty)
-  | Funof({isGen: bool, args: list<ty>, out: ty})
+  | Funof({args: list<ty>, out: ty})
 // type expressions
 type typed<'ann> = {ty: ty, ann: 'ann}
 type rec tye =
   | TVar(string)
   | Num
+  | TUni
   | Boolean
   | String
   | Vecof(tye)
   | Listof(tye)
-  | Funof({isGen: bool, args: list<tye>, out: tye})
+  | Funof({args: list<tye>, out: tye})
 type rec typeEnv = list<Map.t<string, tye>>
-let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (p, getKey: 'ann => string) => {
+let rec lookup = (env: typeEnv, x): tye => {
+  switch env {
+  | list{} => raiseTypeError(UnboundId(x))
+  | list{f, ...env} =>
+    switch Map.get(f, x) {
+    | None => lookup(env, x)
+    | Some(tye) => tye
+    }
+  }
+}
+let extend = (env: typeEnv, xs): typeEnv => {
+  list{
+    xs
+    ->List.map(failwith("todo"))
+    ->List.toArray
+    ->Map.fromArray,
+    ...env,
+  }
+}
+let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
+  p,
+  getKey: 'ann => string,
+) => {
   let constraints = {
     let constraints = ref(list{})
+    let addConstraint = (t1: tye, t2: tye) => {
+      constraints := list{(t1, t2), ...constraints.contents}
+    }
     let rec gatherConstraints = (p: program<'ann>) => {
       let xs = xsOfProgram(p)
       let globalEnv: typeEnv = list{
         Map.fromArray(
           xs
-          -> List.toArray
-          -> Array.map((x) => {
+          ->List.toArray
+          ->Array.map(x => {
             (x.it, TVar(getKey(x.ann)))
-          })
-        )
+          }),
+        ),
       }
       gp(globalEnv, p)
     }
     and gp = (env, p: program<'ann>) => {
       switch p.it {
-        | PNil => ()
-        | PCons(t, p) => gt(env, t); gp(env, p)
+      | PNil => ()
+      | PCons(t, p) =>
+        gt(env, t)
+        gp(env, p)
       }
     }
     and gt = (env, t: term<'ann>) => {
-      failwith("todo")
+      switch t.it {
+      | Def(d) => gd(env, d)
+      | Exp(e) => ignore(ge(env, e))
+      }
+    }
+    and gd = (env, d: definition<'ann>) => {
+      switch d.it {
+      | Var(x, e) => addConstraint(lookup(env, x.it), ge(env, e))
+      | Fun(f, xs, b) =>
+        addConstraint(
+          lookup(env, f.it),
+          Funof({
+            args: xs->List.map(x => TVar(getKey(x.ann))),
+            out: gb(extend(env, list{...xs, ...xsOfBlock(b)}), b),
+          }),
+        )
+      | GFun(_, _, _) => raiseTypeError(NotSupported("generator"))
+      }
+    }
+    and ge = (env, e: expression<'ann>): tye => {
+      switch e.it {
+      | Con(c) => gc(c)
+      | Ref(x) => lookup(env, x)
+      | Set(x, e) =>
+        addConstraint(lookup(env, x.it), ge(env, e))
+        TUni
+      | Lam(xs, b) =>
+        Funof({
+          args: xs->List.map(x => TVar(getKey(x.ann))),
+          out: gb(extend(env, list{...xs, ...xsOfBlock(b)}), b),
+        })
+      | Let(_bs, _b) => raiseTypeError(NotSupported("let"))
+      | Letrec(_bs, _b) => raiseTypeError(NotSupported("letrec"))
+      | AppPrm(p, es) => ga(env, p, es->List.map(e => ge(env, e)))
+      | App(f, args) => {
+          let out = TVar(getKey(e.ann))
+          addConstraint(
+            ge(env, f),
+            Funof({
+              args: args->List.map(arg => ge(env, arg)),
+              out,
+            }),
+          )
+          out
+        }
+      | Bgn(es, e) =>
+        es->List.forEach(e => ignore(ge(env, e)))
+        ge(env, e)
+      | If(e_cnd, e_thn, e_els) => {
+          addConstraint(Boolean, ge(env, e_cnd))
+          let t_thn = ge(env, e_thn)
+          let t_els = ge(env, e_els)
+          addConstraint(t_thn, t_els)
+          t_els
+        }
+      | Cnd(ebs, ob) => {
+          let t = switch ob {
+          | None => TUni
+          | Some(b) => gb(env, b)
+          }
+          ebs->List.forEach(((e, b)) => {
+            addConstraint(Boolean, ge(env, e))
+            addConstraint(t, gb(extend(env, xsOfBlock(b)), b))
+          })
+          t
+        }
+      | GLam(_, _) => raiseTypeError(NotSupported("generators"))
+      | Yield(_) => raiseTypeError(NotSupported("generators"))
+      }
+    }
+    and ga = (env, p, vs) =>
+      switch (p, vs) {
+      | (Arith(Add), list{v, ...vs}) => return(deltaNum1((a, b) => a +. b, v, vs))
+      | (Arith(Sub), list{v1, v2, ...vs}) => return(deltaNum2((a, b) => a -. b, v1, v2, vs))
+      | (Arith(Mul), list{v, ...vs}) => return(deltaNum1((a, b) => a *. b, v, vs))
+      | (Arith(Div), list{v1, v2, ...vs}) => return(deltaNum2((a, b) => {
+            if b == 0. {
+              raise(RuntimeError(DivisionByZero))
+            } else {
+              a /. b
+            }
+          }, v1, v2, vs))
+      | (Cmp(Lt), list{v, ...vs}) => return(deltaCmp((a, b) => a < b, v, vs))
+      | (Cmp(Eq), list{v, ...vs}) => return(deltaEq(eqv2, v, vs))
+      | (Cmp(Equal), list{v, ...vs}) => return(deltaEq(equal2, v, vs))
+      | (Cmp(Gt), list{v, ...vs}) => return(deltaCmp((a, b) => a > b, v, vs))
+      | (Cmp(Le), list{v, ...vs}) => return(deltaCmp((a, b) => a <= b, v, vs))
+      | (Cmp(Ge), list{v, ...vs}) => return(deltaCmp((a, b) => a >= b, v, vs))
+      | (Cmp(Ne), list{v, ...vs}) => return(deltaCmp((a, b) => a != b, v, vs))
+      | (VecNew, vs) => {
+          let id = newHavId()
+          let v = Vec({id, contents: vs->List.map(v => (false, v))->List.toArray})
+          allHavs := list{v, ...allHavs.contents}
+          return(v)
+        }
+      | (VecRef, list{v_vec, v_ind}) => {
+          let {contents: vs} = asVec(v_vec)
+          let v_ind = asNum(v_ind)->Float.toInt
+          switch vs[v_ind] {
+          | None => raise(RuntimeError(OutOfBound(Array.length(vs), v_ind)))
+          | Some((_, v)) => return(v)
+          }
+        }
+
+      | (VecLen, list{v}) => {
+          let {contents: vs} = asVec(v)
+          return(Con(Num(vs->Array.length->Int.toFloat)))
+        }
+
+      | (VecSet, list{v_vec, v_ind, v_val}) => {
+          let v_vec = asVec(v_vec)
+          let v_ind = asNum(v_ind)->Float.toInt
+          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+        }
+
+      | (Err, list{v}) => {
+          let v = asStr(v)
+          _stk => Terminated(Err(AnyError(v)))
+        }
+
+      | (Not, list{v}) => {
+          let v = asLgc(v)
+          return(Con(Lgc(!v)))
+        }
+
+      | (PairNew, list{v1, v2}) => make_vector(list{v1, v2})
+
+      | (PairRefLeft, list{v}) => {
+          let {contents: vs} = asPair(v)
+          let v_ind = 0
+          switch vs[v_ind] {
+          | None => raise(Impossible("we have checked that this value is a pair"))
+          | Some((_, v)) => return(v)
+          }
+        }
+
+      | (PairRefRight, list{v}) => {
+          let {contents: vs} = asPair(v)
+          let v_ind = 1
+          switch vs[v_ind] {
+          | None => raise(Impossible("we have checked that this value is a pair"))
+          | Some((_, v)) => return(v)
+          }
+        }
+
+      | (PairSetLeft, list{v_vec, v_val}) => {
+          let v_vec = asPair(v_vec)
+          let v_ind = 0
+          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+        }
+
+      | (PairSetRight, list{v_vec, v_val}) => {
+          let v_vec = asPair(v_vec)
+          let v_ind = 1
+          stk => Continuing(Reducing(VecSetting(v_vec, v_ind, v_val), stk))
+        }
+
+      | (Print, list{v}) => stk => Continuing(Reducing(Printing(v), stk))
+
+      // Js.Console.log(outputletOfValue(v))
+      // return(Con(Uni))
+
+      | (Next, list{v}) =>
+        stk => {
+          Continuing(Reducing(Nexting(asGen(v)), stk))
+        }
+
+      | _otherwise => {
+          let wantedArity = arityOf(p)
+          let actualArity = List.length(vs)
+          if RTArity.minimalArity(wantedArity) != actualArity {
+            raise(RuntimeError(ArityMismatch(wantedArity, actualArity)))
+          } else {
+            raise(RuntimeError(AnyError(`Internal error with ${SMoL.Primitive.toString(p)}`)))
+          }
+        }
+      }
+
+    and gc = (c: constant): tye => {
+      switch c {
+      | Uni => TUni
+      | Nil => raiseTypeError(NotSupported("lists"))
+      | Num(_) => Num
+      | Lgc(_) => Boolean
+      | Str(_) => String
+      | Sym(_) => raiseTypeError(NotSupported("symbol"))
+      }
+    }
+    and gb = (env, b: block<'ann>): tye => {
+      switch b.it {
+      | BRet(e) => ge(env, e)
+      | BCons(t, b) => {
+          gt(env, t)
+          gb(env, b)
+        }
+      }
     }
     constraints.contents
   }

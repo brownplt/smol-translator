@@ -1662,7 +1662,230 @@ function parseOutput(src) {
   }
 }
 
+var SMoLTypeError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTypeError");
+
+function lookup(_env, x) {
+  while(true) {
+    var env = _env;
+    if (env) {
+      var tye = env.hd.get(x);
+      if (tye !== undefined) {
+        return tye;
+      }
+      _env = env.tl;
+      continue ;
+    }
+    throw {
+          RE_EXN_ID: SMoLTypeError,
+          _1: {
+            TAG: "UnboundId",
+            _0: x
+          },
+          Error: new Error()
+        };
+  };
+}
+
+function extend(env, xs) {
+  return {
+          hd: new Map(Core__List.toArray(Core__List.map(xs, PervasivesU.failwith("todo")))),
+          tl: env
+        };
+}
+
 function inferTypes(p, getKey) {
+  var constraints = {
+    contents: /* [] */0
+  };
+  var addConstraint = function (t1, t2) {
+    constraints.contents = {
+      hd: [
+        t1,
+        t2
+      ],
+      tl: constraints.contents
+    };
+  };
+  var ge = function (env, _e) {
+    while(true) {
+      var e = _e;
+      var c = e.it;
+      switch (c.TAG) {
+        case "Con" :
+            var c$1 = c._0;
+            if (typeof c$1 !== "object") {
+              if (c$1 === "Uni") {
+                return "TUni";
+              }
+              throw {
+                    RE_EXN_ID: SMoLTypeError,
+                    _1: {
+                      TAG: "NotSupported",
+                      _0: "lists"
+                    },
+                    Error: new Error()
+                  };
+            } else {
+              switch (c$1.TAG) {
+                case "Num" :
+                    return "Num";
+                case "Lgc" :
+                    return "Boolean";
+                case "Str" :
+                    return "String";
+                case "Sym" :
+                    throw {
+                          RE_EXN_ID: SMoLTypeError,
+                          _1: {
+                            TAG: "NotSupported",
+                            _0: "symbol"
+                          },
+                          Error: new Error()
+                        };
+                
+              }
+            }
+        case "Ref" :
+            return lookup(env, c._0);
+        case "Set" :
+            addConstraint(lookup(env, c._0.it), ge(env, c._1));
+            return "TUni";
+        case "Lam" :
+            var b = c._1;
+            var xs = c._0;
+            return {
+                    TAG: "Funof",
+                    args: Core__List.map(xs, (function (x) {
+                            return {
+                                    TAG: "TVar",
+                                    _0: getKey(x.ann)
+                                  };
+                          })),
+                    out: gb(extend(env, Belt_List.concatMany([
+                                  xs,
+                                  xsOfBlock(b)
+                                ])), b)
+                  };
+        case "Let" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "let"
+                  },
+                  Error: new Error()
+                };
+        case "Letrec" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "letrec"
+                  },
+                  Error: new Error()
+                };
+        case "AppPrm" :
+            return PervasivesU.failwith("todo");
+        case "App" :
+            var out = {
+              TAG: "TVar",
+              _0: getKey(e.ann)
+            };
+            addConstraint(ge(env, c._0), {
+                  TAG: "Funof",
+                  args: Core__List.map(c._1, (function (arg) {
+                          return ge(env, arg);
+                        })),
+                  out: out
+                });
+            return out;
+        case "Bgn" :
+            Core__List.forEach(c._0, (function (e) {
+                    ge(env, e);
+                  }));
+            _e = c._1;
+            continue ;
+        case "If" :
+            addConstraint("Boolean", ge(env, c._0));
+            var t_thn = ge(env, c._1);
+            var t_els = ge(env, c._2);
+            addConstraint(t_thn, t_els);
+            return t_els;
+        case "Cnd" :
+            var ob = c._1;
+            var t = ob !== undefined ? gb(env, ob) : "TUni";
+            Core__List.forEach(c._0, (function(t){
+                return function (param) {
+                  var b = param[1];
+                  addConstraint("Boolean", ge(env, param[0]));
+                  addConstraint(t, gb(extend(env, xsOfBlock(b)), b));
+                }
+                }(t)));
+            return t;
+        case "GLam" :
+        case "Yield" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "generators"
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    };
+  };
+  var gb = function (env, _b) {
+    while(true) {
+      var b = _b;
+      var e = b.it;
+      if (e.TAG === "BRet") {
+        return ge(env, e._0);
+      }
+      gt(env, e._0);
+      _b = e._1;
+      continue ;
+    };
+  };
+  var gt = function (env, t) {
+    var d = t.it;
+    if (d.TAG === "Def") {
+      var d$1 = d._0;
+      var match = d$1.it;
+      switch (match.TAG) {
+        case "Var" :
+            return addConstraint(lookup(env, match._0.it), ge(env, match._1));
+        case "Fun" :
+            var b = match._2;
+            var xs = match._1;
+            return addConstraint(lookup(env, match._0.it), {
+                        TAG: "Funof",
+                        args: Core__List.map(xs, (function (x) {
+                                return {
+                                        TAG: "TVar",
+                                        _0: getKey(x.ann)
+                                      };
+                              })),
+                        out: gb(extend(env, Belt_List.concatMany([
+                                      xs,
+                                      xsOfBlock(b)
+                                    ])), b)
+                      });
+        case "GFun" :
+            throw {
+                  RE_EXN_ID: SMoLTypeError,
+                  _1: {
+                    TAG: "NotSupported",
+                    _0: "generator"
+                  },
+                  Error: new Error()
+                };
+        
+      }
+    }
+    ge(env, d._0);
+  };
   return PervasivesU.failwith("todo");
 }
 
@@ -4396,7 +4619,7 @@ function refMut(env, x) {
   
 }
 
-function extend(ss, env) {
+function extend$1(ss, env) {
   var refs = Belt_HashMapString.make(0);
   return [
           refs,
@@ -5705,7 +5928,7 @@ function printLamBody(b, args, env) {
     var args$1 = Belt_List.map(args, (function (x) {
             return x.it;
           }));
-    var match = extend(args$1, env);
+    var match = extend$1(args$1, env);
     var e$1 = printExp$2(e._0, match[1]);
     var match$1 = e$1.expr(false);
     var ann = match$1.ann;
@@ -5734,7 +5957,7 @@ function printDefBody(b, args, env) {
   var args$1 = Belt_List.map(args, (function (x) {
           return x.it;
         }));
-  var match = extend(Belt_List.concat(locs, args$1), env);
+  var match = extend$1(Belt_List.concat(locs, args$1), env);
   var b$1 = printBlockHelper(b, match[1], "Return");
   var print = concat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
@@ -8567,10 +8790,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
-        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
+        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
