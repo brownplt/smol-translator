@@ -3026,7 +3026,7 @@ function defvarLike$1(op, x, e) {
                   ann: undefined
                 },
                 tl: {
-                  hd: indent(e, 2),
+                  hd: e,
                   tl: /* [] */0
                 }
               }
@@ -4537,7 +4537,7 @@ function defvarLike$2(op, x, e) {
                   ann: undefined
                 },
                 tl: {
-                  hd: indent(e, 2),
+                  hd: e,
                   tl: /* [] */0
                 }
               }
@@ -6051,7 +6051,7 @@ function defvarLike$3(op, x, e) {
                   ann: undefined
                 },
                 tl: {
-                  hd: indent(e, 2),
+                  hd: e,
                   tl: /* [] */0
                 }
               }
@@ -7672,7 +7672,7 @@ function defvarLike$4(op, x, e) {
                   ann: undefined
                 },
                 tl: {
-                  hd: indent(e, 2),
+                  hd: e,
                   tl: /* [] */0
                 }
               }

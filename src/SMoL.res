@@ -1502,7 +1502,7 @@ module JSPrinter: Printer = {
   }
 
   let defvarLike = (op, x, e) => {
-    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+    Group(list{Print.string(op), x, Print.string(" = "), e})
   }
 
   let exprAppToString = (e, es) => {
@@ -2268,7 +2268,7 @@ module PYPrinter: Printer = {
   }
 
   let defvarLike = (op, x, e) => {
-    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+    Group(list{Print.string(op), x, Print.string(" = "), e})
   }
 
   let exprAppToString = (e, es) => {
@@ -2997,7 +2997,7 @@ module PCPrinter: Printer = {
   }
 
   let defvarLike = (op, x, e) => {
-    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+    Group(list{Print.string(op), x, Print.string(" = "), e})
   }
 
   let exprAppToString = (e, es) => {
@@ -3783,7 +3783,7 @@ module SCPrinter: Printer = {
   }
 
   let defvarLike = (op, x, e) => {
-    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+    Group(list{Print.string(op), x, Print.string(" = "), e})
   }
 
   let exprAppToString = (e, es) => {
