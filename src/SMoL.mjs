@@ -1764,7 +1764,12 @@ function inferTypes(p, getKey) {
           t = lookup(env, c._0);
           break;
       case "Set" :
-          addConstraint(lookup(env, c._0.it), ge(env, c._1));
+          var x = c._0;
+          addConstraint({
+                TAG: "TVar",
+                _0: getKey(x.ann)
+              }, lookup(env, x.it));
+          addConstraint(lookup(env, x.it), ge(env, c._1));
           t = "TUni";
           break;
       case "Lam" :

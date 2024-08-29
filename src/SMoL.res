@@ -1025,6 +1025,7 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
       | Con(c) => gc(c)
       | Ref(x) => lookup(env, x)
       | Set(x, e) =>
+        addConstraint(TVar(getKey(x.ann)), lookup(env, x.it))
         addConstraint(lookup(env, x.it), ge(env, e))
         TUni
       | Lam(xs, b) =>
