@@ -1,3 +1,5 @@
+"use strict";
+
 let o = 1;
 function u(t) {
   return o + t;

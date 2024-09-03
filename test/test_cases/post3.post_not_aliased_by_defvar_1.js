@@ -1,3 +1,5 @@
+"use strict";
+
 let a = 6;
 let b = a;
 a = 5;

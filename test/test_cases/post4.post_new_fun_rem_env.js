@@ -1,3 +1,5 @@
+"use strict";
+
 let t = 6;
 function f1() {
   return t;

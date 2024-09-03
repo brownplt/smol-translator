@@ -1,3 +1,5 @@
+"use strict";
+
 function f() {
   let n = 1;
   function dbl() {

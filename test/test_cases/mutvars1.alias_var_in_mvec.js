@@ -1,3 +1,5 @@
+"use strict";
+
 let x = 59;
 let v = [ 68, 57, x ];
 x = 74;

@@ -1,3 +1,5 @@
+"use strict";
+
 function f(n) {
   return function (m) {
     return m * n;

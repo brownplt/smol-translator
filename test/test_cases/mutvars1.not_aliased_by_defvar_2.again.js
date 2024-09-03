@@ -1,3 +1,5 @@
+"use strict";
+
 let zzz = 1;
 let abc = zzz;
 abc = 2;

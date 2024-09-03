@@ -1,3 +1,5 @@
+"use strict";
+
 let n = 7;
 function foo() {
   return n;

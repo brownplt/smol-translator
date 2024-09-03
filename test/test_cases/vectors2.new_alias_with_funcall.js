@@ -1,3 +1,5 @@
+"use strict";
+
 let x = [ 99, 83 ];
 function f(y) {
   x[0] = 34;

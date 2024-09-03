@@ -1,3 +1,5 @@
+"use strict";
+
 let a = 3;
 function foo(b) {
   function bar() {

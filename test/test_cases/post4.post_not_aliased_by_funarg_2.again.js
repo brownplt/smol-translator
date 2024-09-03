@@ -1,3 +1,5 @@
+"use strict";
+
 let s = 1;
 function foobar(t) {
   t = 2;

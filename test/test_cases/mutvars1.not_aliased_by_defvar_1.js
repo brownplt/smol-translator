@@ -1,3 +1,5 @@
+"use strict";
+
 let x = 80;
 let y = x;
 x = 32;

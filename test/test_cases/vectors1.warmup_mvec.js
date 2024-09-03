@@ -1,3 +1,5 @@
+"use strict";
+
 let n = 44;
 function f(x) {
   return x + 1;

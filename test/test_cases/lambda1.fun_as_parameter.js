@@ -1,3 +1,5 @@
+"use strict";
+
 function twice(f, x) {
   return f(f(x));
 }

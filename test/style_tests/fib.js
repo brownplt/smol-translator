@@ -1,3 +1,5 @@
+"use strict";
+
 function fib(n) {
   if (n < 0) {
     throw "The argument to fib must be non-negative";

@@ -209,6 +209,7 @@ module JSPrinter: Printer
 module PYPrinter: Printer
 module PCPrinter: Printer
 module SCPrinter: Printer
+module JavaPrinter: Printer
 
 module TranslateError: {
   type t =
@@ -231,3 +232,4 @@ module JSTranslator: Translator
 module PYTranslator: Translator
 module PCTranslator: Translator
 module SCTranslator: Translator
+module JavaTranslator: Translator

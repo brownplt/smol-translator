@@ -1,3 +1,5 @@
+"use strict";
+
 let n = 2;
 function h(m) {
   m = 7;

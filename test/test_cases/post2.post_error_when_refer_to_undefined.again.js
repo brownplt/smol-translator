@@ -1,3 +1,5 @@
+"use strict";
+
 function foo(bar) {
   let zzz = 8;
   return bar * zzz;

@@ -1,3 +1,5 @@
+"use strict";
+
 let x = 7;
 function fun(n) {
   return n * 2;

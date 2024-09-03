@@ -1,3 +1,5 @@
+"use strict";
+
 let m1 = [ 77, 77 ];
 function f(m2) {
   m2[0] = 43;

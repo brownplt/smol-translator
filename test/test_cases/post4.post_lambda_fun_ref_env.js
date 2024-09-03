@@ -1,3 +1,5 @@
+"use strict";
+
 function k(b) {
   return function (a) {
     return a + b;

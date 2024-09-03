@@ -1,3 +1,5 @@
+"use strict";
+
 function g(x, y, z) {
   return (x * y) * z;
 }

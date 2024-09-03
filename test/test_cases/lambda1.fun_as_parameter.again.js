@@ -1,3 +1,5 @@
+"use strict";
+
 function ffx(f, x) {
   return f(f(x));
 }

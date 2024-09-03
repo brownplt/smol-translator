@@ -1,3 +1,5 @@
+"use strict";
+
 function buildDbl() {
   let n = 1;
   return function () {

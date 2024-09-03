@@ -1,3 +1,5 @@
+"use strict";
+
 function z(y) {
   return 5;
 }

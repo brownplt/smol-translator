@@ -1,3 +1,5 @@
+"use strict";
+
 let cat = 7;
 function k(dog) {
   let cat = 4;

@@ -1,3 +1,5 @@
+"use strict";
+
 let a = 2;
 function make() {
   return function (b) {

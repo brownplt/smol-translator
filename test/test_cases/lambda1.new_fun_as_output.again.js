@@ -1,3 +1,5 @@
+"use strict";
+
 function fun1() {
   function average(x, y) {
     return (x + y) / 2;

@@ -1,3 +1,5 @@
+"use strict";
+
 let x = [ 10, 48, 95 ];
 function f(y) {
   y[0] = 32;

@@ -1,3 +1,5 @@
+"use strict";
+
 function f(x) {
   let y = 1;
   return x + y;

@@ -1,3 +1,5 @@
+"use strict";
+
 let aa = 3;
 function abc(bb) {
   function h() {

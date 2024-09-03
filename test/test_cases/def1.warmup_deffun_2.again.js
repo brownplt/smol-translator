@@ -1,3 +1,5 @@
+"use strict";
+
 function f(a, b, c) {
   let q = b + c;
   return a * q;

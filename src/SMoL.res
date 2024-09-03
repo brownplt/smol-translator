@@ -926,9 +926,7 @@ type rec typeEnv = list<Map.t<string, tye>>
 
 type groundError = RecursiveType(array<string>, string)
 
-type solutionError =
-  | RecursiveType
-  | Incompatible(tye, tye)
+type solutionError = Incompatible(tye, tye)
 
 type typeError =
   | UnboundId(string)
@@ -1226,7 +1224,6 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
       )
     }
     let ground = (e: tye): ty => {
-      let visited = Set.make()
       let rec g = (visited, e) => {
         switch e {
         | TVar(x) =>
@@ -3048,7 +3045,14 @@ module JSPrinter: Printer = {
         }
       }
     }
-    print(p)
+    let p = print(p)
+    {
+      ...p,
+      ann: {
+        ...p.ann,
+        print: wrap(`"use strict";\n\n`, getProgramPrint(p), ``)
+      },
+    }
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
@@ -5287,6 +5291,716 @@ module SCPrinter: Printer = {
   }
 }
 
+module JavaPrinter: Printer = {
+  let printName = x => {
+    let re = %re("/-./g")
+    let matchFn = (matchPart, _offset, _wholeString) => {
+      Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
+    }
+    let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
+
+    // add `$` to the beginning of reserved words
+    if x == "var" {
+      "$var"
+    } else {
+      x
+    }
+  }
+
+  let constantToString = c => {
+    switch c {
+    | Uni => "null"
+    | Nil => raisePrintError("Lists are not supported in JavaScript.")
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "true"
+      } else {
+        "false"
+      }
+    | Str(s) => JSON.stringify(String(s))
+    | Sym(s) => s
+    }
+  }
+
+  let listToString = es => {
+    if es->List.some(e => containsNL(e.it)) {
+      Group(list{
+        Print.string("("),
+        indentBlock(Print.dummy(Print.concat(",\n", es)), 2),
+        Print.string(")"),
+      })
+    } else {
+      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+    }
+  }
+
+  let defvarLike = (op, x, e) => {
+    Group(list{Print.string(op), x, Print.string(" = "), indent(e, 2)})
+  }
+
+  let exprAppToString = (e, es) => {
+    group2(e, Print.dummy(listToString(es)))
+  }
+
+  let consumeContext: consumer = e => {
+    {
+      expr: _ => surround("", e, ""),
+      stat: ctx =>
+        switch ctx {
+        | Step => ("", e, ";")
+        | Return => ("return ", e, ";")
+        },
+    }
+  }
+
+  let consumeContextWrap: consumer = e => {
+    {
+      expr: ctx =>
+        if ctx {
+          surround("(", e, ")")
+        } else {
+          consumeContext(e).expr(ctx)
+        },
+      stat: consumeContext(e).stat,
+    }
+  }
+
+  let consumeContextVoid: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, ";\nreturn;")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContext(e).expr,
+    }
+  }
+
+  let consumeContextEscape: consumer = e => {
+    {
+      stat: ctx =>
+        switch ctx {
+        | Return => ("", e, ";")
+        | ctx => consumeContext(e).stat(ctx)
+        },
+      expr: consumeContextWrap(e).expr,
+    }
+  }
+
+  let consumeContextStat: consumer = e => {
+    {
+      expr: _ =>
+        raisePrintError(`${Print.toString(e)} can't be used as a expression in JavaScript`),
+      stat: consumeContextVoid(e).stat,
+    }
+  }
+
+  let exprAppPrmToString = (p: Primitive.t, es: list<bool => expression<printAnn>>) => {
+    switch (p, es) {
+    | (Arith(o), es) => {
+        let os = switch o {
+        | Add => "+"
+        | Sub => "-"
+        | Mul => "*"
+        | Div => "/"
+        }
+        let es = es->List.map(e => e(true))
+        {
+          ann: Print.concat(` ${os} `, es->List.map(e => getPrint(e)))->consumeContextWrap,
+          it: (Arith(o), es),
+        }
+      }
+    | (Cmp(o), list{e1, e2}) => {
+        let os = switch o {
+        | Lt => "<"
+        | Eq => "=="
+        | Gt => ">"
+        | Le => "<="
+        | Ge => ">="
+        | Ne => "!="
+        | Equal => raisePrintError("JavaScript has limited support for equality")
+        }
+        let e1 = e1(true)
+        let e2 = e2(true)
+        {
+          ann: (Print.s`${getPrint(e1)} ${Print.string(os)} ${getPrint(e2)}`)->consumeContext,
+          it: (Cmp(o), list{e1, e2}),
+        }
+      }
+    | (PairNew, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: (Print.s`[ ${getPrint(e1)}, ${getPrint(e2)} ]`)->consumeContext,
+          it: (PairNew, list{e1, e2}),
+        }
+      }
+    | (PairRefLeft, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: (Print.s`${getPrint(e1)}[0]`)->consumeContext,
+          it: (PairRefLeft, list{e1}),
+        }
+      }
+    | (PairRefRight, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: (Print.s`${getPrint(e1)}[1]`)->consumeContext,
+          it: (PairRefRight, list{e1}),
+        }
+      }
+    | (PairSetLeft, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: (Print.s`${getPrint(e1)}[0] = ${getPrint(e2)}`)->consumeContextStat,
+          it: (PairSetLeft, list{e1, e2}),
+        }
+      }
+    | (PairSetRight, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          ann: (Print.s`${getPrint(e1)}[1] = ${getPrint(e2)}`)->consumeContextStat,
+          it: (PairSetRight, list{e1, e2}),
+        }
+      }
+    | (VecNew, es) => {
+        let es = es->List.map(e => e(false))
+        {
+          ann: (
+            Print.s`[ ${Print.dummy(Print.concat(`, `, es->List.map(e => getPrint(e))))} ]`
+          )->consumeContext,
+          it: (VecNew, es),
+        }
+      }
+    | (VecRef, list{e1, e2}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        {
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}]`)->consumeContext,
+          it: (VecRef, list{e1, e2}),
+        }
+      }
+    | (VecSet, list{e1, e2, e3}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        let e3 = e3(false)
+        {
+          ann: (Print.s`${getPrint(e1)}[${getPrint(e2)}] = ${getPrint(e3)}`)->consumeContextStat,
+          it: (VecSet, list{e1, e2, e3}),
+        }
+      }
+    | (VecLen, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: (Print.s`${getPrint(e1)}.length`)->consumeContext,
+          it: (VecLen, list{e1}),
+        }
+      }
+    | (Err, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: (Print.s`throw ${getPrint(e1)}`)->consumeContextEscape,
+          it: (Err, list{e1}),
+        }
+      }
+    | (Not, list{e1}) => {
+        let e1 = e1(true)
+        {
+          ann: (Print.s`! ${getPrint(e1)}`)->consumeContextWrap,
+          it: (Not, list{e1}),
+        }
+      }
+    | (Print, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: (Print.s`console.log(${getPrint(e1)})`)->consumeContextVoid,
+          it: (Print, list{e1}),
+        }
+      }
+    | (Next, list{e1}) => {
+        let e1 = e1(false)
+        {
+          ann: (Print.s`${getPrint(e1)}.next()`)->consumeContextVoid,
+          it: (Next, list{e1}),
+        }
+      }
+    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | _ =>
+      raisePrintError(
+        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
+      )
+    }
+  }
+
+  let funLike = (op, x, xs, e) => {
+    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))} {${indentBlock(e, 2)}\n}`
+  }
+
+  let defvarToString = (x, e) => {
+    defvarLike("let ", x, e)
+  }
+
+  let deffunToString = (f, xs, b) => {
+    funLike("function", f, xs, b)
+  }
+
+  let defgenToString = (f, xs, b) => {
+    funLike("function*", f, xs, b)
+  }
+
+  let exprSetToString = (x, e) => {
+    defvarLike("", x, e)
+  }
+
+  let exprLamToString = (xs, b) => {
+    funLike("function", Print.string(""), xs, b)
+  }
+  let exprGenToString = (xs, b) => {
+    funLike("function*", Print.string(""), xs, b)
+  }
+  let exprYieldToString = e => Print.s`yield ${e}`
+
+  let exprBgnToString = (es, e) => {
+    listToString(list{...es, e})
+  }
+
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if (${cnd}) {${indentBlock(thn, 2)}\n}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s` else {${indentBlock(els, 2)}\n}`
+    }->Print.dummy}`
+  }
+
+  let exprCndToString = (ebs: list<(_, _)>, ob) => {
+    let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
+    let ebs = switch ob {
+    | None => ebs
+    | Some(b) => list{...ebs, (Print.s`{${indentBlock(b, 2)}\n}`)->Print.dummy}
+    }
+    Print.concat(" else ", ebs)
+  }
+
+  let exprIfToString = (e_cnd, e_thn, e_els) => {
+    Print.s`${e_cnd} ? ${e_thn} : ${e_els}`
+  }
+
+  let symbolToString = ({it, ann: {ann}}) => {
+    {
+      it,
+      ann: {
+        sourceLocation: ann,
+        print: Plain(printName(it)),
+      },
+    }
+  }
+
+  let rec printExp = ({it, ann: {ann: sourceLocation}}: expression<typed<sourceLocation>>) => {
+    let lift = ({it, ann: print}) => sourceLocation => {
+      {
+        expr: ctx => {it, ann: {sourceLocation, print: print.expr(ctx)}},
+        stat: ctx => {
+          let (prefix, print, suffix) = print.stat(ctx)
+          (prefix, {it, ann: {sourceLocation, print}}, suffix)
+        },
+      }
+    }
+    let e: sourceLocation => contexted<
+      expression<printAnn>,
+      (string, expression<printAnn>, string),
+    > = switch it {
+    | Con(c) =>
+      {
+        it: Con(c),
+        ann: Plain(constantToString(c))->consumeContext,
+      }->lift
+    | Ref(x) =>
+      {
+        it: Ref(x),
+        ann: Plain(x->printName)->consumeContext,
+      }->lift
+    | Set(x, e) =>
+      {
+        let x = symbolToString(x)
+        let e: expression<printAnn> = e->printExp->asExpr(false)
+        {
+          ann: exprSetToString(getNamePrint(x), getPrint(e))->consumeContextStat,
+          it: Set(x, e),
+        }
+      }->lift
+    | Lam(xs, b) =>
+      {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: exprLamToString(
+            xs->List.map(x => getNamePrint(x)),
+            getBlockPrint(b),
+          )->consumeContextWrap,
+          it: Lam(xs, b),
+        }
+      }->lift
+    | GLam(xs, b) =>
+      {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        {
+          ann: exprGenToString(
+            xs->List.map(x => getNamePrint(x)),
+            getBlockPrint(b),
+          )->consumeContextWrap,
+          it: GLam(xs, b),
+        }
+      }->lift
+    | Yield(e) =>
+      {
+        let e = e->printExp->asExpr(false)
+        {
+          ann: exprYieldToString(getPrint(e))->consumeContextWrap,
+          it: Yield(e),
+        }
+      }->lift
+    | AppPrm(p, es) =>
+      // let es = es->List.map(%todo(""))
+
+      {
+        let es = es->List.map(e => b => e->printExp->asExpr(b))
+        let {ann: print, it: (p, es)} = exprAppPrmToString(p, es)
+        {
+          it: AppPrm(p, es),
+          ann: print,
+        }
+      }->lift
+    | App(e, es) =>
+      {
+        let e = e->printExp->asExpr(true)
+        let es = es->List.map(e => e->printExp->asExpr(false))
+        {
+          ann: exprAppToString(getPrint(e), es->List.map(e => getPrint(e)))->consumeContext,
+          it: App(e, es),
+        }
+      }->lift
+    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
+    | Letrec(xes, b) =>
+      sourceLocation => {
+        expr: _ => raisePrintError("letrec-expressions are not supported by JavaScript"),
+        stat: ctx => {
+          let xes = xes->List.map(xeToString)
+          let b = b->printBlock(ctx)
+          let {it: print} = indentBlock(
+            Print.dummy(
+              Print.concat("\n", list{...xes->List.map(xe => getBindPrint(xe)), getBlockPrint(b)}),
+            ),
+            2,
+          )
+          (
+            "{\n",
+            {
+              ann: {
+                print,
+                sourceLocation,
+              },
+              it: Letrec(xes, b),
+            },
+            "\n}",
+          )
+        },
+      }
+    | Cnd(ebs, ob) =>
+      sourceLocation => {
+        expr: _ =>
+          raisePrintError(
+            "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+          ),
+        stat: ctx => {
+          let ebs: list<(expression<printAnn>, block<printAnn>)> =
+            ebs->List.map(eb => eb->ebToString(ctx))
+          let ob = ob->obToString(ctx)
+          (
+            "",
+            {
+              ann: {
+                sourceLocation,
+                print: exprCndToString(
+                  ebs->List.map(((e, b)) => (getPrint(e), getBlockPrint(b))),
+                  ob->Option.map(b => getBlockPrint(b)),
+                ),
+              },
+              it: Cnd(ebs, ob),
+            },
+            "",
+          )
+        },
+      }
+    | If(e_cnd, e_thn, e_els) => {
+        let e_cnd = e_cnd->printExp
+        let e_thn = e_thn->printExp
+        let e_els = e_els->printExp
+        sourceLocation => {
+          expr: ctx => {
+            let e_cnd = e_cnd->asExpr(true)
+            let e_thn = e_thn->asExpr(true)
+            let e_els = e_els->asExpr(true)
+            {
+              ann: {
+                sourceLocation,
+                print: exprIfToString(getPrint(e_cnd), getPrint(e_thn), getPrint(e_els))
+                ->consumeContextWrap
+                ->asExpr(ctx),
+              },
+              it: If(e_cnd, e_thn, e_els),
+            }
+          },
+          stat: ctx => {
+            let e_cnd = e_cnd->asExpr(false)
+            let (e_thn, e_thn_print) = {
+              let (prefix, e_thn, suffix) = e_thn->asStat(ctx)
+              (e_thn, wrap(prefix, getPrint(e_thn), suffix)->Print.dummy)
+            }
+            let (e_els, e_els_print) = {
+              let (prefix, e_els, suffix) = e_els->asStat(ctx)
+              (e_els, wrap(prefix, getPrint(e_els), suffix)->Print.dummy)
+            }
+            (
+              "",
+              {
+                ann: {
+                  sourceLocation,
+                  print: ifStat(getPrint(e_cnd), e_thn_print, Some(e_els_print)),
+                },
+                it: If(e_cnd, e_thn, e_els),
+              },
+              "",
+            )
+          },
+        }
+      }
+    | Bgn(es, e) =>
+      {
+        let es = es->List.map(e => e->printExp->asExpr(false))
+        let e = e->printExp->asExpr(false)
+        {
+          ann: exprBgnToString(es->List.map(e => getPrint(e)), getPrint(e))->consumeContext,
+          it: Bgn(es, e),
+        }
+      }->lift
+    }
+    e(sourceLocation)
+  }
+  and printDef = ({ann: {ann: sourceLocation}, it: d}) => {
+    let (prefix, d, suffix) = switch d {
+    | Var(x, e) => {
+        let x = x->symbolToString
+        let e = e->printExp->asExpr(false)
+        (
+          "",
+          {
+            ann: defvarToString(getNamePrint(x), getPrint(e)),
+            it: Var(x, e),
+          },
+          ";",
+        )
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        (
+          "",
+          {
+            ann: deffunToString(
+              getNamePrint(f),
+              xs->List.map(x => getNamePrint(x)),
+              getBlockPrint(b),
+            ),
+            it: Fun(f, xs, b),
+          },
+          "",
+        )
+      }
+    | GFun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Return)
+        (
+          "",
+          {
+            ann: defgenToString(
+              getNamePrint(f),
+              xs->List.map(x => getNamePrint(x)),
+              getBlockPrint(b),
+            ),
+            it: GFun(f, xs, b),
+          },
+          "",
+        )
+      }
+    }
+    let {ann: print, it} = d
+    (prefix, {ann: {print, sourceLocation}, it}, suffix)
+  }
+  and xeToString = ({it: xe, ann: {ann: sourceLocation}}: bind<typed<sourceLocation>>): bind<
+    printAnn,
+  > => {
+    let (x, e) = xe
+    let (x, e) = (symbolToString(x), e->printExp->asExpr(false))
+    let print = defvarToString(getNamePrint(x), getPrint(e))
+    {
+      it: (x, e),
+      ann: {
+        print,
+        sourceLocation,
+      },
+    }
+  }
+  and ebToString = (eb, ctx: statContext) => {
+    let (e, b) = eb
+    (e->printExp->asExpr(false), b->printBlock(ctx))
+  }
+  and obToString = (ob, ctx: statContext) => {
+    ob->Option.map(b => b->printBlock(ctx))
+  }
+  and printBlock = ({ann: {ann}, it: b}, context: statContext) => {
+    switch b {
+    | BRet(e) => {
+        let (prefix, e, suffix) = printExp(e)->asStat(context)
+        let print = Group(list{Print.string(prefix), getPrint(e), Print.string(suffix)})
+        {
+          ann: {print, sourceLocation: ann},
+          it: BRet(e),
+        }
+      }
+    | BCons(t, b) => {
+        let t = printTerm(t, Step)
+        let b = printBlock(b, context)
+        let print = Group(list{getTermPrint(t), Print.string("\n"), getBlockPrint(b)})
+        {
+          ann: {print, sourceLocation: ann},
+          it: BCons(t, b),
+        }
+      }
+    }
+  }
+  and printTerm = ({ann: {ann: sourceLocation}, it}: term<typed<sourceLocation>>, ctx): term<
+    printAnn,
+  > => {
+    switch it {
+    | Exp(it) => {
+        let (prefix, it, suffix) = printExp(it)->asStat(ctx)
+        {
+          it: Exp(it),
+          ann: {
+            sourceLocation,
+            print: wrap(prefix, getPrint(it), suffix),
+          },
+        }
+      }
+    | Def(it) => {
+        let (prefix, it, suffix) = printDef(it)
+        {
+          it: Def(it),
+          ann: {
+            sourceLocation,
+            print: wrap(prefix, getDefinitionPrint(it), suffix),
+          },
+        }
+      }
+    }
+  }
+
+  let printOutputlet = o => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Ref(i) => `[Circular *${Int.toString(i)}]`
+      | Con(c) => constantToString(c)
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(i) => `<ref *${Int.toString(i)}> `
+          }
+          let content = switch content {
+          | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Vec(es) => `[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
+          }
+          `${i}${content}`
+        }
+      }
+    }
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
+  }
+
+  let printProgramFull = (insertPrintTopLevel, p) => {
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
+    let p = inferTypes(p, SourceLocation.toString)
+    let rec print = ({it, ann: {ann: sourceLocation}}: program<typed<sourceLocation>>): program<
+      printAnn,
+    > => {
+      switch it {
+      | PNil => {it: PNil, ann: {print: Group(list{}), sourceLocation}}
+      | PCons(t, p) => {
+          let t = printTerm(t, Step)
+          switch p {
+          | {it: PNil} => {
+              it: PCons(
+                t,
+                {
+                  it: PNil,
+                  ann: {
+                    print: Plain(""),
+                    sourceLocation: {
+                      begin: sourceLocation.end,
+                      end: sourceLocation.end,
+                    },
+                  },
+                },
+              ),
+              ann: {
+                print: wrap("", getTermPrint(t), ""),
+                sourceLocation,
+              },
+            }
+          | _ => {
+              let p = print(p)
+              {
+                it: PCons(t, p),
+                ann: {
+                  print: Print.concat2(getTermPrint(t), "\n", getProgramPrint(p)),
+                  sourceLocation,
+                },
+              }
+            }
+          }
+        }
+      }
+    }
+    print(p)
+  }
+
+  let printProgram = (insertPrintTopLevel, p) => {
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
+  }
+
+  let printStandAloneTerm = (t: term<sourceLocation>): string => {
+    // use JS for now.
+    JSPrinter.printStandAloneTerm(t)
+  }
+}
+
 module type Translator = {
   let translateName: string => string
   // print terms, interleaved with whitespace
@@ -5369,3 +6083,4 @@ module JSTranslator = MakeTranslator(JSPrinter)
 module PYTranslator = MakeTranslator(PYPrinter)
 module PCTranslator = MakeTranslator(PCPrinter)
 module SCTranslator = MakeTranslator(SCPrinter)
+module JavaTranslator = MakeTranslator(JavaPrinter)

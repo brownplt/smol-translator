@@ -1,3 +1,5 @@
+"use strict";
+
 let a = 5;
 function k(b) {
   b = 3;

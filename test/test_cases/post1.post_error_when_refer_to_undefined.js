@@ -1,3 +1,5 @@
+"use strict";
+
 function k(a) {
   let b = 1;
   return a + b;

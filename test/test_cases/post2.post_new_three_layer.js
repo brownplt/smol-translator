@@ -1,3 +1,5 @@
+"use strict";
+
 let n = 5;
 function f1(m) {
   function f2() {

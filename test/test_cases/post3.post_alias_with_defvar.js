@@ -1,3 +1,5 @@
+"use strict";
+
 let p = [ 72 ];
 let q = p;
 p[0] = 94;

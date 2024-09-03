@@ -1,3 +1,5 @@
+"use strict";
+
 let a = 4;
 function h() {
   return a;

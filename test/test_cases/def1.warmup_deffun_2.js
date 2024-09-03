@@ -1,3 +1,5 @@
+"use strict";
+
 function f(x, y, z) {
   let p = y * z;
   return x + p;

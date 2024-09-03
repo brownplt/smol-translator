@@ -1,3 +1,5 @@
+"use strict";
+
 function foobar(n) {
   let m = 4;
   return n + m;

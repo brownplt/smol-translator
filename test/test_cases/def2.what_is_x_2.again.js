@@ -1,3 +1,5 @@
+"use strict";
+
 let s = 21;
 function i() {
   return s;

@@ -1,3 +1,5 @@
+"use strict";
+
 let x = 1;
 function f(y) {
   let x = 2;
