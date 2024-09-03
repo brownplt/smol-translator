@@ -5,6 +5,7 @@ import * as SMoL from '../src/SMoL.mjs';
 import fs from "fs";
 
 const paths = [
+    "./test/type",
     "./test/style_tests",
     "./test/test_cases",
 ];

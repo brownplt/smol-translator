@@ -1738,13 +1738,18 @@ function inferTypes(p, getKey) {
           
       }
     }
+    var err_0 = Core__List.toArray(constraints.contents);
     var err_1 = {
-      TAG: "Vecof",
-      _0: freshVar()
-    };
-    var err = {
       TAG: "Incompatible",
       _0: t1,
+      _1: {
+        TAG: "Vecof",
+        _0: freshVar()
+      }
+    };
+    var err = {
+      TAG: "CannotSolve",
+      _0: err_0,
       _1: err_1
     };
     throw {
@@ -1752,132 +1757,6 @@ function inferTypes(p, getKey) {
           _1: err,
           Error: new Error()
         };
-  };
-  var ge = function (env, e) {
-    var c = e.it;
-    var t;
-    switch (c.TAG) {
-      case "Con" :
-          t = gc(c._0);
-          break;
-      case "Ref" :
-          t = lookup(env, c._0);
-          break;
-      case "Set" :
-          var x = c._0;
-          addConstraint({
-                TAG: "TVar",
-                _0: getKey(x.ann)
-              }, lookup(env, x.it));
-          addConstraint(lookup(env, x.it), ge(env, c._1));
-          t = "TUni";
-          break;
-      case "Lam" :
-          var b = c._1;
-          var xs = c._0;
-          t = {
-            TAG: "Funof",
-            args: Core__List.map(xs, (function (x) {
-                    return {
-                            TAG: "TVar",
-                            _0: getKey(x.ann)
-                          };
-                  })),
-            out: gb(extend(env, Belt_List.concatMany([
-                          xs,
-                          xsOfBlock(b)
-                        ])), b)
-          };
-          break;
-      case "Let" :
-          throw {
-                RE_EXN_ID: SMoLTypeError,
-                _1: {
-                  TAG: "NotSupported",
-                  _0: "let"
-                },
-                Error: new Error()
-              };
-      case "Letrec" :
-          throw {
-                RE_EXN_ID: SMoLTypeError,
-                _1: {
-                  TAG: "NotSupported",
-                  _0: "letrec"
-                },
-                Error: new Error()
-              };
-      case "AppPrm" :
-          t = ga(c._0, Core__List.map(c._1, (function (e) {
-                      return ge(env, e);
-                    })));
-          break;
-      case "App" :
-          var out = {
-            TAG: "TVar",
-            _0: getKey(e.ann)
-          };
-          addConstraint(ge(env, c._0), {
-                TAG: "Funof",
-                args: Core__List.map(c._1, (function (arg) {
-                        return ge(env, arg);
-                      })),
-                out: out
-              });
-          t = out;
-          break;
-      case "Bgn" :
-          Core__List.forEach(c._0, (function (e) {
-                  ge(env, e);
-                }));
-          t = ge(env, c._1);
-          break;
-      case "If" :
-          addConstraint("Boolean", ge(env, c._0));
-          var t_thn = ge(env, c._1);
-          var t_els = ge(env, c._2);
-          addConstraint(t_thn, t_els);
-          t = t_els;
-          break;
-      case "Cnd" :
-          var ob = c._1;
-          var t$1 = ob !== undefined ? gb(env, ob) : "TUni";
-          Core__List.forEach(c._0, (function (param) {
-                  var b = param[1];
-                  addConstraint("Boolean", ge(env, param[0]));
-                  addConstraint(t$1, gb(extend(env, xsOfBlock(b)), b));
-                }));
-          t = t$1;
-          break;
-      case "GLam" :
-      case "Yield" :
-          throw {
-                RE_EXN_ID: SMoLTypeError,
-                _1: {
-                  TAG: "NotSupported",
-                  _0: "generators"
-                },
-                Error: new Error()
-              };
-      
-    }
-    addConstraint({
-          TAG: "TVar",
-          _0: getKey(e.ann)
-        }, t);
-    return t;
-  };
-  var gb = function (env, _b) {
-    while(true) {
-      var b = _b;
-      var e = b.it;
-      if (e.TAG === "BRet") {
-        return ge(env, e._0);
-      }
-      gt(env, e._0);
-      _b = e._1;
-      continue ;
-    };
   };
   var ga = function (p, vs) {
     var exit = 0;
@@ -2025,6 +1904,132 @@ function inferTypes(p, getKey) {
           Error: new Error()
         };
   };
+  var gb = function (env, _b) {
+    while(true) {
+      var b = _b;
+      var e = b.it;
+      if (e.TAG === "BRet") {
+        return ge(env, e._0);
+      }
+      gt(env, e._0);
+      _b = e._1;
+      continue ;
+    };
+  };
+  var ge = function (env, e) {
+    var c = e.it;
+    var t;
+    switch (c.TAG) {
+      case "Con" :
+          t = gc(c._0);
+          break;
+      case "Ref" :
+          t = lookup(env, c._0);
+          break;
+      case "Set" :
+          var x = c._0;
+          addConstraint({
+                TAG: "TVar",
+                _0: getKey(x.ann)
+              }, lookup(env, x.it));
+          addConstraint(lookup(env, x.it), ge(env, c._1));
+          t = "TUni";
+          break;
+      case "Lam" :
+          var b = c._1;
+          var xs = c._0;
+          t = {
+            TAG: "Funof",
+            args: Core__List.map(xs, (function (x) {
+                    return {
+                            TAG: "TVar",
+                            _0: getKey(x.ann)
+                          };
+                  })),
+            out: gb(extend(env, Belt_List.concatMany([
+                          xs,
+                          xsOfBlock(b)
+                        ])), b)
+          };
+          break;
+      case "Let" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "let"
+                },
+                Error: new Error()
+              };
+      case "Letrec" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "letrec"
+                },
+                Error: new Error()
+              };
+      case "AppPrm" :
+          t = ga(c._0, Core__List.map(c._1, (function (e) {
+                      return ge(env, e);
+                    })));
+          break;
+      case "App" :
+          var out = {
+            TAG: "TVar",
+            _0: getKey(e.ann)
+          };
+          addConstraint(ge(env, c._0), {
+                TAG: "Funof",
+                args: Core__List.map(c._1, (function (arg) {
+                        return ge(env, arg);
+                      })),
+                out: out
+              });
+          t = out;
+          break;
+      case "Bgn" :
+          Core__List.forEach(c._0, (function (e) {
+                  ge(env, e);
+                }));
+          t = ge(env, c._1);
+          break;
+      case "If" :
+          addConstraint("Boolean", ge(env, c._0));
+          var t_thn = ge(env, c._1);
+          var t_els = ge(env, c._2);
+          addConstraint(t_thn, t_els);
+          t = t_els;
+          break;
+      case "Cnd" :
+          var ob = c._1;
+          var t$1 = ob !== undefined ? gb(env, ob) : "TUni";
+          Core__List.forEach(c._0, (function (param) {
+                  var b = param[1];
+                  addConstraint("Boolean", ge(env, param[0]));
+                  addConstraint(t$1, gb(extend(env, xsOfBlock(b)), b));
+                }));
+          t = t$1;
+          break;
+      case "GLam" :
+      case "Yield" :
+          throw {
+                RE_EXN_ID: SMoLTypeError,
+                _1: {
+                  TAG: "NotSupported",
+                  _0: "generators"
+                },
+                Error: new Error()
+              };
+      
+    }
+    addConstraint({
+          TAG: "TVar",
+          _0: getKey(e.ann)
+        }, t);
+    return t;
+  };
   var gc = function (c) {
     if (typeof c !== "object") {
       if (c === "Uni") {
@@ -2132,6 +2137,19 @@ function inferTypes(p, getKey) {
   };
   gatherConstraints(p);
   var constraints$1 = constraints.contents;
+  var raiseSolutionError = function (err) {
+    var err_0 = Core__List.toArray(constraints$1);
+    var err$1 = {
+      TAG: "CannotSolve",
+      _0: err_0,
+      _1: err
+    };
+    throw {
+          RE_EXN_ID: SMoLTypeError,
+          _1: err$1,
+          Error: new Error()
+        };
+  };
   var map = new Map();
   var walk = function (_e) {
     while(true) {
@@ -2262,21 +2280,17 @@ function inferTypes(p, getKey) {
                       exit = 1;
                       break;
                   case "Funof" :
-                      if (Core__List.length(e1$1.args) === Core__List.length(e2$1.args)) {
-                        Core__List.forEach2(e1$1.args, e2$1.args, unify);
-                        _e2 = e2$1.out;
-                        _e1 = e1$1.out;
-                        continue ;
+                      if (Core__List.length(e1$1.args) !== Core__List.length(e2$1.args)) {
+                        return raiseSolutionError({
+                                    TAG: "Incompatible",
+                                    _0: e1$1,
+                                    _1: e2$1
+                                  });
                       }
-                      throw {
-                            RE_EXN_ID: SMoLTypeError,
-                            _1: {
-                              TAG: "Incompatible",
-                              _0: e1$1,
-                              _1: e2$1
-                            },
-                            Error: new Error()
-                          };
+                      Core__List.forEach2(e1$1.args, e2$1.args, unify);
+                      _e2 = e2$1.out;
+                      _e1 = e1$1.out;
+                      continue ;
                   default:
                     exit = 2;
                 }
@@ -2290,15 +2304,11 @@ function inferTypes(p, getKey) {
             map.set(e2$1._0, e1$1);
             return ;
         case 2 :
-            throw {
-                  RE_EXN_ID: SMoLTypeError,
-                  _1: {
-                    TAG: "Incompatible",
-                    _0: e1$1,
-                    _1: e2$1
-                  },
-                  Error: new Error()
-                };
+            return raiseSolutionError({
+                        TAG: "Incompatible",
+                        _0: e1$1,
+                        _1: e2$1
+                      });
         
       }
     };
@@ -2307,10 +2317,11 @@ function inferTypes(p, getKey) {
           unify(param[0], param[1]);
         }));
   var ground = function (e) {
-    var visited = new Set();
-    var g = function (_e) {
+    new Set();
+    var g = function (_visited, _e) {
       while(true) {
         var e = _e;
+        var visited = _visited;
         if (typeof e !== "object") {
           switch (e) {
             case "Num" :
@@ -2327,42 +2338,66 @@ function inferTypes(p, getKey) {
           switch (e.TAG) {
             case "TVar" :
                 var x = e._0;
-                if (visited.has(x)) {
+                if (Core__List.some(visited, (function(x){
+                      return function (y) {
+                        return x === y;
+                      }
+                      }(x)))) {
+                  var err = {
+                    TAG: "RecursiveType",
+                    _0: Core__List.toArray(visited),
+                    _1: x
+                  };
+                  var err_0 = Core__List.toArray(constraints$1);
+                  var err_1 = Array.from(map.entries());
+                  var err$1 = {
+                    TAG: "CannotGround",
+                    _0: err_0,
+                    _1: err_1,
+                    _2: err
+                  };
                   throw {
                         RE_EXN_ID: SMoLTypeError,
-                        _1: "RecursiveType",
+                        _1: err$1,
                         Error: new Error()
                       };
                 }
-                visited.add(x);
                 var e$1 = map.get(x);
                 if (e$1 === undefined) {
                   return "Top";
                 }
                 _e = e$1;
+                _visited = {
+                  hd: x,
+                  tl: visited
+                };
                 continue ;
             case "Vecof" :
                 return {
                         TAG: "Vecof",
-                        _0: g(e._0)
+                        _0: g(visited, e._0)
                       };
             case "Listof" :
                 return {
                         TAG: "Listof",
-                        _0: g(e._0)
+                        _0: g(visited, e._0)
                       };
             case "Funof" :
                 return {
                         TAG: "Funof",
-                        args: Core__List.map(e.args, g),
-                        out: g(e.out)
+                        args: Core__List.map(e.args, (function(visited){
+                            return function (arg) {
+                              return g(visited, arg);
+                            }
+                            }(visited))),
+                        out: g(visited, e.out)
                       };
             
           }
         }
       };
     };
-    return g(e);
+    return g(/* [] */0, e);
   };
   var solution = new Map(Array.from(map.entries()).map(function (param) {
             return [

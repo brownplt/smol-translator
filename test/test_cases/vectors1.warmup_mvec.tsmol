@@ -1,0 +1,4 @@
+(defvar [n : Number] 44)
+(deffun (f [x : Number])
+  (+ x 1))
+(mvec n (f n))

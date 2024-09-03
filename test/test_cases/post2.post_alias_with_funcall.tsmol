@@ -1,0 +1,6 @@
+(defvar [m1 : (Vectorof Number)] (mvec 77 77))
+(deffun (f [m2 : (Vectorof Number)])
+  (vec-set! m2 0 43)
+  (vec-ref m2 0))
+(defvar [foo : Number] (f m1))
+m1

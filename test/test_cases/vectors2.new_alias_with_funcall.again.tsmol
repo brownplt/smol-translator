@@ -1,0 +1,5 @@
+(defvar [a : (Vectorof Number)] (mvec 66 54))
+(deffun (h [b : (Vectorof Number)])
+  (vec-set! a 0 42)
+  b)
+(h a)

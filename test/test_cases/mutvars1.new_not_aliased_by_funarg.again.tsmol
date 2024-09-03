@@ -1,0 +1,5 @@
+(defvar [a : Number] 1)
+(deffun (foobar [b : Number])
+  (set! a 2)
+  b)
+(foobar a)

@@ -75,7 +75,7 @@ def run_scala_file(test):
     actual_result = actual_result.replace("ArrayBuffer", "Buffer")
     return actual_result
 
-for test_path in ["style_tests", "test_cases"]:
+for test_path in ["type", "style_tests", "test_cases"]:
     suffix = ".js"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):

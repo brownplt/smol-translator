@@ -1,0 +1,5 @@
+(defvar [a : Number] 5)
+(deffun (k [b : Number])
+  (set! b 3)
+  a)
+(k a)

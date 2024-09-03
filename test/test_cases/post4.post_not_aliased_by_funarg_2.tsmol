@@ -1,0 +1,5 @@
+(defvar [n : Number] 2)
+(deffun (h [m : Number])
+  (set! m 7)
+  n)
+(h n)

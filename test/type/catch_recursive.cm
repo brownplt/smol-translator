@@ -1,0 +1,5 @@
+let a = 1
+fun foobar(b):
+  return b
+end
+print(foobar(a))

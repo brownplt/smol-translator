@@ -1,0 +1,4 @@
+(defvar [x : Number] 7)
+(deffun (fun [n : Number])
+  (* n 2))
+(mvec (fun x) x)

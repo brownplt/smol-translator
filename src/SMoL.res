@@ -924,11 +924,17 @@ type rec tye =
   | Funof({args: list<tye>, out: tye})
 type rec typeEnv = list<Map.t<string, tye>>
 
-type typeError =
+type groundError = RecursiveType(array<string>, string)
+
+type solutionError =
   | RecursiveType
+  | Incompatible(tye, tye)
+
+type typeError =
   | UnboundId(string)
   | NotSupported(string)
-  | Incompatible(tye, tye)
+  | CannotSolve(array<(tye, tye)>, solutionError)
+  | CannotGround(array<(tye, tye)>, array<(string, tye)>, groundError)
 type exn += SMoLTypeError(typeError)
 let raiseTypeError = err => raise(SMoLTypeError(err))
 
@@ -976,7 +982,10 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
           t2
         }
       | Vecof(t) => t
-      | _ => raiseTypeError(Incompatible(t1, Vecof(freshVar())))
+      | _ =>
+        raiseTypeError(
+          CannotSolve(List.toArray(constraints.contents), Incompatible(t1, Vecof(freshVar()))),
+        )
       }
     }
     let rec gatherConstraints = (p: program<'ann>) => {
@@ -1165,6 +1174,7 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
     constraints.contents
   }
   let solution: Map.t<string, ty> = {
+    let raiseSolutionError = err => raiseTypeError(CannotSolve(constraints->List.toArray, err))
     let map: Map.t<string, tye> = Map.make()
     let rec walk = e => {
       // find the head-normal form
@@ -1198,40 +1208,50 @@ let inferTypes: (program<'ann>, 'ann => string) => program<typed<'ann>> = (
           List.forEach2(e1.args, e2.args, unify)
           unify(e1.out, e2.out)
         } else {
-          raiseTypeError(Incompatible(Funof(e1), Funof(e2)))
+          raiseSolutionError(Incompatible(Funof(e1), Funof(e2)))
         }
-      | _ => raiseTypeError(Incompatible(e1, e2))
+      | _ => raiseSolutionError(Incompatible(e1, e2))
       }
     }
     constraints->List.forEach(((e1, e2)) => unify(e1, e2))
+    let raiseGroundError = err => {
+      raiseTypeError(
+        CannotGround(
+          constraints->List.toArray,
+          map
+          ->Map.entries
+          ->Array.fromIterator,
+          err,
+        ),
+      )
+    }
     let ground = (e: tye): ty => {
       let visited = Set.make()
-      let rec g = e => {
+      let rec g = (visited, e) => {
         switch e {
         | TVar(x) =>
-          if Set.has(visited, x) {
-            raiseTypeError(RecursiveType)
+          if List.some(visited, y => x == y) {
+            raiseGroundError(RecursiveType(visited->List.toArray, x))
           } else {
-            Set.add(visited, x)
             switch Map.get(map, x) {
             | None => Top
-            | Some(e) => g(e)
+            | Some(e) => g(list{x, ...visited}, e)
             }
           }
         | TUni => TUni
         | Num => Num
         | Boolean => Boolean
         | String => String
-        | Vecof(e) => Vecof(g(e))
-        | Listof(e) => Listof(g(e))
+        | Vecof(e) => Vecof(g(visited, e))
+        | Listof(e) => Listof(g(visited, e))
         | Funof({args, out}) =>
           Funof({
-            args: args->List.map(g),
-            out: g(out),
+            args: args->List.map(arg => g(visited, arg)),
+            out: g(visited, out),
           })
         }
       }
-      g(e)
+      g(list{}, e)
     }
     map
     ->Map.entries
