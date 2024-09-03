@@ -3050,7 +3050,7 @@ module JSPrinter: Printer = {
       ...p,
       ann: {
         ...p.ann,
-        print: wrap(`"use strict";\n\n`, getProgramPrint(p), ``)
+        print: wrap(`"use strict";\n\n`, getProgramPrint(p), ``),
       },
     }
   }
@@ -5297,20 +5297,13 @@ module JavaPrinter: Printer = {
     let matchFn = (matchPart, _offset, _wholeString) => {
       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
     }
-    let x = Js.String2.unsafeReplaceBy0(x, re, matchFn)
-
-    // add `$` to the beginning of reserved words
-    if x == "var" {
-      "$var"
-    } else {
-      x
-    }
+    Js.String2.unsafeReplaceBy0(x, re, matchFn)
   }
 
   let constantToString = c => {
     switch c {
     | Uni => "null"
-    | Nil => raisePrintError("Lists are not supported in JavaScript.")
+    | Nil => raisePrintError("Lists are not supported in Java.")
     | Num(n) => Float.toString(n)
     | Lgc(l) =>
       if l {
@@ -5390,8 +5383,7 @@ module JavaPrinter: Printer = {
 
   let consumeContextStat: consumer = e => {
     {
-      expr: _ =>
-        raisePrintError(`${Print.toString(e)} can't be used as a expression in JavaScript`),
+      expr: _ => raisePrintError(`${Print.toString(e)} can't be used as a expression in Java`),
       stat: consumeContextVoid(e).stat,
     }
   }
@@ -5419,7 +5411,7 @@ module JavaPrinter: Printer = {
         | Le => "<="
         | Ge => ">="
         | Ne => "!="
-        | Equal => raisePrintError("JavaScript has limited support for equality")
+        | Equal => raisePrintError("Java has limited support for equality")
         }
         let e1 = e1(true)
         let e2 = e2(true)
@@ -5516,7 +5508,7 @@ module JavaPrinter: Printer = {
     | (Print, list{e1}) => {
         let e1 = e1(false)
         {
-          ann: (Print.s`console.log(${getPrint(e1)})`)->consumeContextVoid,
+          ann: (Print.s`System.out::println(${getPrint(e1)})`)->consumeContextVoid,
           it: (Print, list{e1}),
         }
       }
@@ -5527,10 +5519,10 @@ module JavaPrinter: Printer = {
           it: (Next, list{e1}),
         }
       }
-    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | (Cons, _) => raisePrintError("List is not supported by Java")
     | _ =>
       raisePrintError(
-        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+        `Java doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
             List.length(es),
           )} parameter(s).`,
       )
@@ -5545,24 +5537,14 @@ module JavaPrinter: Printer = {
     defvarLike("let ", x, e)
   }
 
-  let deffunToString = (f, xs, b) => {
-    funLike("function", f, xs, b)
-  }
-
-  let defgenToString = (f, xs, b) => {
-    funLike("function*", f, xs, b)
-  }
-
   let exprSetToString = (x, e) => {
     defvarLike("", x, e)
   }
 
   let exprLamToString = (xs, b) => {
-    funLike("function", Print.string(""), xs, b)
+    raisePrintError("Lambda expressions are not supported yet.")
   }
-  let exprGenToString = (xs, b) => {
-    funLike("function*", Print.string(""), xs, b)
-  }
+
   let exprYieldToString = e => Print.s`yield ${e}`
 
   let exprBgnToString = (es, e) => {
@@ -5596,6 +5578,30 @@ module JavaPrinter: Printer = {
         sourceLocation: ann,
         print: Plain(printName(it)),
       },
+    }
+  }
+
+  let rec typeToString = (t: ty): string => {
+    switch t {
+    | Top => "Object"
+    | TUni => "void"
+    | Num => "int"
+    | Boolean => "bool"
+    | String => "string"
+    | Vecof(t) => `array<${typeToString(t)}>`
+    | Listof(t) => raisePrintError("Lists are not supported by Java")
+    | Funof({args, out}) =>
+      switch (args, out) {
+      | (list{}, out) => `Supplier<${typeToString(out)}>`
+      | (list{arg}, TUni) => `Consumer<${typeToString(arg)}>`
+      | (list{arg}, Boolean) => `Predicate<${typeToString(arg)}>`
+      | (list{arg}, out) => `Function<${typeToString(arg)}, <${typeToString(out)}>`
+      | (list{arg1, arg2}, TUni) => `BiConsumer<${typeToString(arg1)} typeToString(arg2)}>`
+      | (list{arg1, arg2}, Boolean) => `BiPredicate<${typeToString(arg1)} typeToString(arg2)}>`
+      | (list{arg1, arg2}, out) =>
+        `BiFunction<${typeToString(arg1)} typeToString(arg2)}, <${typeToString(out)}>`
+      | _ => raisePrintError("Java only supports certain kind of first-class functions")
+      }
     }
   }
 
@@ -5644,18 +5650,7 @@ module JavaPrinter: Printer = {
           it: Lam(xs, b),
         }
       }->lift
-    | GLam(xs, b) =>
-      {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
-        {
-          ann: exprGenToString(
-            xs->List.map(x => getNamePrint(x)),
-            getBlockPrint(b),
-          )->consumeContextWrap,
-          it: GLam(xs, b),
-        }
-      }->lift
+    | GLam(xs, b) => raisePrintError("Generator expressions are not supported by Java.")
     | Yield(e) =>
       {
         let e = e->printExp->asExpr(false)
@@ -5684,10 +5679,10 @@ module JavaPrinter: Printer = {
           it: App(e, es),
         }
       }->lift
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
+    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Java")
     | Letrec(xes, b) =>
       sourceLocation => {
-        expr: _ => raisePrintError("letrec-expressions are not supported by JavaScript"),
+        expr: _ => raisePrintError("letrec-expressions are not supported by Java"),
         stat: ctx => {
           let xes = xes->List.map(xeToString)
           let b = b->printBlock(ctx)
@@ -5714,7 +5709,7 @@ module JavaPrinter: Printer = {
       sourceLocation => {
         expr: _ =>
           raisePrintError(
-            "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+            "Multi-armed conditionals in Java is not supported by the translator yet.",
           ),
         stat: ctx => {
           let ebs: list<(expression<printAnn>, block<printAnn>)> =
@@ -5807,38 +5802,21 @@ module JavaPrinter: Printer = {
       }
     | Fun(f, xs, b) => {
         let f = f->symbolToString
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
+        let xs = xs->List.map(x => {
+          Print.s`${Print.string(typeToString(x.ann.ty))} ${getNamePrint(symbolToString(x))}`
+        })
+        let bty = typeToString(b.ann.ty)
+        let b =  b->printBlock(Return)->getBlockPrint
         (
           "",
           {
-            ann: deffunToString(
-              getNamePrint(f),
-              xs->List.map(x => getNamePrint(x)),
-              getBlockPrint(b),
-            ),
+            ann: Print.s`${b.ty} ${getNamePrint(f)}(${Array.join(xs, ", ")}) {${indentBlock(b.b, 4)}\n}`,
             it: Fun(f, xs, b),
           },
           "",
         )
       }
-    | GFun(f, xs, b) => {
-        let f = f->symbolToString
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Return)
-        (
-          "",
-          {
-            ann: defgenToString(
-              getNamePrint(f),
-              xs->List.map(x => getNamePrint(x)),
-              getBlockPrint(b),
-            ),
-            it: GFun(f, xs, b),
-          },
-          "",
-        )
-      }
+    | GFun(f, xs, b) => raisePrintError("Generators are not supported by Java.")
     }
     let {ann: print, it} = d
     (prefix, {ann: {print, sourceLocation}, it}, suffix)
@@ -5923,7 +5901,7 @@ module JavaPrinter: Printer = {
           | Some(i) => `<ref *${Int.toString(i)}> `
           }
           let content = switch content {
-          | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Lst(_) => raisePrintError("Lists are not supported in Java.")
           | Vec(es) => `[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`

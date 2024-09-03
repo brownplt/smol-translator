@@ -10900,12 +10900,7 @@ function printName$6(x) {
   var matchFn = function (matchPart, _offset, _wholeString) {
     return matchPart.substring(1).toUpperCase();
   };
-  var x$1 = x.replace(re, matchFn);
-  if (x$1 === "var") {
-    return "$var";
-  } else {
-    return x$1;
-  }
+  return x.replace(re, matchFn);
 }
 
 function constantToString$6(c) {
@@ -10915,7 +10910,7 @@ function constantToString$6(c) {
     }
     throw {
           RE_EXN_ID: SMoLPrintError,
-          _1: "Lists are not supported in JavaScript.",
+          _1: "Lists are not supported in Java.",
           Error: new Error()
         };
   } else {
@@ -11112,7 +11107,7 @@ function consumeContextEscape$2(e) {
 function consumeContextStat$2(e) {
   return {
           expr: (function (param) {
-              var err = toString(e) + " can't be used as a expression in JavaScript";
+              var err = toString(e) + " can't be used as a expression in Java";
               throw {
                     RE_EXN_ID: SMoLPrintError,
                     _1: err,
@@ -11407,7 +11402,7 @@ function exprAppPrmToString$4(p, es) {
                       }
                     ],
                     ann: consumeContextVoid$4(s([
-                              "console.log(",
+                              "System.stdout.println(",
                               ")"
                             ], [getPrint(e1$10)]))
                   };
@@ -11434,7 +11429,7 @@ function exprAppPrmToString$4(p, es) {
       case "Cons" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by JavaScript",
+                _1: "List is not supported by Java",
                 Error: new Error()
               };
       
@@ -11501,7 +11496,7 @@ function exprAppPrmToString$4(p, es) {
           case "Equal" :
               throw {
                     RE_EXN_ID: SMoLPrintError,
-                    _1: "JavaScript has limited support for equality",
+                    _1: "Java has limited support for equality",
                     Error: new Error()
                   };
           
@@ -11544,7 +11539,7 @@ function exprAppPrmToString$4(p, es) {
     }
     
   }
-  var err = "JavaScript doesn't let you use " + toString$1(p) + " on " + Core__List.length(es).toString() + " parameter(s).";
+  var err = "Java doesn't let you use " + toString$1(p) + " on " + Core__List.length(es).toString() + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -11552,62 +11547,12 @@ function exprAppPrmToString$4(p, es) {
       };
 }
 
-function funLike$3(op, x, xs, e) {
-  return s([
-              "",
-              " ",
-              " {",
-              "\n}"
-            ], [
-              {
-                it: {
-                  TAG: "Plain",
-                  _0: op
-                },
-                ann: undefined
-              },
-              {
-                it: exprAppToString$6(x, xs),
-                ann: undefined
-              },
-              indentBlock(e, 2)
-            ]);
-}
-
 function defvarToString$6(x, e) {
   return defvarLike$6("let ", x, e);
 }
 
-function deffunToString$6(f, xs, b) {
-  return funLike$3("function", f, xs, b);
-}
-
-function defgenToString$5(f, xs, b) {
-  return funLike$3("function*", f, xs, b);
-}
-
 function exprSetToString$6(x, e) {
   return defvarLike$6("", x, e);
-}
-
-function exprLamToString$6(xs, b) {
-  return funLike$3("function", {
-              it: {
-                TAG: "Plain",
-                _0: ""
-              },
-              ann: undefined
-            }, xs, b);
-}
-
-function exprGenToString$4(xs, b) {
-  return funLike$3("function*", {
-              it: {
-                TAG: "Plain",
-                _0: ""
-              },
-              ann: undefined
-            }, xs, b);
 }
 
 function exprYieldToString$5(e) {
@@ -11773,21 +11718,28 @@ function printExp$6(param) {
     case "Lam" :
         var xs = Core__List.map(it._0, symbolToString$5);
         var b = printBlock$6(it._1, "Return");
+        getBlockPrint(b);
+        Core__List.map(xs, (function (x) {
+                return getNamePrint(x);
+              }));
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Lambda expressions are not supported yet.",
+              Error: new Error()
+            };
         e = lift({
               it: {
                 TAG: "Lam",
                 _0: xs,
                 _1: b
               },
-              ann: consumeContextWrap$4(exprLamToString$6(Core__List.map(xs, (function (x) {
-                              return getNamePrint(x);
-                            })), getBlockPrint(b)))
+              ann: consumeContextWrap$4(undefined)
             });
         break;
     case "Let" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by JavaScript",
+              _1: "let-expressions are not supported by Java",
               Error: new Error()
             };
     case "Letrec" :
@@ -11798,7 +11750,7 @@ function printExp$6(param) {
                     expr: (function (param) {
                         throw {
                               RE_EXN_ID: SMoLPrintError,
-                              _1: "letrec-expressions are not supported by JavaScript",
+                              _1: "letrec-expressions are not supported by Java",
                               Error: new Error()
                             };
                       }),
@@ -11958,7 +11910,7 @@ function printExp$6(param) {
                     expr: (function (param) {
                         throw {
                               RE_EXN_ID: SMoLPrintError,
-                              _1: "Multi-armed conditionals in JavaScript is not supported by the translator yet.",
+                              _1: "Multi-armed conditionals in Java is not supported by the translator yet.",
                               Error: new Error()
                             };
                       }),
@@ -11998,19 +11950,11 @@ function printExp$6(param) {
           });
         break;
     case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString$5);
-        var b$2 = printBlock$6(it._1, "Return");
-        e = lift({
-              it: {
-                TAG: "GLam",
-                _0: xs$1,
-                _1: b$2
-              },
-              ann: consumeContextWrap$4(exprGenToString$4(Core__List.map(xs$1, (function (x) {
-                              return getNamePrint(x);
-                            })), getBlockPrint(b$2)))
-            });
-        break;
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generator expressions are not supported by Java.",
+              Error: new Error()
+            };
     case "Yield" :
         var e$7 = printExp$6(it._0);
         var e$8 = e$7.expr(false);
@@ -12061,33 +12005,17 @@ function printDef$6(param) {
               _1: xs,
               _2: b
             },
-            ann: deffunToString$6(getNamePrint(f), Core__List.map(xs, (function (x) {
-                        return getNamePrint(x);
-                      })), getBlockPrint(b))
+            ann: s([""], [])
           },
           ""
         ];
         break;
     case "GFun" :
-        var f$1 = symbolToString$5(d._0);
-        var xs$1 = Core__List.map(d._1, symbolToString$5);
-        var b$1 = printBlock$6(d._2, "Return");
-        match = [
-          "",
-          {
-            it: {
-              TAG: "GFun",
-              _0: f$1,
-              _1: xs$1,
-              _2: b$1
-            },
-            ann: defgenToString$5(getNamePrint(f$1), Core__List.map(xs$1, (function (x) {
-                        return getNamePrint(x);
-                      })), getBlockPrint(b$1))
-          },
-          ""
-        ];
-        break;
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators are not supported by Java.",
+              Error: new Error()
+            };
     
   }
   var d$1 = match[1];
@@ -12252,7 +12180,7 @@ function printOutputlet$6(o) {
           if (content.TAG === "Lst") {
             throw {
                   RE_EXN_ID: SMoLPrintError,
-                  _1: "Lists are not supported in JavaScript.",
+                  _1: "Lists are not supported in Java.",
                   Error: new Error()
                 };
           }
