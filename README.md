@@ -94,10 +94,10 @@ is
 ```lisp
 (deffun (f n)
   (+ n 4))
-(* (+ ◌ 2 3) 7)
+(* (+ • 2 3) 7)
 ```
 
-In either example, it is desirable to replace an AST node with a new printed form (i.e., `(+ x 1)` ↦ `3` and `(f 5)` ↦ `◌`). A string search-and-replace does not work for all cases because the same string might appear multiple times in the source program. So, instead, I record the source code location of each AST node and maintain the location in the output.
+In either example, it is desirable to replace an AST node with a new printed form (i.e., `(+ x 1)` ↦ `3` and `(f 5)` ↦ `•`). A string search-and-replace does not work for all cases because the same string might appear multiple times in the source program. So, instead, I record the source code location of each AST node and maintain the location in the output.
 
 ## Test Suite
 
