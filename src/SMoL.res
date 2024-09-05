@@ -1015,7 +1015,19 @@ module SMoLPrinter = {
   let exprYieldToString = e => Group({list{Print.string("(yield "), e, Print.string(")")}})
 
   let exprAppToString = (e, es) => {
-    listToString(list{e, ...es})
+    if List.some(es, e => {containsNL(e.it)}) {
+      Print.s`(${
+        indent(
+          hcat(
+            e,
+            Print.concat("\n", es) |> Print.dummy
+          ) |> Print.dummy,
+          1
+        )
+      })`
+    } else {
+      listToString(list{e, ...es})
+    }
   }
 
   let beginLike = (op, ts) => {
@@ -1046,7 +1058,7 @@ module SMoLPrinter = {
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    Print.s`(if ${indent(Print.concat("\n", list{e_cnd, e_thn, e_els}) -> Print.dummy, 4)})`
+    Print.s`(if ${indent(Print.concat("\n", list{e_cnd, e_thn, e_els})->Print.dummy, 4)})`
     // hcat(
     //   Print.string(`(if `),
     //   group2(

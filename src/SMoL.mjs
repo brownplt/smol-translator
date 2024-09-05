@@ -1964,10 +1964,25 @@ function exprYieldToString(e) {
 }
 
 function exprAppToString(e, es) {
-  return listToString({
-              hd: e,
-              tl: es
-            });
+  if (Core__List.some(es, (function (e) {
+            return containsNL(e.it);
+          }))) {
+    return s([
+                "(",
+                ")"
+              ], [indent({
+                      it: hcat(e, {
+                            it: concat("\n", es),
+                            ann: undefined
+                          }),
+                      ann: undefined
+                    }, 1)]);
+  } else {
+    return listToString({
+                hd: e,
+                tl: es
+              });
+  }
 }
 
 function beginLike(op, ts) {
@@ -8563,10 +8578,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
-        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
+        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",
