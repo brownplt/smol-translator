@@ -1623,7 +1623,7 @@ function makeAppPrm(ann, p, es) {
 
 function parseTerms(src) {
   try {
-    return Core__List.map(SExpression.SExpr.fromString(src), parseTerm);
+    return Core__List.map(SExpression.SExpr.fromString(true, src), parseTerm);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -1649,7 +1649,7 @@ function parseProgram(src) {
 
 function parseOutput(src) {
   try {
-    return Core__List.map(SExpression.SExpr.fromString(src), outputletOfSExpr);
+    return Core__List.map(SExpression.SExpr.fromString(undefined, src), outputletOfSExpr);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -8578,10 +8578,10 @@ function printExp$4(param) {
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString$4);
         var b$1 = printBlock$4(it._1, "Return");
+        getBlockPrint(b$1);
         Core__List.map(xs$1, (function (x) {
                 return getNamePrint(x);
               }));
-        getBlockPrint(b$1);
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "generators are not supported yet in Scala translation.",

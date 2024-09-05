@@ -1,0 +1,11 @@
+fun make-counter():
+  let n = 0
+  fun inc():
+    n = n + 1
+    return n
+  end
+  return inc
+end
+let f = make-counter()
+print(f())
+print(f())

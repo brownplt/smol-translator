@@ -881,7 +881,7 @@ module Parser = {
   }
 
   let parseTerms = (src: string) => {
-    switch src->SExpr.fromString->List.map(parseTerm) {
+    switch src->SExpr.fromString(~ignoreLangLine=true)->List.map(parseTerm) {
     | terms => terms
     | exception SExpression.SExpressionError(err) =>
       raiseParseError(SExprParseError(SExpression.Error.toString(err)))
