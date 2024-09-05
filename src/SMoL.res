@@ -1046,13 +1046,14 @@ module SMoLPrinter = {
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    hcat(
-      Print.string(`(if `),
-      group2(
-        Print.dummy(Print.concat("\n", list{e_cnd, e_thn, e_els})),
-        Print.string(")"),
-      )->Print.dummy,
-    )
+    Print.s`(if ${indent(Print.concat("\n", list{e_cnd, e_thn, e_els}) -> Print.dummy, 4)})`
+    // hcat(
+    //   Print.string(`(if `),
+    //   group2(
+    //     Print.dummy(),
+    //     Print.string(")"),
+    //   )->Print.dummy,
+    // )
     // hcat(Print.string(`(if `), `${concat("\n", list{e_cnd, e_thn, e_els})})`)
   }
 

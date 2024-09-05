@@ -2077,14 +2077,10 @@ function exprCndToString(ebs, ob) {
 }
 
 function exprIfToString(e_cnd, e_thn, e_els) {
-  return hcat({
-              it: {
-                TAG: "Plain",
-                _0: "(if "
-              },
-              ann: undefined
-            }, {
-              it: group2({
+  return s([
+              "(if ",
+              ")"
+            ], [indent({
                     it: concat("\n", {
                           hd: e_cnd,
                           tl: {
@@ -2096,15 +2092,7 @@ function exprIfToString(e_cnd, e_thn, e_els) {
                           }
                         }),
                     ann: undefined
-                  }, {
-                    it: {
-                      TAG: "Plain",
-                      _0: ")"
-                    },
-                    ann: undefined
-                  }),
-              ann: undefined
-            });
+                  }, 4)]);
 }
 
 function letLike(op, xes, b) {
