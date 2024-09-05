@@ -1971,7 +1971,13 @@ function exprAppToString(e, es) {
                 "(",
                 ")"
               ], [indent({
-                      it: hcat(e, {
+                      it: hcat({
+                            it: s([
+                                  "",
+                                  " "
+                                ], [e]),
+                            ann: undefined
+                          }, {
                             it: concat("\n", es),
                             ann: undefined
                           }),

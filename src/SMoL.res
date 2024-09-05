@@ -1016,15 +1016,10 @@ module SMoLPrinter = {
 
   let exprAppToString = (e, es) => {
     if List.some(es, e => {containsNL(e.it)}) {
-      Print.s`(${
-        indent(
-          hcat(
-            e,
-            Print.concat("\n", es) |> Print.dummy
-          ) |> Print.dummy,
-          1
-        )
-      })`
+      Print.s`(${indent(
+        Print.dummy(hcat((Print.s`${e} `)->Print.dummy, Print.dummy(Print.concat("\n", es)))),
+        1,
+      )})`
     } else {
       listToString(list{e, ...es})
     }
