@@ -1266,7 +1266,10 @@ module SMoLPrinter = {
     | BRet(e) => {
         let e = printExp(e)
         {
-          ann: e.ann,
+          ann: {
+            print: Print.s`${getPrint(e)}`,
+            sourceLocation: e.ann.sourceLocation
+          },
           it: BRet(e),
         }
       }

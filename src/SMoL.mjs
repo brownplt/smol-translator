@@ -2544,7 +2544,13 @@ function printBlock(param) {
               TAG: "BRet",
               _0: e
             },
-            ann: e.ann
+            ann: {
+              sourceLocation: e.ann.sourceLocation,
+              print: s([
+                    "",
+                    ""
+                  ], [getPrint(e)])
+            }
           };
   }
   var t = printTerm(b._0);
