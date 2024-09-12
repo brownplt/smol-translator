@@ -1,4 +1,4 @@
-let x = vec[0]
-let v = vec[2, x, 3]
-x = vec[1]
+let x = vec[ 0 ]
+let v = vec[ 2, x, 3 ]
+x = vec[ 1 ]
 print(v)

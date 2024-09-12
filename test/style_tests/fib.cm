@@ -1,7 +1,7 @@
 fun fib(n):
   if n < 0:
     raise "The argument to fib must be non-negative"
-  else if n <= 1:
+  elsif n <= 1:
     return n
   else:
     return fib(n - 1) + fib(n - 2)
