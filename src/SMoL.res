@@ -2505,17 +2505,17 @@ module JSPrinter = {
         }
       }
     | (VecLen, list{e1}) => {
-        let e1 = e1(false)
+        let e1 = e1(true)
         {
           it: (VecLen, list{e1}),
-          ann: consumeContext(ctx, ann, Print.s`len(${e1.ann.print})`),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.length`),
         }
       }
     | (Err, list{e1}) => {
         let e1 = e1(true)
         {
           it: (Err, list{e1}),
-          ann: consumeContextEscapeWrap(ctx, ann, Print.s`raise ${e1.ann.print}`),
+          ann: consumeContextEscapeWrap(ctx, ann, Print.s`throw ${e1.ann.print}`),
         }
       }
     | (Not, list{e1}) => {
@@ -2578,20 +2578,17 @@ module JSPrinter = {
   let ifStat = (cnd, thn, els) => {
     Print.s`if (${cnd}) {${indentBlock(thn, 2)}\n}${switch els {
     | None => Print.s``
-    | Some(els) => Print.s`} else {${indentBlock(els, 2)}\n}`
+    | Some(els) => Print.s` else {${indentBlock(els, 2)}\n}`
     }->Print.dummy}`
   }
 
   let exprCndToString = (ebs: list<(_, _)>, ob) => {
-    if ebs == list{} {
-      raisePrintError("`else`-only conditional is not supported by JavaScript.")
-    }
     let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
     let ebs = switch ob {
     | None => ebs
-    | Some(b) => list{...ebs, (Print.s`se:${indentBlock(b, 2)}`)->Print.dummy}
+    | Some(b) => list{...ebs, (Print.s`{${indentBlock(b, 2)}\n}`)->Print.dummy}
     }
-    Print.concat("\nel", ebs)
+    Print.concat(" else ", ebs)
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {

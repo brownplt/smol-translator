@@ -4868,7 +4868,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
           break;
       case "VecLen" :
           if (es && !es.tl) {
-            var e1$7 = es.hd(false);
+            var e1$7 = es.hd(true);
             return {
                     it: [
                       "VecLen",
@@ -4878,8 +4878,8 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                       }
                     ],
                     ann: consumeContext$1(ctx, ann, s([
-                              "len(",
-                              ")"
+                              "",
+                              ".length"
                             ], [e1$7.ann.print]))
                   };
           }
@@ -4896,7 +4896,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                       }
                     ],
                     ann: consumeContextEscapeWrap$1(ctx, ann, s([
-                              "raise ",
+                              "throw ",
                               ""
                             ], [e1$8.ann.print]))
                   };
@@ -5115,7 +5115,7 @@ function ifStat$1(cnd, thn, els) {
               indentBlock(thn, 2),
               {
                 it: els !== undefined ? s([
-                        "} else {",
+                        " else {",
                         "\n}"
                       ], [indentBlock(els, 2)]) : s([""], []),
                 ann: undefined
@@ -5124,13 +5124,6 @@ function ifStat$1(cnd, thn, els) {
 }
 
 function exprCndToString$2(ebs, ob) {
-  if (ebs === /* [] */0) {
-    throw {
-          RE_EXN_ID: SMoLPrintError,
-          _1: "`else`-only conditional is not supported by JavaScript.",
-          Error: new Error()
-        };
-  }
   var ebs$1 = Belt_List.map(ebs, (function (param) {
           return {
                   it: ifStat$1(param[0], param[1], undefined),
@@ -5142,15 +5135,15 @@ function exprCndToString$2(ebs, ob) {
           {
             hd: {
               it: s([
-                    "se:",
-                    ""
+                    "{",
+                    "\n}"
                   ], [indentBlock(ob, 2)]),
               ann: undefined
             },
             tl: /* [] */0
           }
         ]) : ebs$1;
-  return concat("\nel", ebs$2);
+  return concat(" else ", ebs$2);
 }
 
 function exprIfToString$2(e_cnd, e_thn, e_els) {
