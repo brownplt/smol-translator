@@ -6,15 +6,16 @@ type rec printNode<'id> =
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
 module Print: {
-  type t<'id> = printNode<'id>
+  type t<'id> = print<'id>
   let toString: t<'id> => string
   let toSourceMap: (print<'id>, 'id => string) => Map.t<string, SExpression.sourceLocation>
   let map: (string => string) => (t<'id>) => t<'id>
-  let concat2: (annotated<t<'id>, option<'id>>, string, annotated<t<'id>, option<'id>>) => t<'id>
-  let concat: (string, list<annotated<t<'id>, option<'id>>>) => t<'id>
-  let pad: (string, annotated<t<'id>, option<'id>>, string) => t<'id>
-  let dummy: t<'id> => print<'id>
-  let s: (array<string>, array<print<'id>>) => t<'id>
+  let concat2: (t<'id>, string, t<'id>) => printNode<'id>
+  let concat: (string, list<t<'id>>) => printNode<'id>
+  let wrap: (string, t<'id>, string) => printNode<'id>
+  let dummy: printNode<'id> => print<'id>
+  let includes: (t<'id>, string) => bool
+  let s: (array<string>, array<print<'id>>) => printNode<'id>
 }
 
 type constant =
@@ -171,15 +172,7 @@ type kindedSourceLocation = {
   nodeKind: nodeKind,
   sourceLocation: sourceLocation,
 }
-type printAnn = {sourceLocation: sourceLocation, print: Print.t<kindedSourceLocation>}
-
-let getPrint: expression<printAnn> => print<kindedSourceLocation>
-let getNamePrint: annotated<string, printAnn> => print<kindedSourceLocation>
-let getBindPrint: bind<printAnn> => print<kindedSourceLocation>
-let getBlockPrint: block<printAnn> => print<kindedSourceLocation>
-let getDefinitionPrint: definition<printAnn> => print<kindedSourceLocation>
-let getTermPrint: term<printAnn> => print<kindedSourceLocation>
-let getProgramPrint: program<printAnn> => print<kindedSourceLocation>
+type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
 module type Printer = {
   let printName: string => string
@@ -191,10 +184,10 @@ module type Printer = {
 }
 
 module SMoLPrinter: Printer
-module JSPrinter: Printer
-module PYPrinter: Printer
-module PCPrinter: Printer
-module SCPrinter: Printer
+// module PYPrinter: Printer
+// module JSPrinter: Printer
+// module PCPrinter: Printer
+// module SCPrinter: Printer
 
 module TranslateError: {
   type t =
@@ -211,8 +204,8 @@ module type Translator = {
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
 }
-module SMoLTranslator: Translator
-module JSTranslator: Translator
+// module SMoLTranslator: Translator
+// module JSTranslator: Translator
 module PYTranslator: Translator
-module PCTranslator: Translator
-module SCTranslator: Translator
+// module PCTranslator: Translator
+// module SCTranslator: Translator
