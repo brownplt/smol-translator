@@ -4,7 +4,7 @@ function f(x) {
 function* g() {
   yield f(1);
   yield f(2);
-  return yield f(3);
+  return (yield f(3));
 }
 let h = g();
 console.log(h.next());

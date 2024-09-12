@@ -1,6 +1,6 @@
 let a = 2;
 function make() {
-  return function (b) {
+  return (b) => {
     return a + b;
   };
 }

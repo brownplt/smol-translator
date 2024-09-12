@@ -1,5 +1,5 @@
 function g(a) {
-  return function (b) {
+  return (b) => {
     return a + b;
   };
 }

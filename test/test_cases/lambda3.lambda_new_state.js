@@ -1,6 +1,6 @@
 let x = 1;
 function f() {
-  return function (y) {
+  return (y) => {
     return x + y;
   };
 }
