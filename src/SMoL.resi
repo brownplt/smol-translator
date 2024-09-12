@@ -186,7 +186,7 @@ module type Printer = {
 module SMoLPrinter: Printer
 module PYPrinter: Printer
 module JSPrinter: Printer
-// module PCPrinter: Printer
+module PCPrinter: Printer
 // module SCPrinter: Printer
 
 module TranslateError: {
@@ -207,5 +207,5 @@ module type Translator = {
 module SMoLTranslator: Translator
 module PYTranslator: Translator
 module JSTranslator: Translator
-// module PCTranslator: Translator
+module PCTranslator: Translator
 // module SCTranslator: Translator

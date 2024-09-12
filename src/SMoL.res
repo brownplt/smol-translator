@@ -2983,6 +2983,709 @@ module JSPrinter = {
   }
 }
 
+module PCPrinter = {
+  open! Belt
+
+  let printName = x => x
+
+  let constantToString = c => {
+    switch c {
+    | Uni => "Nothing"
+    | Nil => "list[]"
+    | Num(n) => Float.toString(n)
+    | Lgc(l) =>
+      if l {
+        "True"
+      } else {
+        "False"
+      }
+    | Str(s) => JSON.stringify(String(s))
+    | Sym(s) => s
+    }
+  }
+
+  let listToString = es => {
+    if es->List.some(containsNL) {
+      Group(list{
+        Print.string("("),
+        indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
+        Print.string(")"),
+      })
+    } else {
+      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+    }
+  }
+
+  let exprAppToString = (e, es) => {
+    Group(list{e, Print.dummy(listToString(es))})
+  }
+
+  let consumeContext = (ctx, ann, e) => {
+    let e = ann(e)
+    switch ctx {
+    | Expr(true) => e
+    | Expr(false) => e
+    | Stat(Step) => (Print.s`${e}`)->Print.dummy
+    | Stat(Return) => (Print.s`return ${e}`)->Print.dummy
+    }
+  }
+
+  let paren = e => {
+    Print.s`(${e->Print.dummy})`
+  }
+
+  let consumeContextWrapEvenReturn = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => paren(e)->ann
+    | Expr(false) => e->ann
+    | Stat(Step) => (Print.s`${e->ann}`)->Print.dummy
+    | Stat(Return) => (Print.s`return ${paren(e)->ann}`)->Print.dummy
+    }
+  }
+
+  let consumeContextWrap = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => paren(e)->ann
+    | Expr(false) => e->ann
+    | Stat(Step) => (Print.s`${e->ann}`)->Print.dummy
+    | Stat(Return) => (Print.s`return ${e->ann}`)->Print.dummy
+    }
+  }
+
+  let consumeContextVoid = (ctx, ann, e) => {
+    let e = e->ann
+    switch ctx {
+    | Expr(true) => e
+    | Expr(false) => e
+    | Stat(Step) => (Print.s`${e}`)->Print.dummy
+    | Stat(Return) => (Print.s`${e}\nreturn`)->Print.dummy
+    }
+  }
+
+  let consumeContextEscapeWrap = (ctx, ann, e) => {
+    let e = e->ann
+    switch ctx {
+    | Expr(true) => e
+    | Expr(false) => e
+    | Stat(_) => (Print.s`${e}`)->Print.dummy
+    }
+  }
+
+  let consumeContextStat = (ctx, ann, e) => {
+    let e = e->ann
+    switch ctx {
+    | Expr(_) => raisePrintError(`${Print.toString(e)} can't be used as a expression in Pseudocode`)
+    | Stat(Step) => (Print.s`${e}`)->Print.dummy
+    | Stat(Return) => (Print.s`${e}\nreturn`)->Print.dummy
+    }
+  }
+
+  let stringOfArith = o => {
+    switch o {
+    | Add => "+"
+    | Sub => "-"
+    | Mul => "*"
+    | Div => "/"
+    }
+  }
+
+  let stringOfCmp = o => {
+    switch o {
+    | Lt => "<"
+    | NumEq => "=="
+    | Eq => "==="
+    | Gt => ">"
+    | Le => "<="
+    | Ge => ">="
+    | Ne => "!="
+    | Equal => raisePrintError("Pseudocode doesn't not have structural equality.")
+    }
+  }
+
+  let exprAppPrmToString = (ann, ctx, p: Primitive.t, es: list<bool => expression<printAnn>>) => {
+    switch (p, es) {
+    | (Arith(o), es) => {
+        let es = es->List.map(e => e(true))
+        {
+          it: (Arith(o), es),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.concat(` ${stringOfArith(o)} `, es->List.map(e => e.ann.print)),
+          ),
+        }
+      }
+    | (Cmp(o), list{e1, e2}) => {
+        let e1 = e1(true)
+        let e2 = e2(true)
+        {
+          it: (Cmp(o), list{e1, e2}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} ${Print.string(stringOfCmp(o))} ${e2.ann.print}`,
+          ),
+        }
+      }
+    | (PairNew, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          it: (PairNew, list{e1, e2}),
+          ann: consumeContext(ctx, ann, Print.s`vec[ ${e1.ann.print}, ${e2.ann.print} ]`),
+        }
+      }
+    | (PairRefLeft, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (PairRefLeft, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}[0]`),
+        }
+      }
+    | (PairRefRight, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (PairRefRight, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}[1]`),
+        }
+      }
+    | (PairSetLeft, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          it: (PairSetLeft, list{e1, e2}),
+          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
+        }
+      }
+    | (PairSetRight, list{e1, e2}) => {
+        let e1 = e1(false)
+        let e2 = e2(false)
+        {
+          it: (PairSetRight, list{e1, e2}),
+          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
+        }
+      }
+    | (VecNew, es) => {
+        let es = es->List.map(e => e(false))
+        {
+          it: (VecNew, es),
+          ann: consumeContext(
+            ctx,
+            ann,
+            Print.s`vec[ ${Print.dummy(Print.concat(`, `, es->List.map(e => e.ann.print)))} ]`,
+          ),
+        }
+      }
+    | (VecRef, list{e1, e2}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        {
+          it: (VecRef, list{e1, e2}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}[${e2.ann.print}]`),
+        }
+      }
+    | (VecSet, list{e1, e2, e3}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        let e3 = e3(false)
+        {
+          it: (VecSet, list{e1, e2, e3}),
+          ann: consumeContextStat(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print}[${e2.ann.print}] = ${e3.ann.print}`,
+          ),
+        }
+      }
+    | (VecLen, list{e1}) => {
+        let e1 = e1(false)
+        {
+          it: (VecLen, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`length(${e1.ann.print})`),
+        }
+      }
+    | (Err, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (Err, list{e1}),
+          ann: consumeContextEscapeWrap(ctx, ann, Print.s`raise ${e1.ann.print}`),
+        }
+      }
+    | (Not, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (Not, list{e1}),
+          ann: consumeContextWrap(ctx, ann, Print.s`! ${e1.ann.print}`),
+        }
+      }
+    | (Print, list{e1}) => {
+        let e1 = e1(false)
+        {
+          it: (Print, list{e1}),
+          ann: consumeContextVoid(ctx, ann, Print.s`print(${e1.ann.print})`),
+        }
+      }
+    | (Next, list{e1}) => {
+        let e1 = e1(false)
+        {
+          it: (Next, list{e1}),
+          ann: consumeContextVoid(ctx, ann, Print.s`next(${e1.ann.print})`),
+        }
+      }
+    | (Cons, list{e1, e2}) => {
+      let e1 = e1(false)
+      let e2 = e2(false)
+      {
+        it: (Cons, list{e1, e2}),
+        ann: consumeContext(ctx, ann, Print.s`list[${e1.ann.print}, ...${e2.ann.print}]`)
+      }
+    }
+    | _ =>
+      raisePrintError(
+        `Pseudocode doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+            List.length(es),
+          )} parameter(s).`,
+      )
+    }
+  }
+
+  let funLike = (op, x, xs, e) => {
+    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}\nend`
+  }
+
+  let defvarToString = (x, e) => {
+    Print.s`let ${x} = ${e}`
+  }
+
+  let deffunToString = (f, xs, b) => {
+    funLike("fun", f, xs, b)
+  }
+
+  let defgenToString = (f, xs, b) => {
+    funLike("gen fun", f, xs, b)
+  }
+
+  let exprSetToString = (x, e) => {
+    Print.s`${x} = ${e}`
+  }
+
+  let exprLamToString = (xs, b) => {
+    Print.s`lam (${xs}):${indentBlock(b, 2)}\nend`
+  }
+  let exprGLamToString = exprLamToString
+  let exprYieldToString = e => Print.s`yield ${e}`
+
+  let ifStat = (cnd, thn, els) => {
+    Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
+    | None => Print.s``
+    | Some(els) => Print.s`\nelse:${indentBlock(els, 2)}`
+    }->Print.dummy}\nend`
+  }
+
+  let exprCndToString = (ebs: list<(_, _)>, ob) => {
+    if ebs == list{} {
+      raisePrintError("`else`-only conditional is not supported by Pseudo.")
+    }
+    let ebs = ebs->List.map(((e, b)) => Print.s`if ${e}:${indentBlock(b, 2)}`->Print.dummy)
+    let ebs = switch ob {
+    | None => ebs
+    | Some(b) => list{...ebs, (Print.s`e:${indentBlock(b, 2)}`)->Print.dummy}
+    }
+    Print.s`${Print.concat("\nels", ebs)->Print.dummy}\nend`
+  }
+
+  let exprIfToString = (e_cnd, e_thn, e_els) => {
+    Print.s`${e_thn} if ${e_cnd} else ${e_els}`
+  }
+
+  let symbolToString = ({it, ann: sourceLocation}) => {
+    {
+      it,
+      ann: {
+        sourceLocation,
+        print: {
+          it: Plain(printName(it)),
+          ann: Some({
+            nodeKind: Name,
+            sourceLocation,
+          }),
+        },
+      },
+    }
+  }
+
+  let rec printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
+    let ann = it => {
+      it,
+      ann: Some({
+        nodeKind: Expression,
+        sourceLocation,
+      }),
+    }
+    let addSourceLocation = print => {
+      sourceLocation,
+      print,
+    }
+    switch it {
+    | Con(c) => {
+        it: Con(c),
+        ann: consumeContext(ctx, ann, Plain(constantToString(c)))->addSourceLocation,
+      }
+    | Ref(x) => {
+        it: Ref(x),
+        ann: consumeContext(ctx, ann, Plain(x->printName))->addSourceLocation,
+      }
+    | Set(x, e) => {
+        let x = symbolToString(x)
+        let e: expression<printAnn> = e->printExp(Expr(false))
+        {
+          it: Set(x, e),
+          ann: consumeContextStat(
+            ctx,
+            ann,
+            exprSetToString(x.ann.print, e.ann.print),
+          )->addSourceLocation,
+        }
+      }
+    | Lam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Stat(Return))
+        {
+          it: Lam(xs, b),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprLamToString(
+              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+              b.ann.print,
+            ),
+          )->addSourceLocation,
+        }
+      }
+    | GLam(xs, b) => {
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Stat(Return))
+        {
+          it: GLam(xs, b),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprGLamToString(
+              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+              b.ann.print,
+            ),
+          )->addSourceLocation,
+        }
+      }
+    | Yield(e) => {
+        let e = e->printExp(Expr(false))
+        {
+          it: Yield(e),
+          ann: consumeContextWrapEvenReturn(
+            ctx,
+            ann,
+            exprYieldToString(e.ann.print),
+          )->addSourceLocation,
+        }
+      }
+    | AppPrm(p, es) => {
+        let es = es->List.map(e => b => e->printExp(Expr(b)))
+        let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
+        {
+          it: AppPrm(p, es),
+          ann: print->addSourceLocation,
+        }
+      }
+    | App(e, es) => {
+        let e = e->printExp(Expr(true))
+        let es = es->List.map(e => e->printExp(Expr(false)))
+        {
+          it: App(e, es),
+          ann: consumeContext(
+            ctx,
+            ann,
+            exprAppToString(e.ann.print, es->List.map(e => e.ann.print)),
+          )->addSourceLocation,
+        }
+      }
+    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode")
+    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Pseudocode")
+    | Cnd(ebs, ob) =>
+      switch ctx {
+      | Expr(_) =>
+        raisePrintError(
+          "Multi-armed conditionals in Pseudocode is not supported by the translator yet.",
+        )
+      | Stat(ctx) => {
+          let ebs = ebs->List.map(eb => eb->ebToString(ctx))
+          let ob = ob->obToString(ctx)
+          {
+            ann: exprCndToString(
+              ebs->List.map(((e, b)) => (e.ann.print, b.ann.print)),
+              ob->Option.map(b => b.ann.print),
+            )
+            ->ann
+            ->addSourceLocation,
+            it: Cnd(ebs, ob),
+          }
+        }
+      }
+    | If(e_cnd, e_thn, e_els) =>
+      switch ctx {
+      | Expr(ctx) => {
+          let e_cnd = printExp(e_cnd, Expr(false))
+          let e_thn = printExp(e_thn, Expr(false))
+          let e_els = printExp(e_els, Expr(false))
+          {
+            ann: consumeContextWrap(
+              Expr(ctx),
+              ann,
+              exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print),
+            )->addSourceLocation,
+            it: If(e_cnd, e_thn, e_els),
+          }
+        }
+      | Stat(ctx) => {
+          let e_cnd = printExp(e_cnd, Expr(false))
+          let e_thn = printExp(e_thn, Stat(ctx))
+          let e_els = printExp(e_els, Stat(ctx))
+          {
+            it: If(e_cnd, e_thn, e_els),
+            ann: ifStat(e_cnd.ann.print, e_thn.ann.print, Some(e_els.ann.print))
+            ->ann
+            ->addSourceLocation,
+          }
+        }
+      }
+    | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Pseudocode")
+    }
+  }
+  and printDef = ({ann: sourceLocation, it: d}): definition<printAnn> => {
+    let d = switch d {
+    | Var(x, e) => {
+        let x = x->symbolToString
+        let e = e->printExp(Expr(false))
+        {
+          it: Var(x, e),
+          ann: defvarToString(x.ann.print, e.ann.print),
+        }
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Stat(Return))
+        {
+          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: Fun(f, xs, b),
+        }
+      }
+    | GFun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Stat(Return))
+        {
+          ann: defgenToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          it: GFun(f, xs, b),
+        }
+      }
+    }
+    let {ann: print, it} = d
+    {
+      ann: {
+        sourceLocation,
+        print: {
+          it: print,
+          ann: Some({
+            nodeKind: Definition,
+            sourceLocation,
+          }),
+        },
+      },
+      it,
+    }
+  }
+  and ebToString = (eb, ctx: statContext) => {
+    let (e, b) = eb
+    (e->printExp(Expr(false)), printBlock(b, Stat(ctx)))
+  }
+  and obToString = (ob, ctx: statContext) => {
+    ob->Option.map(b => b->printBlock(Stat(ctx)))
+  }
+  and printBlockHelper = ({ann: sourceLocation, it: b}, ctx) => {
+    let annPrint = print => {
+      it: print,
+      ann: Some({
+        nodeKind: Block,
+        sourceLocation,
+      }),
+    }
+    switch b {
+    | BRet(e) => {
+        let e = e->printExp(Stat(ctx))
+        let print = annPrint(Group(list{e.ann.print}))
+        {
+          ann: {print, sourceLocation},
+          it: BRet(e),
+        }
+      }
+    | BCons(t, b) => {
+        let t = printTerm(t, Step)
+        let b = b->printBlockHelper(ctx)
+        let print = Group(list{t.ann.print, Print.string("\n"), b.ann.print})->annPrint
+        {
+          ann: {print, sourceLocation},
+          it: BCons(t, b),
+        }
+      }
+    }
+  }
+  and printBlock = (b, ctx) => {
+    let {it, ann: sourceLocation} = b
+    let annOfPrint = print => {
+      sourceLocation,
+      print: {
+        it: print,
+        ann: Some({
+          {
+            nodeKind: Block,
+            sourceLocation,
+          }
+        }),
+      },
+    }
+    switch (it, ctx) {
+    | (BRet(e), Expr(ctx)) => {
+        let e = e->printExp(Expr(ctx))
+        {
+          it: BRet(e),
+          ann: annOfPrint(Group(list{e.ann.print}))
+        }
+      }
+    | (_, Expr(_)) => raisePrintError("Pseudocode blocks can't be used as expressions in general")
+    | (it, Stat(ctx)) => {
+        printBlockHelper({it, ann: sourceLocation}, ctx)
+      }
+    }
+  }
+  and printTerm = ({ann: sourceLocation, it}: term<sourceLocation>, ctx): term<printAnn> => {
+    switch it {
+    | Exp(it) => {
+        let it = printExp(it, Stat(ctx))
+        {
+          it: Exp(it),
+          ann: {
+            sourceLocation,
+            print: group(list{it.ann.print}),
+          },
+        }
+      }
+    | Def(it) => {
+        let it = printDef(it)
+        {
+          it: Def(it),
+          ann: {
+            sourceLocation,
+            print: group(list{it.ann.print}),
+          },
+        }
+      }
+    }
+  }
+
+  let printOutputlet = o => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Ref(_) => `[...]`
+      | Con(c) => constantToString(c)
+      | Struct(i, content) => {
+          let i = switch i {
+          | None => ""
+          | Some(_) => ""
+          }
+          let content = switch content {
+          | Lst(_) => raisePrintError("Lists are not supported in Pseudocode.")
+          | Vec(es) => `vec[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
+          }
+          `${i}${content}`
+        }
+      }
+    }
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string => {
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
+  }
+
+  let printProgramFull = (insertPrintTopLevel, p) => {
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
+    let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
+      printAnn,
+    > => {
+      let annPrint = print => {
+        sourceLocation,
+        print: {
+          it: print,
+          ann: Some({
+            nodeKind: Program,
+            sourceLocation,
+          }),
+        },
+      }
+      switch it {
+      | PNil => {it: PNil, ann: Plain("")->annPrint}
+      | PCons(t, p) => {
+          let t = printTerm(t, Step)
+          let p = print(p)
+          {
+            it: PCons(t, p),
+            ann: annPrint(
+              Group(list{
+                Print.string(
+                  if isFirst {
+                    ""
+                  } else {
+                    "\n"
+                  },
+                ),
+                t.ann.print,
+                p.ann.print,
+              }),
+            ),
+          }
+        }
+      }
+    }
+    print(~isFirst=true, p)
+  }
+
+  let printProgram = (insertPrintTopLevel, p) => {
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
+  }
+
+  let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
+    Print.toString(
+      switch it {
+      | Def(it) => {
+          let it = printDef(it)
+          it.ann.print
+        }
+      | Exp(it) => {
+          let it = printExp(it, Stat(Step))
+          it.ann.print
+        }
+      },
+    )
+  }
+}
+
 // module JSPrinter: Printer = {
 
 //   let constantToString = c => {
@@ -5157,5 +5860,5 @@ module MakeTranslator = (P: Printer) => {
 module SMoLTranslator = MakeTranslator(SMoLPrinter)
 module PYTranslator = MakeTranslator(PYPrinter)
 module JSTranslator = MakeTranslator(JSPrinter)
-// module PCTranslator = MakeTranslator(PCPrinter)
+module PCTranslator = MakeTranslator(PCPrinter)
 // module SCTranslator = MakeTranslator(SCPrinter)
