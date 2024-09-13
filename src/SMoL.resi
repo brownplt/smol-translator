@@ -187,7 +187,7 @@ module SMoLPrinter: Printer
 module PYPrinter: Printer
 module JSPrinter: Printer
 module PCPrinter: Printer
-// module SCPrinter: Printer
+module SCPrinter: Printer
 
 module TranslateError: {
   type t =
@@ -208,4 +208,4 @@ module SMoLTranslator: Translator
 module PYTranslator: Translator
 module JSTranslator: Translator
 module PCTranslator: Translator
-// module SCTranslator: Translator
+module SCTranslator: Translator
