@@ -3685,6 +3685,17 @@ module PCPrinter = {
 module SCPrinter = {
   open! Belt
 
+  let useVarRatherThanVal = ref(false)
+  let useBufferRatherThanTuple = ref(false)
+
+  let makeVec = es => {
+    if useBufferRatherThanTuple.contents {
+      Print.s`Buffer(${Print.concat(", ", es)->Print.dummy})`
+    } else {
+      Print.s`(${Print.concat(", ", es)->Print.dummy})`
+    }
+  }
+
   let printName = x => {
     let re = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) => {
@@ -3717,7 +3728,9 @@ module SCPrinter = {
   }
 
   let listToString = es => {
-    if es->List.some(containsNL) {
+    if es == list{} {
+      Plain("")
+    } else if es->List.some(containsNL) {
       Group(list{
         Print.string("("),
         indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
@@ -3800,7 +3813,7 @@ module SCPrinter = {
         let e2 = e2(false)
         {
           it: (PairNew, list{e1, e2}),
-          ann: consumeContext(ctx, ann, Print.s`(${e1.ann.print}, ${e2.ann.print})`),
+          ann: consumeContext(ctx, ann, makeVec(list{e1.ann.print, e2.ann.print})),
         }
       }
     | (PairRefLeft, list{e1}) => {
@@ -3840,7 +3853,7 @@ module SCPrinter = {
           ann: consumeContext(
             ctx,
             ann,
-            Print.s`(${Print.dummy(Print.concat(`, `, es->List.map(e => e.ann.print)))})`,
+            makeVec(es->List.map(e => e.ann.print)),
           ),
         }
       }
@@ -3911,11 +3924,17 @@ module SCPrinter = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))))} =${indentBlock(e, 2)}`
+    Print.s`${Print.string(op)} ${Print.dummy(
+      exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))),
+    )} =${indentBlock(e, 2)}`
   }
 
   let defvarToString = (x, e) => {
-    Print.s`val ${x} = ${e}`
+    if useVarRatherThanVal.contents {
+      Print.s`var ${x} = ${e}`
+    } else {
+      Print.s`val ${x} = ${e}`
+    }
   }
 
   let deffunToString = (f, xs, b) => {
@@ -3926,10 +3945,8 @@ module SCPrinter = {
   }
 
   let exprLamToString = (xs, b) => {
-    Print.s`(${xs}) => {${indentBlock(b, 2)}\n}`
+    Print.s`(${xs}) =>${indentBlock(b, 2)}`
   }
-  let exprGLamToString = exprLamToString
-  let exprYieldToString = e => Print.s`yield ${e}`
 
   let ifStat = (cnd, thn, els) => {
     Print.s`if (${cnd}) {${indentBlock(thn, 2)}\n}${switch els {
@@ -4009,14 +4026,17 @@ module SCPrinter = {
             ctx,
             ann,
             exprLamToString(
-              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+              Print.concat(
+                ", ",
+                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : Int`)),
+              )->Print.dummy,
               b.ann.print,
             ),
           )->addSourceLocation,
         }
       }
-    | GLam(xs, b) => raisePrintError("Generators are not supported by Scala")
-    | Yield(e) => raisePrintError("Generators are not supported by Scala")
+    | GLam(xs, b) => raisePrintError("Generators are not supported by Scala.")
+    | Yield(e) => raisePrintError("Generators are not supported by Scala.")
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(b))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
@@ -4087,7 +4107,7 @@ module SCPrinter = {
           it: Fun(f, xs, b),
         }
       }
-    | GFun(f, xs, b) => raisePrintError("Generators are not supported by Scala")
+    | GFun(f, xs, b) => raisePrintError("Generators are not supported by Scala.")
     }
     let {ann: print, it} = d
     {
@@ -4183,7 +4203,7 @@ module SCPrinter = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
-          | Vec(es) => `(${concat(", ", es->List.map(p)->List.toArray)})`
+          | Vec(es) => makeVec(es->List.map(p)->List.map(Print.string))->Print.dummy->Print.toString
           }
           `${i}${content}`
         }
@@ -4196,6 +4216,7 @@ module SCPrinter = {
   }
 
   let printOutput = (~sep=" ", os): string => {
+    useBufferRatherThanTuple := true
     concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
@@ -4205,6 +4226,15 @@ module SCPrinter = {
     } else {
       p
     }
+    let s = SMoLPrinter.printProgram(insertPrintTopLevel, p)
+    let mutVar = Js.String.includes("(set! ", s)
+    let mutVec =
+      Js.String.includes("(vec-set! ", s) ||
+      Js.String.includes("(set-left! ", s) ||
+      Js.String.includes("(set-right! ", s)
+    useVarRatherThanVal := mutVar
+    useBufferRatherThanTuple := mutVar || mutVec
+
     let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,
     > => {
@@ -4518,7 +4548,7 @@ module SCPrinter = {
 //           it: (Next, list{e1}),
 //         }
 //       }
-//     | (Cons, _) => raisePrintError("List is not supported by Scala")
+//     | (Cons, _) => raisePrintError("List is not supported by Scala.")
 //     | _ =>
 //       raisePrintError(
 //         `Scala doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -4665,8 +4695,8 @@ module SCPrinter = {
 //           it: App(e, es),
 //         }
 //       }->lift
-//     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Scala")
-//     | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala")
+//     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
+//     | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala.")
 //     | Cnd(ebs, ob) =>
 //       sourceLocation => {
 //         expr: _ =>
@@ -4746,7 +4776,7 @@ module SCPrinter = {
 //           "",
 //         )
 //       }
-//     | GFun(_f, _xs, _b) => raisePrintError("Generators are not supported by Scala")
+//     | GFun(_f, _xs, _b) => raisePrintError("Generators are not supported by Scala.")
 //     }
 //     let {ann: print, it} = d
 //     (prefix, {ann: {print, sourceLocation}, it}, suffix)

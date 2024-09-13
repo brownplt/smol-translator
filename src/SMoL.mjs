@@ -159,6 +159,16 @@ function concat(s, ts) {
         };
 }
 
+function string(it) {
+  return {
+          it: {
+            TAG: "Plain",
+            _0: it
+          },
+          ann: undefined
+        };
+}
+
 function wrap(prefix, it, suffix) {
   var prefix_it = {
     TAG: "Plain",
@@ -7371,6 +7381,34 @@ function printStandAloneTerm$3(param) {
   return toString(tmp);
 }
 
+var useVarRatherThanVal = {
+  contents: false
+};
+
+var useBufferRatherThanTuple = {
+  contents: false
+};
+
+function makeVec(es) {
+  if (useBufferRatherThanTuple.contents) {
+    return s([
+                "Buffer(",
+                ")"
+              ], [{
+                  it: concat(", ", es),
+                  ann: undefined
+                }]);
+  } else {
+    return s([
+                "(",
+                ")"
+              ], [{
+                  it: concat(", ", es),
+                  ann: undefined
+                }]);
+  }
+}
+
 function printName$4(x) {
   var re = /-./g;
   var matchFn = function (matchPart, _offset, _wholeString) {
@@ -7414,7 +7452,12 @@ function constantToString$4(c) {
 }
 
 function listToString$3(es) {
-  if (Belt_List.some(es, containsNL)) {
+  if (es === /* [] */0) {
+    return {
+            TAG: "Plain",
+            _0: ""
+          };
+  } else if (Belt_List.some(es, containsNL)) {
     return {
             TAG: "Group",
             _0: {
@@ -7569,14 +7612,13 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: ann(s([
-                                "(",
-                                ", ",
-                                ")"
-                              ], [
-                                e1.ann.print,
-                                e2.ann.print
-                              ]))
+                      ann: ann(makeVec({
+                                hd: e1.ann.print,
+                                tl: {
+                                  hd: e2.ann.print,
+                                  tl: /* [] */0
+                                }
+                              }))
                     };
             }
             
@@ -7687,15 +7729,9 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: ann(s([
-                            "(",
-                            ")"
-                          ], [{
-                              it: concat(", ", Belt_List.map(es$1, (function (e) {
-                                          return e.ann.print;
-                                        }))),
-                              ann: undefined
-                            }]))
+                  ann: ann(makeVec(Belt_List.map(es$1, (function (e) {
+                                  return e.ann.print;
+                                }))))
                 };
       case "VecRef" :
           if (es) {
@@ -7936,14 +7972,25 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
 }
 
 function defvarToString$4(x, e) {
-  return s([
-              "val ",
-              " = ",
-              ""
-            ], [
-              x,
-              e
-            ]);
+  if (useVarRatherThanVal.contents) {
+    return s([
+                "var ",
+                " = ",
+                ""
+              ], [
+                x,
+                e
+              ]);
+  } else {
+    return s([
+                "val ",
+                " = ",
+                ""
+              ], [
+                x,
+                e
+              ]);
+  }
 }
 
 function deffunToString$4(f, xs, b) {
@@ -7991,8 +8038,8 @@ function exprSetToString$4(x, e) {
 function exprLamToString$4(xs, b) {
   return s([
               "(",
-              ") => {",
-              "\n}"
+              ") =>",
+              ""
             ], [
               xs,
               indentBlock(b, 2)
@@ -8144,8 +8191,14 @@ function printExp$4(param, ctx) {
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap$3(ctx, ann, exprLamToString$4({
-                            it: concat(",", Belt_List.map(xs, (function (x) {
-                                        return x.ann.print;
+                            it: concat(", ", Belt_List.map(xs, (function (x) {
+                                        return {
+                                                it: s([
+                                                      "",
+                                                      " : Int"
+                                                    ], [x.ann.print]),
+                                                ann: undefined
+                                              };
                                       }))),
                             ann: undefined
                           }, b.ann.print))
@@ -8252,7 +8305,7 @@ function printExp$4(param, ctx) {
     case "Yield" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "Generators are not supported by Scala",
+              _1: "Generators are not supported by Scala.",
               Error: new Error()
             };
     
@@ -8295,7 +8348,7 @@ function printDef$4(param) {
     case "GFun" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "Generators are not supported by Scala",
+              _1: "Generators are not supported by Scala.",
               Error: new Error()
             };
     
@@ -8442,7 +8495,10 @@ function printOutputlet$4(o) {
                   Error: new Error()
                 };
           }
-          content$1 = "(" + Belt_List.toArray(Belt_List.map(content._0, p)).join(", ") + ")";
+          content$1 = toString({
+                it: makeVec(Belt_List.map(Belt_List.map(content._0, p), string)),
+                ann: undefined
+              });
           return i + content$1;
       
     }
@@ -8456,11 +8512,17 @@ function printOutputlet$4(o) {
 
 function printOutput$4(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
+  useBufferRatherThanTuple.contents = true;
   return Belt_List.toArray(Belt_List.map(os, printOutputlet$4)).join(sep);
 }
 
 function printProgramFull$4(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
+  var s = printProgram(insertPrintTopLevel, p$1);
+  var mutVar = Js_string.includes("(set! ", s);
+  var mutVec = Js_string.includes("(vec-set! ", s) || Js_string.includes("(set-left! ", s) || Js_string.includes("(set-right! ", s);
+  useVarRatherThanVal.contents = mutVar;
+  useBufferRatherThanTuple.contents = mutVar || mutVec;
   var print = function ($staropt$star, param) {
     var sourceLocation = param.ann;
     var it = param.it;
