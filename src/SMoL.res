@@ -3745,7 +3745,7 @@ module SCPrinter = {
     Group(list{e, Print.dummy(listToString(es))})
   }
 
-  let consumeContext = (ctx, ann, e) => {
+  let consumeContext = (_ctx, ann, e) => {
     let e = ann(e)
     e
   }
@@ -4035,8 +4035,8 @@ module SCPrinter = {
           )->addSourceLocation,
         }
       }
-    | GLam(xs, b) => raisePrintError("Generators are not supported by Scala.")
-    | Yield(e) => raisePrintError("Generators are not supported by Scala.")
+    | GLam(_xs, _b) => raisePrintError("Generators are not supported by Scala.")
+    | Yield(_e) => raisePrintError("Generators are not supported by Scala.")
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(b))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
@@ -4107,7 +4107,7 @@ module SCPrinter = {
           it: Fun(f, xs, b),
         }
       }
-    | GFun(f, xs, b) => raisePrintError("Generators are not supported by Scala.")
+    | GFun(_f, _xs, _b) => raisePrintError("Generators are not supported by Scala.")
     }
     let {ann: print, it} = d
     {
@@ -4131,7 +4131,7 @@ module SCPrinter = {
   and obToString = ob => {
     ob->Option.map(b => b->printBlock(false))
   }
-  and printBlock = (b, ctx) => {
+  and printBlock = (b, _ctx) => {
     let rec p = ({it, ann: sourceLocation}) => {
       let ann = ({it, ann}) => {
         it,
