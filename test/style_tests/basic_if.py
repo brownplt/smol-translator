@@ -1,5 +1,5 @@
 x = 3
 if x > 2:
-  print(x + x)
+    print(x + x)
 else:
-  print(x * 10)
+    print(x * 10)

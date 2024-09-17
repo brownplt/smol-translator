@@ -1272,7 +1272,7 @@ module SMoLPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t)
         let b = printBlock(b)
-        let print = Group(list{t.ann.print, Print.string("\n"), b.ann.print})->annPrint
+        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -2079,7 +2079,7 @@ module PYPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, env, Step)
         let b = b->printBlockHelper(ctx, env)
-        let print = Group(list{t.ann.print, Print.string("\n"), b.ann.print})->annPrint
+        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -2828,7 +2828,7 @@ module JSPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = b->printBlockHelper(ctx)
-        let print = Group(list{t.ann.print, Print.string("\n"), b.ann.print})->annPrint
+        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -3529,7 +3529,7 @@ module PCPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = b->printBlockHelper(ctx)
-        let print = Group(list{t.ann.print, Print.string("\n"), b.ann.print})->annPrint
+        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),

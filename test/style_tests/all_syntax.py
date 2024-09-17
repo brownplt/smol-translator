@@ -29,7 +29,7 @@ g = lambda x, y: x + y
 print(f())
 print(g(4, 5))
 if "apple" is "orange":
-  print("yes")
+    print("yes")
 else:
-  print("no")
+    print("no")
 raise "bad thing happens"

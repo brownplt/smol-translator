@@ -2356,25 +2356,14 @@ function printBlock(param) {
   }
   var t = printTerm(b._0);
   var b$1 = printBlock(b._1);
-  var print = annPrint({
-        TAG: "Group",
-        _0: {
-          hd: t.ann.print,
-          tl: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: "\n"
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: b$1.ann.print,
-              tl: /* [] */0
-            }
-          }
-        }
-      });
+  var print = annPrint(s([
+            "",
+            "\n",
+            ""
+          ], [
+            t.ann.print,
+            b$1.ann.print
+          ]));
   return {
           it: {
             TAG: "BCons",
@@ -4006,25 +3995,14 @@ function printBlockHelper(param, ctx, env) {
   }
   var t = printTerm$1(b._0, env, "Step");
   var b$1 = printBlockHelper(b._1, ctx, env);
-  var print$1 = annPrint({
-        TAG: "Group",
-        _0: {
-          hd: t.ann.print,
-          tl: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: "\n"
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: b$1.ann.print,
-              tl: /* [] */0
-            }
-          }
-        }
-      });
+  var print$1 = annPrint(s([
+            "",
+            "\n",
+            ""
+          ], [
+            t.ann.print,
+            b$1.ann.print
+          ]));
   return {
           it: {
             TAG: "BCons",
@@ -5595,25 +5573,14 @@ function printBlockHelper$1(param, ctx) {
   }
   var t = printTerm$2(b._0, "Step");
   var b$1 = printBlockHelper$1(b._1, ctx);
-  var print$1 = annPrint({
-        TAG: "Group",
-        _0: {
-          hd: t.ann.print,
-          tl: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: "\n"
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: b$1.ann.print,
-              tl: /* [] */0
-            }
-          }
-        }
-      });
+  var print$1 = annPrint(s([
+            "",
+            "\n",
+            ""
+          ], [
+            t.ann.print,
+            b$1.ann.print
+          ]));
   return {
           it: {
             TAG: "BCons",
@@ -7128,25 +7095,14 @@ function printBlockHelper$2(param, ctx) {
   }
   var t = printTerm$3(b._0, "Step");
   var b$1 = printBlockHelper$2(b._1, ctx);
-  var print$1 = annPrint({
-        TAG: "Group",
-        _0: {
-          hd: t.ann.print,
-          tl: {
-            hd: {
-              it: {
-                TAG: "Plain",
-                _0: "\n"
-              },
-              ann: undefined
-            },
-            tl: {
-              hd: b$1.ann.print,
-              tl: /* [] */0
-            }
-          }
-        }
-      });
+  var print$1 = annPrint(s([
+            "",
+            "\n",
+            ""
+          ], [
+            t.ann.print,
+            b$1.ann.print
+          ]));
   return {
           it: {
             TAG: "BCons",

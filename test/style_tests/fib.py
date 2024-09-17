@@ -1,10 +1,10 @@
 def fib(n):
     if n < 0:
-      raise "The argument to fib must be non-negative"
+        raise "The argument to fib must be non-negative"
     elif n <= 1:
-      return n
+        return n
     else:
-      return fib(n - 1) + fib(n - 2)
+        return fib(n - 1) + fib(n - 2)
 print(fib(0))
 print(fib(1))
 print(fib(2))
