@@ -2216,7 +2216,7 @@ module PYPrinter = {
     }
     let xs = xsOfProgram(p)
     let env = G(xs->List.map(x => x.it)->List.toArray->HashSet.String.fromArray)
-    let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,
     > => {
       let annPrint = print => {
@@ -2238,14 +2238,14 @@ module PYPrinter = {
             it: PCons(t, p),
             ann: annPrint(
               Group(list{
+                t.ann.print,
                 Print.string(
-                  if isFirst {
+                  if p.it == PNil {
                     ""
                   } else {
                     "\n"
                   },
                 ),
-                t.ann.print,
                 p.ann.print,
               }),
             ),
@@ -2253,7 +2253,7 @@ module PYPrinter = {
         }
       }
     }
-    print(~isFirst=true, p)
+    print(p)
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
@@ -2921,7 +2921,7 @@ module JSPrinter = {
     } else {
       p
     }
-    let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,
     > => {
       let annPrint = print => {
@@ -2943,14 +2943,14 @@ module JSPrinter = {
             it: PCons(t, p),
             ann: annPrint(
               Group(list{
+                t.ann.print,
                 Print.string(
-                  if isFirst {
+                  if p.it == PNil {
                     ""
                   } else {
                     "\n"
                   },
                 ),
-                t.ann.print,
                 p.ann.print,
               }),
             ),
@@ -2958,7 +2958,7 @@ module JSPrinter = {
         }
       }
     }
-    print(~isFirst=true, p)
+    print(p)
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
@@ -3622,7 +3622,7 @@ module PCPrinter = {
     } else {
       p
     }
-    let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,
     > => {
       let annPrint = print => {
@@ -3644,14 +3644,12 @@ module PCPrinter = {
             it: PCons(t, p),
             ann: annPrint(
               Group(list{
-                Print.string(
-                  if isFirst {
-                    ""
-                  } else {
-                    "\n"
-                  },
-                ),
                 t.ann.print,
+                if p.it == PNil {
+                  Print.string("")
+                } else {
+                  Print.string("\n")
+                },
                 p.ann.print,
               }),
             ),
@@ -3659,7 +3657,7 @@ module PCPrinter = {
         }
       }
     }
-    print(~isFirst=true, p)
+    print(p)
   }
 
   let printProgram = (insertPrintTopLevel, p) => {
@@ -4233,7 +4231,7 @@ module SCPrinter = {
       Js.String.includes("(set-right! ", s)
     involveMutation := mutVar || mutVec
 
-    let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,
     > => {
       let annPrint = print => {
@@ -4255,14 +4253,12 @@ module SCPrinter = {
             it: PCons(t, p),
             ann: annPrint(
               Group(list{
-                Print.string(
-                  if isFirst {
-                    ""
-                  } else {
-                    "\n"
-                  },
-                ),
                 t.ann.print,
+                if p.it == PNil {
+                  Print.string("")
+                } else {
+                  Print.string("\n")
+                },
                 p.ann.print,
               }),
             ),
@@ -4270,7 +4266,7 @@ module SCPrinter = {
         }
       }
     }
-    print(~isFirst=true, p)
+    print(p)
   }
 
   let printProgram = (insertPrintTopLevel, p) => {

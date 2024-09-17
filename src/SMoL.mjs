@@ -4233,10 +4233,9 @@ function printProgramFull$1(insertPrintTopLevel, p) {
                     return x.it;
                   }))))
   };
-  var print = function ($staropt$star, param) {
+  var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
-    var isFirst = $staropt$star !== undefined ? $staropt$star : false;
     var annPrint = function (print) {
       return {
               sourceLocation: sourceLocation,
@@ -4268,7 +4267,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             };
     }
     var t = printTerm$1(it._0, env, "Step");
-    var p = print(undefined, it._1);
+    var p = print(it._1);
     return {
             it: {
               TAG: "PCons",
@@ -4278,15 +4277,15 @@ function printProgramFull$1(insertPrintTopLevel, p) {
             ann: annPrint({
                   TAG: "Group",
                   _0: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: isFirst ? "" : "\n"
-                      },
-                      ann: undefined
-                    },
+                    hd: t.ann.print,
                     tl: {
-                      hd: t.ann.print,
+                      hd: {
+                        it: {
+                          TAG: "Plain",
+                          _0: p.it === "PNil" ? "" : "\n"
+                        },
+                        ann: undefined
+                      },
                       tl: {
                         hd: p.ann.print,
                         tl: /* [] */0
@@ -4296,7 +4295,7 @@ function printProgramFull$1(insertPrintTopLevel, p) {
                 })
           };
   };
-  return print(true, p$1);
+  return print(p$1);
 }
 
 function printProgram$1(insertPrintTopLevel, p) {
@@ -5728,10 +5727,9 @@ function printOutput$2(sepOpt, os) {
 
 function printProgramFull$2(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var print = function ($staropt$star, param) {
+  var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
-    var isFirst = $staropt$star !== undefined ? $staropt$star : false;
     var annPrint = function (print) {
       return {
               sourceLocation: sourceLocation,
@@ -5763,7 +5761,7 @@ function printProgramFull$2(insertPrintTopLevel, p) {
             };
     }
     var t = printTerm$2(it._0, "Step");
-    var p = print(undefined, it._1);
+    var p = print(it._1);
     return {
             it: {
               TAG: "PCons",
@@ -5773,15 +5771,15 @@ function printProgramFull$2(insertPrintTopLevel, p) {
             ann: annPrint({
                   TAG: "Group",
                   _0: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: isFirst ? "" : "\n"
-                      },
-                      ann: undefined
-                    },
+                    hd: t.ann.print,
                     tl: {
-                      hd: t.ann.print,
+                      hd: {
+                        it: {
+                          TAG: "Plain",
+                          _0: p.it === "PNil" ? "" : "\n"
+                        },
+                        ann: undefined
+                      },
                       tl: {
                         hd: p.ann.print,
                         tl: /* [] */0
@@ -5791,7 +5789,7 @@ function printProgramFull$2(insertPrintTopLevel, p) {
                 })
           };
   };
-  return print(true, p$1);
+  return print(p$1);
 }
 
 function printProgram$2(insertPrintTopLevel, p) {
@@ -7250,10 +7248,9 @@ function printOutput$3(sepOpt, os) {
 
 function printProgramFull$3(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  var print = function ($staropt$star, param) {
+  var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
-    var isFirst = $staropt$star !== undefined ? $staropt$star : false;
     var annPrint = function (print) {
       return {
               sourceLocation: sourceLocation,
@@ -7285,7 +7282,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             };
     }
     var t = printTerm$3(it._0, "Step");
-    var p = print(undefined, it._1);
+    var p = print(it._1);
     return {
             it: {
               TAG: "PCons",
@@ -7295,15 +7292,21 @@ function printProgramFull$3(insertPrintTopLevel, p) {
             ann: annPrint({
                   TAG: "Group",
                   _0: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: isFirst ? "" : "\n"
-                      },
-                      ann: undefined
-                    },
+                    hd: t.ann.print,
                     tl: {
-                      hd: t.ann.print,
+                      hd: p.it === "PNil" ? ({
+                            it: {
+                              TAG: "Plain",
+                              _0: ""
+                            },
+                            ann: undefined
+                          }) : ({
+                            it: {
+                              TAG: "Plain",
+                              _0: "\n"
+                            },
+                            ann: undefined
+                          }),
                       tl: {
                         hd: p.ann.print,
                         tl: /* [] */0
@@ -7313,7 +7316,7 @@ function printProgramFull$3(insertPrintTopLevel, p) {
                 })
           };
   };
-  return print(true, p$1);
+  return print(p$1);
 }
 
 function printProgram$3(insertPrintTopLevel, p) {
@@ -8475,10 +8478,9 @@ function printProgramFull$4(insertPrintTopLevel, p) {
   var mutVar = Js_string.includes("(set! ", s);
   var mutVec = Js_string.includes("(vec-set! ", s) || Js_string.includes("(set-left! ", s) || Js_string.includes("(set-right! ", s);
   involveMutation.contents = mutVar || mutVec;
-  var print = function ($staropt$star, param) {
+  var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
-    var isFirst = $staropt$star !== undefined ? $staropt$star : false;
     var annPrint = function (print) {
       return {
               sourceLocation: sourceLocation,
@@ -8510,7 +8512,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
             };
     }
     var t = printTerm$4(it._0);
-    var p = print(undefined, it._1);
+    var p = print(it._1);
     return {
             it: {
               TAG: "PCons",
@@ -8520,15 +8522,21 @@ function printProgramFull$4(insertPrintTopLevel, p) {
             ann: annPrint({
                   TAG: "Group",
                   _0: {
-                    hd: {
-                      it: {
-                        TAG: "Plain",
-                        _0: isFirst ? "" : "\n"
-                      },
-                      ann: undefined
-                    },
+                    hd: t.ann.print,
                     tl: {
-                      hd: t.ann.print,
+                      hd: p.it === "PNil" ? ({
+                            it: {
+                              TAG: "Plain",
+                              _0: ""
+                            },
+                            ann: undefined
+                          }) : ({
+                            it: {
+                              TAG: "Plain",
+                              _0: "\n"
+                            },
+                            ann: undefined
+                          }),
                       tl: {
                         hd: p.ann.print,
                         tl: /* [] */0
@@ -8538,7 +8546,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
                 })
           };
   };
-  return print(true, p$1);
+  return print(p$1);
 }
 
 function printProgram$4(insertPrintTopLevel, p) {
