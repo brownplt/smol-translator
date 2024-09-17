@@ -174,7 +174,7 @@ type kindedSourceLocation = {
   sourceLocation: sourceLocation,
 }
 module KindedSourceLocation: {
-  type t
+  type t = kindedSourceLocation
   let toString: t => string
 }
 
