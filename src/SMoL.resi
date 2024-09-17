@@ -9,6 +9,7 @@ module Print: {
   type t<'id> = print<'id>
   let toString: t<'id> => string
   let toSourceMap: (print<'id>, 'id => string) => Map.t<string, SExpression.sourceLocation>
+  let fromString: string => t<'id>
   let map: (string => string) => (t<'id>) => t<'id>
   let concat2: (t<'id>, string, t<'id>) => printNode<'id>
   let concat: (string, list<t<'id>>) => printNode<'id>
@@ -172,6 +173,11 @@ type kindedSourceLocation = {
   nodeKind: nodeKind,
   sourceLocation: sourceLocation,
 }
+module KindedSourceLocation: {
+  type t
+  let toString: t => string
+}
+
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
 module type Printer = {

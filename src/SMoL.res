@@ -45,6 +45,35 @@ module Print = {
     f(t)
     hMap
   }
+
+  let rec extract = ({it, ann}, id, stringOfID): option<print<'id>> => {
+    if (
+      switch ann {
+      | Some(ann) => stringOfID(ann) == stringOfID(id)
+      | None => false
+      }
+    ) {
+      Some({it, ann})
+    } else {
+      switch it {
+      | Plain(_) => None
+      | Group(es) => {
+          let rec f = es => {
+            switch es {
+            | list{} => None
+            | list{e, ...es} =>
+              switch extract(e, id, stringOfID) {
+              | None => f(es)
+              | Some(e) => Some(e)
+              }
+            }
+          }
+          f(es)
+        }
+      }
+    }
+  }
+
   let rec toString = t => {
     switch t.it {
     | Plain(s) => s
@@ -89,13 +118,13 @@ module Print = {
     Group(intersperse({it: Plain(s), ann: None}, ts))
   }
 
-  let string = it => {
+  let fromString = it => {
     {it: Plain(it), ann: None}
   }
 
   let wrap = (prefix: string, it, suffix: string) => {
-    let prefix = string(prefix)
-    let suffix = string(suffix)
+    let prefix = fromString(prefix)
+    let suffix = fromString(suffix)
     Group(list{prefix, it, suffix})
   }
 
@@ -111,7 +140,7 @@ module Print = {
   let s = (strings: array<string>, parameters: array<print<'id>>): printNode<'id> => {
     let ih = switch Array.last(strings)->Option.getExn {
     | "" => list{}
-    | s => list{string(s)}
+    | s => list{fromString(s)}
     }
     Group(
       parameters->Array.reduceRightWithIndex(ih, (ih, parameter, i) => {
@@ -120,7 +149,7 @@ module Print = {
         if s == "" {
           ih
         } else {
-          list{string(s), ...ih}
+          list{fromString(s), ...ih}
         }
       }),
     )
@@ -903,6 +932,13 @@ type kindedSourceLocation = {
   nodeKind: nodeKind,
   sourceLocation: sourceLocation,
 }
+module KindedSourceLocation = {
+  type t = kindedSourceLocation
+  let toString = ({nodeKind, sourceLocation}) => {
+    `${NodeKind.toString(nodeKind)}-${SourceLocation.toString(sourceLocation)}`
+  }
+}
+
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
 module type Printer = {
@@ -918,9 +954,13 @@ let indent = (t, i) => {
   let pad = Js.String.repeat(i, " ")
   Print.map(s => Js.String.replaceByRe(%re("/\n/g"), "\n" ++ pad, s))(t)
 }
-let indentBlock = (s, i) => indent(group(list{Print.string("\n"), s}), i)
+let indentBlock = (s, i) => indent(group(list{Print.fromString("\n"), s}), i)
 let hcat = (p1, s, p2) => {
-  Group(list{p1, Print.string(s), indent(p2, String.length(Print.toString(p1)) + String.length(s))})
+  Group(list{
+    p1,
+    Print.fromString(s),
+    indent(p2, String.length(Print.toString(p1)) + String.length(s)),
+  })
 }
 
 module SMoLPrinter = {
@@ -997,7 +1037,7 @@ module SMoLPrinter = {
     }
   }
   let defvarToString = (x, e) => {
-    defvarLikeList(Print.string("defvar"), x, e)
+    defvarLikeList(Print.fromString("defvar"), x, e)
   }
 
   let exprAppToString = (e, es) => {
@@ -1005,53 +1045,53 @@ module SMoLPrinter = {
   }
 
   let deffunToString = (f, xs, b) => {
-    letLikeList(Print.string("deffun"), appLikeList(f, xs)->Print.dummy, b)
+    letLikeList(Print.fromString("deffun"), appLikeList(f, xs)->Print.dummy, b)
   }
 
   let defgenToString = (f, xs, b) => {
-    letLikeList(Print.string("defgen"), appLikeList(f, xs)->Print.dummy, b)
+    letLikeList(Print.fromString("defgen"), appLikeList(f, xs)->Print.dummy, b)
   }
 
   let exprSetToString = (x: print<kindedSourceLocation>, e) => {
-    defvarLikeList(Print.string("set!"), x, e)
+    defvarLikeList(Print.fromString("set!"), x, e)
   }
 
   let exprLamToString = (xs, b) => {
-    defvarLikeList(Print.string("lambda"), Print.dummy(plainList(xs)), b)
+    defvarLikeList(Print.fromString("lambda"), Print.dummy(plainList(xs)), b)
   }
   let exprGLamToString = (xs, b) => {
-    defvarLikeList(Print.string("generator"), Print.dummy(plainList(xs)), b)
+    defvarLikeList(Print.fromString("generator"), Print.dummy(plainList(xs)), b)
   }
 
-  let exprYieldToString = e => appLikeList(Print.string("yield"), list{e})
+  let exprYieldToString = e => appLikeList(Print.fromString("yield"), list{e})
 
   let exprBgnToString = (es, e) => {
-    beginLikeList(Print.string("begin"), list{...es, e})
+    beginLikeList(Print.fromString("begin"), list{...es, e})
   }
 
   let exprCndToString = (ebs: list<(annotated<_, _>, annotated<_, _>)>, ob) => {
     let ebs = {
       switch ob {
       | None => ebs
-      | Some(b) => list{...ebs, (Print.string("else"), b)}
+      | Some(b) => list{...ebs, (Print.fromString("else"), b)}
       }
     }
     let ebs =
       ebs->List.map(((e, b)) =>
-        group(list{Print.string("["), e, indentBlock(b, 1), Print.string("]")})
+        group(list{Print.fromString("["), e, indentBlock(b, 1), Print.fromString("]")})
       )
-    beginLikeList(Print.string("cond"), ebs)
+    beginLikeList(Print.fromString("cond"), ebs)
   }
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
-    appLikeList(Print.string("if"), list{e_cnd, e_thn, e_els})
+    appLikeList(Print.fromString("if"), list{e_cnd, e_thn, e_els})
   }
 
   let exprLetToString = (xes, b) => {
-    letLikeList(Print.string("let"), xes, b)
+    letLikeList(Print.fromString("let"), xes, b)
   }
   let exprLetrecToString = (xes, b) => {
-    letLikeList(Print.string("letrec"), xes, b)
+    letLikeList(Print.fromString("letrec"), xes, b)
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -1110,7 +1150,10 @@ module SMoLPrinter = {
     | AppPrm(p, es) => {
         let es = es->List.map(printExp)
         {
-          ann: exprAppToString(Print.string(Primitive.toString(p)), es->List.map(e => e.ann.print)),
+          ann: exprAppToString(
+            Print.fromString(Primitive.toString(p)),
+            es->List.map(e => e.ann.print),
+          ),
           it: AppPrm(p, es),
         }
       }
@@ -1272,7 +1315,7 @@ module SMoLPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t)
         let b = printBlock(b)
-        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
+        let print = (Print.s`${t.ann.print}\n${b.ann.print}`)->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -1556,17 +1599,17 @@ module PYPrinter = {
   let listToString = es => {
     if es->List.some(containsNL) {
       Group(list{
-        Print.string("("),
+        Print.fromString("("),
         indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
-        Print.string(")"),
+        Print.fromString(")"),
       })
     } else {
-      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+      Group(list{Print.fromString("("), Print.dummy(Print.concat(", ", es)), Print.fromString(")")})
     }
   }
 
   let defvarLike = (op, x, e) => {
-    Group(list{Print.string(op), x, Print.string(" = "), e})
+    Group(list{Print.fromString(op), x, Print.fromString(" = "), e})
   }
 
   let exprAppToString = (e, es) => {
@@ -1677,7 +1720,7 @@ module PYPrinter = {
           ann: consumeContextWrap(
             ctx,
             ann,
-            Print.s`${e1.ann.print} ${Print.string(stringOfCmp(o))} ${e2.ann.print}`,
+            Print.s`${e1.ann.print} ${Print.fromString(stringOfCmp(o))} ${e2.ann.print}`,
           ),
         }
       }
@@ -1797,7 +1840,7 @@ module PYPrinter = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 4)}`
+    Print.s`${Print.fromString(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 4)}`
   }
 
   let defvarToString = (x, e) => {
@@ -2079,7 +2122,7 @@ module PYPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, env, Step)
         let b = b->printBlockHelper(ctx, env)
-        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
+        let print = (Print.s`${t.ann.print}\n${b.ann.print}`)->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -2145,7 +2188,7 @@ module PYPrinter = {
       list{
         ...refs
         ->HashMap.String.toArray
-        ->Js.Array2.map(((x, r)) => Print.string(`${r->RefDecl.toString} ${x}`))
+        ->Js.Array2.map(((x, r)) => Print.fromString(`${r->RefDecl.toString} ${x}`))
         ->List.fromArray,
         b.ann.print,
       },
@@ -2216,9 +2259,7 @@ module PYPrinter = {
     }
     let xs = xsOfProgram(p)
     let env = G(xs->List.map(x => x.it)->List.toArray->HashSet.String.fromArray)
-    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
-      printAnn,
-    > => {
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
         print: {
@@ -2239,7 +2280,7 @@ module PYPrinter = {
             ann: annPrint(
               Group(list{
                 t.ann.print,
-                Print.string(
+                Print.fromString(
                   if p.it == PNil {
                     ""
                   } else {
@@ -2270,7 +2311,12 @@ module PYPrinter = {
         }
       | Exp(it) => {
           let it = printExp(it, Stat(Step), globalEnv)
-          it.ann.print
+          let sourceLocation = it.ann.sourceLocation
+          Print.extract(
+            it.ann.print,
+            {nodeKind: Expression, sourceLocation},
+            KindedSourceLocation.toString,
+          )->Option.getUnsafe
         }
       },
     )
@@ -2314,12 +2360,12 @@ module JSPrinter = {
   let listToString = es => {
     if es->List.some(containsNL) {
       Group(list{
-        Print.string("("),
+        Print.fromString("("),
         indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
-        Print.string(")"),
+        Print.fromString(")"),
       })
     } else {
-      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+      Group(list{Print.fromString("("), Print.dummy(Print.concat(", ", es)), Print.fromString(")")})
     }
   }
 
@@ -2430,7 +2476,7 @@ module JSPrinter = {
           ann: consumeContextWrap(
             ctx,
             ann,
-            Print.s`${e1.ann.print} ${Print.string(stringOfCmp(o))} ${e2.ann.print}`,
+            Print.s`${e1.ann.print} ${Print.fromString(stringOfCmp(o))} ${e2.ann.print}`,
           ),
         }
       }
@@ -2550,7 +2596,7 @@ module JSPrinter = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))} {${indentBlock(e, 2)}\n}`
+    Print.s`${Print.fromString(op)} ${Print.dummy(exprAppToString(x, xs))} {${indentBlock(e, 2)}\n}`
   }
 
   let defvarToString = (x, e) => {
@@ -2828,7 +2874,7 @@ module JSPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = b->printBlockHelper(ctx)
-        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
+        let print = (Print.s`${t.ann.print}\n${b.ann.print}`)->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -2921,9 +2967,7 @@ module JSPrinter = {
     } else {
       p
     }
-    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
-      printAnn,
-    > => {
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
         print: {
@@ -2944,7 +2988,7 @@ module JSPrinter = {
             ann: annPrint(
               Group(list{
                 t.ann.print,
-                Print.string(
+                Print.fromString(
                   if p.it == PNil {
                     ""
                   } else {
@@ -2974,7 +3018,12 @@ module JSPrinter = {
         }
       | Exp(it) => {
           let it = printExp(it, Stat(Step))
-          it.ann.print
+          let sourceLocation = it.ann.sourceLocation
+          Print.extract(
+            it.ann.print,
+            {nodeKind: Expression, sourceLocation},
+            KindedSourceLocation.toString,
+          )->Option.getUnsafe
         }
       },
     )
@@ -3005,12 +3054,12 @@ module PCPrinter = {
   let listToString = es => {
     if es->List.some(containsNL) {
       Group(list{
-        Print.string("("),
+        Print.fromString("("),
         indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
-        Print.string(")"),
+        Print.fromString(")"),
       })
     } else {
-      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+      Group(list{Print.fromString("("), Print.dummy(Print.concat(", ", es)), Print.fromString(")")})
     }
   }
 
@@ -3121,7 +3170,7 @@ module PCPrinter = {
           ann: consumeContextWrap(
             ctx,
             ann,
-            Print.s`${e1.ann.print} ${Print.string(stringOfCmp(o))} ${e2.ann.print}`,
+            Print.s`${e1.ann.print} ${Print.fromString(stringOfCmp(o))} ${e2.ann.print}`,
           ),
         }
       }
@@ -3248,7 +3297,10 @@ module PCPrinter = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${Print.string(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}\nend`
+    Print.s`${Print.fromString(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(
+      e,
+      2,
+    )}\nend`
   }
 
   let defvarToString = (x, e) => {
@@ -3529,7 +3581,7 @@ module PCPrinter = {
     | BCons(t, b) => {
         let t = printTerm(t, Step)
         let b = b->printBlockHelper(ctx)
-        let print = Print.s`${t.ann.print}\n${b.ann.print}`->annPrint
+        let print = (Print.s`${t.ann.print}\n${b.ann.print}`)->annPrint
         {
           ann: {print, sourceLocation},
           it: BCons(t, b),
@@ -3622,9 +3674,7 @@ module PCPrinter = {
     } else {
       p
     }
-    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
-      printAnn,
-    > => {
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
         print: {
@@ -3646,9 +3696,9 @@ module PCPrinter = {
               Group(list{
                 t.ann.print,
                 if p.it == PNil {
-                  Print.string("")
+                  Print.fromString("")
                 } else {
-                  Print.string("\n")
+                  Print.fromString("\n")
                 },
                 p.ann.print,
               }),
@@ -3673,7 +3723,12 @@ module PCPrinter = {
         }
       | Exp(it) => {
           let it = printExp(it, Stat(Step))
-          it.ann.print
+          let sourceLocation = it.ann.sourceLocation
+          Print.extract(
+            it.ann.print,
+            {nodeKind: Expression, sourceLocation},
+            KindedSourceLocation.toString,
+          )->Option.getUnsafe
         }
       },
     )
@@ -3733,12 +3788,12 @@ module SCPrinter = {
       }
     } else if es->List.some(containsNL) {
       Group(list{
-        Print.string("("),
+        Print.fromString("("),
         indentBlock(Print.dummy(Print.concat(",\n", es)), 4),
-        Print.string(")"),
+        Print.fromString(")"),
       })
     } else {
-      Group(list{Print.string("("), Print.dummy(Print.concat(", ", es)), Print.string(")")})
+      Group(list{Print.fromString("("), Print.dummy(Print.concat(", ", es)), Print.fromString(")")})
     }
   }
 
@@ -3805,7 +3860,7 @@ module SCPrinter = {
           ann: consumeContextWrap(
             ctx,
             ann,
-            Print.s`${e1.ann.print} ${Print.string(stringOfCmp(o))} ${e2.ann.print}`,
+            Print.s`${e1.ann.print} ${Print.fromString(stringOfCmp(o))} ${e2.ann.print}`,
           ),
         }
       }
@@ -3921,7 +3976,7 @@ module SCPrinter = {
   }
 
   let funLike = (op, x, xs, e) => {
-    Print.s`${Print.string(op)} ${Print.dummy(
+    Print.s`${Print.fromString(op)} ${Print.dummy(
       exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))),
     )} =${indentBlock(e, 2)}`
   }
@@ -4200,7 +4255,8 @@ module SCPrinter = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
-          | Vec(es) => makeVec(es->List.map(p)->List.map(Print.string))->Print.dummy->Print.toString
+          | Vec(es) =>
+            makeVec(es->List.map(p)->List.map(Print.fromString))->Print.dummy->Print.toString
           }
           `${i}${content}`
         }
@@ -4231,9 +4287,7 @@ module SCPrinter = {
       Js.String.includes("(set-right! ", s)
     involveMutation := mutVar || mutVec
 
-    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<
-      printAnn,
-    > => {
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
         print: {
@@ -4255,9 +4309,9 @@ module SCPrinter = {
               Group(list{
                 t.ann.print,
                 if p.it == PNil {
-                  Print.string("")
+                  Print.fromString("")
                 } else {
-                  Print.string("\n")
+                  Print.fromString("\n")
                 },
                 p.ann.print,
               }),
