@@ -1904,7 +1904,7 @@ module PYPrinter = {
             ctx,
             ann,
             exprLamToString(
-              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+              Print.concat(", ", xs->List.map(x => x.ann.print))->Print.dummy,
               b.ann.print,
             ),
           )->addSourceLocation,
@@ -3685,11 +3685,10 @@ module PCPrinter = {
 module SCPrinter = {
   open! Belt
 
-  let useVarRatherThanVal = ref(false)
-  let useBufferRatherThanTuple = ref(false)
+  let involveMutation = ref(false)
 
   let makeVec = es => {
-    if useBufferRatherThanTuple.contents {
+    if involveMutation.contents {
       Print.s`Buffer(${Print.concat(", ", es)->Print.dummy})`
     } else {
       Print.s`(${Print.concat(", ", es)->Print.dummy})`
@@ -3729,7 +3728,11 @@ module SCPrinter = {
 
   let listToString = es => {
     if es == list{} {
-      Plain("")
+      if involveMutation.contents {
+        Plain("()")
+      } else {
+        Plain("")
+      }
     } else if es->List.some(containsNL) {
       Group(list{
         Print.string("("),
@@ -3774,12 +3777,12 @@ module SCPrinter = {
     switch o {
     | Lt => "<"
     | NumEq => "=="
-    | Eq => "==="
+    | Eq => "eq"
     | Gt => ">"
     | Le => "<="
     | Ge => ">="
     | Ne => "!="
-    | Equal => raisePrintError("JavaScript doesn't not have structural equality.")
+    | Equal => "=="
     }
   }
 
@@ -3850,11 +3853,7 @@ module SCPrinter = {
         let es = es->List.map(e => e(false))
         {
           it: (VecNew, es),
-          ann: consumeContext(
-            ctx,
-            ann,
-            makeVec(es->List.map(e => e.ann.print)),
-          ),
+          ann: consumeContext(ctx, ann, makeVec(es->List.map(e => e.ann.print))),
         }
       }
     | (VecRef, list{e1, e2}) => {
@@ -3889,7 +3888,7 @@ module SCPrinter = {
         let e1 = e1(true)
         {
           it: (Err, list{e1}),
-          ann: consumeContextWrap(ctx, ann, Print.s`throw ${e1.ann.print}`),
+          ann: consumeContextWrap(ctx, ann, Print.s`throw new RuntimeException(${e1.ann.print})`),
         }
       }
     | (Not, list{e1}) => {
@@ -3930,7 +3929,7 @@ module SCPrinter = {
   }
 
   let defvarToString = (x, e) => {
-    if useVarRatherThanVal.contents {
+    if involveMutation.contents {
       Print.s`var ${x} = ${e}`
     } else {
       Print.s`val ${x} = ${e}`
@@ -4216,7 +4215,7 @@ module SCPrinter = {
   }
 
   let printOutput = (~sep=" ", os): string => {
-    useBufferRatherThanTuple := true
+    involveMutation := true
     concat(sep, os->List.map(printOutputlet)->List.toArray)
   }
 
@@ -4232,8 +4231,7 @@ module SCPrinter = {
       Js.String.includes("(vec-set! ", s) ||
       Js.String.includes("(set-left! ", s) ||
       Js.String.includes("(set-right! ", s)
-    useVarRatherThanVal := mutVar
-    useBufferRatherThanTuple := mutVar || mutVec
+    involveMutation := mutVar || mutVec
 
     let rec print = (~isFirst=false, {it, ann: sourceLocation}: program<sourceLocation>): program<
       printAnn,

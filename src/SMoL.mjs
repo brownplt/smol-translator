@@ -3685,7 +3685,7 @@ function printExp$1(param, ctx, env) {
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap(ctx, ann, exprLamToString$1({
-                            it: concat(",", Belt_List.map(xs, (function (x) {
+                            it: concat(", ", Belt_List.map(xs, (function (x) {
                                         return x.ann.print;
                                       }))),
                             ann: undefined
@@ -7381,16 +7381,12 @@ function printStandAloneTerm$3(param) {
   return toString(tmp);
 }
 
-var useVarRatherThanVal = {
-  contents: false
-};
-
-var useBufferRatherThanTuple = {
+var involveMutation = {
   contents: false
 };
 
 function makeVec(es) {
-  if (useBufferRatherThanTuple.contents) {
+  if (involveMutation.contents) {
     return s([
                 "Buffer(",
                 ")"
@@ -7453,10 +7449,17 @@ function constantToString$4(c) {
 
 function listToString$3(es) {
   if (es === /* [] */0) {
-    return {
-            TAG: "Plain",
-            _0: ""
-          };
+    if (involveMutation.contents) {
+      return {
+              TAG: "Plain",
+              _0: "()"
+            };
+    } else {
+      return {
+              TAG: "Plain",
+              _0: ""
+            };
+    }
   } else if (Belt_List.some(es, containsNL)) {
     return {
             TAG: "Group",
@@ -7570,10 +7573,8 @@ function stringOfCmp$3(o) {
   switch (o) {
     case "Lt" :
         return "<";
-    case "NumEq" :
-        return "==";
     case "Eq" :
-        return "===";
+        return "eq";
     case "Gt" :
         return ">";
     case "Le" :
@@ -7582,12 +7583,9 @@ function stringOfCmp$3(o) {
         return ">=";
     case "Ne" :
         return "!=";
+    case "NumEq" :
     case "Equal" :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "JavaScript doesn't not have structural equality.",
-              Error: new Error()
-            };
+        return "==";
     
   }
 }
@@ -7833,8 +7831,8 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                       }
                     ],
                     ann: consumeContextWrap$3(ctx, ann, s([
-                              "throw ",
-                              ""
+                              "throw new RuntimeException(",
+                              ")"
                             ], [e1$8.ann.print]))
                   };
           }
@@ -7972,7 +7970,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
 }
 
 function defvarToString$4(x, e) {
-  if (useVarRatherThanVal.contents) {
+  if (involveMutation.contents) {
     return s([
                 "var ",
                 " = ",
@@ -8512,7 +8510,7 @@ function printOutputlet$4(o) {
 
 function printOutput$4(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
-  useBufferRatherThanTuple.contents = true;
+  involveMutation.contents = true;
   return Belt_List.toArray(Belt_List.map(os, printOutputlet$4)).join(sep);
 }
 
@@ -8521,8 +8519,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
   var s = printProgram(insertPrintTopLevel, p$1);
   var mutVar = Js_string.includes("(set! ", s);
   var mutVec = Js_string.includes("(vec-set! ", s) || Js_string.includes("(set-left! ", s) || Js_string.includes("(set-right! ", s);
-  useVarRatherThanVal.contents = mutVar;
-  useBufferRatherThanTuple.contents = mutVar || mutVec;
+  involveMutation.contents = mutVar || mutVec;
   var print = function ($staropt$star, param) {
     var sourceLocation = param.ann;
     var it = param.it;

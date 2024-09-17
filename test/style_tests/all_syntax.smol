@@ -1,0 +1,38 @@
+42
+#t
+#f
+"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
+(defvar x 1)
+x
+(set! x 2)
+(+ 3 4)
+(- 3 4)
+(* 3 4)
+(/ 3 4)
+(< 5 6)
+(> 5 6)
+(= 5 6)
+(!= 5 6)
+(mpair 7 8)
+(defvar mv (mvec 7 8))
+(left mv)
+(right mv)
+(vec-ref mv 0)
+(vec-set! mv 0 9)
+(set-left! mv 10)
+(set-right! mv 11)
+(vec-len mv)
+(not #t)
+(print #f)
+(defvar f
+  (lambda ()
+    3))
+(defvar g
+  (lambda (x y)
+    (+ x y)))
+(f)
+(g 4 5)
+(if (eq? "apple" "orange")
+    "yes"
+    "no")
+(error "bad thing happens")

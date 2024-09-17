@@ -1,0 +1,40 @@
+print(42)
+print(True)
+print(False)
+print("a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")")
+let x = 1
+print(x)
+x = 2
+print(3 + 4)
+print(3 - 4)
+print(3 * 4)
+print(3 / 4)
+print(5 < 6)
+print(5 > 6)
+print(5 == 6)
+print(5 != 6)
+print(vec[ 7, 8 ])
+let mv = vec[ 7, 8 ]
+print(mv[0])
+print(mv[1])
+print(mv[0])
+mv[0] = 9
+mv[0] = 10
+mv[1] = 11
+print(length(mv))
+print(! True)
+print(False)
+let f = lam ():
+  return 3
+end
+let g = lam (x,y):
+  return x + y
+end
+print(f())
+print(g(4, 5))
+if "apple" === "orange":
+  print("yes")
+else:
+  print("no")
+end
+raise "bad thing happens"
