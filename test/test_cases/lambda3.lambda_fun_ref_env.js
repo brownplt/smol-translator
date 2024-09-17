@@ -1,5 +1,5 @@
 function bar(y) {
-  return function (x) {
+  return (x) => {
     return x + y;
   };
 }

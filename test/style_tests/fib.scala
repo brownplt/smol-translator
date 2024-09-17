@@ -1,6 +1,6 @@
 def fib(n : Int) =
   if (n < 0) {
-    throw "The argument to fib must be non-negative"
+    throw new RuntimeException("The argument to fib must be non-negative")
   } else if (n <= 1) {
     n
   } else {

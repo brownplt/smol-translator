@@ -1,5 +1,5 @@
 function k(b) {
-  return function (a) {
+  return (a) => {
     return a + b;
   };
 }

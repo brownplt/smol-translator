@@ -1,4 +1,4 @@
-let m = vec[0]
-let v = vec[52, m, 53]
+let m = vec[ 0 ]
+let v = vec[ 52, m, 53 ]
 m[0] = 71
 print(v)

@@ -1,6 +1,6 @@
 function buildDbl() {
   let n = 1;
-  return function () {
+  return () => {
     n = n * 2;
     return n;
   };

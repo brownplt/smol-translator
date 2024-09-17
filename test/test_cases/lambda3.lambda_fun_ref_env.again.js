@@ -1,5 +1,5 @@
 function f(n) {
-  return function (m) {
+  return (m) => {
     return m * n;
   };
 }

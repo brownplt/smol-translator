@@ -1,9 +1,9 @@
 var x = 12
-def f =
+def f() =
   x
-def g =
+def g() =
   x = 0
-  f
-println(g)
+  f()
+println(g())
 x = 1
-println(f)
+println(f())

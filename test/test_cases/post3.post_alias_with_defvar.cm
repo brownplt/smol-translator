@@ -1,4 +1,4 @@
-let p = vec[72]
+let p = vec[ 72 ]
 let q = p
 p[0] = 94
 print(q)

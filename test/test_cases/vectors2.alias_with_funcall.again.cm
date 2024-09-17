@@ -1,4 +1,4 @@
-let a = vec[55, 17]
+let a = vec[ 55, 17 ]
 fun foobar(b):
   b[0] = 52
   return

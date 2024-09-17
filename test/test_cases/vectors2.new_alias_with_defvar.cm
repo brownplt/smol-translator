@@ -1,4 +1,4 @@
-let x = vec[62]
+let x = vec[ 62 ]
 let y = x
 y[0] = 34
 print(x)

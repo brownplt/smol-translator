@@ -1,4 +1,4 @@
-let m1 = vec[77, 77]
+let m1 = vec[ 77, 77 ]
 fun f(m2):
   m2[0] = 43
   return

@@ -1,4 +1,4 @@
-let x = vec[10, 48, 95]
+let x = vec[ 10, 48, 95 ]
 fun f(y):
   y[0] = 32
   return y[0]

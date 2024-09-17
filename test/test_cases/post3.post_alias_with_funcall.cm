@@ -1,4 +1,4 @@
-let zz = vec[88, 88]
+let zz = vec[ 88, 88 ]
 fun f(aa):
   aa[0] = 97
   return
