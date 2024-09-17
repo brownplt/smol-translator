@@ -1730,15 +1730,14 @@ function appLikeList(e1, es) {
   } else {
     return s([
                 "(",
-                " ",
                 ")"
-              ], [
-                e1,
-                {
-                  it: concat(" ", es),
+              ], [{
+                  it: concat(" ", {
+                        hd: e1,
+                        tl: es
+                      }),
                   ann: undefined
-                }
-              ]);
+                }]);
   }
 }
 
@@ -3536,12 +3535,12 @@ function ifStat(cnd, thn, els) {
               ""
             ], [
               cnd,
-              indentBlock(thn, 2),
+              indentBlock(thn, 4),
               {
                 it: els !== undefined ? s([
                         "\nelse:",
                         ""
-                      ], [indentBlock(els, 2)]) : s([""], []),
+                      ], [indentBlock(els, 4)]) : s([""], []),
                 ann: undefined
               }
             ]);
@@ -3568,7 +3567,7 @@ function exprCndToString$1(ebs, ob) {
               it: s([
                     "se:",
                     ""
-                  ], [indentBlock(ob, 2)]),
+                  ], [indentBlock(ob, 4)]),
               ann: undefined
             },
             tl: /* [] */0

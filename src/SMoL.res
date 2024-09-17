@@ -961,7 +961,7 @@ module SMoLPrinter = {
     if List.some(es, containsNL) {
       Print.s`(${hcat(e1, " ", Print.concat("\n", es)->Print.dummy)->Print.dummy})`
     } else {
-      Print.s`(${e1} ${Print.concat(" ", es)->Print.dummy})`
+      Print.s`(${Print.concat(" ", list{e1, ...es})->Print.dummy})`
     }
   }
 
@@ -1823,9 +1823,9 @@ module PYPrinter = {
   let exprYieldToString = e => Print.s`yield ${e}`
 
   let ifStat = (cnd, thn, els) => {
-    Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
+    Print.s`if ${cnd}:${indentBlock(thn, 4)}${switch els {
     | None => Print.s``
-    | Some(els) => Print.s`\nelse:${indentBlock(els, 2)}`
+    | Some(els) => Print.s`\nelse:${indentBlock(els, 4)}`
     }->Print.dummy}`
   }
 
@@ -1836,7 +1836,7 @@ module PYPrinter = {
     let ebs = ebs->List.map(((e, b)) => ifStat(e, b, None)->Print.dummy)
     let ebs = switch ob {
     | None => ebs
-    | Some(b) => list{...ebs, (Print.s`se:${indentBlock(b, 2)}`)->Print.dummy}
+    | Some(b) => list{...ebs, (Print.s`se:${indentBlock(b, 4)}`)->Print.dummy}
     }
     Print.concat("\nel", ebs)
   }
