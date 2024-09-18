@@ -3,7 +3,7 @@
   "version": "9.0.0",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
-  "main": "src/SMoL.bs.js",
+  "main": "src/SMoL.mjs",
   "scripts": {
     "clean": "rm -rf test/test_cases/* test/style_tests/*.{js,py,scala,cm}*",
     "prepare-test:get-programs": "node --experimental-modules test/extract_programs_from_tutorials.js",
@@ -23,7 +23,7 @@
   "license": "MIT",
   "dependencies": {
     "@brownplt/s-expression": "github:brownplt/s-expression",
-    "@rescript/core": "^1.5.2",
+    "@rescript/core": "^1.6.0",
     "install": "^0.13.0",
     "npm": "^10.8.2",
     "rescript": "^11.1.3"
