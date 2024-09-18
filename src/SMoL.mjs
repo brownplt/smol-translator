@@ -4056,18 +4056,6 @@ function printBlockHelper(param, ctx, env) {
 function printBlock$1(b, ctx, env) {
   var sourceLocation = b.ann;
   var it = b.it;
-  var annOfPrint = function (print) {
-    return {
-            sourceLocation: sourceLocation,
-            print: {
-              it: print,
-              ann: {
-                nodeKind: "Block",
-                sourceLocation: sourceLocation
-              }
-            }
-          };
-  };
   if (it.TAG === "BRet" && ctx.TAG === "Expr") {
     var e = printExp$1(it._0, {
           TAG: "Expr",
@@ -4078,13 +4066,22 @@ function printBlock$1(b, ctx, env) {
               TAG: "BRet",
               _0: e
             },
-            ann: annOfPrint({
+            ann: {
+              sourceLocation: sourceLocation,
+              print: {
+                it: {
                   TAG: "Group",
                   _0: {
                     hd: e.ann.print,
                     tl: /* [] */0
                   }
-                })
+                },
+                ann: {
+                  nodeKind: "Block",
+                  sourceLocation: sourceLocation
+                }
+              }
+            }
           };
   }
   if (ctx.TAG === "Expr") {
@@ -4179,6 +4176,15 @@ function printDefBody(b, args, env) {
 function printTerm$1(param, env, ctx) {
   var sourceLocation = param.ann;
   var it = param.it;
+  var annPrint = function (it) {
+    return {
+            it: it,
+            ann: {
+              nodeKind: "Term",
+              sourceLocation: sourceLocation
+            }
+          };
+  };
   if (it.TAG === "Def") {
     var it$1 = printDef$1(it._0, env);
     return {
@@ -4188,16 +4194,13 @@ function printTerm$1(param, env, ctx) {
             },
             ann: {
               sourceLocation: sourceLocation,
-              print: {
-                it: {
-                  TAG: "Group",
-                  _0: {
-                    hd: it$1.ann.print,
-                    tl: /* [] */0
-                  }
-                },
-                ann: undefined
-              }
+              print: annPrint({
+                    TAG: "Group",
+                    _0: {
+                      hd: it$1.ann.print,
+                      tl: /* [] */0
+                    }
+                  })
             }
           };
   }
@@ -4212,16 +4215,13 @@ function printTerm$1(param, env, ctx) {
           },
           ann: {
             sourceLocation: sourceLocation,
-            print: {
-              it: {
-                TAG: "Group",
-                _0: {
-                  hd: it$2.ann.print,
-                  tl: /* [] */0
-                }
-              },
-              ann: undefined
-            }
+            print: annPrint({
+                  TAG: "Group",
+                  _0: {
+                    hd: it$2.ann.print,
+                    tl: /* [] */0
+                  }
+                })
           }
         };
 }
@@ -5637,18 +5637,6 @@ function printBlockHelper$1(param, ctx) {
 function printBlock$2(b, ctx) {
   var sourceLocation = b.ann;
   var it = b.it;
-  var annOfPrint = function (print) {
-    return {
-            sourceLocation: sourceLocation,
-            print: {
-              it: print,
-              ann: {
-                nodeKind: "Block",
-                sourceLocation: sourceLocation
-              }
-            }
-          };
-  };
   if (it.TAG === "BRet" && ctx.TAG === "Expr") {
     var e = printExp$2(it._0, {
           TAG: "Expr",
@@ -5659,13 +5647,22 @@ function printBlock$2(b, ctx) {
               TAG: "BRet",
               _0: e
             },
-            ann: annOfPrint({
+            ann: {
+              sourceLocation: sourceLocation,
+              print: {
+                it: {
                   TAG: "Group",
                   _0: {
                     hd: e.ann.print,
                     tl: /* [] */0
                   }
-                })
+                },
+                ann: {
+                  nodeKind: "Block",
+                  sourceLocation: sourceLocation
+                }
+              }
+            }
           };
   }
   if (ctx.TAG !== "Expr") {
@@ -7368,24 +7365,8 @@ function printProgram$3(insertPrintTopLevel, p) {
   return toString(printProgramFull$3(insertPrintTopLevel, p).ann.print);
 }
 
-function printStandAloneTerm$3(param) {
-  var it = param.it;
-  var tmp;
-  if (it.TAG === "Def") {
-    var it$1 = printDef$3(it._0);
-    tmp = it$1.ann.print;
-  } else {
-    var it$2 = printExp$3(it._0, {
-          TAG: "Stat",
-          _0: "Step"
-        });
-    var sourceLocation = it$2.ann.sourceLocation;
-    tmp = extract(it$2.ann.print, {
-          nodeKind: "Expression",
-          sourceLocation: sourceLocation
-        }, toString$7);
-  }
-  return toString(tmp);
+function printStandAloneTerm$3(t) {
+  return toString(printTerm$3(t, "Step").ann.print);
 }
 
 var involveMutation = {

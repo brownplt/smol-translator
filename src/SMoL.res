@@ -2132,24 +2132,23 @@ module PYPrinter = {
   }
   and printBlock = (b, ctx, env) => {
     let {it, ann: sourceLocation} = b
-    let annOfPrint = print => {
-      sourceLocation,
-      print: {
-        it: print,
-        ann: Some({
-          {
-            nodeKind: Block,
-            sourceLocation,
-          }
-        }),
-      },
-    }
     switch (it, ctx) {
     | (BRet(e), Expr(ctx)) => {
         let e = e->printExp(Expr(ctx), env)
         {
           it: BRet(e),
-          ann: annOfPrint(Group(list{e.ann.print})),
+          ann: {
+            sourceLocation,
+            print: {
+              it: Group(list{e.ann.print}),
+              ann: Some({
+                {
+                  nodeKind: Block,
+                  sourceLocation,
+                }
+              }),
+            },
+          },
         }
       }
     | (_, Expr(_)) => raisePrintError("Python blocks can't be used as expressions in general")
@@ -2199,6 +2198,13 @@ module PYPrinter = {
     }
   }
   and printTerm = ({ann: sourceLocation, it}: term<sourceLocation>, env, ctx): term<printAnn> => {
+    let annPrint = it => {
+      it,
+      ann: Some({
+        sourceLocation,
+        nodeKind: Term,
+      }),
+    }
     switch it {
     | Exp(it) => {
         let it = printExp(it, Stat(ctx), env)
@@ -2206,7 +2212,7 @@ module PYPrinter = {
           it: Exp(it),
           ann: {
             sourceLocation,
-            print: group(list{it.ann.print}),
+            print: Group(list{it.ann.print})->annPrint,
           },
         }
       }
@@ -2216,7 +2222,7 @@ module PYPrinter = {
           it: Def(it),
           ann: {
             sourceLocation,
-            print: group(list{it.ann.print}),
+            print: Group(list{it.ann.print})->annPrint,
           },
         }
       }
@@ -2884,24 +2890,23 @@ module JSPrinter = {
   }
   and printBlock = (b, ctx) => {
     let {it, ann: sourceLocation} = b
-    let annOfPrint = print => {
-      sourceLocation,
-      print: {
-        it: print,
-        ann: Some({
-          {
-            nodeKind: Block,
-            sourceLocation,
-          }
-        }),
-      },
-    }
     switch (it, ctx) {
     | (BRet(e), Expr(ctx)) => {
         let e = e->printExp(Expr(ctx))
         {
           it: BRet(e),
-          ann: annOfPrint(Group(list{e.ann.print})),
+          ann: {
+            sourceLocation,
+            print: {
+              it: Group(list{e.ann.print}),
+              ann: Some({
+                {
+                  nodeKind: Block,
+                  sourceLocation,
+                }
+              }),
+            },
+          },
         }
       }
     | (_, Expr(_)) => raisePrintError("JavaScript blocks can't be used as expressions in general")
@@ -3714,24 +3719,8 @@ module PCPrinter = {
     Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
   }
 
-  let printStandAloneTerm = ({it}: term<sourceLocation>): string => {
-    Print.toString(
-      switch it {
-      | Def(it) => {
-          let it = printDef(it)
-          it.ann.print
-        }
-      | Exp(it) => {
-          let it = printExp(it, Stat(Step))
-          let sourceLocation = it.ann.sourceLocation
-          Print.extract(
-            it.ann.print,
-            {nodeKind: Expression, sourceLocation},
-            KindedSourceLocation.toString,
-          )->Option.getUnsafe
-        }
-      },
-    )
+  let printStandAloneTerm = (t: term<sourceLocation>): string => {
+    Print.toString(printTerm(t, Step).ann.print)
   }
 }
 
