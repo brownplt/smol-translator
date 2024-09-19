@@ -1746,7 +1746,7 @@ function bindsLikeList(es) {
   return s([
               "(",
               ")"
-            ], [indentBlock({
+            ], [indent({
                     it: concat("\n", es),
                     ann: undefined
                   }, 1)]);

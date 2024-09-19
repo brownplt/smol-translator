@@ -987,7 +987,7 @@ module SMoLPrinter = {
   }
 
   let bindsLikeList = es => {
-    Print.s`(${indentBlock(Print.concat("\n", es)->Print.dummy, 1)})`
+    Print.s`(${indent(Print.concat("\n", es)->Print.dummy, 1)})`
   }
 
   let appLikeList = (e1, es) => {
