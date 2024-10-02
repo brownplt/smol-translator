@@ -829,6 +829,8 @@ module Parser = {
         }
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
+      | Sequence({content: list{{it: Atom(Sym("maybe?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Maybe, es)
       | Sequence({content: list{{it: Atom(Sym("next")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Next, es)
       | Sequence({content: list{{it: Atom(Sym("+")), ann: _}, ...es}}) =>

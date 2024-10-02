@@ -1441,6 +1441,9 @@ function parseTerm(e) {
                   }
                 };
                 break;
+            case "maybe?" :
+                tmp = makeAppPrm(ann, "Maybe", es.tl);
+                break;
             case "next" :
                 tmp = makeAppPrm(ann, "Next", es.tl);
                 break;
