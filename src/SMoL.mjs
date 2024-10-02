@@ -293,6 +293,8 @@ function containsNL(it) {
 function toString$1(t) {
   if (typeof t !== "object") {
     switch (t) {
+      case "Maybe" :
+          return "maybe?";
       case "PairNew" :
           return "mpair";
       case "PairRefLeft" :
@@ -3114,6 +3116,8 @@ function stringOfCmp(o) {
 function exprAppPrmToString(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
+      case "Maybe" :
+          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -4678,6 +4682,8 @@ function stringOfCmp$1(o) {
 function exprAppPrmToString$1(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
+      case "Maybe" :
+          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -6156,6 +6162,8 @@ function stringOfCmp$2(o) {
 function exprAppPrmToString$2(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
+      case "Maybe" :
+          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -7581,6 +7589,8 @@ function stringOfCmp$3(o) {
 function exprAppPrmToString$3(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
+      case "Maybe" :
+          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;

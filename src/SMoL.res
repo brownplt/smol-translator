@@ -198,6 +198,7 @@ module Primitive = {
     | Ne
     | Equal
   type t =
+    | Maybe
     | Arith(arith)
     | Cmp(cmp)
     | PairNew
@@ -216,6 +217,7 @@ module Primitive = {
     | Cons
   let toString: t => string = t => {
     switch t {
+    | Maybe => "maybe?"
     | Arith(Add) => "+"
     | Arith(Sub) => "-"
     | Arith(Mul) => "*"

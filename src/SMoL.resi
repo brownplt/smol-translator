@@ -55,6 +55,7 @@ module Primitive: {
     | Ne
     | Equal
   type t =
+    | Maybe
     | Arith(arith)
     | Cmp(cmp)
     | PairNew
