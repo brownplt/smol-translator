@@ -215,6 +215,7 @@ module Primitive = {
     | Print
     | Next
     | Cons
+    | StringAppend
   let toString: t => string = t => {
     switch t {
     | Maybe => "maybe?"
@@ -865,6 +866,8 @@ module Parser = {
         makeAppPrm(ann, Maybe, es)
       | Sequence({content: list{{it: Atom(Sym("next")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Next, es)
+      | Sequence({content: list{{it: Atom(Sym("++")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, StringAppend, es)
       | Sequence({content: list{{it: Atom(Sym("+")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Arith(Add), es)
       | Sequence({content: list{{it: Atom(Sym("-")), ann: _}, ...es}}) =>
@@ -897,6 +900,8 @@ module Parser = {
         makeAppPrm(ann, PairSetLeft, es)
       | Sequence({content: list{{it: Atom(Sym("set-right!")), ann: _}, ...es}}) =>
         makeAppPrm(ann, PairSetRight, es)
+      | Sequence({content: list{{it: Atom(Sym("ivec")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, VecNew, es)
       | Sequence({content: list{{it: Atom(Sym("mvec")), ann: _}, ...es}}) =>
         makeAppPrm(ann, VecNew, es)
       | Sequence({content: list{{it: Atom(Sym("vec")), ann: _}, ...es}}) =>
@@ -916,6 +921,8 @@ module Parser = {
       | Sequence({content: list{{it: Atom(Sym("eq?")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Cmp(Eq), es)
       | Sequence({content: list{{it: Atom(Sym("equal?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Cmp(Equal), es)
+      | Sequence({content: list{{it: Atom(Sym("string=?")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Cmp(Equal), es)
       | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Err, es)

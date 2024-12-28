@@ -1103,6 +1103,7 @@ function parseTerm(e) {
         if (match$1.TAG === "Str") {
           exit = 1;
         } else {
+          var exit$1 = 0;
           switch (match$1._0) {
             case "!=" :
                 tmp = makeAppPrm(ann, {
@@ -1562,9 +1563,10 @@ function parseTerm(e) {
             case "set-right!" :
                 tmp = makeAppPrm(ann, "PairSetRight", es.tl);
                 break;
+            case "ivec" :
             case "mvec" :
             case "vec" :
-                tmp = makeAppPrm(ann, "VecNew", es.tl);
+                exit$1 = 2;
                 break;
             case "vec-len" :
             case "vlen" :
@@ -1616,6 +1618,10 @@ function parseTerm(e) {
             default:
               exit = 1;
           }
+          if (exit$1 === 2) {
+            tmp = makeAppPrm(ann, "VecNew", es.tl);
+          }
+          
         }
       } else {
         exit = 1;
