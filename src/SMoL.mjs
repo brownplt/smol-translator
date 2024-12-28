@@ -323,6 +323,16 @@ function toString$1(t) {
           return "next";
       case "Cons" :
           return "cons";
+      case "StringAppend" :
+          throw {
+                RE_EXN_ID: "Match_failure",
+                _1: [
+                  "SMoL.res",
+                  220,
+                  4
+                ],
+                Error: new Error()
+              };
       
     }
   } else if (t.TAG === "Arith") {
@@ -1123,6 +1133,9 @@ function parseTerm(e) {
                       _0: "Add"
                     }, es.tl);
                 break;
+            case "++" :
+                tmp = makeAppPrm(ann, "StringAppend", es.tl);
+                break;
             case "-" :
                 tmp = makeAppPrm(ann, {
                       TAG: "Arith",
@@ -1337,12 +1350,6 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, {
                       TAG: "Cmp",
                       _0: "Eq"
-                    }, es.tl);
-                break;
-            case "equal?" :
-                tmp = makeAppPrm(ann, {
-                      TAG: "Cmp",
-                      _0: "Equal"
                     }, es.tl);
                 break;
             case "error" :
@@ -1562,6 +1569,13 @@ function parseTerm(e) {
                 break;
             case "set-right!" :
                 tmp = makeAppPrm(ann, "PairSetRight", es.tl);
+                break;
+            case "equal?" :
+            case "string=?" :
+                tmp = makeAppPrm(ann, {
+                      TAG: "Cmp",
+                      _0: "Equal"
+                    }, es.tl);
                 break;
             case "ivec" :
             case "mvec" :
@@ -3260,8 +3274,6 @@ function stringOfCmp(o) {
 function exprAppPrmToString(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
-      case "Maybe" :
-          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -3573,6 +3585,9 @@ function exprAppPrmToString(ann, ctx, p, es) {
                 _1: "List is not supported by Python",
                 Error: new Error()
               };
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       
     }
   } else {
@@ -4904,8 +4919,6 @@ function stringOfCmp$1(o) {
 function exprAppPrmToString$1(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
-      case "Maybe" :
-          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -5217,6 +5230,9 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                 _1: "List is not supported by JavaScript",
                 Error: new Error()
               };
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       
     }
   } else {
@@ -6462,8 +6478,6 @@ function stringOfCmp$2(o) {
 function exprAppPrmToString$2(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
-      case "Maybe" :
-          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -6798,6 +6812,9 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
             }
             
           }
+          break;
+      case "Maybe" :
+      case "StringAppend" :
           break;
       
     }
@@ -7967,8 +7984,6 @@ function stringOfCmp$3(o) {
 function exprAppPrmToString$3(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
-      case "Maybe" :
-          break;
       case "PairNew" :
           if (es) {
             var match = es.tl;
@@ -8273,6 +8288,9 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                 _1: "List is not supported by JavaScript",
                 Error: new Error()
               };
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       
     }
   } else {

@@ -72,6 +72,7 @@ module Primitive: {
     | Print
     | Next
     | Cons
+    | StringAppend
   let toString: t => string
 }
 
