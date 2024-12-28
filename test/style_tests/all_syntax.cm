@@ -22,7 +22,7 @@ mv[0] = 9
 mv[0] = 10
 mv[1] = 11
 print(length(mv))
-print(! True)
+print(¬ True)
 print(False)
 let f = lam ():
   return 3

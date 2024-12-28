@@ -262,6 +262,8 @@ type rec expressionNode<'ann> =
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
   | If(expression<'ann>, expression<'ann>, expression<'ann>)
+  | And(expression<'ann>, expression<'ann>, list<expression<'ann>>)
+  | Or(expression<'ann>, expression<'ann>, list<expression<'ann>>)
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
@@ -559,6 +561,14 @@ module Parser = {
     | _ => raiseParseError(SExprArityError(ExactlyTwo, context, es))
     }
   }
+
+  let as_two_then_many = (context, es: list<SExpression.annotated<_>>) => {
+    switch es {
+    | list{e1, e2, ...es} => (e1, e2, es)
+    | _ => raiseParseError(SExprArityError(OneThenMany, context, es))
+    }
+  }
+
   let as_three = (context, es: list<SExpression.annotated<_>>) => {
     switch es {
     | list{e1, e2, e3} => (e1, e2, e3)
@@ -737,6 +747,28 @@ module Parser = {
           let e_els = as_expr("an expression", parseTerm(e_els))
           Exp(ann(If(e_cnd, e_thn, e_els)))
         }
+
+      | Sequence({content: list{{it: Atom(Sym("and")), ann: _}, ...rest}}) => {
+        let (e_1, e_2, e_ns) = as_two_then_many(
+          "at least two expressions",
+          rest
+        )
+        let e_1 = as_expr("an expression", parseTerm(e_1))
+        let e_2 = as_expr("an expression", parseTerm(e_2))
+        let e_ns = e_ns->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+        Exp(ann(And(e_1, e_2, e_ns)))
+      }
+
+      | Sequence({content: list{{it: Atom(Sym("or")), ann: _}, ...rest}}) => {
+        let (e_1, e_2, e_ns) = as_two_then_many(
+          "at least two expressions",
+          rest
+        )
+        let e_1 = as_expr("an expression", parseTerm(e_1))
+        let e_2 = as_expr("an expression", parseTerm(e_2))
+        let e_ns = e_ns->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+        Exp(ann(And(e_1, e_2, e_ns)))
+      }
 
       | Sequence({content: list{{it: Atom(Sym("cond")), ann: _}, ...branches}}) => {
           let branches =
@@ -1091,6 +1123,14 @@ module SMoLPrinter = {
     appLikeList(Print.fromString("if"), list{e_cnd, e_thn, e_els})
   }
 
+  let exprAndToString = (e_1, e_2, e_ns) => {
+    exprAppToString(Print.dummy(Print.s`and`), list{e_1, e_2, ...e_ns})
+  }
+
+  let exprOrToString = (e_1, e_2, e_ns) => {
+    exprAppToString(Print.dummy(Print.s`or`), list{e_1, e_2, ...e_ns})
+  }
+
   let exprLetToString = (xes, b) => {
     letLikeList(Print.fromString("let"), xes, b)
   }
@@ -1211,6 +1251,24 @@ module SMoLPrinter = {
           it: If(e_cnd, e_thn, e_els),
         }
       }
+    | And(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1)
+      let e_2 = printExp(e_2)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k))
+      {
+        ann: exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        it: And(e_1, e_2, e_ns)
+      }
+    }
+    | Or(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1)
+      let e_2 = printExp(e_2)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k))
+      {
+        ann: exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        it: Or(e_1, e_2, e_ns)
+      }
+    }
     | Bgn(es, e) => {
         let es = es->List.map(printExp)
         let e = e->printExp
@@ -1892,6 +1950,14 @@ module PYPrinter = {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
   }
 
+  let exprAndToString = (e_1, e_2, e_ns) => {
+    Print.concat(" and ", list{e_1, e_2, ...e_ns})
+  }
+
+  let exprOrToString = (e_1, e_2, e_ns) => {
+    Print.concat(" or ", list{e_1, e_2, ...e_ns})
+  }
+
   let symbolToString = ({it, ann: sourceLocation}) => {
     {
       it,
@@ -2052,6 +2118,33 @@ module PYPrinter = {
           }
         }
       }
+
+    | And(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false), env)
+      let e_2 = printExp(e_2, Expr(false), env)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: And(e_1, e_2, e_ns)
+      }
+    }
+    | Or(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false), env)
+      let e_2 = printExp(e_2, Expr(false), env)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: Or(e_1, e_2, e_ns)
+      }
+    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Python")
     }
   }
@@ -2651,6 +2744,14 @@ module JSPrinter = {
     Print.s`${e_cnd} ? ${e_thn} : ${e_els}`
   }
 
+  let exprAndToString = (e_1, e_2, e_ns) => {
+    Print.concat(" && ", list{e_1, e_2, ...e_ns})
+  }
+
+  let exprOrToString = (e_1, e_2, e_ns) => {
+    Print.concat(" || ", list{e_1, e_2, ...e_ns})
+  }
+
   let symbolToString = ({it, ann: sourceLocation}) => {
     {
       it,
@@ -2810,6 +2911,33 @@ module JSPrinter = {
           }
         }
       }
+
+    | And(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false))
+      let e_2 = printExp(e_2, Expr(false))
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: And(e_1, e_2, e_ns)
+      }
+    }
+    | Or(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false))
+      let e_2 = printExp(e_2, Expr(false))
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: Or(e_1, e_2, e_ns)
+      }
+    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by JavaScript")
     }
   }
@@ -3271,7 +3399,7 @@ module PCPrinter = {
         let e1 = e1(true)
         {
           it: (Not, list{e1}),
-          ann: consumeContextWrap(ctx, ann, Print.s`! ${e1.ann.print}`),
+          ann: consumeContextWrap(ctx, ann, Print.s`¬ ${e1.ann.print}`),
         }
       }
     | (Print, list{e1}) => {
@@ -3355,6 +3483,14 @@ module PCPrinter = {
 
   let exprIfToString = (e_cnd, e_thn, e_els) => {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
+  }
+
+  let exprAndToString = (e_1, e_2, e_ns) => {
+    Print.concat(" ∧ ", list{e_1, e_2, ...e_ns})
+  }
+
+  let exprOrToString = (e_1, e_2, e_ns) => {
+    Print.concat(" ∨ ", list{e_1, e_2, ...e_ns})
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -3516,6 +3652,33 @@ module PCPrinter = {
           }
         }
       }
+
+    | And(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false))
+      let e_2 = printExp(e_2, Expr(false))
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: And(e_1, e_2, e_ns)
+      }
+    }
+    | Or(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, Expr(false))
+      let e_2 = printExp(e_2, Expr(false))
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: Or(e_1, e_2, e_ns)
+      }
+    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Pseudocode")
     }
   }
@@ -4013,6 +4176,14 @@ module SCPrinter = {
     Print.s`if (${e_cnd}) {${indentBlock(e_thn, 2)}\n} else {${indentBlock(e_els, 2)}\n}`
   }
 
+  let exprAndToString = (e_1, e_2, e_ns) => {
+    Print.concat(" && ", list{e_1, e_2, ...e_ns})
+  }
+
+  let exprOrToString = (e_1, e_2, e_ns) => {
+    Print.concat(" || ", list{e_1, e_2, ...e_ns})
+  }
+
   let symbolToString = ({it, ann: sourceLocation}) => {
     {
       it,
@@ -4130,6 +4301,32 @@ module SCPrinter = {
           it: If(e_cnd, e_thn, e_els),
         }
       }
+    | And(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, false)
+      let e_2 = printExp(e_2, false)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: And(e_1, e_2, e_ns)
+      }
+    }
+    | Or(e_1, e_2, e_ns) => {
+      let e_1 = printExp(e_1, false)
+      let e_2 = printExp(e_2, false)
+      let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+        )->addSourceLocation,
+        it: Or(e_1, e_2, e_ns)
+      }
+    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by JavaScript")
     }
   }
