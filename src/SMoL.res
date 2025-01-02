@@ -4628,7 +4628,7 @@ module SCPrinter = {
 module type Translator = {
   let translateName: string => string
   // print terms, interleaved with whitespace
-  let translateOutput: string => string
+  let translateOutput: (string, ~sep: string=?) => string
   let translateStandAloneTerm: string => string
   // print runnable full programs
   let translateProgram: (bool, string) => string
@@ -4659,11 +4659,11 @@ let programAsTerm = (p: program<_>): term<_> => {
 
 module MakeTranslator = (P: Printer) => {
   let translateName = P.printName
-  let translateOutput = src => {
+  let translateOutput = (src, ~sep: string=" ") => {
     switch Parser.parseOutput(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | output =>
-      switch P.printOutput(output) {
+      switch P.printOutput(~sep, output) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | output => output
       }

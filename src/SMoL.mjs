@@ -9106,7 +9106,8 @@ function programAsTerm(p) {
       };
 }
 
-function translateOutput(src) {
+function translateOutput(src, sepOpt) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
   var output;
   try {
     output = parseOutput(src);
@@ -9126,7 +9127,7 @@ function translateOutput(src) {
     throw err;
   }
   try {
-    return printOutput(undefined, output);
+    return printOutput(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -9266,7 +9267,8 @@ var SMoLTranslator = {
   translateProgramFull: translateProgramFull
 };
 
-function translateOutput$1(src) {
+function translateOutput$1(src, sepOpt) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
   var output;
   try {
     output = parseOutput(src);
@@ -9286,7 +9288,7 @@ function translateOutput$1(src) {
     throw err;
   }
   try {
-    return printOutput$1(undefined, output);
+    return printOutput$1(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -9426,7 +9428,8 @@ var PYTranslator = {
   translateProgramFull: translateProgramFull$1
 };
 
-function translateOutput$2(src) {
+function translateOutput$2(src, sepOpt) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
   var output;
   try {
     output = parseOutput(src);
@@ -9446,7 +9449,7 @@ function translateOutput$2(src) {
     throw err;
   }
   try {
-    return printOutput$2(undefined, output);
+    return printOutput$2(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -9586,7 +9589,8 @@ var JSTranslator = {
   translateProgramFull: translateProgramFull$2
 };
 
-function translateOutput$3(src) {
+function translateOutput$3(src, sepOpt) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
   var output;
   try {
     output = parseOutput(src);
@@ -9606,7 +9610,7 @@ function translateOutput$3(src) {
     throw err;
   }
   try {
-    return printOutput$3(undefined, output);
+    return printOutput$3(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -9746,7 +9750,8 @@ var PCTranslator = {
   translateProgramFull: translateProgramFull$3
 };
 
-function translateOutput$4(src) {
+function translateOutput$4(src, sepOpt) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
   var output;
   try {
     output = parseOutput(src);
@@ -9766,7 +9771,7 @@ function translateOutput$4(src) {
     throw err;
   }
   try {
-    return printOutput$4(undefined, output);
+    return printOutput$4(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);

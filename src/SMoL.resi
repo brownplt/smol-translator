@@ -219,7 +219,7 @@ module TranslateError: {
 type exn += SMoLTranslateError(TranslateError.t)
 module type Translator = {
   let translateName: string => string
-  let translateOutput: string => string
+  let translateOutput: (string, ~sep: string=?) => string
   let translateStandAloneTerm: string => string
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
