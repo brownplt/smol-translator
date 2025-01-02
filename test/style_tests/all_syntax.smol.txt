@@ -1,24 +1,50 @@
 42
+"foobar"
+"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
 #t
 #f
-"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
-1
 7
 -1
 12
-0.75
+3/4
+#f
+#t
 #t
 #f
 #f
+#f
+#f
+#()
+#(1 #() #(2 3) 4)
+#(1 2)
+#(1 2)
+3
+3
+#(3 4)
+#(3 4)
+3
+4
+()
+(1 () (2 3) 4)
+()
+(1 2)
+(1 2)
+#f
 #t
-#(7 8)
-7
-8
-7
+1
 2
+3
+"no"
+"no"
+#t
 #f
 #f
+#t
+#f
+#(2 457)
+#(2 3)
+#(3 3)
 3
 9
-"no"
+"foobar"
 error

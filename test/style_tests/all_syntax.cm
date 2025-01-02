@@ -1,7 +1,6 @@
 print(42)
 print("foobar")
 print("a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")")
-print(abc)
 print(True)
 print(False)
 print(3 + 4)
@@ -9,7 +8,6 @@ print(3 - 4)
 print(3 * 4)
 print(3 / 4)
 print(5 == 6)
-print(5 != 6)
 print(5 < 6)
 print(5 <= 6)
 print(5 > 6)
@@ -34,8 +32,8 @@ print(vec[ 3, 4 ][0])
 print(vec[ 3, 4 ][1])
 vec[ 3, 4 ][0] = 5
 vec[ 3, 4 ][1] = 5
-print(list[])
-print(list[1, list[], list[2, 3], 4])
+print(list())
+print(list(1, list(), list(2, 3), 4))
 print(empty)
 print(cons(1, cons(2, empty)))
 print(list(1, 2))
@@ -58,8 +56,38 @@ if "apple" === "orange":
 else:
   print("no")
 end
-print()
+print(True)
 print(True ∧ False ∧ True)
-print()
+print(False)
 print(True ∨ False ∨ True)
 print(¬ True)
+let:
+  x = 2
+  y = x + 1
+do:
+  print(vec[ x, y ])
+end
+let*:
+  x = 2
+  y = x + 1
+do:
+  print(vec[ x, y ])
+end
+let rec:
+  x = lam ():
+    return y
+  end
+  y = 3
+do:
+  print(vec[ x(), y ])
+end
+let g = lam ():
+  return 3
+end
+let h = lam (x,y):
+  return x + y
+end
+print(g())
+print(h(4, 5))
+print("foobar")
+raise "bad thing happens"

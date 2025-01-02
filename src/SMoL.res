@@ -257,14 +257,25 @@ open Primitive
 
 type symbol = string
 
+module LetKind = {
+  type t =
+    | Plain
+    | Nested
+    | Recursive
+  let toString = (t) => {
+    switch t {
+      | Plain => "let"
+      | Nested => "let*"
+      | Recursive => "letrec"
+    }
+  }
+}
 type rec expressionNode<'ann> =
   | Con(constant)
   | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<bind<'ann>>, block<'ann>)
-  | LetN(list<bind<'ann>>, block<'ann>)
-  | LetRec(list<bind<'ann>>, block<'ann>)
+  | Let(LetKind.t, list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
@@ -608,7 +619,27 @@ module Parser = {
     }
   }
 
-  let rec parseTerm = (e: sexpr): term<sourceLocation> => {
+  let rec parseLet = (letKind, ann, rest) => {
+    let (xes, ts, result) = as_one_then_many_then_one(
+      "the bindings followed by the body",
+      rest,
+    )
+    let xes =
+      as_list("variable-expression pairs", xes).it
+      ->List.map(xe => as_list("a variable and an expression", xe))
+      ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
+    let xes = xes->List.map(
+      mapAnn(((x, e)) => {
+        let x = as_id("a variable to be bound", x)
+        let e = as_expr("an expression", parseTerm(e))
+        (x, e)
+      }),
+    )
+    let ts = ts->List.map(parseTerm)
+    let result = as_expr("an expression to be return", parseTerm(result))
+    Exp(ann(Let(letKind, xes, makeBlock(ts, result))))
+  }
+  and parseTerm = (e: sexpr): term<sourceLocation> => {
     let ann = it => {ann: e.ann, it}
     ann(
       switch e.it {
@@ -764,66 +795,13 @@ module Parser = {
         }
 
       | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(Let(xes, makeBlock(ts, result))))
+        parseLet(LetKind.Plain, ann, rest)
         }
-
       | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(LetN(xes, makeBlock(ts, result))))
+        parseLet(LetKind.Nested, ann, rest)
         }
-
       | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(LetRec(xes, makeBlock(ts, result))))
+        parseLet(LetKind.Recursive, ann, rest)
         }
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
@@ -1104,16 +1082,6 @@ module SMoLPrinter = {
     exprAppToString(Print.dummy(Print.s`or`), list{...e_ns})
   }
 
-  let exprLetToString = (xes, b) => {
-    letLikeList(Print.fromString("let"), xes, b)
-  }
-  let exprLetNToString = (xes, b) => {
-    letLikeList(Print.fromString("let*"), xes, b)
-  }
-  let exprLetrecToString = (xes, b) => {
-    letLikeList(Print.fromString("letrec"), xes, b)
-  }
-
   let symbolToString = ({it, ann: sourceLocation}) => {
     {
       it,
@@ -1185,37 +1153,16 @@ module SMoLPrinter = {
           it: App(e, es),
         }
       }
-    | Let(xes, b) => {
+    | Let(kind, xes, b) => {
         let xes = xes->List.map(xeToString)
         let b = b->printBlock
         {
-          ann: exprLetToString(
+          ann: letLikeList(
+            LetKind.toString(kind) |> Print.fromString,
             xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
             b.ann.print,
           ),
-          it: Let(xes, b),
-        }
-      }
-    | LetN(xes, b) => {
-        let xes = xes->List.map(xeToString)
-        let b = b->printBlock
-        {
-          ann: exprLetNToString(
-            xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
-            b.ann.print,
-          ),
-          it: LetRec(xes, b),
-        }
-      }
-    | LetRec(xes, b) => {
-        let xes = xes->List.map(xeToString)
-        let b = b->printBlock
-        {
-          ann: exprLetrecToString(
-            xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
-            b.ann.print,
-          ),
-          it: LetRec(xes, b),
+          it: Let(kind, xes, b),
         }
       }
     | Cnd(ebs, ob) => {
@@ -1525,9 +1472,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                   | Bgn(es, e) => Bgn(es, ie(e))
                   | If(ec, et, el) => If(ec, ie(et), ie(el))
                   | Cnd(ebs, ob) => Cnd(iebs(ebs), iob(ob))
-                  | Let(bs, b) => Let(bs, ib(b))
-                  | LetN(bs, b) => LetN(bs, ib(b))
-                  | LetRec(bs, b) => LetRec(bs, ib(b))
+                  | Let(kind, bs, b) => Let(kind, bs, ib(b))
                   | AppPrm(VecSet, es) => AppPrm(VecSet, es)
                   | AppPrm(PairSetLeft, es) => AppPrm(PairSetLeft, es)
                   | AppPrm(PairSetRight, es) => AppPrm(PairSetRight, es)
@@ -1947,11 +1892,19 @@ module PYPrinter = {
   }
 
   let exprAndToString = (e_ns) => {
-    Print.concat(" and ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`True`
+    } else {
+      Print.concat(" and ", list{...e_ns})
+    }
   }
 
   let exprOrToString = (e_ns) => {
-    Print.concat(" or ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`False`
+    } else {
+      Print.concat(" or ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -2065,9 +2018,7 @@ module PYPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Python")
-    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Python")
-    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Python")
+    | Let(_kind, _xes, _b) => raisePrintError("let-expressions are not supported by Python")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -2750,11 +2701,19 @@ module JSPrinter = {
   }
 
   let exprAndToString = (e_ns) => {
-    Print.concat(" && ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`true`
+    } else {
+      Print.concat(" && ", list{...e_ns})
+    }
   }
 
   let exprOrToString = (e_ns) => {
-    Print.concat(" || ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`false`
+    } else {
+      Print.concat(" || ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -2867,9 +2826,7 @@ module JSPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
-    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
-    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by JavaScript")
+    | Let(_k, _xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -3510,11 +3467,19 @@ module PCPrinter = {
   }
 
   let exprAndToString = (e_ns) => {
-    Print.concat(" ∧ ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`True`
+    } else {
+      Print.concat(" ∧ ", list{...e_ns})
+    }
   }
 
   let exprOrToString = (e_ns) => {
-    Print.concat(" ∨ ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`False`
+    } else {
+      Print.concat(" ∨ ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -3533,7 +3498,38 @@ module PCPrinter = {
     }
   }
 
-  let rec printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
+  let exprLetToString = (k, xes: list<print<kindedSourceLocation>>, b) => {
+    let ann = {
+      open! LetKind
+      switch k {
+        | Plain => ""
+        | Nested => "*"
+        | Recursive => " rec"
+      }
+    }
+    let xes = Print.concat("\n", xes) |> Print.dummy
+    Print.s`let${Print.fromString(ann)}:${indentBlock(xes, 2)}\ndo:${indentBlock(b, 2)}\nend`
+  }
+
+  let rec printBind = ({ ann: sourceLocation, it: (x, e)}: bind<sourceLocation>): bind<printAnn> => {
+    let x = x->symbolToString
+    let e = e->printExp(Expr(false))
+    let print = {
+      it: Print.s`${x.ann.print} = ${e.ann.print}`,
+      ann: Some({
+        nodeKind: Bind,
+        sourceLocation
+      })
+    }
+    {
+      it: (x, e),
+      ann: {
+        sourceLocation,
+        print
+      },
+  }
+  }
+  and printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
     let ann = it => {
       it,
       ann: Some({
@@ -3627,9 +3623,18 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode.")
-    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode.")
-    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Pseudocode.")
+    | Let(k, xes, b) => {
+      let xes = xes->List.map(printBind)
+      let b = b->printBlock(ctx)
+      {
+          it: Let(k, xes, b),
+          ann: consumeContext(
+            ctx,
+            ann,
+            exprLetToString(k, xes->List.map(xe => xe.ann.print), b.ann.print),
+          )->addSourceLocation,
+      }
+    }
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -3856,7 +3861,7 @@ module PCPrinter = {
           | Some(_) => ""
           }
           let content = switch content {
-          | Lst(_) => raisePrintError("Lists are not supported in Pseudocode.")
+          | Lst(es) => `list[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           | Vec(es) => `vec[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
@@ -4222,11 +4227,19 @@ module SCPrinter = {
   }
 
   let exprAndToString = (e_ns) => {
-    Print.concat(" && ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`true`
+    } else {
+      Print.concat(" && ", list{...e_ns})
+    }
   }
 
   let exprOrToString = (e_ns) => {
-    Print.concat(" || ", list{...e_ns})
+    if (e_ns == list{}) {
+      Print.s`false`
+    } else {
+      Print.concat(" || ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -4318,9 +4331,7 @@ module SCPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
-    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
-    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala.")
+    | Let(_k, _xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
     | Cnd(ebs, ob) => {
         let ebs = ebs->List.map(eb => eb->ebToString)
         let ob = ob->obToString

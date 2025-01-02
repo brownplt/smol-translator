@@ -1,2 +1,2 @@
 An error occurred in translation:
-PrintError: List is not supported by Python
+PrintError: `begin` expressions are not supported by Python

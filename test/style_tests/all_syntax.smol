@@ -1,7 +1,8 @@
+#lang smol/hof
+
 42
 "foobar"
 "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
-'abc
 #t
 #f
 
@@ -11,7 +12,6 @@
 (/ 3 4)
 
 (= 5 6)
-(!= 5 6)
 (< 5 6)
 (<= 5 6)
 (> 5 6)
@@ -30,20 +30,20 @@
 (ivec 1 2)
 (mvec 1 2)
 
-(vec-len #(1 2 3))
-(vec-ref #(1 2 3) 2)
-(vec-set! #(1 2 3) 2 0)
+(vec-len (mvec 1 2 3))
+(vec-ref (mvec 1 2 3) 2)
+(vec-set! (mvec 1 2 3) 2 0)
 
 (pair 3 4)
 (mpair 3 4)
 
 (left (pair 3 4))
 (right (pair 3 4))
-(set-left! (pair 3 4) 5)
-(set-right! (pair 3 4) 5)
+(set-left! (mpair 3 4) 5)
+(set-right! (mpair 3 4) 5)
 
-'()
-'(1 () (2 3) 4)
+(list)
+(list 1 (list) (list 2 3) 4)
 
 empty
 (cons 1 (cons 2 empty))
@@ -83,14 +83,14 @@ empty
          [y 3])
   (mvec (x) y))
 
-(defvar f
+(defvar g
   (lambda ()
     3))
-(defvar g
+(defvar h
   (lambda (x y)
     (+ x y)))
-(f)
-(g 4 5)
+(g)
+(h 4 5)
 
 (print "foobar")
 

@@ -80,14 +80,19 @@ module Primitive: {
 
 type symbol = string
 
+module LetKind: {
+  type t =
+    | Plain
+    | Nested
+    | Recursive
+  let toString: (t) => string
+}
 type rec expressionNode<'ann> =
   | Con(constant)
   | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<bind<'ann>>, block<'ann>)
-  | LetN(list<bind<'ann>>, block<'ann>)
-  | LetRec(list<bind<'ann>>, block<'ann>)
+  | Let(LetKind.t, list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
