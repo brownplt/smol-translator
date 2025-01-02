@@ -998,52 +998,6 @@ function expr_of_atom(atom) {
   }
 }
 
-function letstar(ann, xes, body) {
-  if (xes) {
-    var xes$1 = xes.tl;
-    var xe = xes.hd;
-    if (xes$1) {
-      return ann({
-                  TAG: "Let",
-                  _0: {
-                    hd: xe,
-                    tl: /* [] */0
-                  },
-                  _1: makeBlock(/* [] */0, letstar((function (it) {
-                              return {
-                                      it: it,
-                                      ann: {
-                                        begin: Core__Option.getOr(Core__Option.map(Core__List.head(xes$1), (function (xe) {
-                                                    return xe.ann.begin;
-                                                  })), body.ann.begin),
-                                        end: body.ann.end
-                                      }
-                                    };
-                            }), xes$1, body))
-                });
-    } else {
-      return ann({
-                  TAG: "Let",
-                  _0: {
-                    hd: xe,
-                    tl: /* [] */0
-                  },
-                  _1: body
-                });
-    }
-  }
-  var e = body.it;
-  if (e.TAG === "BRet") {
-    return e._0;
-  } else {
-    return ann({
-                TAG: "Let",
-                _0: /* [] */0,
-                _1: body
-              });
-  }
-}
-
 function parseTerm(e) {
   var ann = function (it) {
     return {
@@ -1420,9 +1374,18 @@ function parseTerm(e) {
                         }));
                 var ts$1 = Core__List.map(match$12[1], parseTerm);
                 var result$6 = as_expr("an expression to be return", parseTerm(match$12[2]));
+                var it_1$3 = makeBlock(ts$1, result$6);
+                var it$6 = {
+                  TAG: "LetN",
+                  _0: xes$3,
+                  _1: it_1$3
+                };
                 tmp = {
                   TAG: "Exp",
-                  _0: letstar(ann, xes$3, makeBlock(ts$1, result$6))
+                  _0: {
+                    it: it$6,
+                    ann: e.ann
+                  }
                 };
                 break;
             case "letrec" :
@@ -1442,16 +1405,16 @@ function parseTerm(e) {
                         }));
                 var ts$2 = Core__List.map(match$13[1], parseTerm);
                 var result$7 = as_expr("an expression to be return", parseTerm(match$13[2]));
-                var it_1$3 = makeBlock(ts$2, result$7);
-                var it$6 = {
-                  TAG: "Letrec",
+                var it_1$4 = makeBlock(ts$2, result$7);
+                var it$7 = {
+                  TAG: "LetRec",
                   _0: xes$5,
-                  _1: it_1$3
+                  _1: it_1$4
                 };
                 tmp = {
                   TAG: "Exp",
                   _0: {
-                    it: it$6,
+                    it: it$7,
                     ann: e.ann
                   }
                 };
@@ -1567,16 +1530,16 @@ function parseTerm(e) {
                       }));
                 var terms$5 = Core__List.map(match$15[1], parseTerm);
                 var result$8 = as_expr("an expression to be returned", parseTerm(match$15[2]));
-                var it_1$4 = makeBlock(terms$5, result$8);
-                var it$7 = {
+                var it_1$5 = makeBlock(terms$5, result$8);
+                var it$8 = {
                   TAG: "Lam",
                   _0: args$4,
-                  _1: it_1$4
+                  _1: it_1$5
                 };
                 tmp = {
                   TAG: "Exp",
                   _0: {
-                    it: it$7,
+                    it: it$8,
                     ann: e.ann
                   }
                 };
@@ -2079,6 +2042,16 @@ function exprLetToString(xes, b) {
             }, xes, b);
 }
 
+function exprLetNToString(xes, b) {
+  return letLikeList({
+              it: {
+                TAG: "Plain",
+                _0: "let*"
+              },
+              ann: undefined
+            }, xes, b);
+}
+
 function exprLetrecToString(xes, b) {
   return letLikeList({
               it: {
@@ -2184,21 +2157,38 @@ function printExp(param) {
               }, b$1.ann.print)
         };
         break;
-    case "Letrec" :
+    case "LetN" :
         var xes$1 = Core__List.map(it._0, xeToString);
         var b$2 = printBlock(it._1);
         e = {
           it: {
-            TAG: "Letrec",
+            TAG: "LetRec",
             _0: xes$1,
             _1: b$2
           },
-          ann: exprLetrecToString({
+          ann: exprLetNToString({
                 it: bindsLikeList(Core__List.map(xes$1, (function (xe) {
                             return xe.ann.print;
                           }))),
                 ann: undefined
               }, b$2.ann.print)
+        };
+        break;
+    case "LetRec" :
+        var xes$2 = Core__List.map(it._0, xeToString);
+        var b$3 = printBlock(it._1);
+        e = {
+          it: {
+            TAG: "LetRec",
+            _0: xes$2,
+            _1: b$3
+          },
+          ann: exprLetrecToString({
+                it: bindsLikeList(Core__List.map(xes$2, (function (xe) {
+                            return xe.ann.print;
+                          }))),
+                ann: undefined
+              }, b$3.ann.print)
         };
         break;
     case "AppPrm" :
@@ -2313,16 +2303,16 @@ function printExp(param) {
         break;
     case "GLam" :
         var xs$1 = Core__List.map(it._0, symbolToString);
-        var b$3 = printBlock(it._1);
+        var b$4 = printBlock(it._1);
         e = {
           it: {
             TAG: "Lam",
             _0: xs$1,
-            _1: b$3
+            _1: b$4
           },
           ann: exprGLamToString(Core__List.map(xs$1, (function (x) {
                       return x.ann.print;
-                    })), b$3.ann.print)
+                    })), b$4.ann.print)
         };
         break;
     case "Yield" :
@@ -2738,8 +2728,25 @@ function insertTopLevelPrint(p) {
               };
               break;
           case "Let" :
-          case "Letrec" :
-              exit = 1;
+              tmp = {
+                TAG: "Let",
+                _0: e$1._0,
+                _1: ib(e$1._1)
+              };
+              break;
+          case "LetN" :
+              tmp = {
+                TAG: "LetN",
+                _0: e$1._0,
+                _1: ib(e$1._1)
+              };
+              break;
+          case "LetRec" :
+              tmp = {
+                TAG: "LetRec",
+                _0: e$1._0,
+                _1: ib(e$1._1)
+              };
               break;
           case "AppPrm" :
               var tmp$1 = e$1._0;
@@ -2781,10 +2788,10 @@ function insertTopLevelPrint(p) {
                       };
                       break;
                   default:
-                    exit = 2;
+                    exit = 1;
                 }
               } else {
-                exit = 2;
+                exit = 1;
               }
               break;
           case "Bgn" :
@@ -2816,30 +2823,20 @@ function insertTopLevelPrint(p) {
               };
               break;
           default:
-            exit = 2;
+            exit = 1;
         }
-        switch (exit) {
-          case 1 :
-              tmp = {
-                TAG: "Let",
-                _0: e$1._0,
-                _1: ib(e$1._1)
-              };
-              break;
-          case 2 :
-              tmp = {
-                TAG: "AppPrm",
-                _0: "Print",
-                _1: {
-                  hd: {
-                    it: e$1,
-                    ann: moveBeginChByOne(t.ann)
-                  },
-                  tl: /* [] */0
-                }
-              };
-              break;
-          
+        if (exit === 1) {
+          tmp = {
+            TAG: "AppPrm",
+            _0: "Print",
+            _1: {
+              hd: {
+                it: e$1,
+                ann: moveBeginChByOne(t.ann)
+              },
+              tl: /* [] */0
+            }
+          };
         }
         return {
                 it: tmp,
@@ -3832,12 +3829,13 @@ function printExp$1(param, ctx, env) {
                 }
               };
     case "Let" :
+    case "LetN" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "let-expressions are not supported by Python",
               Error: new Error()
             };
-    case "Letrec" :
+    case "LetRec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "letrec-expressions are not supported by Python",
@@ -5464,12 +5462,13 @@ function printExp$2(param, ctx) {
                 }
               };
     case "Let" :
+    case "LetN" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "let-expressions are not supported by JavaScript",
               Error: new Error()
             };
-    case "Letrec" :
+    case "LetRec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "letrec-expressions are not supported by JavaScript",
@@ -7075,12 +7074,13 @@ function printExp$3(param, ctx) {
                 }
               };
     case "Let" :
+    case "LetN" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "let-expressions are not supported by Pseudocode.",
               Error: new Error()
             };
-    case "Letrec" :
+    case "LetRec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "letrec-expressions are not supported by Pseudocode.",
@@ -8532,12 +8532,13 @@ function printExp$4(param, ctx) {
                 }
               };
     case "Let" :
+    case "LetN" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "let-expressions are not supported by Scala.",
               Error: new Error()
             };
-    case "Letrec" :
+    case "LetRec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "letrec-expressions are not supported by Scala.",

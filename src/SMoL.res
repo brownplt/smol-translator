@@ -263,7 +263,8 @@ type rec expressionNode<'ann> =
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Let(list<bind<'ann>>, block<'ann>)
-  | Letrec(list<bind<'ann>>, block<'ann>)
+  | LetN(list<bind<'ann>>, block<'ann>)
+  | LetRec(list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
@@ -607,29 +608,6 @@ module Parser = {
     }
   }
 
-  let rec letstar = (ann, xes, body: block<sourceLocation>) => {
-    switch xes {
-    | list{} =>
-      switch body.it {
-      | BRet(e) => e
-      | _ => ann(Let(list{}, body))
-      }
-    | list{xe} => ann(Let(list{xe}, body))
-    | list{xe, ...xes} => ann(Let(list{xe}, makeBlock(list{}, letstar(it => {
-              {
-                ann: {
-                  begin: xes
-                  ->List.head
-                  ->Option.map(xe => xe.ann.begin)
-                  ->Option.getOr(body.ann.begin),
-                  end: body.ann.end,
-                },
-                it,
-              }
-            }, xes, body))))
-    }
-  }
-
   let rec parseTerm = (e: sexpr): term<sourceLocation> => {
     let ann = it => {ann: e.ann, it}
     ann(
@@ -824,7 +802,7 @@ module Parser = {
           )
           let ts = ts->List.map(parseTerm)
           let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(letstar(ann, xes, makeBlock(ts, result)))
+          Exp(ann(LetN(xes, makeBlock(ts, result))))
         }
 
       | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => {
@@ -845,7 +823,7 @@ module Parser = {
           )
           let ts = ts->List.map(parseTerm)
           let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(Letrec(xes, makeBlock(ts, result))))
+          Exp(ann(LetRec(xes, makeBlock(ts, result))))
         }
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
@@ -1129,6 +1107,9 @@ module SMoLPrinter = {
   let exprLetToString = (xes, b) => {
     letLikeList(Print.fromString("let"), xes, b)
   }
+  let exprLetNToString = (xes, b) => {
+    letLikeList(Print.fromString("let*"), xes, b)
+  }
   let exprLetrecToString = (xes, b) => {
     letLikeList(Print.fromString("letrec"), xes, b)
   }
@@ -1215,7 +1196,18 @@ module SMoLPrinter = {
           it: Let(xes, b),
         }
       }
-    | Letrec(xes, b) => {
+    | LetN(xes, b) => {
+        let xes = xes->List.map(xeToString)
+        let b = b->printBlock
+        {
+          ann: exprLetNToString(
+            xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
+            b.ann.print,
+          ),
+          it: LetRec(xes, b),
+        }
+      }
+    | LetRec(xes, b) => {
         let xes = xes->List.map(xeToString)
         let b = b->printBlock
         {
@@ -1223,7 +1215,7 @@ module SMoLPrinter = {
             xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
             b.ann.print,
           ),
-          it: Letrec(xes, b),
+          it: LetRec(xes, b),
         }
       }
     | Cnd(ebs, ob) => {
@@ -1534,7 +1526,8 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                   | If(ec, et, el) => If(ec, ie(et), ie(el))
                   | Cnd(ebs, ob) => Cnd(iebs(ebs), iob(ob))
                   | Let(bs, b) => Let(bs, ib(b))
-                  | Letrec(bs, b) => Let(bs, ib(b))
+                  | LetN(bs, b) => LetN(bs, ib(b))
+                  | LetRec(bs, b) => LetRec(bs, ib(b))
                   | AppPrm(VecSet, es) => AppPrm(VecSet, es)
                   | AppPrm(PairSetLeft, es) => AppPrm(PairSetLeft, es)
                   | AppPrm(PairSetRight, es) => AppPrm(PairSetRight, es)
@@ -2073,7 +2066,8 @@ module PYPrinter = {
         }
       }
     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Python")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Python")
+    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Python")
+    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Python")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -2874,7 +2868,8 @@ module JSPrinter = {
         }
       }
     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by JavaScript")
+    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
+    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by JavaScript")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -3633,7 +3628,8 @@ module PCPrinter = {
         }
       }
     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode.")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Pseudocode.")
+    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode.")
+    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Pseudocode.")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -4323,7 +4319,8 @@ module SCPrinter = {
         }
       }
     | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala.")
+    | LetN(_xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
+    | LetRec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Scala.")
     | Cnd(ebs, ob) => {
         let ebs = ebs->List.map(eb => eb->ebToString)
         let ob = ob->obToString
