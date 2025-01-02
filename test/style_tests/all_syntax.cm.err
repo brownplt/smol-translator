@@ -1,2 +1,2 @@
 An error occurred in translation:
-PrintError: Pseudocode doesn't not have structural equality.
+PrintError: let-expressions are not supported by Pseudocode.

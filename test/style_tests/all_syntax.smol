@@ -24,74 +24,74 @@
 (deffun (f y) (+ y 1))
 (set! x 456)
 
-; #()
-; #(1 #() #(2 3) 4)
+#()
+#(1 #() #(2 3) 4)
 
-; (ivec 1 2)
-; (mvec 1 2)
+(ivec 1 2)
+(mvec 1 2)
 
-; (vec-len #(1 2 3))
-; (vec-ref #(1 2 3) 2)
-; (vec-set! #(1 2 3) 2 0)
+(vec-len #(1 2 3))
+(vec-ref #(1 2 3) 2)
+(vec-set! #(1 2 3) 2 0)
 
-; (pair 3 4)
-; (mpair 3 4)
+(pair 3 4)
+(mpair 3 4)
 
-; (left (pair 3 4))
-; (right (pair 3 4))
-; (set-left! (pair 3 4) 5)
-; (set-right! (pair 3 4) 5)
+(left (pair 3 4))
+(right (pair 3 4))
+(set-left! (pair 3 4) 5)
+(set-right! (pair 3 4) 5)
 
-; '()
-; '(1 () (2 3) 4)
+'()
+'(1 () (2 3) 4)
 
-; empty
-; (cons 1 (cons 2 empty))
-; (list 1 2)
+empty
+(cons 1 (cons 2 empty))
+(list 1 2)
 
-; (eq? #(1 2) #(1 2))
-; (equal? #(1 2) #(1 2))
+(eq? #(1 2) #(1 2))
+(equal? #(1 2) #(1 2))
 
-; (begin
-;   (begin
-;     1
-;     2)
-;   3)
+(begin
+  (begin
+    1
+    2)
+  3)
 
 
-; (cond
-;   [(eq? "apple" "orange")
-;    "yes"]
-;   [else
-;    "no"])
-; (if (eq? "apple" "orange")
-;     "yes"
-;     "no")
-; (and)
-; (and #t #f #t)
-; (or)
-; (or #t #f #t)
-; (not #t)
+(cond
+  [(eq? "apple" "orange")
+   "yes"]
+  [else
+   "no"])
+(if (eq? "apple" "orange")
+    "yes"
+    "no")
+(and)
+(and #t #f #t)
+(or)
+(or #t #f #t)
+(not #t)
 
-; (let ([x 2]
-;       [y (+ x 1)])
-;   (mvec x y))
-; (let* ([x 2]
-;        [y (+ x 1)])
-;   (mvec x y))
-; (letrec ([x (lambda () y)]
-;          [y 3])
-;   (mvec (x) y))
+(let ([x 2]
+      [y (+ x 1)])
+  (mvec x y))
+(let* ([x 2]
+       [y (+ x 1)])
+  (mvec x y))
+(letrec ([x (lambda () y)]
+         [y 3])
+  (mvec (x) y))
 
-; (defvar f
-;   (lambda ()
-;     3))
-; (defvar g
-;   (lambda (x y)
-;     (+ x y)))
-; (f)
-; (g 4 5)
+(defvar f
+  (lambda ()
+    3))
+(defvar g
+  (lambda (x y)
+    (+ x y)))
+(f)
+(g 4 5)
 
-; (print "foobar")
+(print "foobar")
 
-; (error "bad thing happens")
+(error "bad thing happens")

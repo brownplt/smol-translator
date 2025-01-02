@@ -861,39 +861,6 @@ function as_two(context, es) {
       };
 }
 
-function as_two_then_many(context, es) {
-  if (es) {
-    var match = es.tl;
-    if (match) {
-      return [
-              es.hd,
-              match.hd,
-              match.tl
-            ];
-    }
-    throw {
-          RE_EXN_ID: SMoLParseError,
-          _1: {
-            TAG: "SExprArityError",
-            _0: "OneThenMany",
-            _1: context,
-            _2: es
-          },
-          Error: new Error()
-        };
-  }
-  throw {
-        RE_EXN_ID: SMoLParseError,
-        _1: {
-          TAG: "SExprArityError",
-          _0: "OneThenMany",
-          _1: context,
-          _2: es
-        },
-        Error: new Error()
-      };
-}
-
 function as_three(context, es) {
   if (es) {
     var match = es.tl;
@@ -1171,10 +1138,7 @@ function parseTerm(e) {
                     }, es.tl);
                 break;
             case "and" :
-                var match$2 = as_two_then_many("at least two expressions", es.tl);
-                var e_1 = as_expr("an expression", parseTerm(match$2[0]));
-                var e_2 = as_expr("an expression", parseTerm(match$2[1]));
-                var e_ns = Core__List.map(Core__List.map(match$2[2], parseTerm), (function (e) {
+                var e_ns = Core__List.map(Core__List.map(es.tl, parseTerm), (function (e) {
                         return as_expr("an expression", e);
                       }));
                 tmp = {
@@ -1182,20 +1146,18 @@ function parseTerm(e) {
                   _0: {
                     it: {
                       TAG: "And",
-                      _0: e_1,
-                      _1: e_2,
-                      _2: e_ns
+                      _0: e_ns
                     },
                     ann: e.ann
                   }
                 };
                 break;
             case "begin" :
-                var match$3 = as_many_then_one("one or more expressions", es.tl);
-                var terms = Core__List.map(Core__List.map(match$3[0], parseTerm), (function (t) {
+                var match$2 = as_many_then_one("one or more expressions", es.tl);
+                var terms = Core__List.map(Core__List.map(match$2[0], parseTerm), (function (t) {
                         return as_expr("an expression", t);
                       }));
-                var result = as_expr("an expression", parseTerm(match$3[1]));
+                var result = as_expr("an expression", parseTerm(match$2[1]));
                 tmp = {
                   TAG: "Exp",
                   _0: {
@@ -1275,14 +1237,14 @@ function parseTerm(e) {
                 tmp = loop(/* [] */0, branches);
                 break;
             case "deffun" :
-                var match$4 = as_one_then_many_then_one("a function header and a body", es.tl);
-                var match$5 = as_one_then_many("function name followed by parameters", as_list("function name and parameters", match$4[0]).it);
-                var fun = as_id("a function name", match$5[0]);
-                var args = Core__List.map(match$5[1], (function (arg) {
+                var match$3 = as_one_then_many_then_one("a function header and a body", es.tl);
+                var match$4 = as_one_then_many("function name followed by parameters", as_list("function name and parameters", match$3[0]).it);
+                var fun = as_id("a function name", match$4[0]);
+                var args = Core__List.map(match$4[1], (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$1 = Belt_List.map(match$4[1], parseTerm);
-                var result$1 = as_expr("an expression to be returned", parseTerm(match$4[2]));
+                var terms$1 = Belt_List.map(match$3[1], parseTerm);
+                var result$1 = as_expr("an expression to be returned", parseTerm(match$3[2]));
                 var it_2 = makeBlock(terms$1, result$1);
                 var it$1 = {
                   TAG: "Fun",
@@ -1299,14 +1261,14 @@ function parseTerm(e) {
                 };
                 break;
             case "defgen" :
-                var match$6 = as_one_then_many_then_one("a generator header and a body", es.tl);
-                var match$7 = as_one_then_many("generator name followed by parameters", as_list("generator name and parameters", match$6[0]).it);
-                var fun$1 = as_id("a generator name", match$7[0]);
-                var args$1 = Core__List.map(match$7[1], (function (arg) {
+                var match$5 = as_one_then_many_then_one("a generator header and a body", es.tl);
+                var match$6 = as_one_then_many("generator name followed by parameters", as_list("generator name and parameters", match$5[0]).it);
+                var fun$1 = as_id("a generator name", match$6[0]);
+                var args$1 = Core__List.map(match$6[1], (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$2 = Belt_List.map(match$6[1], parseTerm);
-                var result$2 = as_expr("an expression to be returned", parseTerm(match$6[2]));
+                var terms$2 = Belt_List.map(match$5[1], parseTerm);
+                var result$2 = as_expr("an expression to be returned", parseTerm(match$5[2]));
                 var it_2$1 = makeBlock(terms$2, result$2);
                 var it$2 = {
                   TAG: "GFun",
@@ -1323,9 +1285,9 @@ function parseTerm(e) {
                 };
                 break;
             case "defvar" :
-                var match$8 = as_two("a variable and an expression", es.tl);
-                var x = as_id("a variable name", match$8[0]);
-                var e$1 = as_expr("an expression", parseTerm(match$8[1]));
+                var match$7 = as_two("a variable and an expression", es.tl);
+                var x = as_id("a variable name", match$7[0]);
+                var e$1 = as_expr("an expression", parseTerm(match$7[1]));
                 tmp = {
                   TAG: "Def",
                   _0: {
@@ -1348,12 +1310,12 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "Err", es.tl);
                 break;
             case "generator" :
-                var match$9 = as_one_then_many_then_one("the generator signature followed by the function body", es.tl);
-                var args$2 = Core__List.map(as_list("generator parameters", match$9[0]).it, (function (arg) {
+                var match$8 = as_one_then_many_then_one("the generator signature followed by the function body", es.tl);
+                var args$2 = Core__List.map(as_list("generator parameters", match$8[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$3 = Core__List.map(match$9[1], parseTerm);
-                var result$3 = as_expr("an expression to be returned", parseTerm(match$9[2]));
+                var terms$3 = Core__List.map(match$8[1], parseTerm);
+                var result$3 = as_expr("an expression to be returned", parseTerm(match$8[2]));
                 var it_1 = makeBlock(terms$3, result$3);
                 var it$3 = {
                   TAG: "GLam",
@@ -1369,10 +1331,10 @@ function parseTerm(e) {
                 };
                 break;
             case "if" :
-                var match$10 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es.tl);
-                var e_cnd = as_expr("a (conditional) expression", parseTerm(match$10[0]));
-                var e_thn = as_expr("an expression", parseTerm(match$10[1]));
-                var e_els = as_expr("an expression", parseTerm(match$10[2]));
+                var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es.tl);
+                var e_cnd = as_expr("a (conditional) expression", parseTerm(match$9[0]));
+                var e_thn = as_expr("an expression", parseTerm(match$9[1]));
+                var e_els = as_expr("an expression", parseTerm(match$9[2]));
                 tmp = {
                   TAG: "Exp",
                   _0: {
@@ -1387,12 +1349,12 @@ function parseTerm(e) {
                 };
                 break;
             case "lambda" :
-                var match$11 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$3 = Core__List.map(as_list("function parameters", match$11[0]).it, (function (arg) {
+                var match$10 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$3 = Core__List.map(as_list("function parameters", match$10[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$4 = Core__List.map(match$11[1], parseTerm);
-                var result$4 = as_expr("an expression to be returned", parseTerm(match$11[2]));
+                var terms$4 = Core__List.map(match$10[1], parseTerm);
+                var result$4 = as_expr("an expression to be returned", parseTerm(match$10[2]));
                 var it_1$1 = makeBlock(terms$4, result$4);
                 var it$4 = {
                   TAG: "Lam",
@@ -1411,8 +1373,8 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "PairRefLeft", es.tl);
                 break;
             case "let" :
-                var match$12 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
-                var xes = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$12[0]).it, (function (xe) {
+                var match$11 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
+                var xes = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$11[0]).it, (function (xe) {
                             return as_list("a variable and an expression", xe);
                           })), mapAnn(function (xe) {
                           return as_two("a variable and an expression", xe);
@@ -1425,8 +1387,8 @@ function parseTerm(e) {
                                   e
                                 ];
                         }));
-                var ts = Core__List.map(match$12[1], parseTerm);
-                var result$5 = as_expr("an expression to be return", parseTerm(match$12[2]));
+                var ts = Core__List.map(match$11[1], parseTerm);
+                var result$5 = as_expr("an expression to be return", parseTerm(match$11[2]));
                 var it_1$2 = makeBlock(ts, result$5);
                 var it$5 = {
                   TAG: "Let",
@@ -1442,8 +1404,8 @@ function parseTerm(e) {
                 };
                 break;
             case "let*" :
-                var match$13 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
-                var xes$2 = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$13[0]).it, (function (xe) {
+                var match$12 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
+                var xes$2 = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$12[0]).it, (function (xe) {
                             return as_list("a variable and an expression", xe);
                           })), mapAnn(function (xe) {
                           return as_two("a variable and an expression", xe);
@@ -1456,16 +1418,16 @@ function parseTerm(e) {
                                   e
                                 ];
                         }));
-                var ts$1 = Core__List.map(match$13[1], parseTerm);
-                var result$6 = as_expr("an expression to be return", parseTerm(match$13[2]));
+                var ts$1 = Core__List.map(match$12[1], parseTerm);
+                var result$6 = as_expr("an expression to be return", parseTerm(match$12[2]));
                 tmp = {
                   TAG: "Exp",
                   _0: letstar(ann, xes$3, makeBlock(ts$1, result$6))
                 };
                 break;
             case "letrec" :
-                var match$14 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
-                var xes$4 = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$14[0]).it, (function (xe) {
+                var match$13 = as_one_then_many_then_one("the bindings followed by the body", es.tl);
+                var xes$4 = Core__List.map(Core__List.map(as_list("variable-expression pairs", match$13[0]).it, (function (xe) {
                             return as_list("a variable and an expression", xe);
                           })), mapAnn(function (xe) {
                           return as_two("a variable and an expression", xe);
@@ -1478,8 +1440,8 @@ function parseTerm(e) {
                                   e
                                 ];
                         }));
-                var ts$2 = Core__List.map(match$14[1], parseTerm);
-                var result$7 = as_expr("an expression to be return", parseTerm(match$14[2]));
+                var ts$2 = Core__List.map(match$13[1], parseTerm);
+                var result$7 = as_expr("an expression to be return", parseTerm(match$13[2]));
                 var it_1$3 = makeBlock(ts$2, result$7);
                 var it$6 = {
                   TAG: "Letrec",
@@ -1504,10 +1466,7 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "Not", es.tl);
                 break;
             case "or" :
-                var match$15 = as_two_then_many("at least two expressions", es.tl);
-                var e_1$1 = as_expr("an expression", parseTerm(match$15[0]));
-                var e_2$1 = as_expr("an expression", parseTerm(match$15[1]));
-                var e_ns$1 = Core__List.map(Core__List.map(match$15[2], parseTerm), (function (e) {
+                var e_ns$1 = Core__List.map(Core__List.map(es.tl, parseTerm), (function (e) {
                         return as_expr("an expression", e);
                       }));
                 tmp = {
@@ -1515,9 +1474,7 @@ function parseTerm(e) {
                   _0: {
                     it: {
                       TAG: "Or",
-                      _0: e_1$1,
-                      _1: e_2$1,
-                      _2: e_ns$1
+                      _0: e_ns$1
                     },
                     ann: e.ann
                   }
@@ -1541,9 +1498,9 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "PairRefRight", es.tl);
                 break;
             case "set!" :
-                var match$16 = as_two("a variable and an expression", es.tl);
-                var x$1 = as_id("a variable to be set", match$16[0]);
-                var e$3 = as_expr("an expression", parseTerm(match$16[1]));
+                var match$14 = as_two("a variable and an expression", es.tl);
+                var x$1 = as_id("a variable to be set", match$14[0]);
+                var e$3 = as_expr("an expression", parseTerm(match$14[1]));
                 tmp = {
                   TAG: "Exp",
                   _0: {
@@ -1604,12 +1561,12 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "ZeroP", es.tl);
                 break;
             case "λ" :
-                var match$17 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$4 = Core__List.map(as_list("function parameters", match$17[0]).it, (function (arg) {
+                var match$15 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$4 = Core__List.map(as_list("function parameters", match$15[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$5 = Core__List.map(match$17[1], parseTerm);
-                var result$8 = as_expr("an expression to be returned", parseTerm(match$17[2]));
+                var terms$5 = Core__List.map(match$15[1], parseTerm);
+                var result$8 = as_expr("an expression to be returned", parseTerm(match$15[2]));
                 var it_1$4 = makeBlock(terms$5, result$8);
                 var it$7 = {
                   TAG: "Lam",
@@ -1639,9 +1596,9 @@ function parseTerm(e) {
       exit = 1;
     }
     if (exit === 1) {
-      var match$18 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
-      var e$6 = as_expr("a function", parseTerm(match$18[0]));
-      var es$1 = Core__List.map(Core__List.map(match$18[1], parseTerm), (function (e) {
+      var match$16 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
+      var e$6 = as_expr("a function", parseTerm(match$16[0]));
+      var es$1 = Core__List.map(Core__List.map(match$16[1], parseTerm), (function (e) {
               return as_expr("an argument", e);
             }));
       tmp = {
@@ -2098,30 +2055,18 @@ function exprIfToString(e_cnd, e_thn, e_els) {
             });
 }
 
-function exprAndToString(e_1, e_2, e_ns) {
+function exprAndToString(e_ns) {
   return appLikeList({
               it: s(["and"], []),
               ann: undefined
-            }, {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
+            }, e_ns);
 }
 
-function exprOrToString(e_1, e_2, e_ns) {
+function exprOrToString(e_ns) {
   return appLikeList({
               it: s(["or"], []),
               ann: undefined
-            }, {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
+            }, e_ns);
 }
 
 function exprLetToString(xes, b) {
@@ -2320,37 +2265,29 @@ function printExp(param) {
         };
         break;
     case "And" :
-        var e_1 = printExp(it._0);
-        var e_2 = printExp(it._1);
-        var e_ns = Core__List.map(it._2, (function (e_k) {
+        var e_ns = Core__List.map(it._0, (function (e_k) {
                 return printExp(e_k);
               }));
         e = {
           it: {
             TAG: "And",
-            _0: e_1,
-            _1: e_2,
-            _2: e_ns
+            _0: e_ns
           },
-          ann: exprAndToString(e_1.ann.print, e_2.ann.print, Core__List.map(e_ns, (function (e_k) {
+          ann: exprAndToString(Core__List.map(e_ns, (function (e_k) {
                       return e_k.ann.print;
                     })))
         };
         break;
     case "Or" :
-        var e_1$1 = printExp(it._0);
-        var e_2$1 = printExp(it._1);
-        var e_ns$1 = Core__List.map(it._2, (function (e_k) {
+        var e_ns$1 = Core__List.map(it._0, (function (e_k) {
                 return printExp(e_k);
               }));
         e = {
           it: {
             TAG: "Or",
-            _0: e_1$1,
-            _1: e_2$1,
-            _2: e_ns$1
+            _0: e_ns$1
           },
-          ann: exprOrToString(e_1$1.ann.print, e_2$1.ann.print, Core__List.map(e_ns$1, (function (e_k) {
+          ann: exprOrToString(Core__List.map(e_ns$1, (function (e_k) {
                       return e_k.ann.print;
                     })))
         };
@@ -3592,14 +3529,17 @@ function exprAppPrmToString(ann, ctx, p, es) {
                   };
           }
           break;
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       case "Cons" :
+      case "List" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
                 _1: "List is not supported by Python",
                 Error: new Error()
               };
-      default:
-        
+      
     }
   } else {
     if (p.TAG === "Arith") {
@@ -3787,26 +3727,6 @@ function exprIfToString$1(e_cnd, e_thn, e_els) {
               e_cnd,
               e_els
             ]);
-}
-
-function exprAndToString$1(e_1, e_2, e_ns) {
-  return concat(" and ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
-}
-
-function exprOrToString$1(e_1, e_2, e_ns) {
-  return concat(" or ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
 }
 
 function symbolToString$1(param) {
@@ -4034,15 +3954,7 @@ function printExp$1(param, ctx, env) {
                 }
               };
     case "And" :
-        var e_1 = printExp$1(it._0, {
-              TAG: "Expr",
-              _0: false
-            }, env);
-        var e_2 = printExp$1(it._1, {
-              TAG: "Expr",
-              _0: false
-            }, env);
-        var e_ns = Belt_List.map(it._2, (function (e_k) {
+        var e_ns = Belt_List.map(it._0, (function (e_k) {
                 return printExp$1(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -4051,27 +3963,17 @@ function printExp$1(param, ctx, env) {
         return {
                 it: {
                   TAG: "And",
-                  _0: e_1,
-                  _1: e_2,
-                  _2: e_ns
+                  _0: e_ns
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap(ctx, ann, exprAndToString$1(e_1.ann.print, e_2.ann.print, Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap(ctx, ann, concat(" and ", Belt_List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_1$1 = printExp$1(it._0, {
-              TAG: "Expr",
-              _0: false
-            }, env);
-        var e_2$1 = printExp$1(it._1, {
-              TAG: "Expr",
-              _0: false
-            }, env);
-        var e_ns$1 = Belt_List.map(it._2, (function (e_k) {
+        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
                 return printExp$1(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -4080,13 +3982,11 @@ function printExp$1(param, ctx, env) {
         return {
                 it: {
                   TAG: "Or",
-                  _0: e_1$1,
-                  _1: e_2$1,
-                  _2: e_ns$1
+                  _0: e_ns$1
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap(ctx, ann, exprOrToString$1(e_1$1.ann.print, e_2$1.ann.print, Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap(ctx, ann, concat(" or ", Belt_List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
@@ -5253,14 +5153,17 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                   };
           }
           break;
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       case "Cons" :
+      case "List" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
                 _1: "List is not supported by JavaScript",
                 Error: new Error()
               };
-      default:
-        
+      
     }
   } else {
     if (p.TAG === "Arith") {
@@ -5455,26 +5358,6 @@ function exprIfToString$2(e_cnd, e_thn, e_els) {
               e_thn,
               e_els
             ]);
-}
-
-function exprAndToString$2(e_1, e_2, e_ns) {
-  return concat(" && ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
-}
-
-function exprOrToString$2(e_1, e_2, e_ns) {
-  return concat(" || ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
 }
 
 function symbolToString$2(param) {
@@ -5703,15 +5586,7 @@ function printExp$2(param, ctx) {
                 }
               };
     case "And" :
-        var e_1 = printExp$2(it._0, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_2 = printExp$2(it._1, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_ns = Belt_List.map(it._2, (function (e_k) {
+        var e_ns = Belt_List.map(it._0, (function (e_k) {
                 return printExp$2(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -5720,27 +5595,17 @@ function printExp$2(param, ctx) {
         return {
                 it: {
                   TAG: "And",
-                  _0: e_1,
-                  _1: e_2,
-                  _2: e_ns
+                  _0: e_ns
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$1(ctx, ann, exprAndToString$2(e_1.ann.print, e_2.ann.print, Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap$1(ctx, ann, concat(" && ", Belt_List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_1$1 = printExp$2(it._0, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_2$1 = printExp$2(it._1, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_ns$1 = Belt_List.map(it._2, (function (e_k) {
+        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
                 return printExp$2(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -5749,13 +5614,11 @@ function printExp$2(param, ctx) {
         return {
                 it: {
                   TAG: "Or",
-                  _0: e_1$1,
-                  _1: e_2$1,
-                  _2: e_ns$1
+                  _0: e_ns$1
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$1(ctx, ann, exprOrToString$2(e_1$1.ann.print, e_2$1.ann.print, Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap$1(ctx, ann, concat(" || ", Belt_List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
@@ -6480,8 +6343,6 @@ function stringOfCmp$2(o) {
   switch (o) {
     case "Lt" :
         return "<";
-    case "NumEq" :
-        return "==";
     case "Eq" :
         return "===";
     case "Gt" :
@@ -6492,12 +6353,9 @@ function stringOfCmp$2(o) {
         return ">=";
     case "Ne" :
         return "!=";
+    case "NumEq" :
     case "Equal" :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "Pseudocode doesn't not have structural equality.",
-              Error: new Error()
-            };
+        return "==";
     
   }
 }
@@ -6828,6 +6686,9 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                   };
           }
           break;
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       case "Cons" :
           if (es) {
             var match$6 = es.tl;
@@ -6858,13 +6719,31 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
             
           }
           break;
-      default:
-        
+      case "List" :
+          var es$2 = Belt_List.map(es, (function (e) {
+                  return e(false);
+                }));
+          return {
+                  it: [
+                    "List",
+                    es$2
+                  ],
+                  ann: consumeContext$2(ctx, ann, s([
+                            "list[",
+                            "]"
+                          ], [{
+                              it: concat(", ", Belt_List.map(es$2, (function (e) {
+                                          return e.ann.print;
+                                        }))),
+                              ann: undefined
+                            }]))
+                };
+      
     }
   } else {
     if (p.TAG === "Arith") {
       var o = p._0;
-      var es$2 = Belt_List.map(es, (function (e) {
+      var es$3 = Belt_List.map(es, (function (e) {
               return e(true);
             }));
       return {
@@ -6873,9 +6752,9 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                   TAG: "Arith",
                   _0: o
                 },
-                es$2
+                es$3
               ],
-              ann: consumeContextWrap$2(ctx, ann, concat(" " + stringOfArith$2(o) + " ", Belt_List.map(es$2, (function (e) {
+              ann: consumeContextWrap$2(ctx, ann, concat(" " + stringOfArith$2(o) + " ", Belt_List.map(es$3, (function (e) {
                               return e.ann.print;
                             }))))
             };
@@ -7001,6 +6880,22 @@ function exprYieldToString$3(e) {
             ], [e]);
 }
 
+function exprBeginToString(es, e) {
+  return s([
+              "begin:",
+              "\nend"
+            ], [indentBlock({
+                    it: concat("\n", Belt_List.concatMany([
+                              es,
+                              {
+                                hd: e,
+                                tl: /* [] */0
+                              }
+                            ])),
+                    ann: undefined
+                  }, 2)]);
+}
+
 function ifStat$2(cnd, thn, els) {
   return s([
               "if ",
@@ -7074,26 +6969,6 @@ function exprIfToString$3(e_cnd, e_thn, e_els) {
               e_cnd,
               e_els
             ]);
-}
-
-function exprAndToString$3(e_1, e_2, e_ns) {
-  return concat(" ∧ ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
-}
-
-function exprOrToString$3(e_1, e_2, e_ns) {
-  return concat(" ∨ ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
 }
 
 function symbolToString$3(param) {
@@ -7202,13 +7077,13 @@ function printExp$3(param, ctx) {
     case "Let" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by Pseudocode",
+              _1: "let-expressions are not supported by Pseudocode.",
               Error: new Error()
             };
     case "Letrec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "letrec-expressions are not supported by Pseudocode",
+              _1: "letrec-expressions are not supported by Pseudocode.",
               Error: new Error()
             };
     case "AppPrm" :
@@ -7258,11 +7133,29 @@ function printExp$3(param, ctx) {
                 }
               };
     case "Bgn" :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "`begin` expressions are not supported by Pseudocode",
-              Error: new Error()
-            };
+        var es$2 = Belt_List.map(it._0, (function (e_k) {
+                return printExp$3(e_k, {
+                            TAG: "Expr",
+                            _0: false
+                          });
+              }));
+        var e$2 = printExp$3(it._1, {
+              TAG: "Expr",
+              _0: false
+            });
+        return {
+                it: {
+                  TAG: "Bgn",
+                  _0: es$2,
+                  _1: e$2
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$2(ctx, ann, exprBeginToString(Belt_List.map(es$2, (function (e) {
+                                  return e.ann.print;
+                                })), e$2.ann.print))
+                }
+              };
     case "If" :
         var e_els = it._2;
         var e_thn = it._1;
@@ -7322,15 +7215,7 @@ function printExp$3(param, ctx) {
                 }
               };
     case "And" :
-        var e_1 = printExp$3(it._0, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_2 = printExp$3(it._1, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_ns = Belt_List.map(it._2, (function (e_k) {
+        var e_ns = Belt_List.map(it._0, (function (e_k) {
                 return printExp$3(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -7339,27 +7224,17 @@ function printExp$3(param, ctx) {
         return {
                 it: {
                   TAG: "And",
-                  _0: e_1,
-                  _1: e_2,
-                  _2: e_ns
+                  _0: e_ns
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$2(ctx, ann, exprAndToString$3(e_1.ann.print, e_2.ann.print, Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap$2(ctx, ann, concat(" ∧ ", Belt_List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_1$1 = printExp$3(it._0, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_2$1 = printExp$3(it._1, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_ns$1 = Belt_List.map(it._2, (function (e_k) {
+        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
                 return printExp$3(e_k, {
                             TAG: "Expr",
                             _0: false
@@ -7368,13 +7243,11 @@ function printExp$3(param, ctx) {
         return {
                 it: {
                   TAG: "Or",
-                  _0: e_1$1,
-                  _1: e_2$1,
-                  _2: e_ns$1
+                  _0: e_ns$1
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$2(ctx, ann, exprOrToString$3(e_1$1.ann.print, e_2$1.ann.print, Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap$2(ctx, ann, concat(" ∨ ", Belt_List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
@@ -7442,18 +7315,18 @@ function printExp$3(param, ctx) {
                 }
               };
     case "Yield" :
-        var e$2 = printExp$3(it._0, {
+        var e$3 = printExp$3(it._0, {
               TAG: "Expr",
               _0: false
             });
         return {
                 it: {
                   TAG: "Yield",
-                  _0: e$2
+                  _0: e$3
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrapEvenReturn$2(ctx, ann, exprYieldToString$3(e$2.ann.print))
+                  print: consumeContextWrapEvenReturn$2(ctx, ann, exprYieldToString$3(e$3.ann.print))
                 }
               };
     
@@ -7644,7 +7517,7 @@ function printBlock$3(b, ctx) {
   }
   throw {
         RE_EXN_ID: SMoLPrintError,
-        _1: "Pseudocode blocks can't be used as expressions in general",
+        _1: "Pseudocode blocks can't be used as expressions in general.",
         Error: new Error()
       };
 }
@@ -8343,14 +8216,17 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                   };
           }
           break;
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       case "Cons" :
+      case "List" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "List is not supported by JavaScript",
+                _1: "List is not supported by Scala.",
                 Error: new Error()
               };
-      default:
-        
+      
     }
   } else {
     if (p.TAG === "Arith") {
@@ -8414,7 +8290,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
     }
     
   }
-  var err = "JavaScript doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  var err = "Scala doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -8552,26 +8428,6 @@ function exprIfToString$4(e_cnd, e_thn, e_els) {
             ]);
 }
 
-function exprAndToString$4(e_1, e_2, e_ns) {
-  return concat(" && ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
-}
-
-function exprOrToString$4(e_1, e_2, e_ns) {
-  return concat(" || ", {
-              hd: e_1,
-              tl: {
-                hd: e_2,
-                tl: e_ns
-              }
-            });
-}
-
 function symbolToString$4(param) {
   var sourceLocation = param.ann;
   var it = param.it;
@@ -8678,13 +8534,13 @@ function printExp$4(param, ctx) {
     case "Let" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "let-expressions are not supported by JavaScript",
+              _1: "let-expressions are not supported by Scala.",
               Error: new Error()
             };
     case "Letrec" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "letrec-expressions are not supported by JavaScript",
+              _1: "letrec-expressions are not supported by Scala.",
               Error: new Error()
             };
     case "AppPrm" :
@@ -8727,7 +8583,7 @@ function printExp$4(param, ctx) {
     case "Bgn" :
         throw {
               RE_EXN_ID: SMoLPrintError,
-              _1: "`begin` expressions are not supported by JavaScript",
+              _1: "`begin` expressions are not supported by Scala.",
               Error: new Error()
             };
     case "If" :
@@ -8747,41 +8603,33 @@ function printExp$4(param, ctx) {
                 }
               };
     case "And" :
-        var e_1 = printExp$4(it._0, false);
-        var e_2 = printExp$4(it._1, false);
-        var e_ns = Belt_List.map(it._2, (function (e_k) {
+        var e_ns = Belt_List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
                 it: {
                   TAG: "And",
-                  _0: e_1,
-                  _1: e_2,
-                  _2: e_ns
+                  _0: e_ns
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprAndToString$4(e_1.ann.print, e_2.ann.print, Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, concat(" && ", Belt_List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_1$1 = printExp$4(it._0, false);
-        var e_2$1 = printExp$4(it._1, false);
-        var e_ns$1 = Belt_List.map(it._2, (function (e_k) {
+        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
                 it: {
                   TAG: "Or",
-                  _0: e_1$1,
-                  _1: e_2$1,
-                  _2: e_ns$1
+                  _0: e_ns$1
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprOrToString$4(e_1$1.ann.print, e_2$1.ann.print, Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, concat(" || ", Belt_List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
@@ -9002,7 +8850,7 @@ function printOutputlet$4(o) {
           if (content.TAG === "Lst") {
             throw {
                   RE_EXN_ID: SMoLPrintError,
-                  _1: "Lists are not supported in JavaScript.",
+                  _1: "Lists are not supported in Scala.",
                   Error: new Error()
                 };
           }
