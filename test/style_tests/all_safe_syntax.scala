@@ -1,6 +1,6 @@
 println(42)
-println("foobar")
-println("a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")")
+var s1 = "foobar"
+var s2 = "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
 println(true)
 println(false)
 println(3 + 4)

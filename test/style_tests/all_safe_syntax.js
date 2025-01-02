@@ -1,6 +1,6 @@
 console.log(42);
-console.log("foobar");
-console.log("a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")");
+let s1 = "foobar";
+let s2 = "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")";
 console.log(true);
 console.log(false);
 console.log(3 + 4);

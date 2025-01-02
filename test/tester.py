@@ -85,7 +85,7 @@ for test_path in ["style_tests", "test_cases"]:
         program = open(test).read()
         try:
             wished_results = "{}.js.txt".format(test[:-len(suffix)])
-            wished_results = open(wished_results).read().strip()
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
             actual_results = run_js_file(test)
             if wished_results == actual_results:
                 # print("PASSED {}".format(test))
@@ -114,7 +114,7 @@ for test_path in ["style_tests", "test_cases"]:
         program = open(test).read()
         try:
             wished_results = "{}.py.txt".format(test[:-len(suffix)])
-            wished_results = open(wished_results).read().strip()
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
             actual_results = run_py_file(test)
             if wished_results == actual_results:
                 # print("PASSED {}".format(test))
@@ -142,7 +142,7 @@ for test_path in ["style_tests", "test_cases"]:
         program = open(test).read()
         try:
             wished_results = "{}.scala.txt".format(test[:-len(suffix)])
-            wished_results = open(wished_results).read().strip()
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
             actual_results = run_scala_file(test)
             if wished_results == actual_results:
                 # print("PASSED {}".format(test))

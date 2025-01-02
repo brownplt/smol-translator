@@ -1,6 +1,6 @@
 print(42)
-print("foobar")
-print("a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")")
+s1 = "foobar"
+s2 = "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
 print(True)
 print(False)
 print(3 + 4)

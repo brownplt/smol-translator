@@ -1,8 +1,6 @@
-#lang smol/hof
-
 42
-"foobar"
-"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
+(defvar s1 "foobar")
+(defvar s2 "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")")
 #t
 #f
 
