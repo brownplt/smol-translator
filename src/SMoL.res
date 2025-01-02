@@ -212,10 +212,12 @@ module Primitive = {
     | VecLen
     | Err
     | Not
+    | ZeroP
     | Print
     | Next
-    | Cons
     | StringAppend
+    | Cons
+    | List
   let toString: t => string = t => {
     switch t {
     | Maybe => "maybe?"
@@ -242,9 +244,12 @@ module Primitive = {
     | VecLen => "vec-len"
     | Err => "error"
     | Not => "not"
+    | ZeroP => "zero?"
     | Print => "print"
     | Next => "next"
     | Cons => "cons"
+    | StringAppend => "++"
+    | List => "list"
     }
   }
 }
@@ -388,7 +393,6 @@ module ParseError = {
     | SExprParseError(string)
     | SExprKindError(SExprKind.t, string, sexpr)
     | SExprArityError(Arity.t, string, list<sexpr>)
-    | LiteralSymbolError(string)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
   let toString = t => {
@@ -398,7 +402,6 @@ module ParseError = {
       `expecting a ${context}, given ${SExpr.toString(sexpr)}`
     | SExprArityError(_arity_expectation, context, es) =>
       `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`
-    | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
     | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)}`
     | TermKindError(_term_kind, context, term) =>
       // `expecting ${context}, given ${SMoLPrinter.printTerm(term)}`
@@ -479,7 +482,7 @@ module Parser = {
     | Sym(x) => {
         let tryNum = x->Float.fromString
         switch tryNum {
-        | None => raiseParseError(LiteralSymbolError(x))
+        | None => Sym(x)
         | Some(n) => Num(n)
         }
       }
@@ -512,7 +515,10 @@ module Parser = {
         let content = content->List.map(parseValue)
         {ann, it: AppPrm(VecNew, content)}
       }
-    | Sequence({sequenceKind: List}) => raiseParseError(LiteralListError(e))
+    | Sequence({sequenceKind: List, content}) => {
+        let content = content->List.map(parseValue)
+        {ann, it: AppPrm(List, content)}
+      }
     }
   }
 
@@ -768,7 +774,7 @@ module Parser = {
         let e_1 = as_expr("an expression", parseTerm(e_1))
         let e_2 = as_expr("an expression", parseTerm(e_2))
         let e_ns = e_ns->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
-        Exp(ann(And(e_1, e_2, e_ns)))
+        Exp(ann(Or(e_1, e_2, e_ns)))
       }
 
       | Sequence({content: list{{it: Atom(Sym("cond")), ann: _}, ...branches}}) => {
@@ -927,6 +933,7 @@ module Parser = {
       | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Err, es)
       | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
+      | Sequence({content: list{{it: Atom(Sym("zero?")), ann: _}, ...es}}) => makeAppPrm(ann, ZeroP, es)
       | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Print, es)
       | Sequence({content: es}) => {
@@ -1793,6 +1800,17 @@ module PYPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -2590,6 +2608,17 @@ module JSPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -3318,6 +3347,17 @@ module PCPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -4027,6 +4067,17 @@ module SCPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -4556,9 +4607,9 @@ module TranslateError = {
     | KindError(string)
   let toString = t => {
     switch t {
-    | ParseError(err) => ParseError.toString(err)
-    | PrintError(err) => err
-    | KindError(err) => err
+    | ParseError(err) => `ParseError: ${ParseError.toString(err)}`
+    | PrintError(err) => `PrintError: ${err}`
+    | KindError(err) => `KindError: ${err}`
     }
   }
 }

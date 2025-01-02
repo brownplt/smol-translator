@@ -44,7 +44,7 @@ for (const path of paths) {
                             fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
                             fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs));
                         } catch (err) {
-                            fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                            fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
                         }
                     } else {
                         fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
@@ -63,7 +63,7 @@ for (const path of paths) {
                         fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(true, program));
                         fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateOutput(outputs));
                     } catch (err) {
-                        fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                        fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
                     }
                 } else {
                     fs.writeFileSync(`${path}/${name}.js.err`, "Skipped translation because the outputs include `@`.");
@@ -81,7 +81,7 @@ for (const path of paths) {
                         fs.writeFileSync(`${path}/${name}.cm`, SMoL.PCTranslator.translateProgram(true, program));
                         fs.writeFileSync(`${path}/${name}.cm.txt`, SMoL.PCTranslator.translateOutput(outputs));
                     } catch (err) {
-                        fs.writeFileSync(`${path}/${name}.cm.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                        fs.writeFileSync(`${path}/${name}.cm.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
                     }
                 } else {
                     fs.writeFileSync(`${path}/${name}.cm.err`, "Skipped translation because the outputs include `@`.");
@@ -100,7 +100,7 @@ for (const path of paths) {
                             fs.writeFileSync(`${path}/${name}.scala`, Scala3_actual_hard_coded_translation[name] || SMoL.SCTranslator.translateProgram(true, program));
                             fs.writeFileSync(`${path}/${name}.scala.txt`, SMoL.SCTranslator.translateOutput(outputs));
                         } catch (err) {
-                            fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${JSON.stringify(err)}\n${err.toString()}`);
+                            fs.writeFileSync(`${path}/${name}.scala.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
                         }
                     } else {
                         fs.writeFileSync(`${path}/${name}.scala.err`, "Skipped translation because the outputs include `@`.");

@@ -317,22 +317,18 @@ function toString$1(t) {
           return "error";
       case "Not" :
           return "not";
+      case "ZeroP" :
+          return "zero?";
       case "Print" :
           return "print";
       case "Next" :
           return "next";
+      case "StringAppend" :
+          return "++";
       case "Cons" :
           return "cons";
-      case "StringAppend" :
-          throw {
-                RE_EXN_ID: "Match_failure",
-                _1: [
-                  "SMoL.res",
-                  220,
-                  4
-                ],
-                Error: new Error()
-              };
+      case "List" :
+          return "list";
       
     }
   } else if (t.TAG === "Arith") {
@@ -498,8 +494,6 @@ function toString$6(t) {
         return "expecting a " + t._1 + ", given " + SExpression.SExpr.toString(t._2);
     case "SExprArityError" :
         return "expecting " + t._1 + ", given " + Core__List.toArray(Core__List.map(t._2, SExpression.SExpr.toString)).join(" ");
-    case "LiteralSymbolError" :
-        return "expecting a literal value, given a symbol " + t._0;
     case "LiteralListError" :
         return "expecting a constant or a vector, given " + SExpression.SExpr.toString(t._0);
     case "TermKindError" :
@@ -616,15 +610,12 @@ function constant_of_atom(atom) {
                 TAG: "Num",
                 _0: tryNum
               };
+      } else {
+        return {
+                TAG: "Sym",
+                _0: x
+              };
       }
-      throw {
-            RE_EXN_ID: SMoLParseError,
-            _1: {
-              TAG: "LiteralSymbolError",
-              _0: x
-            },
-            Error: new Error()
-          };
   }
 }
 
@@ -683,21 +674,22 @@ function parseValue(e) {
           };
   }
   if (it.sequenceKind === "List") {
-    throw {
-          RE_EXN_ID: SMoLParseError,
-          _1: {
-            TAG: "LiteralListError",
-            _0: e
-          },
-          Error: new Error()
-        };
+    var content = Core__List.map(it.content, parseValue);
+    return {
+            it: {
+              TAG: "AppPrm",
+              _0: "List",
+              _1: content
+            },
+            ann: ann
+          };
   }
-  var content = Core__List.map(it.content, parseValue);
+  var content$1 = Core__List.map(it.content, parseValue);
   return {
           it: {
             TAG: "AppPrm",
             _0: "VecNew",
-            _1: content
+            _1: content$1
           },
           ann: ann
         };
@@ -1522,7 +1514,7 @@ function parseTerm(e) {
                   TAG: "Exp",
                   _0: {
                     it: {
-                      TAG: "And",
+                      TAG: "Or",
                       _0: e_1$1,
                       _1: e_2$1,
                       _2: e_ns$1
@@ -1607,6 +1599,9 @@ function parseTerm(e) {
                     ann: e.ann
                   }
                 };
+                break;
+            case "zero?" :
+                tmp = makeAppPrm(ann, "ZeroP", es.tl);
                 break;
             case "λ" :
                 var match$17 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
@@ -3543,39 +3538,57 @@ function exprAppPrmToString(ann, ctx, p, es) {
                   };
           }
           break;
-      case "Print" :
+      case "ZeroP" :
           if (es && !es.tl) {
-            var e1$10 = es.hd(false);
+            var e1$10 = es.hd(true);
             return {
                     it: [
-                      "Print",
+                      "ZeroP",
                       {
                         hd: e1$10,
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid(ctx, ann, s([
-                              "print(",
-                              ")"
+                    ann: consumeContextWrap(ctx, ann, s([
+                              "",
+                              " == 0"
                             ], [e1$10.ann.print]))
                   };
           }
           break;
-      case "Next" :
+      case "Print" :
           if (es && !es.tl) {
             var e1$11 = es.hd(false);
             return {
                     it: [
-                      "Next",
+                      "Print",
                       {
                         hd: e1$11,
                         tl: /* [] */0
                       }
                     ],
                     ann: consumeContextVoid(ctx, ann, s([
-                              "next(",
+                              "print(",
                               ")"
                             ], [e1$11.ann.print]))
+                  };
+          }
+          break;
+      case "Next" :
+          if (es && !es.tl) {
+            var e1$12 = es.hd(false);
+            return {
+                    it: [
+                      "Next",
+                      {
+                        hd: e1$12,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid(ctx, ann, s([
+                              "next(",
+                              ")"
+                            ], [e1$12.ann.print]))
                   };
           }
           break;
@@ -3585,10 +3598,8 @@ function exprAppPrmToString(ann, ctx, p, es) {
                 _1: "List is not supported by Python",
                 Error: new Error()
               };
-      case "Maybe" :
-      case "StringAppend" :
-          break;
-      
+      default:
+        
     }
   } else {
     if (p.TAG === "Arith") {
@@ -3613,7 +3624,7 @@ function exprAppPrmToString(ann, ctx, p, es) {
       var match$6 = es.tl;
       if (match$6 && !match$6.tl) {
         var o$1 = p._0;
-        var e1$12 = es.hd(true);
+        var e1$13 = es.hd(true);
         var e2$5 = match$6.hd(true);
         var it = stringOfCmp(o$1);
         return {
@@ -3623,7 +3634,7 @@ function exprAppPrmToString(ann, ctx, p, es) {
                     _0: o$1
                   },
                   {
-                    hd: e1$12,
+                    hd: e1$13,
                     tl: {
                       hd: e2$5,
                       tl: /* [] */0
@@ -3636,7 +3647,7 @@ function exprAppPrmToString(ann, ctx, p, es) {
                           " ",
                           ""
                         ], [
-                          e1$12.ann.print,
+                          e1$13.ann.print,
                           {
                             it: {
                               TAG: "Plain",
@@ -5188,39 +5199,57 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                   };
           }
           break;
-      case "Print" :
+      case "ZeroP" :
           if (es && !es.tl) {
-            var e1$10 = es.hd(false);
+            var e1$10 = es.hd(true);
             return {
                     it: [
-                      "Print",
+                      "ZeroP",
                       {
                         hd: e1$10,
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$1(ctx, ann, s([
-                              "console.log(",
-                              ")"
+                    ann: consumeContextWrap$1(ctx, ann, s([
+                              "",
+                              " == 0"
                             ], [e1$10.ann.print]))
                   };
           }
           break;
-      case "Next" :
+      case "Print" :
           if (es && !es.tl) {
-            var e1$11 = es.hd(true);
+            var e1$11 = es.hd(false);
             return {
                     it: [
-                      "Next",
+                      "Print",
                       {
                         hd: e1$11,
                         tl: /* [] */0
                       }
                     ],
                     ann: consumeContextVoid$1(ctx, ann, s([
+                              "console.log(",
+                              ")"
+                            ], [e1$11.ann.print]))
+                  };
+          }
+          break;
+      case "Next" :
+          if (es && !es.tl) {
+            var e1$12 = es.hd(true);
+            return {
+                    it: [
+                      "Next",
+                      {
+                        hd: e1$12,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid$1(ctx, ann, s([
                               "",
                               ".next()"
-                            ], [e1$11.ann.print]))
+                            ], [e1$12.ann.print]))
                   };
           }
           break;
@@ -5230,10 +5259,8 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                 _1: "List is not supported by JavaScript",
                 Error: new Error()
               };
-      case "Maybe" :
-      case "StringAppend" :
-          break;
-      
+      default:
+        
     }
   } else {
     if (p.TAG === "Arith") {
@@ -5258,7 +5285,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
       var match$6 = es.tl;
       if (match$6 && !match$6.tl) {
         var o$1 = p._0;
-        var e1$12 = es.hd(true);
+        var e1$13 = es.hd(true);
         var e2$5 = match$6.hd(true);
         var it = stringOfCmp$1(o$1);
         return {
@@ -5268,7 +5295,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                     _0: o$1
                   },
                   {
-                    hd: e1$12,
+                    hd: e1$13,
                     tl: {
                       hd: e2$5,
                       tl: /* [] */0
@@ -5281,7 +5308,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                           " ",
                           ""
                         ], [
-                          e1$12.ann.print,
+                          e1$13.ann.print,
                           {
                             it: {
                               TAG: "Plain",
@@ -6747,39 +6774,57 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                   };
           }
           break;
-      case "Print" :
+      case "ZeroP" :
           if (es && !es.tl) {
-            var e1$10 = es.hd(false);
+            var e1$10 = es.hd(true);
             return {
                     it: [
-                      "Print",
+                      "ZeroP",
                       {
                         hd: e1$10,
                         tl: /* [] */0
                       }
                     ],
-                    ann: consumeContextVoid$2(ctx, ann, s([
-                              "print(",
-                              ")"
+                    ann: consumeContextWrap$2(ctx, ann, s([
+                              "",
+                              " == 0"
                             ], [e1$10.ann.print]))
                   };
           }
           break;
-      case "Next" :
+      case "Print" :
           if (es && !es.tl) {
             var e1$11 = es.hd(false);
             return {
                     it: [
-                      "Next",
+                      "Print",
                       {
                         hd: e1$11,
                         tl: /* [] */0
                       }
                     ],
                     ann: consumeContextVoid$2(ctx, ann, s([
-                              "next(",
+                              "print(",
                               ")"
                             ], [e1$11.ann.print]))
+                  };
+          }
+          break;
+      case "Next" :
+          if (es && !es.tl) {
+            var e1$12 = es.hd(false);
+            return {
+                    it: [
+                      "Next",
+                      {
+                        hd: e1$12,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextVoid$2(ctx, ann, s([
+                              "next(",
+                              ")"
+                            ], [e1$12.ann.print]))
                   };
           }
           break;
@@ -6787,13 +6832,13 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
           if (es) {
             var match$6 = es.tl;
             if (match$6 && !match$6.tl) {
-              var e1$12 = es.hd(false);
+              var e1$13 = es.hd(false);
               var e2$5 = match$6.hd(false);
               return {
                       it: [
                         "Cons",
                         {
-                          hd: e1$12,
+                          hd: e1$13,
                           tl: {
                             hd: e2$5,
                             tl: /* [] */0
@@ -6805,7 +6850,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                                 ", ...",
                                 "]"
                               ], [
-                                e1$12.ann.print,
+                                e1$13.ann.print,
                                 e2$5.ann.print
                               ]))
                     };
@@ -6813,10 +6858,8 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
             
           }
           break;
-      case "Maybe" :
-      case "StringAppend" :
-          break;
-      
+      default:
+        
     }
   } else {
     if (p.TAG === "Arith") {
@@ -6841,7 +6884,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
       var match$7 = es.tl;
       if (match$7 && !match$7.tl) {
         var o$1 = p._0;
-        var e1$13 = es.hd(true);
+        var e1$14 = es.hd(true);
         var e2$6 = match$7.hd(true);
         var it = stringOfCmp$2(o$1);
         return {
@@ -6851,7 +6894,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                     _0: o$1
                   },
                   {
-                    hd: e1$13,
+                    hd: e1$14,
                     tl: {
                       hd: e2$6,
                       tl: /* [] */0
@@ -6864,7 +6907,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           " ",
                           ""
                         ], [
-                          e1$13.ann.print,
+                          e1$14.ann.print,
                           {
                             it: {
                               TAG: "Plain",
@@ -8246,39 +8289,57 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                   };
           }
           break;
-      case "Print" :
+      case "ZeroP" :
           if (es && !es.tl) {
-            var e1$10 = es.hd(false);
+            var e1$10 = es.hd(true);
             return {
                     it: [
-                      "Print",
+                      "ZeroP",
                       {
                         hd: e1$10,
                         tl: /* [] */0
                       }
                     ],
-                    ann: ann(s([
-                              "println(",
-                              ")"
+                    ann: consumeContextWrap$3(ctx, ann, s([
+                              "",
+                              " == 0"
                             ], [e1$10.ann.print]))
                   };
           }
           break;
-      case "Next" :
+      case "Print" :
           if (es && !es.tl) {
-            var e1$11 = es.hd(true);
+            var e1$11 = es.hd(false);
             return {
                     it: [
-                      "Next",
+                      "Print",
                       {
                         hd: e1$11,
                         tl: /* [] */0
                       }
                     ],
                     ann: ann(s([
+                              "println(",
+                              ")"
+                            ], [e1$11.ann.print]))
+                  };
+          }
+          break;
+      case "Next" :
+          if (es && !es.tl) {
+            var e1$12 = es.hd(true);
+            return {
+                    it: [
+                      "Next",
+                      {
+                        hd: e1$12,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: ann(s([
                               "",
                               ".next()"
-                            ], [e1$11.ann.print]))
+                            ], [e1$12.ann.print]))
                   };
           }
           break;
@@ -8288,10 +8349,8 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                 _1: "List is not supported by JavaScript",
                 Error: new Error()
               };
-      case "Maybe" :
-      case "StringAppend" :
-          break;
-      
+      default:
+        
     }
   } else {
     if (p.TAG === "Arith") {
@@ -8316,7 +8375,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
       var match$6 = es.tl;
       if (match$6 && !match$6.tl) {
         var o$1 = p._0;
-        var e1$12 = es.hd(true);
+        var e1$13 = es.hd(true);
         var e2$5 = match$6.hd(true);
         var it = stringOfCmp$3(o$1);
         return {
@@ -8326,7 +8385,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                     _0: o$1
                   },
                   {
-                    hd: e1$12,
+                    hd: e1$13,
                     tl: {
                       hd: e2$5,
                       tl: /* [] */0
@@ -8339,7 +8398,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                           " ",
                           ""
                         ], [
-                          e1$12.ann.print,
+                          e1$13.ann.print,
                           {
                             it: {
                               TAG: "Plain",
@@ -9065,10 +9124,11 @@ function printStandAloneTerm$4(param) {
 function toString$9(t) {
   switch (t.TAG) {
     case "ParseError" :
-        return toString$6(t._0);
+        return "ParseError: " + toString$6(t._0);
     case "PrintError" :
+        return "PrintError: " + t._0;
     case "KindError" :
-        return t._0;
+        return "KindError: " + t._0;
     
   }
 }

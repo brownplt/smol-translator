@@ -69,10 +69,12 @@ module Primitive: {
     | VecLen
     | Err
     | Not
+    | ZeroP
     | Print
     | Next
-    | Cons
     | StringAppend
+    | Cons
+    | List
   let toString: t => string
 }
 
@@ -159,7 +161,6 @@ module ParseError: {
     | SExprParseError(string)
     | SExprKindError(SExprKind.t, string, sexpr)
     | SExprArityError(Arity.t, string, list<sexpr>)
-    | LiteralSymbolError(string)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
   let toString: t => string

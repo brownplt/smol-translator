@@ -1,38 +1,97 @@
 42
+"foobar"
+"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
+'abc
 #t
 #f
-"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
-(defvar x 1)
-x
-(set! x 2)
+
 (+ 3 4)
 (- 3 4)
 (* 3 4)
 (/ 3 4)
-(< 5 6)
-(> 5 6)
+
 (= 5 6)
 (!= 5 6)
-(mpair 7 8)
-(defvar mv (mvec 7 8))
-(left mv)
-(right mv)
-(vec-ref mv 0)
-(vec-set! mv 0 9)
-(set-left! mv 10)
-(set-right! mv 11)
-(vec-len mv)
-(not #t)
-(print #f)
-(defvar f
-  (lambda ()
-    3))
-(defvar g
-  (lambda (x y)
-    (+ x y)))
-(f)
-(g 4 5)
-(if (eq? "apple" "orange")
-    "yes"
-    "no")
-(error "bad thing happens")
+(< 5 6)
+(<= 5 6)
+(> 5 6)
+(>= 5 6)
+(zero? 7)
+
+(string=? "apple" "orange")
+
+(defvar x 123)
+(deffun (f y) (+ y 1))
+(set! x 456)
+
+; #()
+; #(1 #() #(2 3) 4)
+
+; (ivec 1 2)
+; (mvec 1 2)
+
+; (vec-len #(1 2 3))
+; (vec-ref #(1 2 3) 2)
+; (vec-set! #(1 2 3) 2 0)
+
+; (pair 3 4)
+; (mpair 3 4)
+
+; (left (pair 3 4))
+; (right (pair 3 4))
+; (set-left! (pair 3 4) 5)
+; (set-right! (pair 3 4) 5)
+
+; '()
+; '(1 () (2 3) 4)
+
+; empty
+; (cons 1 (cons 2 empty))
+; (list 1 2)
+
+; (eq? #(1 2) #(1 2))
+; (equal? #(1 2) #(1 2))
+
+; (begin
+;   (begin
+;     1
+;     2)
+;   3)
+
+
+; (cond
+;   [(eq? "apple" "orange")
+;    "yes"]
+;   [else
+;    "no"])
+; (if (eq? "apple" "orange")
+;     "yes"
+;     "no")
+; (and)
+; (and #t #f #t)
+; (or)
+; (or #t #f #t)
+; (not #t)
+
+; (let ([x 2]
+;       [y (+ x 1)])
+;   (mvec x y))
+; (let* ([x 2]
+;        [y (+ x 1)])
+;   (mvec x y))
+; (letrec ([x (lambda () y)]
+;          [y 3])
+;   (mvec (x) y))
+
+; (defvar f
+;   (lambda ()
+;     3))
+; (defvar g
+;   (lambda (x y)
+;     (+ x y)))
+; (f)
+; (g 4 5)
+
+; (print "foobar")
+
+; (error "bad thing happens")
