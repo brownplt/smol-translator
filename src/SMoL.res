@@ -218,6 +218,9 @@ module Primitive = {
     | StringAppend
     | Cons
     | List
+    | EmptyP
+    | First
+    | Rest
   let toString: t => string = t => {
     switch t {
     | Maybe => "maybe?"
@@ -250,6 +253,9 @@ module Primitive = {
     | Cons => "cons"
     | StringAppend => "++"
     | List => "list"
+    | EmptyP => "empty?"
+    | First => "first"
+    | Rest => "rest"
     }
   }
 }
@@ -871,8 +877,11 @@ module Parser = {
         makeAppPrm(ann, Err, es)
       | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
       | Sequence({content: list{{it: Atom(Sym("zero?")), ann: _}, ...es}}) => makeAppPrm(ann, ZeroP, es)
-      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) =>
-        makeAppPrm(ann, Print, es)
+      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) => makeAppPrm(ann, Print, es)
+      | Sequence({content: list{{it: Atom(Sym("list")), ann: _}, ...es}}) => makeAppPrm(ann, List, es)
+      | Sequence({content: list{{it: Atom(Sym("empty?")), ann: _}, ...es}}) => makeAppPrm(ann, EmptyP, es)
+      | Sequence({content: list{{it: Atom(Sym("first")), ann: _}, ...es}}) => makeAppPrm(ann, First, es)
+      | Sequence({content: list{{it: Atom(Sym("rest")), ann: _}, ...es}}) => makeAppPrm(ann, Rest, es)
       | Sequence({content: es}) => {
           let (e, es) = as_one_then_many(
             "a function call/application, which includes a function and then zero or more arguments",
@@ -1833,6 +1842,9 @@ module PYPrinter = {
       }
     | (Cons, _) => raisePrintError("List is not supported by Python")
     | (List, _) => raisePrintError("List is not supported by Python")
+    | (EmptyP, _) => raisePrintError("List is not supported by Python.")
+    | (First, _) => raisePrintError("List is not supported by Python.")
+    | (Rest, _) => raisePrintError("List is not supported by Python.")
     | _ =>
       raisePrintError(
         `Python doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -2645,6 +2657,9 @@ module JSPrinter = {
       }
     | (Cons, _) => raisePrintError("List is not supported by JavaScript")
     | (List, _) => raisePrintError("List is not supported by JavaScript")
+    | (EmptyP, _) => raisePrintError("List is not supported by JavaScript")
+    | (First, _) => raisePrintError("List is not supported by JavaScript")
+    | (Rest, _) => raisePrintError("List is not supported by JavaScript")
     | _ =>
       raisePrintError(
         `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -4172,6 +4187,9 @@ module SCPrinter = {
       }
     | (Cons, _) => raisePrintError("List is not supported by Scala.")
     | (List, _) => raisePrintError("List is not supported by Scala.")
+    | (EmptyP, _) => raisePrintError("List is not supported by Scala.")
+    | (First, _) => raisePrintError("List is not supported by Scala.")
+    | (Rest, _) => raisePrintError("List is not supported by Scala.")
     | _ =>
       raisePrintError(
         `Scala doesn't let you use ${Primitive.toString(p)} on ${Int.toString(

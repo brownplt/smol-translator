@@ -329,6 +329,12 @@ function toString$1(t) {
           return "cons";
       case "List" :
           return "list";
+      case "EmptyP" :
+          return "empty?";
+      case "First" :
+          return "first";
+      case "Rest" :
+          return "rest";
       
     }
   } else if (t.TAG === "Arith") {
@@ -1298,6 +1304,9 @@ function parseTerm(e) {
                   }
                 };
                 break;
+            case "empty?" :
+                tmp = makeAppPrm(ann, "EmptyP", es.tl);
+                break;
             case "eq?" :
                 tmp = makeAppPrm(ann, {
                       TAG: "Cmp",
@@ -1306,6 +1315,9 @@ function parseTerm(e) {
                 break;
             case "error" :
                 tmp = makeAppPrm(ann, "Err", es.tl);
+                break;
+            case "first" :
+                tmp = makeAppPrm(ann, "First", es.tl);
                 break;
             case "generator" :
                 var match$8 = as_one_then_many_then_one("the generator signature followed by the function body", es.tl);
@@ -1379,6 +1391,9 @@ function parseTerm(e) {
             case "letrec" :
                 tmp = parseLet("Recursive", ann, es.tl);
                 break;
+            case "list" :
+                tmp = makeAppPrm(ann, "List", es.tl);
+                break;
             case "maybe?" :
                 tmp = makeAppPrm(ann, "Maybe", es.tl);
                 break;
@@ -1416,6 +1431,9 @@ function parseTerm(e) {
                   TAG: "Exp",
                   _0: parseValue(e$2)
                 };
+                break;
+            case "rest" :
+                tmp = makeAppPrm(ann, "Rest", es.tl);
                 break;
             case "right" :
                 tmp = makeAppPrm(ann, "PairRefRight", es.tl);
@@ -3428,6 +3446,14 @@ function exprAppPrmToString(ann, ctx, p, es) {
                 _1: "List is not supported by Python",
                 Error: new Error()
               };
+      case "EmptyP" :
+      case "First" :
+      case "Rest" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "List is not supported by Python.",
+                Error: new Error()
+              };
       
     }
   } else {
@@ -5057,6 +5083,9 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
           break;
       case "Cons" :
       case "List" :
+      case "EmptyP" :
+      case "First" :
+      case "Rest" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
                 _1: "List is not supported by JavaScript",
@@ -6595,9 +6624,6 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                   };
           }
           break;
-      case "Maybe" :
-      case "StringAppend" :
-          break;
       case "Cons" :
           if (es) {
             var match$6 = es.tl;
@@ -6647,7 +6673,8 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                               ann: undefined
                             }]))
                 };
-      
+      default:
+        
     }
   } else {
     if (p.TAG === "Arith") {
@@ -8218,6 +8245,9 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
           break;
       case "Cons" :
       case "List" :
+      case "EmptyP" :
+      case "First" :
+      case "Rest" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
                 _1: "List is not supported by Scala.",

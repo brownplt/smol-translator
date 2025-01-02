@@ -49,6 +49,11 @@ empty
 (cons 1 (cons 2 empty))
 (list 1 2)
 
+(empty? (list))
+(empty? (list 1 2 3))
+(first (list 1 2 3))
+(rest (list 1 2 3))
+
 (eq? #(1 2) #(1 2))
 (equal? #(1 2) #(1 2))
 
@@ -92,6 +97,6 @@ empty
 (g)
 (h 4 5)
 
-(print "foobar")
+;(print "foobar")
 
-(error "bad thing happens")
+;(error "bad thing happens")

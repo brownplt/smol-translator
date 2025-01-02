@@ -196,9 +196,9 @@ we want to provide a language as similar as possible to `#lang smol`, subject to
 | Vector operators: `vec-len`, `vec-ref`, and `vec-set!`                        |                              |
 | Pair constructor: `pair` and `mpair`                                          | `pair` is treated as `mpair` |
 | Pair operators: `left`, `right`, `set-left!`, and `set-right!`                |                              |
-| List constants (e.g., `'()` and `'(1 2 3)`)                                   | Not always translatable      |
 | List constructors: `empty`, `cons`, and `list`                                | Not always translatable      |
-| List operators: `map`, `filter`, `foldl`, and `foldr`                         | Not supported                |
+| List basic operators: `empty?`, `first`, and `rest`                           | Not always translatable      |
+| List higher-order operators: `map`, `filter`, `foldl`, and `foldr`            | Not supported                |
 | General Equality: `eq?` and `equal?`                                          |                              |
 | Sequencing: `begin`                                                           | Not always translatable      |
 | Conditional: `cond`, `if`, `and`, `or`, `not`                                 |                              |

@@ -75,6 +75,9 @@ module Primitive: {
     | StringAppend
     | Cons
     | List
+    | EmptyP
+    | First
+    | Rest
   let toString: t => string
 }
 
