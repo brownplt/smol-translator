@@ -1,0 +1,41 @@
+42
+"foobar"
+"a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")"
+#t
+#f
+7
+-1
+12
+3/4
+#f
+#t
+#t
+#f
+#f
+#f
+#f
+#()
+#(1 #() #(2 3) 4)
+#(1 2)
+#(1 2)
+3
+3
+#(3 4)
+#(3 4)
+3
+4
+#f
+1
+2
+3
+"no"
+"no"
+#t
+#f
+#f
+#t
+#f
+3
+9
+"foobar"
+error

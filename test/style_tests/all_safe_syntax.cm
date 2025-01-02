@@ -13,7 +13,6 @@ print(5 <= 6)
 print(5 > 6)
 print(5 >= 6)
 print(7 == 0)
-print("apple" == "orange")
 let x = 123
 fun f(y):
   return y + 1
@@ -32,24 +31,7 @@ print(vec[ 3, 4 ][0])
 print(vec[ 3, 4 ][1])
 vec[ 3, 4 ][0] = 5
 vec[ 3, 4 ][1] = 5
-print(list[  ])
-print(list[ 1, list[  ], list[ 2, 3 ], 4 ])
-print(empty)
-print(cons(1, cons(2, empty)))
-print(list[ 1, 2 ])
-print(is-empty(list[  ]))
-print(is-empty(list[ 1, 2, 3 ]))
-print(list[ 1, 2, 3 ].first)
-print(list[ 1, 2, 3 ].rest)
 print(vec[ 1, 2 ] === vec[ 1, 2 ])
-print(vec[ 1, 2 ] == vec[ 1, 2 ])
-begin:
-  begin:
-    1
-    2
-  end
-  print(3)
-end
 if "apple" === "orange":
   print("yes")
 else:
@@ -65,26 +47,6 @@ print(True ∧ False ∧ True)
 print(False)
 print(True ∨ False ∨ True)
 print(¬ True)
-let:
-  x = 2
-  y = x + 1
-do:
-  print(vec[ x, y ])
-end
-let*:
-  x = 2
-  y = x + 1
-do:
-  print(vec[ x, y ])
-end
-let rec:
-  x = lam ():
-    return y
-  end
-  y = 3
-do:
-  print(vec[ x(), y ])
-end
 let g = lam ():
   return 3
 end
@@ -93,3 +55,5 @@ let h = lam (x,y):
 end
 print(g())
 print(h(4, 5))
+print("foobar")
+raise "bad thing happens"

@@ -8,9 +8,9 @@
     "clean": "rm -rf test/test_cases/* test/style_tests/*.{js,py,scala,cm}*",
     "prepare-test:get-programs": "node --experimental-modules test/extract_programs_from_tutorials.js",
     "prepare-test:translate": "node --experimental-modules test/translate_test_programs.js",
-    "prepare-test": "npm run prepare-test:get-programs && npm run prepare-test:translate",
+    "prepare-test": "npm run clean && npm run prepare-test:get-programs && npm run prepare-test:translate",
     "run-test": "python3 test/tester.py",
-    "test": "npm run clean && npm run prepare-test && npm run run-test",
+    "test": "npm run prepare-test && npm run run-test",
     "dev": "rescript clean && rescript build -with-deps -w",
     "publish": "npm publish --access public",
     "import-tutorials": "echo 'export const tutorials =' > test/tutorials.js; cat ../smol-tutor/src/tutorials.json >> test/tutorials.js"

@@ -3406,14 +3406,35 @@ module PCPrinter = {
         let e2 = e2(false)
         {
           it: (Cons, list{e1, e2}),
-          ann: consumeContext(ctx, ann, Print.s`list[${e1.ann.print}, ...${e2.ann.print}]`),
+          ann: consumeContext(ctx, ann, Print.s`list[ ${e1.ann.print}, ...${e2.ann.print} ]`),
         }
       }
     | (List, es) => {
       let es = es -> List.map(e => e(false))
       {
         it: (List, es),
-        ann: consumeContext(ctx, ann, Print.s`list[${Print.concat(", ", es->List.map(e=>e.ann.print)) |> Print.dummy}]`)
+        ann: consumeContext(ctx, ann, Print.s`list[ ${Print.concat(", ", es->List.map(e=>e.ann.print)) |> Print.dummy} ]`)
+      }
+    }
+    | (EmptyP, list{e1}) => {
+      let e1 = e1(false)
+      {
+        it: (EmptyP, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`is-empty(${e1.ann.print})`)
+      }
+    }
+    | (First, list{e1}) => {
+      let e1 = e1(true)
+      {
+        it: (First, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.first`)
+      }
+    }
+    | (Rest, list{e1}) => {
+      let e1 = e1(true)
+      {
+        it: (Rest, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.rest`)
       }
     }
     | _ =>

@@ -1,0 +1,1 @@
+42 "foobar" "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")" True False 7 -1 12 3 False True True False False False False vec[  ] vec[ 1, vec[  ], vec[ 2, 3 ], 4 ] vec[ 1, 2 ] vec[ 1, 2 ] 3 3 vec[ 3, 4 ] vec[ 3, 4 ] 3 4 False 1 2 3 "no" "no" True False False True False 3 9 "foobar" error

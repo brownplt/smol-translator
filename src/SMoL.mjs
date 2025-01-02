@@ -6624,6 +6624,9 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                   };
           }
           break;
+      case "Maybe" :
+      case "StringAppend" :
+          break;
       case "Cons" :
           if (es) {
             var match$6 = es.tl;
@@ -6642,9 +6645,9 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                         }
                       ],
                       ann: consumeContext$2(ctx, ann, s([
-                                "list[",
+                                "list[ ",
                                 ", ...",
-                                "]"
+                                " ]"
                               ], [
                                 e1$13.ann.print,
                                 e2$5.ann.print
@@ -6664,8 +6667,8 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                     es$2
                   ],
                   ann: consumeContext$2(ctx, ann, s([
-                            "list[",
-                            "]"
+                            "list[ ",
+                            " ]"
                           ], [{
                               it: concat(", ", Belt_List.map(es$2, (function (e) {
                                           return e.ann.print;
@@ -6673,8 +6676,61 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                               ann: undefined
                             }]))
                 };
-      default:
-        
+      case "EmptyP" :
+          if (es && !es.tl) {
+            var e1$14 = es.hd(false);
+            return {
+                    it: [
+                      "EmptyP",
+                      {
+                        hd: e1$14,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(ctx, ann, s([
+                              "is-empty(",
+                              ")"
+                            ], [e1$14.ann.print]))
+                  };
+          }
+          break;
+      case "First" :
+          if (es && !es.tl) {
+            var e1$15 = es.hd(true);
+            return {
+                    it: [
+                      "First",
+                      {
+                        hd: e1$15,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(ctx, ann, s([
+                              "",
+                              ".first"
+                            ], [e1$15.ann.print]))
+                  };
+          }
+          break;
+      case "Rest" :
+          if (es && !es.tl) {
+            var e1$16 = es.hd(true);
+            return {
+                    it: [
+                      "Rest",
+                      {
+                        hd: e1$16,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContext$2(ctx, ann, s([
+                              "",
+                              ".rest"
+                            ], [e1$16.ann.print]))
+                  };
+          }
+          break;
+      
     }
   } else {
     if (p.TAG === "Arith") {
@@ -6699,7 +6755,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
       var match$7 = es.tl;
       if (match$7 && !match$7.tl) {
         var o$1 = p._0;
-        var e1$14 = es.hd(true);
+        var e1$17 = es.hd(true);
         var e2$6 = match$7.hd(true);
         var it = stringOfCmp$2(o$1);
         return {
@@ -6709,7 +6765,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                     _0: o$1
                   },
                   {
-                    hd: e1$14,
+                    hd: e1$17,
                     tl: {
                       hd: e2$6,
                       tl: /* [] */0
@@ -6722,7 +6778,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           " ",
                           ""
                         ], [
-                          e1$14.ann.print,
+                          e1$17.ann.print,
                           {
                             it: {
                               TAG: "Plain",

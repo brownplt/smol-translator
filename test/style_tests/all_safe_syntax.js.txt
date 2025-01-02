@@ -1,0 +1,1 @@
+42 "foobar" "a string with numbers (e.g., 42) and quotes (e.g., '' and \"\")" true false 7 -1 12 3 false true true false false false false [  ] [ 1, [  ], [ 2, 3 ], 4 ] [ 1, 2 ] [ 1, 2 ] 3 3 [ 3, 4 ] [ 3, 4 ] 3 4 false 1 2 3 "no" "no" true false false true false 3 9 "foobar" error
