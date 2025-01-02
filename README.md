@@ -171,6 +171,8 @@ There are a few key differences between SMoL and the target languages
 
 ## Known Differences from `#lang smol`
 
+⚠️ This section lists the goal rather than the current status of the repo.
+
 `#lang smol` is the original definition of smol. It is defined by Shriram
 in the form of a Racket language. You can find more details about
 `#lang smol` at https://github.com/shriram/smol.
@@ -178,31 +180,38 @@ in the form of a Racket language. You can find more details about
 In the context of SMoL Translator (this repo), we want to provide a language
 as similar as possible to `#lang smol`, subject to the translation need.
 
-`#lang smol` provides three language levels: `smol/fun`, `smol/state`, and `smol/hof`. Every level is a subset of its next level, with `smol/hof` being the ultimate level that includes all constructs. The following table presents the differences: The left table column list all language constructs; The right column list differences regarding that construct, if any.
+`#lang smol` provides three language levels: `smol/fun`, `smol/state`, and `smol/hof`. Every level is a subset of its next level, with `smol/hof` being the ultimate level that includes all constructs. The following table presents the differences: The left table column list all language constructs; The right column lists the level of support regarding those constructs.
 
-| `#lang smol`                                                                  | Translatable SMoL                          |
-| ----------------------------------------------------------------------------- | ------------------------------------------ |
-| Definition: `defvar` and `deffun`                                             |                                            |
-| Constants: numbers, strings, symbols, booleans                                | Symbols are supported but not translatable |
-| Vector (i.e., array) constants                                                |                                            |
-| Vector constructor: `ivec` and `mvec`                                         | `ivec` is treated as `mvec`                |
-| Vector operators: `vec-len`, `vec-ref`, and `vec-set!`                        |                                            |
-| Pair constructor: `pair` and `mpair`                                          | `pair` is treated as `mpair`               |
-| Pair constructor: `left`, `right`, `set-left!`, and `set-right!`              |                                            |
-| List constants (e.g., `'()` and `'(1 2 3)`)                                   | Not supported                              |
-| List constructors: `empty`, `cons`, and `list`                                | Not supported                              |
-| List operators: `map`, `filter`, `foldl`, and `foldr`                         | Not supported                              |
-| String operator: `++`                                                         | Not supported                              |
-| Testing: `test`, `test/not`, `test/pred`, `test/exn`, and `print-only-errors` | Not supported                              |
-| Printf debugging: `spy`                                                       | Not supported                              |
-| Tracing: `trace` and `untrace`                                                | Not supported                              |
-| Import and export: `require`, `provide`, and `all-defined-out`                | Not supported                              |
-| Binding mutation: `set!`                                                      |                                            |
-| Sequencing: `begin`                                                           | Supported but not translatable             |
-| Conditional: `if`, `and`, `or`, `not`                                         |                                            |
-| Local binding: `let`, `let*`, and `letrec`                                    | Only `let` is supported                    |
-| Higher-order function: `lambda` and `λ`                                       |                                            |
-| General Equality: `eq?` and `equal?`                                          |                                            |
-| Number (In)equality: `zero?`, `<`, `<=`, `>`, and `>=`                        | `=` is supported and treated as `eq?`      |
-| String Equality: `string=?`                                                   | Treated as `equal?`                        |
-| Arithmetic: `+`, `-`, `*`, and `/`                                            |                                            |
+| `#lang smol`                                                                  | Translatable SMoL                     |
+| ----------------------------------------------------------------------------- | ------------------------------------- |
+| Definition: `defvar` and `deffun`                                             |                                       |
+| Constants: numbers, strings, symbols, booleans                                | Not always translatable               |
+| Vector (i.e., array) constants                                                |                                       |
+| Vector constructor: `ivec` and `mvec`                                         | `ivec` is treated as `mvec`           |
+| Vector operators: `vec-len`, `vec-ref`, and `vec-set!`                        |                                       |
+| Pair constructor: `pair` and `mpair`                                          | `pair` is treated as `mpair`          |
+| Pair constructor: `left`, `right`, `set-left!`, and `set-right!`              |                                       |
+| List constants (e.g., `'()` and `'(1 2 3)`)                                   | Not always translatable               |
+| List constructors: `empty`, `cons`, and `list`                                | Not always translatable               |
+| List operators: `map`, `filter`, `foldl`, and `foldr`                         | Not supported                         |
+| String operator: `++`                                                         |                                       |
+| Testing: `test`, `test/not`, `test/pred`, `test/exn`, and `print-only-errors` | Not supported                         |
+| Printf debugging: `spy`                                                       | Not supported                         |
+| Tracing: `trace` and `untrace`                                                | Not supported                         |
+| Import and export: `require`, `provide`, and `all-defined-out`                | Not supported                         |
+| Binding mutation: `set!`                                                      |                                       |
+| Sequencing: `begin`                                                           | Not always translatable               |
+| Conditional: `if`, `and`, `or`, `not`                                         |                                       |
+| Local binding: `let`, `let*`, and `letrec`                                    | Not always translatable               |
+| Higher-order function: `lambda` and `λ`                                       |                                       |
+| General Equality: `eq?` and `equal?`                                          |                                       |
+| Number (In)equality: `zero?`, `<`, `<=`, `>`, and `>=`                        | `=` is supported and treated as `eq?` |
+| String Equality: `string=?`                                                   | Treated as `equal?`                   |
+| Arithmetic: `+`, `-`, `*`, and `/`                                            |                                       |
+
+Overall, there are four levels of support:
+
+1. Fully supported, in which case the right cell is blank;
+2. `X` is treated as `Y`, in which case a construct `X` is supported by being treated as `Y`, which is a more general version of `X`;
+3. Not always translatable, which means the SMoL Translator and the Stacker (i.e., the SMoL Notional Machine) understands the construct but is not always able to provide a translated version, depending on the translation target language;
+4. Not supported.
