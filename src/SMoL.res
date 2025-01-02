@@ -2640,7 +2640,7 @@ module JSPrinter = {
         let e1 = e1(true)
         {
           it: (Next, list{e1}),
-          ann: consumeContextVoid(ctx, ann, Print.s`${e1.ann.print}.next()`),
+          ann: consumeContextVoid(ctx, ann, Print.s`${e1.ann.print}.next().value`),
         }
       }
     | (Cons, _) => raisePrintError("List is not supported by JavaScript")

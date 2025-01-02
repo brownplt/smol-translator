@@ -1,3 +1,4 @@
-(and 1 2 3)
-(or 3 4 5)
-(not 42)
+(and #t #f)
+(or #t #f)
+(not #t)
+(not #f)

@@ -5047,7 +5047,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                     ],
                     ann: consumeContextVoid$1(ctx, ann, s([
                               "",
-                              ".next()"
+                              ".next().value"
                             ], [e1$12.ann.print]))
                   };
           }

@@ -7,7 +7,7 @@ function* g() {
   return (yield f(3));
 }
 let h = g();
-console.log(h.next());
-console.log(h.next());
-console.log(h.next());
-console.log(h.next());
+console.log(h.next().value);
+console.log(h.next().value);
+console.log(h.next().value);
+console.log(h.next().value);

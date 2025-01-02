@@ -1,3 +1,4 @@
-print(1 and 2 and 3)
-print(3 or 4 or 5)
-print(not 42)
+print(True and False)
+print(True or False)
+print(not True)
+print(not False)

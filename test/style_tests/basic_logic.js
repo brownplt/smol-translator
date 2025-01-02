@@ -1,3 +1,4 @@
-console.log(1 && 2 && 3);
-console.log(3 || 4 || 5);
-console.log(! 42);
+console.log(true && false);
+console.log(true || false);
+console.log(! true);
+console.log(! false);
