@@ -57,3 +57,4 @@ console.log(g());
 console.log(h(4, 5));
 console.log("foobar");
 throw "bad thing happens";
+console.log("this should not be printed");

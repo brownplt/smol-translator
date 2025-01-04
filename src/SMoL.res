@@ -3541,7 +3541,7 @@ module PCPrinter = {
       switch k {
         | Plain => ""
         | Nested => "*"
-        | Recursive => " rec"
+        | Recursive => "rec"
       }
     }
     let xes = Print.concat("\n", xes) |> Print.dummy

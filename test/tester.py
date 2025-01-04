@@ -1,6 +1,33 @@
 import subprocess
 import glob
 
+def run_smol_file(test):
+    src = open(test).read()
+    prefix = "#lang smol/hof"
+    suffix = ""
+    dst = prefix + "\n" + src + "\n" + suffix
+    f = open("tmp.smol", "w+")
+    f.write(dst)
+    f.close()
+    command = [
+        "racket",
+        "tmp.smol"
+    ]
+    actual_result = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout = actual_result.stdout.decode('utf-8')
+    stderr = actual_result.stderr.decode('utf-8')
+    if stderr == "":
+        actual_result = stdout
+    else:
+        actual_result = stdout + "\n" + "error"
+    # Remove Newlines
+    actual_result = actual_result.strip().split("\n")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    return actual_result
+
+
 def run_js_file(test):
     command = [
         "node",
@@ -76,6 +103,35 @@ def run_scala_file(test):
     return actual_result
 
 for test_path in ["style_tests", "test_cases"]:
+    suffix = ".smol"
+    # i = 0
+    for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
+        # i = i + 1
+        # if i > 10:
+        #     break
+        program = open(test).read()
+        try:
+            wished_results = "{}.smol.txt".format(test[:-len(suffix)])
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
+            actual_results = run_smol_file(test)
+            if wished_results == actual_results:
+                # print("PASSED {}".format(test))
+                pass
+            else:
+                print("FAILED {}".format(test))
+                print("Program:")
+                print(program)
+                print("Wished: {}".format(repr(wished_results)))
+                print("Actual: {}".format(repr(actual_results)))
+                print("----------")
+        except FileNotFoundError as e:
+            print("FAILED {}".format(test))
+            print("Program:")
+            print(program)
+            print("No expected output.")
+            print("----------")
+
+
     suffix = ".js"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):

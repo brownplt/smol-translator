@@ -98,3 +98,5 @@
 (print "foobar")
 
 (error "bad thing happens")
+
+(print "this should not be printed")

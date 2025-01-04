@@ -95,6 +95,6 @@ empty
 (g)
 (h 4 5)
 
-;(print "foobar")
+(print "foobar")
 
-;(error "bad thing happens")
+(error "bad thing happens")

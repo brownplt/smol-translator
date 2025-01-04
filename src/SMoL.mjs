@@ -7011,7 +7011,7 @@ function exprLetToString(k, xes, b) {
         ann = "*";
         break;
     case "Recursive" :
-        ann = " rec";
+        ann = "rec";
         break;
     
   }

@@ -50,3 +50,4 @@ print(g())
 print(h(4, 5))
 print("foobar")
 raise "bad thing happens"
+print("this should not be printed")
