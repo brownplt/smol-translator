@@ -1,0 +1,35 @@
+42
+True
+False
+7
+-1
+12
+2
+False
+True
+True
+False
+False
+False
+[]
+[1, [], [2, 3], 4]
+[1, 2]
+[1, 2]
+3
+3
+[3, 4]
+[3, 4]
+3
+4
+False
+"no"
+"no"
+True
+False
+False
+True
+False
+3
+9
+"foobar"
+error

@@ -69,28 +69,39 @@ module Primitive: {
     | VecLen
     | Err
     | Not
+    | ZeroP
     | Print
     | Next
-    | Cons
     | StringAppend
+    | Cons
+    | List
+    | EmptyP
+    | First
+    | Rest
   let toString: t => string
 }
 
 type symbol = string
 
+module LetKind: {
+  type t =
+    | Plain
+    | Nested
+    | Recursive
+  let toString: (t) => string
+}
 type rec expressionNode<'ann> =
   | Con(constant)
   | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<bind<'ann>>, block<'ann>)
-  | Letrec(list<bind<'ann>>, block<'ann>)
+  | Let(LetKind.t, list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
   | If(expression<'ann>, expression<'ann>, expression<'ann>)
-  | And(expression<'ann>, expression<'ann>, list<expression<'ann>>)
-  | Or(expression<'ann>, expression<'ann>, list<expression<'ann>>)
+  | And(list<expression<'ann>>)
+  | Or(list<expression<'ann>>)
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
@@ -159,7 +170,6 @@ module ParseError: {
     | SExprParseError(string)
     | SExprKindError(SExprKind.t, string, sexpr)
     | SExprArityError(Arity.t, string, list<sexpr>)
-    | LiteralSymbolError(string)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
   let toString: t => string
@@ -209,7 +219,7 @@ module TranslateError: {
 type exn += SMoLTranslateError(TranslateError.t)
 module type Translator = {
   let translateName: string => string
-  let translateOutput: string => string
+  let translateOutput: (string, ~sep: string=?) => string
   let translateStandAloneTerm: string => string
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>

@@ -212,10 +212,15 @@ module Primitive = {
     | VecLen
     | Err
     | Not
+    | ZeroP
     | Print
     | Next
-    | Cons
     | StringAppend
+    | Cons
+    | List
+    | EmptyP
+    | First
+    | Rest
   let toString: t => string = t => {
     switch t {
     | Maybe => "maybe?"
@@ -242,9 +247,15 @@ module Primitive = {
     | VecLen => "vec-len"
     | Err => "error"
     | Not => "not"
+    | ZeroP => "zero?"
     | Print => "print"
     | Next => "next"
     | Cons => "cons"
+    | StringAppend => "++"
+    | List => "list"
+    | EmptyP => "empty?"
+    | First => "first"
+    | Rest => "rest"
     }
   }
 }
@@ -252,19 +263,31 @@ open Primitive
 
 type symbol = string
 
+module LetKind = {
+  type t =
+    | Plain
+    | Nested
+    | Recursive
+  let toString = (t) => {
+    switch t {
+      | Plain => "let"
+      | Nested => "let*"
+      | Recursive => "letrec"
+    }
+  }
+}
 type rec expressionNode<'ann> =
   | Con(constant)
   | Ref(symbol)
   | Set(annotated<symbol, 'ann>, expression<'ann>)
   | Lam(list<annotated<symbol, 'ann>>, block<'ann>)
-  | Let(list<bind<'ann>>, block<'ann>)
-  | Letrec(list<bind<'ann>>, block<'ann>)
+  | Let(LetKind.t, list<bind<'ann>>, block<'ann>)
   | AppPrm(Primitive.t, list<expression<'ann>>)
   | App(expression<'ann>, list<expression<'ann>>)
   | Bgn(list<expression<'ann>>, expression<'ann>)
   | If(expression<'ann>, expression<'ann>, expression<'ann>)
-  | And(expression<'ann>, expression<'ann>, list<expression<'ann>>)
-  | Or(expression<'ann>, expression<'ann>, list<expression<'ann>>)
+  | And(list<expression<'ann>>)
+  | Or(list<expression<'ann>>)
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
@@ -388,7 +411,6 @@ module ParseError = {
     | SExprParseError(string)
     | SExprKindError(SExprKind.t, string, sexpr)
     | SExprArityError(Arity.t, string, list<sexpr>)
-    | LiteralSymbolError(string)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
   let toString = t => {
@@ -398,7 +420,6 @@ module ParseError = {
       `expecting a ${context}, given ${SExpr.toString(sexpr)}`
     | SExprArityError(_arity_expectation, context, es) =>
       `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`
-    | LiteralSymbolError(x) => `expecting a literal value, given a symbol ${x}`
     | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)}`
     | TermKindError(_term_kind, context, term) =>
       // `expecting ${context}, given ${SMoLPrinter.printTerm(term)}`
@@ -479,7 +500,7 @@ module Parser = {
     | Sym(x) => {
         let tryNum = x->Float.fromString
         switch tryNum {
-        | None => raiseParseError(LiteralSymbolError(x))
+        | None => Sym(x)
         | Some(n) => Num(n)
         }
       }
@@ -512,7 +533,10 @@ module Parser = {
         let content = content->List.map(parseValue)
         {ann, it: AppPrm(VecNew, content)}
       }
-    | Sequence({sequenceKind: List}) => raiseParseError(LiteralListError(e))
+    | Sequence({sequenceKind: List, content}) => {
+        let content = content->List.map(parseValue)
+        {ann, it: AppPrm(List, content)}
+      }
     }
   }
 
@@ -563,13 +587,6 @@ module Parser = {
     }
   }
 
-  let as_two_then_many = (context, es: list<SExpression.annotated<_>>) => {
-    switch es {
-    | list{e1, e2, ...es} => (e1, e2, es)
-    | _ => raiseParseError(SExprArityError(OneThenMany, context, es))
-    }
-  }
-
   let as_three = (context, es: list<SExpression.annotated<_>>) => {
     switch es {
     | list{e1, e2, e3} => (e1, e2, e3)
@@ -608,30 +625,27 @@ module Parser = {
     }
   }
 
-  let rec letstar = (ann, xes, body: block<sourceLocation>) => {
-    switch xes {
-    | list{} =>
-      switch body.it {
-      | BRet(e) => e
-      | _ => ann(Let(list{}, body))
-      }
-    | list{xe} => ann(Let(list{xe}, body))
-    | list{xe, ...xes} => ann(Let(list{xe}, makeBlock(list{}, letstar(it => {
-              {
-                ann: {
-                  begin: xes
-                  ->List.head
-                  ->Option.map(xe => xe.ann.begin)
-                  ->Option.getOr(body.ann.begin),
-                  end: body.ann.end,
-                },
-                it,
-              }
-            }, xes, body))))
-    }
+  let rec parseLet = (letKind, ann, rest) => {
+    let (xes, ts, result) = as_one_then_many_then_one(
+      "the bindings followed by the body",
+      rest,
+    )
+    let xes =
+      as_list("variable-expression pairs", xes).it
+      ->List.map(xe => as_list("a variable and an expression", xe))
+      ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
+    let xes = xes->List.map(
+      mapAnn(((x, e)) => {
+        let x = as_id("a variable to be bound", x)
+        let e = as_expr("an expression", parseTerm(e))
+        (x, e)
+      }),
+    )
+    let ts = ts->List.map(parseTerm)
+    let result = as_expr("an expression to be return", parseTerm(result))
+    Exp(ann(Let(letKind, xes, makeBlock(ts, result))))
   }
-
-  let rec parseTerm = (e: sexpr): term<sourceLocation> => {
+  and parseTerm = (e: sexpr): term<sourceLocation> => {
     let ann = it => {ann: e.ann, it}
     ann(
       switch e.it {
@@ -750,25 +764,13 @@ module Parser = {
         }
 
       | Sequence({content: list{{it: Atom(Sym("and")), ann: _}, ...rest}}) => {
-        let (e_1, e_2, e_ns) = as_two_then_many(
-          "at least two expressions",
-          rest
-        )
-        let e_1 = as_expr("an expression", parseTerm(e_1))
-        let e_2 = as_expr("an expression", parseTerm(e_2))
-        let e_ns = e_ns->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
-        Exp(ann(And(e_1, e_2, e_ns)))
+        let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+        Exp(ann(And(e_ns)))
       }
 
       | Sequence({content: list{{it: Atom(Sym("or")), ann: _}, ...rest}}) => {
-        let (e_1, e_2, e_ns) = as_two_then_many(
-          "at least two expressions",
-          rest
-        )
-        let e_1 = as_expr("an expression", parseTerm(e_1))
-        let e_2 = as_expr("an expression", parseTerm(e_2))
-        let e_ns = e_ns->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
-        Exp(ann(And(e_1, e_2, e_ns)))
+        let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+        Exp(ann(Or(e_ns)))
       }
 
       | Sequence({content: list{{it: Atom(Sym("cond")), ann: _}, ...branches}}) => {
@@ -799,66 +801,13 @@ module Parser = {
         }
 
       | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(Let(xes, makeBlock(ts, result))))
+        parseLet(LetKind.Plain, ann, rest)
         }
-
       | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(letstar(ann, xes, makeBlock(ts, result)))
+        parseLet(LetKind.Nested, ann, rest)
         }
-
       | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => {
-          let (xes, ts, result) = as_one_then_many_then_one(
-            "the bindings followed by the body",
-            rest,
-          )
-          let xes =
-            as_list("variable-expression pairs", xes).it
-            ->List.map(xe => as_list("a variable and an expression", xe))
-            ->List.map(mapAnn(xe => as_two("a variable and an expression", xe)))
-          let xes = xes->List.map(
-            mapAnn(((x, e)) => {
-              let x = as_id("a variable to be bound", x)
-              let e = as_expr("an expression", parseTerm(e))
-              (x, e)
-            }),
-          )
-          let ts = ts->List.map(parseTerm)
-          let result = as_expr("an expression to be return", parseTerm(result))
-          Exp(ann(Letrec(xes, makeBlock(ts, result))))
+        parseLet(LetKind.Recursive, ann, rest)
         }
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
@@ -927,8 +876,12 @@ module Parser = {
       | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Err, es)
       | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
-      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) =>
-        makeAppPrm(ann, Print, es)
+      | Sequence({content: list{{it: Atom(Sym("zero?")), ann: _}, ...es}}) => makeAppPrm(ann, ZeroP, es)
+      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) => makeAppPrm(ann, Print, es)
+      | Sequence({content: list{{it: Atom(Sym("list")), ann: _}, ...es}}) => makeAppPrm(ann, List, es)
+      | Sequence({content: list{{it: Atom(Sym("empty?")), ann: _}, ...es}}) => makeAppPrm(ann, EmptyP, es)
+      | Sequence({content: list{{it: Atom(Sym("first")), ann: _}, ...es}}) => makeAppPrm(ann, First, es)
+      | Sequence({content: list{{it: Atom(Sym("rest")), ann: _}, ...es}}) => makeAppPrm(ann, Rest, es)
       | Sequence({content: es}) => {
           let (e, es) = as_one_then_many(
             "a function call/application, which includes a function and then zero or more arguments",
@@ -1130,19 +1083,12 @@ module SMoLPrinter = {
     appLikeList(Print.fromString("if"), list{e_cnd, e_thn, e_els})
   }
 
-  let exprAndToString = (e_1, e_2, e_ns) => {
-    exprAppToString(Print.dummy(Print.s`and`), list{e_1, e_2, ...e_ns})
+  let exprAndToString = (e_ns) => {
+    exprAppToString(Print.dummy(Print.s`and`), list{...e_ns})
   }
 
-  let exprOrToString = (e_1, e_2, e_ns) => {
-    exprAppToString(Print.dummy(Print.s`or`), list{e_1, e_2, ...e_ns})
-  }
-
-  let exprLetToString = (xes, b) => {
-    letLikeList(Print.fromString("let"), xes, b)
-  }
-  let exprLetrecToString = (xes, b) => {
-    letLikeList(Print.fromString("letrec"), xes, b)
+  let exprOrToString = (e_ns) => {
+    exprAppToString(Print.dummy(Print.s`or`), list{...e_ns})
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -1216,26 +1162,16 @@ module SMoLPrinter = {
           it: App(e, es),
         }
       }
-    | Let(xes, b) => {
+    | Let(kind, xes, b) => {
         let xes = xes->List.map(xeToString)
         let b = b->printBlock
         {
-          ann: exprLetToString(
+          ann: letLikeList(
+            LetKind.toString(kind) |> Print.fromString,
             xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
             b.ann.print,
           ),
-          it: Let(xes, b),
-        }
-      }
-    | Letrec(xes, b) => {
-        let xes = xes->List.map(xeToString)
-        let b = b->printBlock
-        {
-          ann: exprLetrecToString(
-            xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
-            b.ann.print,
-          ),
-          it: Letrec(xes, b),
+          it: Let(kind, xes, b),
         }
       }
     | Cnd(ebs, ob) => {
@@ -1258,22 +1194,18 @@ module SMoLPrinter = {
           it: If(e_cnd, e_thn, e_els),
         }
       }
-    | And(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1)
-      let e_2 = printExp(e_2)
+    | And(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k))
       {
-        ann: exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
-        it: And(e_1, e_2, e_ns)
+        ann: exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+        it: And(e_ns)
       }
     }
-    | Or(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1)
-      let e_2 = printExp(e_2)
+    | Or(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k))
       {
-        ann: exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
-        it: Or(e_1, e_2, e_ns)
+        ann: exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+        it: Or(e_ns)
       }
     }
     | Bgn(es, e) => {
@@ -1549,8 +1481,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                   | Bgn(es, e) => Bgn(es, ie(e))
                   | If(ec, et, el) => If(ec, ie(et), ie(el))
                   | Cnd(ebs, ob) => Cnd(iebs(ebs), iob(ob))
-                  | Let(bs, b) => Let(bs, ib(b))
-                  | Letrec(bs, b) => Let(bs, ib(b))
+                  | Let(kind, bs, b) => Let(kind, bs, ib(b))
                   | AppPrm(VecSet, es) => AppPrm(VecSet, es)
                   | AppPrm(PairSetLeft, es) => AppPrm(PairSetLeft, es)
                   | AppPrm(PairSetRight, es) => AppPrm(PairSetRight, es)
@@ -1793,6 +1724,17 @@ module PYPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -1899,6 +1841,10 @@ module PYPrinter = {
         }
       }
     | (Cons, _) => raisePrintError("List is not supported by Python")
+    | (List, _) => raisePrintError("List is not supported by Python")
+    | (EmptyP, _) => raisePrintError("List is not supported by Python.")
+    | (First, _) => raisePrintError("List is not supported by Python.")
+    | (Rest, _) => raisePrintError("List is not supported by Python.")
     | _ =>
       raisePrintError(
         `Python doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -1957,12 +1903,20 @@ module PYPrinter = {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
   }
 
-  let exprAndToString = (e_1, e_2, e_ns) => {
-    Print.concat(" and ", list{e_1, e_2, ...e_ns})
+  let exprAndToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`True`
+    } else {
+      Print.concat(" and ", list{...e_ns})
+    }
   }
 
-  let exprOrToString = (e_1, e_2, e_ns) => {
-    Print.concat(" or ", list{e_1, e_2, ...e_ns})
+  let exprOrToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`False`
+    } else {
+      Print.concat(" or ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -2076,8 +2030,7 @@ module PYPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Python")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Python")
+    | Let(_kind, _xes, _b) => raisePrintError("let-expressions are not supported by Python")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -2126,30 +2079,26 @@ module PYPrinter = {
         }
       }
 
-    | And(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false), env)
-      let e_2 = printExp(e_2, Expr(false), env)
+    | And(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: And(e_1, e_2, e_ns)
+        it: And(e_ns)
       }
     }
-    | Or(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false), env)
-      let e_2 = printExp(e_2, Expr(false), env)
+    | Or(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: Or(e_1, e_2, e_ns)
+        it: Or(e_ns)
       }
     }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Python")
@@ -2590,6 +2539,17 @@ module JSPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -2692,10 +2652,14 @@ module JSPrinter = {
         let e1 = e1(true)
         {
           it: (Next, list{e1}),
-          ann: consumeContextVoid(ctx, ann, Print.s`${e1.ann.print}.next()`),
+          ann: consumeContextVoid(ctx, ann, Print.s`${e1.ann.print}.next().value`),
         }
       }
     | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | (List, _) => raisePrintError("List is not supported by JavaScript")
+    | (EmptyP, _) => raisePrintError("List is not supported by JavaScript")
+    | (First, _) => raisePrintError("List is not supported by JavaScript")
+    | (Rest, _) => raisePrintError("List is not supported by JavaScript")
     | _ =>
       raisePrintError(
         `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -2751,12 +2715,20 @@ module JSPrinter = {
     Print.s`${e_cnd} ? ${e_thn} : ${e_els}`
   }
 
-  let exprAndToString = (e_1, e_2, e_ns) => {
-    Print.concat(" && ", list{e_1, e_2, ...e_ns})
+  let exprAndToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`true`
+    } else {
+      Print.concat(" && ", list{...e_ns})
+    }
   }
 
-  let exprOrToString = (e_1, e_2, e_ns) => {
-    Print.concat(" || ", list{e_1, e_2, ...e_ns})
+  let exprOrToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`false`
+    } else {
+      Print.concat(" || ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -2869,8 +2841,7 @@ module JSPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by JavaScript")
+    | Let(_k, _xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -2919,30 +2890,26 @@ module JSPrinter = {
         }
       }
 
-    | And(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false))
-      let e_2 = printExp(e_2, Expr(false))
+    | And(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: And(e_1, e_2, e_ns)
+        it: And(e_ns)
       }
     }
-    | Or(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false))
-      let e_2 = printExp(e_2, Expr(false))
+    | Or(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: Or(e_1, e_2, e_ns)
+        it: Or(e_ns)
       }
     }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by JavaScript")
@@ -3089,6 +3056,7 @@ module JSPrinter = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Vec(list{}) => `[]`
           | Vec(es) => `[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
@@ -3284,12 +3252,12 @@ module PCPrinter = {
     switch o {
     | Lt => "<"
     | NumEq => "=="
-    | Eq => "==="
     | Gt => ">"
     | Le => "<="
     | Ge => ">="
     | Ne => "!="
-    | Equal => raisePrintError("Pseudocode doesn't not have structural equality.")
+    | Eq => "==="
+    | Equal => "=="
     }
   }
 
@@ -3315,6 +3283,17 @@ module PCPrinter = {
             ctx,
             ann,
             Print.s`${e1.ann.print} ${Print.fromString(stringOfCmp(o))} ${e2.ann.print}`,
+          ),
+        }
+      }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
           ),
         }
       }
@@ -3428,9 +3407,37 @@ module PCPrinter = {
         let e2 = e2(false)
         {
           it: (Cons, list{e1, e2}),
-          ann: consumeContext(ctx, ann, Print.s`list[${e1.ann.print}, ...${e2.ann.print}]`),
+          ann: consumeContext(ctx, ann, Print.s`list[ ${e1.ann.print}, ...${e2.ann.print} ]`),
         }
       }
+    | (List, es) => {
+      let es = es -> List.map(e => e(false))
+      {
+        it: (List, es),
+        ann: consumeContext(ctx, ann, Print.s`list[ ${Print.concat(", ", es->List.map(e=>e.ann.print)) |> Print.dummy} ]`)
+      }
+    }
+    | (EmptyP, list{e1}) => {
+      let e1 = e1(false)
+      {
+        it: (EmptyP, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`is-empty(${e1.ann.print})`)
+      }
+    }
+    | (First, list{e1}) => {
+      let e1 = e1(true)
+      {
+        it: (First, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.first`)
+      }
+    }
+    | (Rest, list{e1}) => {
+      let e1 = e1(true)
+      {
+        it: (Rest, list{e1}),
+        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.rest`)
+      }
+    }
     | _ =>
       raisePrintError(
         `Pseudocode doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -3469,6 +3476,10 @@ module PCPrinter = {
   let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
+  let exprBeginToString = (es, e) => {
+    Print.s`begin:${indentBlock(Print.concat("\n", list{...es, e}) |> Print.dummy, 2)}\nend`
+  }
+
   let ifStat = (cnd, thn, els) => {
     Print.s`if ${cnd}:${indentBlock(thn, 2)}${switch els {
     | None => Print.s``
@@ -3492,12 +3503,20 @@ module PCPrinter = {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
   }
 
-  let exprAndToString = (e_1, e_2, e_ns) => {
-    Print.concat(" ∧ ", list{e_1, e_2, ...e_ns})
+  let exprAndToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`True`
+    } else {
+      Print.concat(" ∧ ", list{...e_ns})
+    }
   }
 
-  let exprOrToString = (e_1, e_2, e_ns) => {
-    Print.concat(" ∨ ", list{e_1, e_2, ...e_ns})
+  let exprOrToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`False`
+    } else {
+      Print.concat(" ∨ ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -3516,7 +3535,38 @@ module PCPrinter = {
     }
   }
 
-  let rec printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
+  let exprLetToString = (k, xes: list<print<kindedSourceLocation>>, b) => {
+    let ann = {
+      open! LetKind
+      switch k {
+        | Plain => ""
+        | Nested => "*"
+        | Recursive => "rec"
+      }
+    }
+    let xes = Print.concat("\n", xes) |> Print.dummy
+    Print.s`let${Print.fromString(ann)}:${indentBlock(xes, 2)}\ndo:${indentBlock(b, 2)}\nend`
+  }
+
+  let rec printBind = ({ ann: sourceLocation, it: (x, e)}: bind<sourceLocation>): bind<printAnn> => {
+    let x = x->symbolToString
+    let e = e->printExp(Expr(false))
+    let print = {
+      it: Print.s`${x.ann.print} = ${e.ann.print}`,
+      ann: Some({
+        nodeKind: Bind,
+        sourceLocation
+      })
+    }
+    {
+      it: (x, e),
+      ann: {
+        sourceLocation,
+        print
+      },
+  }
+  }
+  and printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
     let ann = it => {
       it,
       ann: Some({
@@ -3610,8 +3660,18 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by Pseudocode")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by Pseudocode")
+    | Let(k, xes, b) => {
+      let xes = xes->List.map(printBind)
+      let b = b->printBlock(ctx)
+      {
+          it: Let(k, xes, b),
+          ann: consumeContext(
+            ctx,
+            ann,
+            exprLetToString(k, xes->List.map(xe => xe.ann.print), b.ann.print),
+          )->addSourceLocation,
+      }
+    }
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -3660,33 +3720,41 @@ module PCPrinter = {
         }
       }
 
-    | And(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false))
-      let e_2 = printExp(e_2, Expr(false))
+    | And(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: And(e_1, e_2, e_ns)
+        it: And(e_ns)
       }
     }
-    | Or(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, Expr(false))
-      let e_2 = printExp(e_2, Expr(false))
+    | Or(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: Or(e_1, e_2, e_ns)
+        it: Or(e_ns)
       }
     }
-    | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Pseudocode")
+    | Bgn(es, e) => {
+      let es = es->List.map(e_k => printExp(e_k, Expr(false)))
+      let e = printExp(e, Expr(false))
+      {
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          exprBeginToString(es->List.map(e => e.ann.print), e.ann.print),
+        )->addSourceLocation,
+        it: Bgn(es, e)
+      }
+
+    }
     }
   }
   and printDef = ({ann: sourceLocation, it: d}): definition<printAnn> => {
@@ -3790,7 +3858,7 @@ module PCPrinter = {
           ann: annOfPrint(Group(list{e.ann.print})),
         }
       }
-    | (_, Expr(_)) => raisePrintError("Pseudocode blocks can't be used as expressions in general")
+    | (_, Expr(_)) => raisePrintError("Pseudocode blocks can't be used as expressions in general.")
     | (it, Stat(ctx)) => printBlockHelper({it, ann: sourceLocation}, ctx)
     }
   }
@@ -3830,7 +3898,7 @@ module PCPrinter = {
           | Some(_) => ""
           }
           let content = switch content {
-          | Lst(_) => raisePrintError("Lists are not supported in Pseudocode.")
+          | Lst(es) => `list[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           | Vec(es) => `vec[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
@@ -4027,6 +4095,17 @@ module SCPrinter = {
           ),
         }
       }
+    | (ZeroP, list{e1}) => {
+        let e1 = e1(true)
+        {
+          it: (ZeroP, list{e1}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print} == 0`,
+          ),
+        }
+      }
     | (PairNew, list{e1, e2}) => {
         let e1 = e1(false)
         let e2 = e2(false)
@@ -4128,10 +4207,14 @@ module SCPrinter = {
           ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.next()`),
         }
       }
-    | (Cons, _) => raisePrintError("List is not supported by JavaScript")
+    | (Cons, _) => raisePrintError("List is not supported by Scala.")
+    | (List, _) => raisePrintError("List is not supported by Scala.")
+    | (EmptyP, _) => raisePrintError("List is not supported by Scala.")
+    | (First, _) => raisePrintError("List is not supported by Scala.")
+    | (Rest, _) => raisePrintError("List is not supported by Scala.")
     | _ =>
       raisePrintError(
-        `JavaScript doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+        `Scala doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
             List.length(es),
           )} parameter(s).`,
       )
@@ -4183,12 +4266,20 @@ module SCPrinter = {
     Print.s`if (${e_cnd}) {${indentBlock(e_thn, 2)}\n} else {${indentBlock(e_els, 2)}\n}`
   }
 
-  let exprAndToString = (e_1, e_2, e_ns) => {
-    Print.concat(" && ", list{e_1, e_2, ...e_ns})
+  let exprAndToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`true`
+    } else {
+      Print.concat(" && ", list{...e_ns})
+    }
   }
 
-  let exprOrToString = (e_1, e_2, e_ns) => {
-    Print.concat(" || ", list{e_1, e_2, ...e_ns})
+  let exprOrToString = (e_ns) => {
+    if (e_ns == list{}) {
+      Print.s`false`
+    } else {
+      Print.concat(" || ", list{...e_ns})
+    }
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -4280,8 +4371,7 @@ module SCPrinter = {
           )->addSourceLocation,
         }
       }
-    | Let(_xes, _b) => raisePrintError("let-expressions are not supported by JavaScript")
-    | Letrec(_xes, _b) => raisePrintError("letrec-expressions are not supported by JavaScript")
+    | Let(_k, _xes, _b) => raisePrintError("let-expressions are not supported by Scala.")
     | Cnd(ebs, ob) => {
         let ebs = ebs->List.map(eb => eb->ebToString)
         let ob = ob->obToString
@@ -4308,33 +4398,29 @@ module SCPrinter = {
           it: If(e_cnd, e_thn, e_els),
         }
       }
-    | And(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, false)
-      let e_2 = printExp(e_2, false)
+    | And(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprAndToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: And(e_1, e_2, e_ns)
+        it: And(e_ns)
       }
     }
-    | Or(e_1, e_2, e_ns) => {
-      let e_1 = printExp(e_1, false)
-      let e_2 = printExp(e_2, false)
+    | Or(e_ns) => {
       let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
       {
         ann: consumeContextWrap(
           ctx,
           ann,
-          exprOrToString(e_1.ann.print, e_2.ann.print, e_ns->List.map(e_k => e_k.ann.print)),
+          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
         )->addSourceLocation,
-        it: Or(e_1, e_2, e_ns)
+        it: Or(e_ns)
       }
     }
-    | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by JavaScript")
+    | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Scala.")
     }
   }
   and printDef = ({ann: sourceLocation, it: d}): definition<printAnn> => {
@@ -4451,7 +4537,7 @@ module SCPrinter = {
           | Some(_) => ""
           }
           let content = switch content {
-          | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Lst(_) => raisePrintError("Lists are not supported in Scala.")
           | Vec(es) =>
             makeVec(es->List.map(p)->List.map(Print.fromString))->Print.dummy->Print.toString
           }
@@ -4543,7 +4629,7 @@ module SCPrinter = {
 module type Translator = {
   let translateName: string => string
   // print terms, interleaved with whitespace
-  let translateOutput: string => string
+  let translateOutput: (string, ~sep: string=?) => string
   let translateStandAloneTerm: string => string
   // print runnable full programs
   let translateProgram: (bool, string) => string
@@ -4556,9 +4642,9 @@ module TranslateError = {
     | KindError(string)
   let toString = t => {
     switch t {
-    | ParseError(err) => ParseError.toString(err)
-    | PrintError(err) => err
-    | KindError(err) => err
+    | ParseError(err) => `ParseError: ${ParseError.toString(err)}`
+    | PrintError(err) => `PrintError: ${err}`
+    | KindError(err) => `KindError: ${err}`
     }
   }
 }
@@ -4574,11 +4660,11 @@ let programAsTerm = (p: program<_>): term<_> => {
 
 module MakeTranslator = (P: Printer) => {
   let translateName = P.printName
-  let translateOutput = src => {
+  let translateOutput = (src, ~sep: string=" ") => {
     switch Parser.parseOutput(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | output =>
-      switch P.printOutput(output) {
+      switch P.printOutput(~sep, output) {
       | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
       | output => output
       }
