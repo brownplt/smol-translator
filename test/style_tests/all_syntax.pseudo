@@ -77,7 +77,7 @@ let*:
 do:
   print(vec[ x, y ])
 end
-let rec:
+letrec:
   x = lam ():
     return y
   end

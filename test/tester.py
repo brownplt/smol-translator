@@ -103,12 +103,16 @@ def run_scala_file(test):
     return actual_result
 
 for test_path in ["style_tests", "test_cases"]:
+    print(f"Working on {test_path}")
+
+    print("- Testing smol programs")
     suffix = ".smol"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
         # i = i + 1
         # if i > 10:
         #     break
+        print(f"-- {test}")
         program = open(test).read()
         try:
             wished_results = "{}.smol.txt".format(test[:-len(suffix)])
@@ -132,12 +136,14 @@ for test_path in ["style_tests", "test_cases"]:
             print("----------")
 
 
+    print("- Testing JavaScript programs")
     suffix = ".js"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
         # i = i + 1
         # if i > 10:
         #     break
+        print(f"-- {test}")
         program = open(test).read()
         try:
             wished_results = "{}.js.txt".format(test[:-len(suffix)])
@@ -161,12 +167,14 @@ for test_path in ["style_tests", "test_cases"]:
             print("----------")
 
 
+    print("- Testing Python programs")
     suffix = ".py"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
         # i = i + 1
         # if i > 10:
         #     break
+        print(f"-- {test}")
         program = open(test).read()
         try:
             wished_results = "{}.py.txt".format(test[:-len(suffix)])
@@ -189,12 +197,14 @@ for test_path in ["style_tests", "test_cases"]:
             print("No expected output.")
             print("----------")
 
+    print("- Testing Scala programs")
     suffix = ".scala"
     # i = 0
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
         # i = i + 1
         # if i > 10:
         #     break
+        print(f"-- {test}")
         program = open(test).read()
         try:
             wished_results = "{}.scala.txt".format(test[:-len(suffix)])

@@ -4,3 +4,4 @@ lib/
 test/tutorials.json
 test_result.out
 tmp.scala
+tmp.smol
