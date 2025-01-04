@@ -4,16 +4,15 @@ false
 7
 -1
 12
-3
+2
 false
 true
 true
 false
 false
 false
-false
-[  ]
-[ 1, [  ], [ 2, 3 ], 4 ]
+[]
+[ 1, [], [ 2, 3 ], 4 ]
 [ 1, 2 ]
 [ 1, 2 ]
 3
@@ -23,9 +22,6 @@ false
 3
 4
 false
-1
-2
-3
 "no"
 "no"
 true

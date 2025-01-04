@@ -5896,7 +5896,8 @@ function printOutputlet$2(o) {
                   Error: new Error()
                 };
           }
-          content$1 = "[ " + Belt_List.toArray(Belt_List.map(content._0, p)).join(", ") + " ]";
+          var es = content._0;
+          content$1 = es ? "[ " + Belt_List.toArray(Belt_List.map(es, p)).join(", ") + " ]" : "[]";
           return i + content$1;
       
     }

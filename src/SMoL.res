@@ -3056,6 +3056,7 @@ module JSPrinter = {
           }
           let content = switch content {
           | Lst(_) => raisePrintError("Lists are not supported in JavaScript.")
+          | Vec(list{}) => `[]`
           | Vec(es) => `[ ${concat(", ", es->List.map(p)->List.toArray)} ]`
           }
           `${i}${content}`
