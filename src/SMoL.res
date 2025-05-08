@@ -990,21 +990,77 @@ module Type = {
     and cd = (env, d: definition<sourceLocation>) => {
       switch d.it {
         | Var(x, e) => addEq(Var(x.ann), Var(e.ann)); ce(env, e)
-        | Fun(f, xs, b) => addEq(Var(f.ann), Funof({
-          args: xs->List.map(x=>Var(x.ann)),
-          out: Var(b.ann)
-        })); cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b)
+        | Fun(f, xs, b) => addEq(Var(f.ann), cf(env, xs, b))
         | GFun(f, xs, b) => raise(TypeError("Generator"))
       }
+    }
+    and cf = (env, xs, b) => {
+      cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b);
+      Funof({
+          args: xs->List.map(x=>Var(x.ann)),
+          out: Var(b.ann)
+        })
     }
     and ce = (env, e: expression<sourceLocation>) => {
       switch e.it {
         | Con(c) => addEq(Var(e.ann), tc(c))
         | Ref(x) => addEq(Var(e.ann), Dict.getUnsafe(env, x))
-        | _ => ()
+        | Set(x, e) => addEq(Dict.getUnsafe(env, x.it), Var(e.ann)); ce(env, e);    addEq(Var(e.ann), Uni)
+        | Lam(xs, b) => addEq(Var(e.ann), cf(env, xs, b))
+        | Let(k, bs, b) => raise(TypeError("let"))
+        | AppPrm(p, es) => es->List.forEach(e=>ce(env,e)); ca(p, es->List.map(e=>Var(e.ann)), Var(e.ann))
+        | App(f, args) => {
+          ce(env, f);
+          args->List.forEach(e=>ce(env,e));
+          addEq(
+            Var(f.ann),
+            Funof({
+              args: args->List.map(arg=>Var(arg.ann)),
+              out: Var(e.ann)
+            }))
+        }
+        | Bgn(es, e) => raise(TypeError("begin"))
+        | If(cnd, thn, els) => {
+          ce(env, cnd);
+          ce(env, thn);
+          ce(env, els);
+          addEq(Var(cnd.ann), Lgc);
+          addEq(Var(thn.ann), Var(e.ann));
+          addEq(Var(els.ann), Var(e.ann));
+        }
+        | And(es) => {
+          es->List.forEach(
+            e => {
+              ce(env, e);
+              addEq(Var(e.ann), Lgc)
+            }
+          )
+          addEq(Var(e.ann), Lgc)
+        }
+        | Or(es) =>{
+          es->List.forEach(
+            e => {
+              ce(env, e);
+              addEq(Var(e.ann), Lgc)
+            }
+          )
+          addEq(Var(e.ann), Lgc)
+        }
+        | Cnd(branches, els) => {
+          raise(TypeError("conditional"))
+        }
+        | GLam(xs, b) => raise(TypeError("g lambda"))
+        | Yield(e) => raise(TypeError("g lambda"))
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
+      switch b.it {
+        | BRet(e) => ce(env, e); addEq(Var(b.ann), Var(e.ann))
+        | BCons(t, b2) => ct(env, t); cb(env, b); addEq(Var(b.ann), Var(b2.ann))
+      }
+    }
+    and ca = (p: Primitive.t, es: list<t>, o: t) => {
+      // TODO
       ()
     }
     cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
