@@ -941,8 +941,9 @@ module KindedSourceLocation = {
 
 type exn += TypeError(string)
 module Type = {
+  type t_var = Src(sourceLocation) | Id(int)
   type rec t =
-  | Var(sourceLocation)
+  | Var(t_var)
   | Uni
   | Num
   | Lgc
@@ -950,6 +951,16 @@ module Type = {
   | Vecof(t)
   | Lstof(t)
   | Funof({args: list<t>, out: t})
+
+  let fresh = {
+    let n = ref(0)
+    () => {
+      let i = n.contents;
+      n := i + 1;
+      Var(Id(i))
+    }
+  }
+  let var = (srcLoc) => Var(Src(srcLoc))
 
   type eq = (t, t)
 
@@ -961,7 +972,7 @@ module Type = {
     let makeEnv = (xs, baseEnv) => {
       let env = Dict.copy(baseEnv)
       xs->List.forEach(x => {
-        Dict.set(env, x.it, Var(x.ann))
+        Dict.set(env, x.it, var(x.ann))
       })
       env
     }
@@ -975,9 +986,82 @@ module Type = {
         | Sym(string) => raise(TypeError("Symbol"))
       }
     }
+    let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
+      switch cmp {
+        | Lt => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | NumEq => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Eq => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Gt => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Le => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Ge => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Ne => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Equal => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Num });
+        }
+      }
+    }
     let tp = (p: Primitive.t, arity: int) => {
       switch p {
-        | _ => Num // todo
+        | Maybe => raise(TypeError("Maybe"))
+        | Arith(arith) => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Cmp(cmp) => tp_cmp(cmp, arity)
+        | PairNew => {
+          let t = fresh();
+          Funof({ args: list{t, t}, out: Vecof(t) })
+        }
+        | PairRefLeft => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t)}, out: t })
+        }
+        | PairRefRight => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t)}, out: t })
+        }
+        | PairSetLeft => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), t}, out: Uni })
+        }
+        | PairSetRight => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), t}, out: Uni })
+        }
+        | VecNew => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Vecof(t) })
+        }
+        | VecRef => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), Num }, out: t })
+        }
+        | VecSet => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), Num, t}, out: Uni })
+        }
+        | VecLen => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t) }, out: Num })
+        }
+        | Err => {
+          let t1 = fresh();
+          let t2 = fresh();
+          Funof({ args: list{t1}, out: t2 })
+        }
+        | Not => Funof({ args: list{Lgc}, out: Lgc })
+        | ZeroP => {
+          Funof({ args: list{Num}, out: Lgc })
+        }
+        | Print => {
+          let t = fresh()
+          Funof({ args: list{t}, out: Uni })
+        }
+        | Next => raise(TypeError("Next"))
+        | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
+        | Cons => raise(TypeError("Cons"))
+        | List => raise(TypeError("List"))
+        | EmptyP => raise(TypeError("EmptyP"))
+        | First => raise(TypeError("First"))
+        | Rest => raise(TypeError("Rest"))
       }
     }
     let rec cp = (env, p: program<sourceLocation>) => {
@@ -994,34 +1078,34 @@ module Type = {
     }
     and cd = (env, d: definition<sourceLocation>) => {
       switch d.it {
-        | Var(x, e) => addEq(Var(x.ann), Var(e.ann)); ce(env, e)
-        | Fun(f, xs, b) => addEq(Var(f.ann), cf(env, xs, b))
+        | Var(x, e) => addEq(var(x.ann), var(e.ann)); ce(env, e)
+        | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
         | GFun(f, xs, b) => raise(TypeError("Generator"))
       }
     }
     and cf = (env, xs, b) => {
       cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b);
       Funof({
-          args: xs->List.map(x=>Var(x.ann)),
-          out: Var(b.ann)
+          args: xs->List.map(x=>var(x.ann)),
+          out: var(b.ann)
         })
     }
     and ce = (env, e: expression<sourceLocation>) => {
       switch e.it {
-        | Con(c) => addEq(Var(e.ann), tc(c))
-        | Ref(x) => addEq(Var(e.ann), Dict.getUnsafe(env, x))
-        | Set(x, e) => addEq(Dict.getUnsafe(env, x.it), Var(e.ann)); ce(env, e);    addEq(Var(e.ann), Uni)
-        | Lam(xs, b) => addEq(Var(e.ann), cf(env, xs, b))
+        | Con(c) => addEq(var(e.ann), tc(c))
+        | Ref(x) => addEq(var(e.ann), Dict.getUnsafe(env, x))
+        | Set(x, e) => addEq(Dict.getUnsafe(env, x.it), var(e.ann)); ce(env, e);    addEq(var(e.ann), Uni)
+        | Lam(xs, b) => addEq(var(e.ann), cf(env, xs, b))
         | Let(k, bs, b) => raise(TypeError("let"))
-        | AppPrm(p, es) => es->List.forEach(e=>ce(env,e)); ca(p, es->List.map(e=>Var(e.ann)), Var(e.ann))
+        | AppPrm(p, es) => es->List.forEach(e=>ce(env,e)); ca(p, es->List.map(e=>var(e.ann)), var(e.ann))
         | App(f, args) => {
           ce(env, f);
           args->List.forEach(e=>ce(env,e));
           addEq(
-            Var(f.ann),
+            var(f.ann),
             Funof({
-              args: args->List.map(arg=>Var(arg.ann)),
-              out: Var(e.ann)
+              args: args->List.map(arg=>var(arg.ann)),
+              out: var(e.ann)
             }))
         }
         | Bgn(es, e) => raise(TypeError("begin"))
@@ -1029,27 +1113,27 @@ module Type = {
           ce(env, cnd);
           ce(env, thn);
           ce(env, els);
-          addEq(Var(cnd.ann), Lgc);
-          addEq(Var(thn.ann), Var(e.ann));
-          addEq(Var(els.ann), Var(e.ann));
+          addEq(var(cnd.ann), Lgc);
+          addEq(var(thn.ann), var(e.ann));
+          addEq(var(els.ann), var(e.ann));
         }
         | And(es) => {
           es->List.forEach(
             e => {
               ce(env, e);
-              addEq(Var(e.ann), Lgc)
+              addEq(var(e.ann), Lgc)
             }
           )
-          addEq(Var(e.ann), Lgc)
+          addEq(var(e.ann), Lgc)
         }
         | Or(es) =>{
           es->List.forEach(
             e => {
               ce(env, e);
-              addEq(Var(e.ann), Lgc)
+              addEq(var(e.ann), Lgc)
             }
           )
-          addEq(Var(e.ann), Lgc)
+          addEq(var(e.ann), Lgc)
         }
         | Cnd(branches, els) => {
           raise(TypeError("conditional"))
@@ -1060,8 +1144,8 @@ module Type = {
     }
     and cb = (env, b: block<sourceLocation>) => {
       switch b.it {
-        | BRet(e) => ce(env, e); addEq(Var(b.ann), Var(e.ann))
-        | BCons(t, b2) => ct(env, t); cb(env, b); addEq(Var(b.ann), Var(b2.ann))
+        | BRet(e) => ce(env, e); addEq(var(b.ann), var(e.ann))
+        | BCons(t, b2) => ct(env, t); cb(env, b); addEq(var(b.ann), var(b2.ann))
       }
     }
     and ca = (p: Primitive.t, args: list<t>, out) => {
