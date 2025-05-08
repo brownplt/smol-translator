@@ -935,6 +935,76 @@ module KindedSourceLocation = {
   }
 }
 
+
+
+
+
+type exn += TypeError(string)
+module Type = {
+  type rec t =
+  | Var(sourceLocation)
+  | Uni
+  | Num
+  | Lgc
+  | Str
+  | Vecof(t)
+  | Lstof(t)
+  | Funof({args: list<t>, out: t})
+
+  type eq = (t, t)
+
+  let collectEqs = (p: program<sourceLocation>): array<eq> => {
+    let eqs = []
+    let addEq = (a, b) => {
+      Array.push(eqs, (a, b))
+    }
+    let makeEnv = (xs, baseEnv) => {
+      let env = Dict.copy(baseEnv)
+      xs->List.forEach(x => {
+        Dict.set(env, x.it, x.ann)
+      })
+      env
+    }
+    let rec cp = (env, p: program<sourceLocation>) => {
+      switch p.it {
+        | PNil => ()
+        | PCons(t, p) => ct(env, t); cp(env, p)
+      }
+    }
+    and ct = (env, t: term<sourceLocation>) => {
+      switch t.it {
+        | Def(d) => cd(env, d)
+        | Exp(e) => ignore(ce(env, e))
+      }
+    }
+    and cd = (env, d: definition<sourceLocation>) => {
+      switch d.it {
+        | Var(x, e) => addEq(Var(x.ann), Var(e.ann)); ce(env, e)
+        | Fun(f, xs, b) => addEq(Var(f.ann), Funof({
+          args: xs->List.map(x=>Var(x.ann)),
+          out: Var(b.ann)
+        })); cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b)
+        | GFun(f, xs, b) => raise(TypeError("Generator"))
+      }
+    }
+    and ce = (env, e: expression<sourceLocation>) => {
+      ()
+    }
+    and cb = (env, b: block<sourceLocation>) => {
+      ()
+    }
+    cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
+    eqs
+  }
+}
+
+
+
+
+
+
+
+
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
 module type Printer = {
