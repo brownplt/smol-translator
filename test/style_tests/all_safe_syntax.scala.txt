@@ -12,7 +12,7 @@ false
 false
 false
 Buffer()
-Buffer(1, Buffer(), Buffer(2, 3), 4)
+Buffer(Buffer(1), Buffer(), Buffer(2, 3), Buffer(4))
 Buffer(1, 2)
 Buffer(1, 2)
 3

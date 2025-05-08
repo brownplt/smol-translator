@@ -18,7 +18,7 @@ def f(y : Int) =
   y + 1
 x = 456
 println(Buffer())
-println(Buffer(1, Buffer(), Buffer(2, 3), 4))
+println(Buffer(Buffer(1), Buffer(), Buffer(2, 3), Buffer(4)))
 println(Buffer(1, 2))
 println(Buffer(1, 2))
 println(Buffer(1, 2, 3).length)

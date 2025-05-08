@@ -3,6 +3,7 @@
 import * as Caml_obj from "rescript/lib/es6/caml_obj.js";
 import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
+import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
 import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
@@ -1643,6 +1644,909 @@ var KindedSourceLocation = {
   toString: toString$8
 };
 
+var $$TypeError = /* @__PURE__ */Caml_exceptions.create("SMoL.TypeError");
+
+function s_var(t_var) {
+  if (t_var.TAG === "Src") {
+    return SExpression.SourceLocation.toString(t_var._0);
+  } else {
+    return t_var._0.toString();
+  }
+}
+
+function toString$9(t) {
+  if (typeof t !== "object") {
+    switch (t) {
+      case "Uni" :
+          return "Uni";
+      case "Num" :
+          return "Num";
+      case "Lgc" :
+          return "Lgc";
+      case "Str" :
+          return "Str";
+      
+    }
+  } else {
+    switch (t.TAG) {
+      case "Var" :
+          return "Var(" + s_var(t._0) + ")";
+      case "Vecof" :
+          return "Vecof(" + toString$9(t._0) + ")";
+      case "Lstof" :
+          return "Lstof(" + toString$9(t._0) + ")";
+      case "Funof" :
+          return "(" + Core__List.toArray(Core__List.map(t.args, toString$9)).join(", ") + ") -> " + toString$9(t.out);
+      
+    }
+  }
+}
+
+var n = {
+  contents: 0
+};
+
+function fresh() {
+  var i = n.contents;
+  n.contents = i + 1 | 0;
+  return {
+          TAG: "Var",
+          _0: {
+            TAG: "Id",
+            _0: i
+          }
+        };
+}
+
+function collectEqs(p) {
+  var eqs = [];
+  var addEq = function (a, b) {
+    eqs.push([
+          a,
+          b
+        ]);
+  };
+  var makeEnv = function (xs, baseEnv) {
+    var env = Object.assign({}, baseEnv);
+    Core__List.forEach(xs, (function (x) {
+            env[x.it] = {
+              TAG: "Var",
+              _0: {
+                TAG: "Src",
+                _0: x.ann
+              }
+            };
+          }));
+    return env;
+  };
+  var lookup = function (env, x) {
+    var v = env[x];
+    if (v !== undefined) {
+      return v;
+    } else {
+      return fresh();
+    }
+  };
+  var tc = function (c) {
+    if (typeof c !== "object") {
+      if (c === "Uni") {
+        return "Uni";
+      }
+      throw {
+            RE_EXN_ID: $$TypeError,
+            _1: "list",
+            Error: new Error()
+          };
+    } else {
+      switch (c.TAG) {
+        case "Num" :
+            return "Num";
+        case "Lgc" :
+            return "Lgc";
+        case "Str" :
+            return "Str";
+        case "Sym" :
+            throw {
+                  RE_EXN_ID: $$TypeError,
+                  _1: "Symbol",
+                  Error: new Error()
+                };
+        
+      }
+    }
+  };
+  var tp = function (p, arity) {
+    var exit = 0;
+    if (typeof p === "object") {
+      if (p.TAG === "Arith") {
+        return {
+                TAG: "Funof",
+                args: Core__List.make(arity, "Num"),
+                out: "Num"
+              };
+      } else {
+        var cmp = p._0;
+        switch (cmp) {
+          case "Eq" :
+          case "Equal" :
+              break;
+          default:
+            return {
+                    TAG: "Funof",
+                    args: Core__List.make(arity, "Num"),
+                    out: "Lgc"
+                  };
+        }
+        var t = fresh();
+        return {
+                TAG: "Funof",
+                args: Core__List.make(arity, t),
+                out: "Lgc"
+              };
+      }
+    }
+    switch (p) {
+      case "Maybe" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "Maybe",
+                Error: new Error()
+              };
+      case "PairNew" :
+          var t$1 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t$1,
+                    tl: {
+                      hd: t$1,
+                      tl: /* [] */0
+                    }
+                  },
+                  out: {
+                    TAG: "Vecof",
+                    _0: t$1
+                  }
+                };
+      case "PairRefLeft" :
+      case "PairRefRight" :
+          exit = 1;
+          break;
+      case "PairSetLeft" :
+      case "PairSetRight" :
+          exit = 2;
+          break;
+      case "VecNew" :
+          var t$2 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: Core__List.make(arity, t$2),
+                  out: {
+                    TAG: "Vecof",
+                    _0: t$2
+                  }
+                };
+      case "VecRef" :
+          var t$3 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$3
+                    },
+                    tl: {
+                      hd: "Num",
+                      tl: /* [] */0
+                    }
+                  },
+                  out: t$3
+                };
+      case "VecSet" :
+          var t$4 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$4
+                    },
+                    tl: {
+                      hd: "Num",
+                      tl: {
+                        hd: t$4,
+                        tl: /* [] */0
+                      }
+                    }
+                  },
+                  out: "Uni"
+                };
+      case "VecLen" :
+          var t$5 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$5
+                    },
+                    tl: /* [] */0
+                  },
+                  out: "Num"
+                };
+      case "Err" :
+          var t1 = fresh();
+          var t2 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t1,
+                    tl: /* [] */0
+                  },
+                  out: t2
+                };
+      case "Not" :
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: "Lgc",
+                    tl: /* [] */0
+                  },
+                  out: "Lgc"
+                };
+      case "ZeroP" :
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: "Num",
+                    tl: /* [] */0
+                  },
+                  out: "Lgc"
+                };
+      case "Print" :
+          var t$6 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t$6,
+                    tl: /* [] */0
+                  },
+                  out: "Uni"
+                };
+      case "Next" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "Next",
+                Error: new Error()
+              };
+      case "StringAppend" :
+          return {
+                  TAG: "Funof",
+                  args: Core__List.make(arity, "Str"),
+                  out: "Str"
+                };
+      case "Cons" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "Cons",
+                Error: new Error()
+              };
+      case "List" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "List",
+                Error: new Error()
+              };
+      case "EmptyP" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "EmptyP",
+                Error: new Error()
+              };
+      case "First" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "First",
+                Error: new Error()
+              };
+      case "Rest" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "Rest",
+                Error: new Error()
+              };
+      
+    }
+    switch (exit) {
+      case 1 :
+          var t$7 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$7
+                    },
+                    tl: /* [] */0
+                  },
+                  out: t$7
+                };
+      case 2 :
+          var t$8 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$8
+                    },
+                    tl: {
+                      hd: t$8,
+                      tl: /* [] */0
+                    }
+                  },
+                  out: "Uni"
+                };
+      
+    }
+  };
+  var cp = function (env, _p) {
+    while(true) {
+      var p = _p;
+      var match = p.it;
+      if (typeof match !== "object") {
+        return ;
+      }
+      ct(env, match._0);
+      _p = match._1;
+      continue ;
+    };
+  };
+  var ct = function (env, t) {
+    var d = t.it;
+    if (d.TAG === "Def") {
+      var d$1 = d._0;
+      var match = d$1.it;
+      switch (match.TAG) {
+        case "Var" :
+            var e = match._1;
+            addEq({
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: match._0.ann
+                  }
+                }, {
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: e.ann
+                  }
+                });
+            return ce(env, e);
+        case "Fun" :
+            return addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: match._0.ann
+                        }
+                      }, cf(env, match._1, match._2));
+        case "GFun" :
+            throw {
+                  RE_EXN_ID: $$TypeError,
+                  _1: "Generator",
+                  Error: new Error()
+                };
+        
+      }
+    } else {
+      return ce(env, d._0);
+    }
+  };
+  var cf = function (env, xs, b) {
+    cb(makeEnv(Belt_List.concatMany([
+                  xs,
+                  xsOfBlock(b)
+                ]), env), b);
+    return {
+            TAG: "Funof",
+            args: Core__List.map(xs, (function (x) {
+                    return {
+                            TAG: "Var",
+                            _0: {
+                              TAG: "Src",
+                              _0: x.ann
+                            }
+                          };
+                  })),
+            out: {
+              TAG: "Var",
+              _0: {
+                TAG: "Src",
+                _0: b.ann
+              }
+            }
+          };
+  };
+  var ce = function (env, e) {
+    var the_t = {
+      TAG: "Var",
+      _0: {
+        TAG: "Src",
+        _0: e.ann
+      }
+    };
+    var c = e.it;
+    switch (c.TAG) {
+      case "Con" :
+          return addEq(the_t, tc(c._0));
+      case "Ref" :
+          return addEq(the_t, lookup(env, c._0));
+      case "Set" :
+          var e$1 = c._1;
+          addEq(lookup(env, c._0.it), {
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: e$1.ann
+                }
+              });
+          ce(env, e$1);
+          return addEq(the_t, "Uni");
+      case "Lam" :
+          return addEq(the_t, cf(env, c._0, c._1));
+      case "Let" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "let",
+                Error: new Error()
+              };
+      case "AppPrm" :
+          var es = c._1;
+          Core__List.forEach(es, (function (e) {
+                  ce(env, e);
+                }));
+          var p = c._0;
+          var args = Core__List.map(es, (function (e) {
+                  return {
+                          TAG: "Var",
+                          _0: {
+                            TAG: "Src",
+                            _0: e.ann
+                          }
+                        };
+                }));
+          return addEq({
+                      TAG: "Funof",
+                      args: args,
+                      out: the_t
+                    }, tp(p, Core__List.length(args)));
+      case "App" :
+          var args$1 = c._1;
+          var f = c._0;
+          ce(env, f);
+          Core__List.forEach(args$1, (function (e) {
+                  ce(env, e);
+                }));
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: f.ann
+                      }
+                    }, {
+                      TAG: "Funof",
+                      args: Core__List.map(args$1, (function (arg) {
+                              return {
+                                      TAG: "Var",
+                                      _0: {
+                                        TAG: "Src",
+                                        _0: arg.ann
+                                      }
+                                    };
+                            })),
+                      out: the_t
+                    });
+      case "Bgn" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "begin",
+                Error: new Error()
+              };
+      case "If" :
+          var els = c._2;
+          var thn = c._1;
+          var cnd = c._0;
+          ce(env, cnd);
+          ce(env, thn);
+          ce(env, els);
+          addEq({
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: cnd.ann
+                }
+              }, "Lgc");
+          addEq({
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: thn.ann
+                }
+              }, the_t);
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: els.ann
+                      }
+                    }, the_t);
+      case "And" :
+          Core__List.forEach(c._0, (function (e) {
+                  ce(env, e);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: e.ann
+                        }
+                      }, "Lgc");
+                }));
+          return addEq(the_t, "Lgc");
+      case "Or" :
+          Core__List.forEach(c._0, (function (e) {
+                  ce(env, e);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: e.ann
+                        }
+                      }, "Lgc");
+                }));
+          return addEq(the_t, "Lgc");
+      case "Cnd" :
+          Core__List.forEach(c._0, (function (param) {
+                  var thn = param[1];
+                  var cnd = param[0];
+                  ce(env, cnd);
+                  cb(makeEnv(xsOfBlock(thn), env), thn);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: cnd.ann
+                        }
+                      }, "Lgc");
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: thn.ann
+                        }
+                      }, the_t);
+                }));
+          return Core__Option.forEach(c._1, (function (els) {
+                        cb(makeEnv(xsOfBlock(els), env), els);
+                        addEq({
+                              TAG: "Var",
+                              _0: {
+                                TAG: "Src",
+                                _0: els.ann
+                              }
+                            }, the_t);
+                      }));
+      case "GLam" :
+      case "Yield" :
+          throw {
+                RE_EXN_ID: $$TypeError,
+                _1: "Generators are not supported",
+                Error: new Error()
+              };
+      
+    }
+  };
+  var cb = function (env, b) {
+    var the_t = {
+      TAG: "Var",
+      _0: {
+        TAG: "Src",
+        _0: b.ann
+      }
+    };
+    var e = b.it;
+    if (e.TAG === "BRet") {
+      var e$1 = e._0;
+      ce(env, e$1);
+      return addEq(the_t, {
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: e$1.ann
+                  }
+                });
+    }
+    var b$1 = e._1;
+    ct(env, e._0);
+    cb(env, b$1);
+    addEq(the_t, {
+          TAG: "Var",
+          _0: {
+            TAG: "Src",
+            _0: b$1.ann
+          }
+        });
+  };
+  cp(makeEnv(xsOfProgram(p), Object.fromEntries([])), p);
+  return eqs;
+}
+
+function inferType(p) {
+  try {
+    var eqs = collectEqs(p);
+    var solution = Object.fromEntries([]);
+    var assign = function (t_var, t) {
+      solution[s_var(t_var)] = t;
+    };
+    var lookup = function (t_var) {
+      return solution[s_var(t_var)];
+    };
+    var step = function (param) {
+      var b = param[1];
+      var a = param[0];
+      var fail = function () {
+        var reason = "Type inference failed, " + toString$9(a) + " is incompatible with " + toString$9(b);
+        throw {
+              RE_EXN_ID: $$TypeError,
+              _1: reason,
+              Error: new Error()
+            };
+      };
+      if (typeof a !== "object") {
+        switch (a) {
+          case "Uni" :
+              if (typeof b !== "object") {
+                if (b === "Uni") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Num" :
+              if (typeof b !== "object") {
+                if (b === "Num") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Lgc" :
+              if (typeof b !== "object") {
+                if (b === "Lgc") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Str" :
+              if (typeof b !== "object") {
+                if (b === "Str") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          
+        }
+      } else {
+        switch (a.TAG) {
+          case "Var" :
+              var a$1 = a._0;
+              var exit = 0;
+              if (typeof b !== "object") {
+                exit = 2;
+              } else {
+                if (b.TAG === "Var") {
+                  var b$1 = b._0;
+                  var match = lookup(a$1);
+                  var match$1 = lookup(b$1);
+                  if (match !== undefined) {
+                    if (match$1 !== undefined) {
+                      return [[
+                                match,
+                                match$1
+                              ]];
+                    } else {
+                      assign(b$1, match);
+                      return [];
+                    }
+                  } else if (match$1 !== undefined) {
+                    assign(a$1, match$1);
+                    return [];
+                  } else {
+                    if (s_var(a$1) !== s_var(b$1)) {
+                      assign(a$1, {
+                            TAG: "Var",
+                            _0: b$1
+                          });
+                    }
+                    return [];
+                  }
+                }
+                exit = 2;
+              }
+              if (exit === 2) {
+                var a$2 = lookup(a$1);
+                if (a$2 !== undefined) {
+                  return [[
+                            a$2,
+                            b
+                          ]];
+                } else {
+                  assign(a$1, b);
+                  return [];
+                }
+              }
+              break;
+          case "Vecof" :
+              if (typeof b !== "object") {
+                return fail();
+              }
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Vecof" :
+                    return [[
+                              a._0,
+                              b._0
+                            ]];
+                default:
+                  return fail();
+              }
+              break;
+          case "Lstof" :
+              if (typeof b !== "object") {
+                return fail();
+              }
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Lstof" :
+                    return [[
+                              a._0,
+                              b._0
+                            ]];
+                default:
+                  return fail();
+              }
+              break;
+          case "Funof" :
+              var args_a = a.args;
+              if (typeof b !== "object") {
+                return fail();
+              }
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Funof" :
+                    var args_b = b.args;
+                    if (Core__List.length(args_a) === Core__List.length(args_b)) {
+                      return Belt_Array.concatMany([
+                                  Core__List.toArray(Core__List.zip(args_a, args_b)),
+                                  [[
+                                      a.out,
+                                      b.out
+                                    ]]
+                                ]);
+                    } else {
+                      return fail();
+                    }
+                default:
+                  return fail();
+              }
+              break;
+          
+        }
+      }
+      return [[
+                {
+                  TAG: "Var",
+                  _0: b._0
+                },
+                a
+              ]];
+    };
+    var loop = function (_eqs) {
+      while(true) {
+        var eqs = _eqs;
+        if (eqs.length <= 0) {
+          return ;
+        }
+        _eqs = eqs.flatMap(step);
+        continue ;
+      };
+    };
+    loop(eqs);
+    var lookup_rec = function (_t) {
+      while(true) {
+        var t = _t;
+        if (typeof t !== "object") {
+          switch (t) {
+            case "Uni" :
+                return "Uni";
+            case "Num" :
+                return "Num";
+            case "Lgc" :
+                return "Lgc";
+            case "Str" :
+                return "Str";
+            
+          }
+        } else {
+          switch (t.TAG) {
+            case "Var" :
+                var t$1 = lookup(t._0);
+                if (t$1 === undefined) {
+                  return "Num";
+                }
+                _t = t$1;
+                continue ;
+            case "Vecof" :
+                return {
+                        TAG: "Vecof",
+                        _0: lookup_rec(t._0)
+                      };
+            case "Lstof" :
+                return {
+                        TAG: "Lstof",
+                        _0: lookup_rec(t._0)
+                      };
+            case "Funof" :
+                var args = Core__List.map(t.args, lookup_rec);
+                var out = lookup_rec(t.out);
+                return {
+                        TAG: "Funof",
+                        args: args,
+                        out: out
+                      };
+            
+          }
+        }
+      };
+    };
+    return Object.fromEntries(Object.entries(solution).map(function (param) {
+                    return [
+                            param[0],
+                            lookup_rec(param[1])
+                          ];
+                  }));
+  }
+  catch (raw_reason){
+    var reason = Caml_js_exceptions.internalToOCamlException(raw_reason);
+    if (reason.RE_EXN_ID === $$TypeError) {
+      return Object.fromEntries([]);
+    }
+    throw reason;
+  }
+}
+
 function indent(t, i) {
   var pad = Js_string.repeat(i, " ");
   return map(function (s) {
@@ -2775,7 +3679,7 @@ function insertTopLevelPrint(p) {
         };
 }
 
-function toString$9(x) {
+function toString$10(x) {
   if (x === "Nonlocal") {
     return "nonlocal";
   } else {
@@ -4223,7 +5127,7 @@ function printDefBody(b, args, env) {
   var b$1 = printBlockHelper(b, "Return", match[1]);
   var print_it = concat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
-                      var it = toString$9(param[1]) + " " + param[0];
+                      var it = toString$10(param[1]) + " " + param[0];
                       return {
                               it: {
                                 TAG: "Plain",
@@ -7773,6 +8677,48 @@ var involveMutation = {
   contents: false
 };
 
+var type_assignment = {
+  contents: Object.fromEntries([])
+};
+
+function stringFromType(t) {
+  if (typeof t !== "object") {
+    switch (t) {
+      case "Uni" :
+          return "Unit";
+      case "Num" :
+          return "Int";
+      case "Lgc" :
+          return "Boolean";
+      case "Str" :
+          return "String";
+      
+    }
+  } else {
+    switch (t.TAG) {
+      case "Var" :
+          return "Int";
+      case "Vecof" :
+          return "Buffer[" + stringFromType(t._0) + "]";
+      case "Lstof" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "List",
+                Error: new Error()
+              };
+      case "Funof" :
+          var args = Core__List.toArray(Core__List.map(t.args, stringFromType)).join(", ");
+          var out = stringFromType(t.out);
+          return "(" + args + ") => " + out;
+      
+    }
+  }
+}
+
+function lookup_type(srcLoc) {
+  return stringFromType(Core__Option.getWithDefault(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
+}
+
 function makeVec(es) {
   if (involveMutation.contents) {
     return s([
@@ -7819,7 +8765,7 @@ function constantToString$4(c) {
   } else {
     switch (c.TAG) {
       case "Num" :
-          return String(c._0);
+          return c._0.toString();
       case "Lgc" :
           if (c._0) {
             return "true";
@@ -7848,7 +8794,7 @@ function listToString$3(es) {
               _0: ""
             };
     }
-  } else if (Belt_List.some(es, containsNL)) {
+  } else if (Core__List.some(es, containsNL)) {
     return {
             TAG: "Group",
             _0: {
@@ -8107,7 +9053,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
           }
           break;
       case "VecNew" :
-          var es$1 = Belt_List.map(es, (function (e) {
+          var es$1 = Core__List.map(es, (function (e) {
                   return e(false);
                 }));
           return {
@@ -8115,7 +9061,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: ann(makeVec(Belt_List.map(es$1, (function (e) {
+                  ann: ann(makeVec(Core__List.map(es$1, (function (e) {
                                   return e.ann.print;
                                 }))))
                 };
@@ -8315,7 +9261,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
   } else {
     if (p.TAG === "Arith") {
       var o = p._0;
-      var es$2 = Belt_List.map(es, (function (e) {
+      var es$2 = Core__List.map(es, (function (e) {
               return e(true);
             }));
       return {
@@ -8326,7 +9272,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                 },
                 es$2
               ],
-              ann: consumeContextWrap$3(ctx, ann, concat(" " + stringOfArith$3(o) + " ", Belt_List.map(es$2, (function (e) {
+              ann: consumeContextWrap$3(ctx, ann, concat(" " + stringOfArith$3(o) + " ", Core__List.map(es$2, (function (e) {
                               return e.ann.print;
                             }))))
             };
@@ -8374,7 +9320,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
     }
     
   }
-  var err = "Scala doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  var err = "Scala doesn't let you use " + toString$1(p) + " on " + Core__List.length(es).toString() + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -8404,7 +9350,7 @@ function defvarToString$4(x, e) {
   }
 }
 
-function deffunToString$4(f, xs, b) {
+function deffunToString$4(f, xs, ts, b) {
   var op = "def";
   return s([
               "",
@@ -8420,12 +9366,16 @@ function deffunToString$4(f, xs, b) {
                 ann: undefined
               },
               {
-                it: exprAppToString$3(f, Belt_List.map(xs, (function (x) {
+                it: exprAppToString$3(f, Core__List.map(Core__List.zip(xs, ts), (function (param) {
                             return {
                                     it: s([
                                           "",
-                                          " : Int"
-                                        ], [x]),
+                                          " : ",
+                                          ""
+                                        ], [
+                                          param[0],
+                                          param[1]
+                                        ]),
                                     ann: undefined
                                   };
                           }))),
@@ -8477,7 +9427,7 @@ function ifStat$3(cnd, thn, els) {
 }
 
 function exprCndToString$4(ebs, ob) {
-  var ebs$1 = Belt_List.map(ebs, (function (param) {
+  var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
                   it: ifStat$3(param[0], param[1], undefined),
                   ann: undefined
@@ -8607,7 +9557,7 @@ function printExp$4(param, ctx) {
                 }
               };
     case "Lam" :
-        var xs = Belt_List.map(it._0, symbolToString$4);
+        var xs = Core__List.map(it._0, symbolToString$4);
         var b = printBlock$4(it._1, false);
         return {
                 it: {
@@ -8618,12 +9568,23 @@ function printExp$4(param, ctx) {
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap$3(ctx, ann, exprLamToString$4({
-                            it: concat(", ", Belt_List.map(xs, (function (x) {
+                            it: concat(", ", Core__List.map(xs, (function (x) {
+                                        var it = lookup_type(x.ann.sourceLocation);
                                         return {
                                                 it: s([
                                                       "",
-                                                      " : Int"
-                                                    ], [x.ann.print]),
+                                                      " : ",
+                                                      ""
+                                                    ], [
+                                                      x.ann.print,
+                                                      {
+                                                        it: {
+                                                          TAG: "Plain",
+                                                          _0: it
+                                                        },
+                                                        ann: undefined
+                                                      }
+                                                    ]),
                                                 ann: undefined
                                               };
                                       }))),
@@ -8638,7 +9599,7 @@ function printExp$4(param, ctx) {
               Error: new Error()
             };
     case "AppPrm" :
-        var es = Belt_List.map(it._1, (function (e) {
+        var es = Core__List.map(it._1, (function (e) {
                 return function (b) {
                   return printExp$4(e, b);
                 };
@@ -8658,7 +9619,7 @@ function printExp$4(param, ctx) {
               };
     case "App" :
         var e$1 = printExp$4(it._0, true);
-        var es$1 = Belt_List.map(it._1, (function (e) {
+        var es$1 = Core__List.map(it._1, (function (e) {
                 return printExp$4(e, false);
               }));
         return {
@@ -8669,7 +9630,7 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: ann(exprAppToString$3(e$1.ann.print, Belt_List.map(es$1, (function (e) {
+                  print: ann(exprAppToString$3(e$1.ann.print, Core__List.map(es$1, (function (e) {
                                   return e.ann.print;
                                 }))))
                 }
@@ -8697,7 +9658,7 @@ function printExp$4(param, ctx) {
                 }
               };
     case "And" :
-        var e_ns = Belt_List.map(it._0, (function (e_k) {
+        var e_ns = Core__List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
@@ -8707,13 +9668,13 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprAndToString$4(Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, exprAndToString$4(Core__List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
+        var e_ns$1 = Core__List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
@@ -8723,13 +9684,13 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprOrToString$4(Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, exprOrToString$4(Core__List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Cnd" :
-        var ebs = Belt_List.map(it._0, (function (eb) {
+        var ebs = Core__List.map(it._0, (function (eb) {
                 return [
                         printExp$4(eb[0], false),
                         printBlock$4(eb[1], false)
@@ -8744,12 +9705,12 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: ann(exprCndToString$4(Belt_List.map(ebs, (function (param) {
+                  print: ann(exprCndToString$4(Core__List.map(ebs, (function (param) {
                                   return [
                                           param[0].ann.print,
                                           param[1].ann.print
                                         ];
-                                })), Belt_Option.map(ob, (function (b) {
+                                })), Core__Option.map(ob, (function (b) {
                                   return b.ann.print;
                                 }))))
                 }
@@ -8784,7 +9745,7 @@ function printDef$4(param) {
         break;
     case "Fun" :
         var f = symbolToString$4(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$4);
+        var xs = Core__List.map(d._1, symbolToString$4);
         var b = printBlock$4(d._2, false);
         d$1 = {
           it: {
@@ -8793,8 +9754,17 @@ function printDef$4(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$4(f.ann.print, Belt_List.map(xs, (function (x) {
+          ann: deffunToString$4(f.ann.print, Core__List.map(xs, (function (x) {
                       return x.ann.print;
+                    })), Core__List.map(xs, (function (x) {
+                      var it = lookup_type(x.ann.sourceLocation);
+                      return {
+                              it: {
+                                TAG: "Plain",
+                                _0: it
+                              },
+                              ann: undefined
+                            };
                     })), b.ann.print)
         };
         break;
@@ -8822,7 +9792,7 @@ function printDef$4(param) {
 }
 
 function obToString$3(ob) {
-  return Belt_Option.map(ob, (function (b) {
+  return Core__Option.map(ob, (function (b) {
                 return printBlock$4(b, false);
               }));
 }
@@ -8949,7 +9919,7 @@ function printOutputlet$4(o) {
                 };
           }
           content$1 = toString({
-                it: makeVec(Belt_List.map(Belt_List.map(content._0, p), fromString)),
+                it: makeVec(Core__List.map(Core__List.map(content._0, p), fromString)),
                 ann: undefined
               });
           return i + content$1;
@@ -8966,7 +9936,7 @@ function printOutputlet$4(o) {
 function printOutput$4(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
   involveMutation.contents = true;
-  return Belt_List.toArray(Belt_List.map(os, printOutputlet$4)).join(sep);
+  return Core__List.toArray(Core__List.map(os, printOutputlet$4)).join(sep);
 }
 
 function printProgramFull$4(insertPrintTopLevel, p) {
@@ -8975,6 +9945,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
   var mutVar = Js_string.includes("(set! ", s);
   var mutVec = Js_string.includes("(vec-set! ", s) || Js_string.includes("(set-left! ", s) || Js_string.includes("(set-right! ", s);
   involveMutation.contents = mutVar || mutVec;
+  type_assignment.contents = inferType(p$1);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -9063,7 +10034,7 @@ function printStandAloneTerm$4(param) {
   return toString(tmp);
 }
 
-function toString$10(t) {
+function toString$11(t) {
   switch (t.TAG) {
     case "ParseError" :
         return "ParseError: " + toString$7(t._0);
@@ -9076,7 +10047,7 @@ function toString$10(t) {
 }
 
 var TranslateError = {
-  toString: toString$10
+  toString: toString$11
 };
 
 var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");
@@ -10003,4 +10974,4 @@ export {
   PCTranslator ,
   SCTranslator ,
 }
-/* No side effect */
+/* type_assignment Not a pure module */

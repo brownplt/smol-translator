@@ -12,7 +12,7 @@ type rec printNode<'id> =
   | Group(list<print<'id>>)
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
-let concat = (s, ss) => Array.join(ss, s)
+let concat = (s, ss) => Array.joinWith(ss, s)
 
 module Print = {
   type t<'id> = print<'id>
@@ -934,6 +934,379 @@ module KindedSourceLocation = {
     `${NodeKind.toString(nodeKind)}-${SourceLocation.toString(sourceLocation)}`
   }
 }
+
+
+
+type exn += TypeError(string)
+let raiseTypeError = (reason) => raise(TypeError(reason))
+module Type = {
+  type t_var = Src(sourceLocation) | Id(int)
+  type rec t =
+  | Var(t_var)
+  | Uni
+  | Num
+  | Lgc
+  | Str
+  | Vecof(t)
+  | Lstof(t)
+  | Funof({args: list<t>, out: t})
+
+  let s_var = (t_var) => {
+    switch t_var {
+      | Src(src) => SourceLocation.toString(src)
+      | Id(i) => Int.toString(i)
+    }
+  }
+  let rec toString = (t) => {
+    switch t {
+      | Var(t_var) => `Var(${s_var(t_var)})`
+      | Uni => `Uni`
+      | Num => `Num`
+      | Lgc => `Lgc`
+      | Str => `Str`
+      | Vecof(t) => `Vecof(${toString(t)})`
+      | Lstof(t) => `Lstof(${toString(t)})`
+      | Funof({args, out}) => `(${Array.join(args->List.map(toString)->List.toArray, ", ")}) -> ${toString(out)}`
+    }
+  }
+
+  let fresh = {
+    let n = ref(0)
+    () => {
+      let i = n.contents;
+      n := i + 1;
+      Var(Id(i))
+    }
+  }
+  let var = (srcLoc) => Var(Src(srcLoc))
+
+  type eq = (t, t)
+
+  let collectEqs = (p: program<sourceLocation>): array<eq> => {
+    let eqs = []
+    let addEq = (a, b) => {
+      Array.push(eqs, (a, b))
+    }
+    let makeEnv = (xs, baseEnv) => {
+      let env = Dict.copy(baseEnv)
+      xs->List.forEach(x => {
+        Dict.set(env, x.it, var(x.ann))
+      })
+      env
+    }
+    let lookup = (env, x) => {
+      switch Dict.get(env, x) {
+        | Some(v) => v
+        | None => {
+          // unbound id should error in typical type inference.
+          // but I want to preserve semantics, even when the program errors
+          // so I return a fresh type instead
+          fresh()
+        }
+      }
+    }
+    let tc = (c: constant): t => {
+      switch c {
+        | Uni => Uni
+        | Nil => raiseTypeError("list")
+        | Num(float) => Num
+        | Lgc(bool)  => Lgc
+        | Str(string) => Str
+        | Sym(string) => raiseTypeError("Symbol")
+      }
+    }
+    let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
+      switch cmp {
+        | Lt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | NumEq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Gt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Le => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Ge => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Ne => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Eq => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Lgc });
+        }
+        | Equal => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Lgc });
+        }
+      }
+    }
+    let tp = (p: Primitive.t, arity: int) => {
+      switch p {
+        | Maybe => raiseTypeError("Maybe")
+        | Arith(arith) => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Cmp(cmp) => tp_cmp(cmp, arity)
+        | PairNew => {
+          let t = fresh();
+          Funof({ args: list{t, t}, out: Vecof(t) })
+        }
+        | PairRefLeft => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t)}, out: t })
+        }
+        | PairRefRight => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t)}, out: t })
+        }
+        | PairSetLeft => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), t}, out: Uni })
+        }
+        | PairSetRight => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), t}, out: Uni })
+        }
+        | VecNew => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Vecof(t) })
+        }
+        | VecRef => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), Num }, out: t })
+        }
+        | VecSet => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t), Num, t}, out: Uni })
+        }
+        | VecLen => {
+          let t = fresh();
+          Funof({ args: list{Vecof(t) }, out: Num })
+        }
+        | Err => {
+          let t1 = fresh();
+          let t2 = fresh();
+          Funof({ args: list{t1}, out: t2 })
+        }
+        | Not => Funof({ args: list{Lgc}, out: Lgc })
+        | ZeroP => {
+          Funof({ args: list{Num}, out: Lgc })
+        }
+        | Print => {
+          let t = fresh()
+          Funof({ args: list{t}, out: Uni })
+        }
+        | Next => raiseTypeError("Next")
+        | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
+        | Cons => raiseTypeError("Cons")
+        | List => raiseTypeError("List")
+        | EmptyP => raiseTypeError("EmptyP")
+        | First => raiseTypeError("First")
+        | Rest => raiseTypeError("Rest")
+      }
+    }
+    let rec cp = (env, p: program<sourceLocation>) => {
+      switch p.it {
+        | PNil => ()
+        | PCons(t, p) => ct(env, t); cp(env, p)
+      }
+    }
+    and ct = (env, t: term<sourceLocation>) => {
+      switch t.it {
+        | Def(d) => cd(env, d)
+        | Exp(e) => ce(env, e)
+      }
+    }
+    and cd = (env, d: definition<sourceLocation>) => {
+      switch d.it {
+        | Var(x, e) => addEq(var(x.ann), var(e.ann)); ce(env, e)
+        | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
+        | GFun(f, xs, b) => raiseTypeError("Generator")
+      }
+    }
+    and cf = (env, xs, b) => {
+      cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b);
+      Funof({
+          args: xs->List.map(x=>var(x.ann)),
+          out: var(b.ann)
+        })
+    }
+    and ce = (env, e: expression<sourceLocation>) => {
+      let the_t = var(e.ann)
+      switch e.it {
+        | Con(c) => addEq(the_t, tc(c))
+        | Ref(x) => addEq(the_t, lookup(env, x))
+        | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e); addEq(the_t, Uni)
+        | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
+        | Let(k, bs, b) => raiseTypeError("let")
+        | AppPrm(p, es) => {
+            es->List.forEach(e=>ce(env,e))
+            ca(p, es->List.map(e=>var(e.ann)), the_t)
+        }
+        | App(f, args) => {
+          ce(env, f);
+          args->List.forEach(e=>ce(env, e));
+          addEq(
+            var(f.ann),
+            Funof({
+              args: args->List.map(arg=>var(arg.ann)),
+              out: the_t
+            }))
+        }
+        | Bgn(es, e) => raiseTypeError("begin")
+        | If(cnd, thn, els) => {
+          ce(env, cnd);
+          ce(env, thn);
+          ce(env, els);
+          addEq(var(cnd.ann), Lgc);
+          addEq(var(thn.ann), the_t);
+          addEq(var(els.ann), the_t);
+        }
+        | And(es) => {
+          es->List.forEach(
+            e => {
+              ce(env, e);
+              addEq(var(e.ann), Lgc)
+            }
+          )
+          addEq(the_t, Lgc)
+        }
+        | Or(es) =>{
+          es->List.forEach(
+            e => {
+              ce(env, e);
+              addEq(var(e.ann), Lgc)
+            }
+          )
+          addEq(the_t, Lgc)
+        }
+        | Cnd(branches, els) => {
+          branches->List.forEach(
+            ((cnd, thn)) => {
+              ce(env, cnd);
+              cb(makeEnv(xsOfBlock(thn), env), thn);
+              addEq(var(cnd.ann), Lgc);
+              addEq(var(thn.ann), the_t);
+            }
+          )
+          els->Option.forEach(
+            (els) => {
+              cb(makeEnv(xsOfBlock(els), env), els);
+              addEq(var(els.ann), the_t);
+            }
+          )
+        }
+        | GLam(xs, b) => raiseTypeError("Generators are not supported")
+        | Yield(e) => raiseTypeError("Generators are not supported")
+      }
+    }
+    and cb = (env, b: block<sourceLocation>) => {
+      let the_t = var(b.ann)
+      switch b.it {
+        | BRet(e) => ce(env, e); addEq(the_t, var(e.ann))
+        | BCons(t, b) => ct(env, t); cb(env, b); addEq(the_t, var(b.ann))
+      }
+    }
+    and ca = (p: Primitive.t, args: list<t>, out) => {
+      addEq(
+        Funof({args, out}),
+        tp(p: Primitive.t, List.length(args))
+      )
+    }
+    cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
+    eqs
+  }
+
+  let solveEqs = (eqs: array<eq>): dict<t> => {
+    let solution = Dict.fromArray([])
+    let assign = (t_var, t) => {
+      Dict.set(solution, s_var(t_var), t)
+    }
+    let lookup = (t_var) => {
+      Dict.get(solution, s_var(t_var))
+    }
+    let step = ((a, b)) => {
+      let fail = () => raiseTypeError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+      // Js.Console.log(`stepping ${toString(a)} = ${toString(b)}`)
+      switch (a, b) {
+      | (Var(a), Var(b)) => {
+        switch (lookup(a), lookup(b)) {
+          | (None, None) => {
+            if (s_var(a) != s_var(b)) {
+              assign(a, Var(b))
+            }
+            []
+          }
+          | (None, Some(b)) => assign(a, b); []
+          | (Some(a), None) => assign(b, a); []
+          | (Some(a), Some(b)) => [(a, b)]
+        }
+      }
+      | (Var(a), b) => {
+        switch lookup(a) {
+          | None => assign(a, b); []
+          | Some(a) => [(a, b)]
+        }
+      }
+      | (a, Var(b)) => [(Var(b), a)]
+      | (Uni, Uni) => []
+      | (Num, Num) => []
+      | (Lgc, Lgc) => []
+      | (Str, Str) => []
+      | (Vecof(a), Vecof(b)) => [(a, b)]
+      | (Lstof(a), Lstof(b)) => [(a, b)]
+      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) => {
+        if (List.length(args_a) == List.length(args_b)) {
+          [
+            ...List.zip(args_a, args_b)->List.toArray,
+            (out_a, out_b)
+          ]
+        } else {
+          fail()
+        }
+      }
+      | _ => fail()
+      }
+    }
+    let rec loop = (eqs) => {
+      if (Array.length(eqs) > 0) {
+        loop(eqs->Array.flatMap(step))
+      }
+    }
+    loop(eqs)
+    // Js.Console.log2("solution", solution)
+    let rec lookup_rec = t => {
+      switch t {
+        | Var(t) => {
+          switch lookup(t) {
+            | None => Num
+            | Some(t) => lookup_rec(t)
+          }
+        }
+        | Uni => Uni
+        | Num => Num
+        | Lgc => Lgc
+        | Str => Str
+        | Vecof(t) => Vecof(lookup_rec(t))
+        | Lstof(t) => Lstof(lookup_rec(t))
+        | Funof({args, out}) => {
+          let args = args->List.map(lookup_rec)
+          let out = out->lookup_rec
+          Funof({args, out})
+        }
+      }
+    }
+    solution
+    ->Dict.toArray
+    ->Array.map(((k, t)) => (k, lookup_rec(t)))
+    ->Dict.fromArray
+  }
+
+  let inferType = (p: program<sourceLocation>): dict<t> => {
+    switch p->collectEqs->solveEqs {
+      | solution => solution
+      | exception TypeError(reason) => Dict.fromArray([])
+    }
+  }
+}
+
+
+
+
+
+
+
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
@@ -3967,9 +4340,30 @@ module PCPrinter = {
 }
 
 module SCPrinter = {
-  open! Belt
-
   let involveMutation = ref(false)
+  let type_assignment = ref(Dict.fromArray([]))
+
+  let rec stringFromType = (t) => {
+    switch t {
+      | Type.Var(_) => "Int"
+      | Uni => "Unit"
+      | Num => "Int"
+      | Lgc => "Boolean"
+      | Str => "String"
+      | Vecof(t) => `Buffer[${stringFromType(t)}]`
+      | Lstof(_) => raisePrintError("List")
+      | Funof({args, out}) => {
+        let args: string = Array.join(args->List.map(stringFromType)->List.toArray, ", ")
+        let out: string = stringFromType(out)
+        `(${args}) => ${out}`
+      }
+    }
+  }
+  let lookup_type = (srcLoc: sourceLocation): string => {
+    Dict.get(type_assignment.contents, SourceLocation.toString(srcLoc))
+    ->Option.getWithDefault(Type.Num)
+    ->stringFromType
+  }
 
   let makeVec = es => {
     if involveMutation.contents {
@@ -4221,9 +4615,9 @@ module SCPrinter = {
     }
   }
 
-  let funLike = (op, x, xs, e) => {
+  let funLike = (op, x, xs, ts, e) => {
     Print.s`${Print.fromString(op)} ${Print.dummy(
-      exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))),
+      exprAppToString(x, List.zip(xs, ts)->List.map(((x, t)) => Print.dummy(Print.s`${x} : ${t}`))),
     )} =${indentBlock(e, 2)}`
   }
 
@@ -4235,8 +4629,8 @@ module SCPrinter = {
     }
   }
 
-  let deffunToString = (f, xs, b) => {
-    funLike("def", f, xs, b)
+  let deffunToString = (f, xs, ts, b) => {
+    funLike("def", f, xs, ts, b)
   }
   let exprSetToString = (x, e) => {
     Print.s`${x} = ${e}`
@@ -4342,7 +4736,7 @@ module SCPrinter = {
             exprLamToString(
               Print.concat(
                 ", ",
-                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : Int`)),
+                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : ${Print.fromString(lookup_type(x.ann.sourceLocation))}`)),
               )->Print.dummy,
               b.ann.print,
             ),
@@ -4438,7 +4832,10 @@ module SCPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(false)
         {
-          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          ann: deffunToString(
+            f.ann.print, xs->List.map(x => x.ann.print),
+            xs->List.map(x => Print.fromString(lookup_type(x.ann.sourceLocation))),
+            b.ann.print),
           it: Fun(f, xs, b),
         }
       }
@@ -4569,6 +4966,7 @@ module SCPrinter = {
       Js.String.includes("(set-left! ", s) ||
       Js.String.includes("(set-right! ", s)
     involveMutation := mutVar || mutVec
+    type_assignment := Type.inferType(p)
 
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {

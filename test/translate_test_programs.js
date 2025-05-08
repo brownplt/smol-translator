@@ -72,7 +72,7 @@ for (const path of paths) {
                 console.log(name);
                 console.error(err);
             }
-            // // Pseudocode
+            // Pseudocode
             try {
                 const program = fs.readFileSync(programFile, 'utf8');
                 const outputs = fs.readFileSync(outputsFile, 'utf8');
