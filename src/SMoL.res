@@ -938,8 +938,6 @@ module KindedSourceLocation = {
 
 
 
-
-type exn += TypeError(string)
 module Type = {
   type t_var = Src(sourceLocation) | Id(int)
   type rec t =
@@ -1188,8 +1186,8 @@ module Type = {
   }
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
-    let eqs = collectEqs(p)
-    solveEqs(eqs)
+    // let eqs = collectEqs(p)
+    solveEqs([])
   }
 }
 
