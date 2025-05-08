@@ -976,14 +976,20 @@ module Type = {
       })
       env
     }
+    let lookup = (env, x) => {
+      switch Dict.get(env, x) {
+        | Some(v) => v
+        | None => raisePrintError(`Unbound id ${x}`)
+      }
+    }
     let tc = (c: constant): t => {
       switch c {
         | Uni => Uni
-        | Nil => raise(TypeError("list"))
+        | Nil => raisePrintError("list")
         | Num(float) => Num
         | Lgc(bool)  => Lgc
         | Str(string) => Str
-        | Sym(string) => raise(TypeError("Symbol"))
+        | Sym(string) => raisePrintError("Symbol")
       }
     }
     let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
@@ -1003,7 +1009,7 @@ module Type = {
     }
     let tp = (p: Primitive.t, arity: int) => {
       switch p {
-        | Maybe => raise(TypeError("Maybe"))
+        | Maybe => raisePrintError("Maybe")
         | Arith(arith) => Funof({ args: List.make(~length=arity, Num), out: Num })
         | Cmp(cmp) => tp_cmp(cmp, arity)
         | PairNew => {
@@ -1055,13 +1061,13 @@ module Type = {
           let t = fresh()
           Funof({ args: list{t}, out: Uni })
         }
-        | Next => raise(TypeError("Next"))
+        | Next => raisePrintError("Next")
         | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
-        | Cons => raise(TypeError("Cons"))
-        | List => raise(TypeError("List"))
-        | EmptyP => raise(TypeError("EmptyP"))
-        | First => raise(TypeError("First"))
-        | Rest => raise(TypeError("Rest"))
+        | Cons => raisePrintError("Cons")
+        | List => raisePrintError("List")
+        | EmptyP => raisePrintError("EmptyP")
+        | First => raisePrintError("First")
+        | Rest => raisePrintError("Rest")
       }
     }
     let rec cp = (env, p: program<sourceLocation>) => {
@@ -1080,7 +1086,7 @@ module Type = {
       switch d.it {
         | Var(x, e) => addEq(var(x.ann), var(e.ann)); ce(env, e)
         | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
-        | GFun(f, xs, b) => raise(TypeError("Generator"))
+        | GFun(f, xs, b) => raisePrintError("Generator")
       }
     }
     and cf = (env, xs, b) => {
@@ -1093,10 +1099,10 @@ module Type = {
     and ce = (env, e: expression<sourceLocation>) => {
       switch e.it {
         | Con(c) => addEq(var(e.ann), tc(c))
-        | Ref(x) => addEq(var(e.ann), Dict.getUnsafe(env, x))
-        | Set(x, e) => addEq(Dict.getUnsafe(env, x.it), var(e.ann)); ce(env, e);    addEq(var(e.ann), Uni)
+        | Ref(x) => addEq(var(e.ann), lookup(env, x))
+        | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e);    addEq(var(e.ann), Uni)
         | Lam(xs, b) => addEq(var(e.ann), cf(env, xs, b))
-        | Let(k, bs, b) => raise(TypeError("let"))
+        | Let(k, bs, b) => raisePrintError("let")
         | AppPrm(p, es) => es->List.forEach(e=>ce(env,e)); ca(p, es->List.map(e=>var(e.ann)), var(e.ann))
         | App(f, args) => {
           ce(env, f);
@@ -1108,7 +1114,7 @@ module Type = {
               out: var(e.ann)
             }))
         }
-        | Bgn(es, e) => raise(TypeError("begin"))
+        | Bgn(es, e) => raisePrintError("begin")
         | If(cnd, thn, els) => {
           ce(env, cnd);
           ce(env, thn);
@@ -1136,10 +1142,23 @@ module Type = {
           addEq(var(e.ann), Lgc)
         }
         | Cnd(branches, els) => {
-          raise(TypeError("conditional"))
+          branches->List.forEach(
+            ((cnd, thn)) => {
+              ce(env, cnd);
+              cb(makeEnv(xsOfBlock(thn), env), thn);
+              addEq(var(cnd.ann), Lgc);
+              addEq(var(thn.ann), var(e.ann));
+            }
+          )
+          els->Option.forEach(
+            (els) => {
+              cb(makeEnv(xsOfBlock(els), env), els);
+              addEq(var(els.ann), var(e.ann));
+            }
+          )
         }
-        | GLam(xs, b) => raise(TypeError("g lambda"))
-        | Yield(e) => raise(TypeError("g lambda"))
+        | GLam(xs, b) => raisePrintError("g lambda")
+        | Yield(e) => raisePrintError("g lambda")
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
@@ -1156,6 +1175,16 @@ module Type = {
     }
     cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
     eqs
+  }
+
+  let solveEqs = (eqs: array<eq>): dict<t> => {
+    // todo
+    Dict.fromArray([])
+  }
+
+  let inferType = (p: program<sourceLocation>): dict<t> => {
+    let eqs = collectEqs(p)
+    solveEqs(eqs)
   }
 }
 
@@ -4201,6 +4230,25 @@ module SCPrinter = {
   open! Belt
 
   let involveMutation = ref(false)
+  let type_assignment = ref(Dict.fromArray([]))
+
+  let rec stringFromType = (t) => {
+    switch t {
+      | Type.Var(_) => "Int"
+      | Uni => "Unit"
+      | Num => "Int"
+      | Lgc => "Boolean"
+      | Str => "String"
+      | Vecof(t) => `Buffer[${stringFromType(t)}]`
+      | Lstof(_) => raisePrintError("List")
+      | Funof({args, out}) => `(${String.concatMany(", ", List.map(args, stringFromType)->List.toArray)}) => ${stringFromType(out)}`
+    }
+  }
+  let lookup_type = (srcLoc: sourceLocation): string => {
+    Dict.get(type_assignment.contents, SourceLocation.toString(srcLoc))
+    ->Option.getWithDefault(Type.Num)
+    ->stringFromType
+  }
 
   let makeVec = es => {
     if involveMutation.contents {
@@ -4573,7 +4621,7 @@ module SCPrinter = {
             exprLamToString(
               Print.concat(
                 ", ",
-                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : Int`)),
+                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : ${Print.fromString(lookup_type(x.ann.sourceLocation))}`)),
               )->Print.dummy,
               b.ann.print,
             ),
@@ -4669,7 +4717,10 @@ module SCPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(false)
         {
-          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), xs->List.map(_ => Print.fromString(`Int`)), b.ann.print),
+          ann: deffunToString(
+            f.ann.print, xs->List.map(x => x.ann.print),
+            xs->List.map(x => Print.fromString(lookup_type(x.ann.sourceLocation))),
+            b.ann.print),
           it: Fun(f, xs, b),
         }
       }
@@ -4800,6 +4851,7 @@ module SCPrinter = {
       Js.String.includes("(set-left! ", s) ||
       Js.String.includes("(set-right! ", s)
     involveMutation := mutVar || mutVec
+    type_assignment := Type.inferType(p)
 
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
