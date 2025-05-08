@@ -2199,7 +2199,7 @@ function collectEqs(p) {
       case "Yield" :
           throw {
                 RE_EXN_ID: SMoLPrintError,
-                _1: "g lambda",
+                _1: "Generators are not supported",
                 Error: new Error()
               };
       

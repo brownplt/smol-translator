@@ -1164,8 +1164,8 @@ module Type = {
             }
           )
         }
-        | GLam(xs, b) => raisePrintError("g lambda")
-        | Yield(e) => raisePrintError("g lambda")
+        | GLam(xs, b) => raisePrintError("Generators are not supported")
+        | Yield(e) => raisePrintError("Generators are not supported")
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
