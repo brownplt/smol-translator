@@ -8404,7 +8404,7 @@ function defvarToString$4(x, e) {
   }
 }
 
-function deffunToString$4(f, xs, b) {
+function deffunToString$4(f, xs, ts, b) {
   var op = "def";
   return s([
               "",
@@ -8420,12 +8420,16 @@ function deffunToString$4(f, xs, b) {
                 ann: undefined
               },
               {
-                it: exprAppToString$3(f, Belt_List.map(xs, (function (x) {
+                it: exprAppToString$3(f, Belt_List.map(Belt_List.zip(xs, ts), (function (param) {
                             return {
                                     it: s([
                                           "",
-                                          " : Int"
-                                        ], [x]),
+                                          " : ",
+                                          ""
+                                        ], [
+                                          param[0],
+                                          param[1]
+                                        ]),
                                     ann: undefined
                                   };
                           }))),
@@ -8795,6 +8799,14 @@ function printDef$4(param) {
           },
           ann: deffunToString$4(f.ann.print, Belt_List.map(xs, (function (x) {
                       return x.ann.print;
+                    })), Belt_List.map(xs, (function (param) {
+                      return {
+                              it: {
+                                TAG: "Plain",
+                                _0: "Int"
+                              },
+                              ann: undefined
+                            };
                     })), b.ann.print)
         };
         break;

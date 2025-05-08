@@ -4221,9 +4221,9 @@ module SCPrinter = {
     }
   }
 
-  let funLike = (op, x, xs, e) => {
+  let funLike = (op, x, xs, ts, e) => {
     Print.s`${Print.fromString(op)} ${Print.dummy(
-      exprAppToString(x, xs->List.map(x => Print.dummy(Print.s`${x} : Int`))),
+      exprAppToString(x, List.zip(xs, ts)->List.map(((x, t)) => Print.dummy(Print.s`${x} : ${t}`))),
     )} =${indentBlock(e, 2)}`
   }
 
@@ -4235,8 +4235,8 @@ module SCPrinter = {
     }
   }
 
-  let deffunToString = (f, xs, b) => {
-    funLike("def", f, xs, b)
+  let deffunToString = (f, xs, ts, b) => {
+    funLike("def", f, xs, ts, b)
   }
   let exprSetToString = (x, e) => {
     Print.s`${x} = ${e}`
@@ -4438,7 +4438,7 @@ module SCPrinter = {
         let xs = xs->List.map(symbolToString)
         let b = b->printBlock(false)
         {
-          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), b.ann.print),
+          ann: deffunToString(f.ann.print, xs->List.map(x => x.ann.print), xs->List.map(_ => Print.fromString(`Int`)), b.ann.print),
           it: Fun(f, xs, b),
         }
       }
