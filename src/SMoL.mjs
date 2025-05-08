@@ -1764,12 +1764,16 @@ function collectEqs(p) {
               };
       } else {
         var cmp = p._0;
-        if (cmp !== "Equal") {
-          return {
-                  TAG: "Funof",
-                  args: Core__List.make(arity, "Num"),
-                  out: "Lgc"
-                };
+        switch (cmp) {
+          case "Eq" :
+          case "Equal" :
+              break;
+          default:
+            return {
+                    TAG: "Funof",
+                    args: Core__List.make(arity, "Num"),
+                    out: "Lgc"
+                  };
         }
         var t = fresh();
         return {

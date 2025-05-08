@@ -1018,11 +1018,14 @@ module Type = {
       switch cmp {
         | Lt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | NumEq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Eq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | Gt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | Le => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | Ge => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | Ne => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Eq => {
+          let t = fresh();
+          Funof({ args: List.make(~length=arity, t), out: Lgc });
+        }
         | Equal => {
           let t = fresh();
           Funof({ args: List.make(~length=arity, t), out: Lgc });
@@ -1267,7 +1270,7 @@ module Type = {
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
     let eqs = collectEqs(p)
-    // Js.Console.log2("eqs", eqs->Array.map(((a, b)) => (toString(a), toString(b))))
+    // Js.Console.log2("eqs", eqs->Array.map(((a, b)) => `${toString(a)} == ${toString(b)}`)->Array.join("\n"))
     solveEqs(eqs)
   }
 }
