@@ -975,6 +975,11 @@ module Type = {
         | Sym(string) => raise(TypeError("Symbol"))
       }
     }
+    let tp = (p: Primitive.t, arity: int) => {
+      switch p {
+        | _ => Num // todo
+      }
+    }
     let rec cp = (env, p: program<sourceLocation>) => {
       switch p.it {
         | PNil => ()
@@ -1059,9 +1064,11 @@ module Type = {
         | BCons(t, b2) => ct(env, t); cb(env, b); addEq(Var(b.ann), Var(b2.ann))
       }
     }
-    and ca = (p: Primitive.t, es: list<t>, o: t) => {
-      // TODO
-      ()
+    and ca = (p: Primitive.t, args: list<t>, out) => {
+      addEq(
+        Funof({args, out}),
+        tp(p: Primitive.t, List.length(args))
+      )
     }
     cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
     eqs
