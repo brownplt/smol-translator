@@ -1684,13 +1684,10 @@ function collectEqs(p) {
   var lookup = function (env, x) {
     var v = env[x];
     if (v !== undefined) {
-      return Caml_option.valFromOption(v);
+      return v;
+    } else {
+      return fresh();
     }
-    throw {
-          RE_EXN_ID: SMoLPrintError,
-          _1: "Unbound id " + x,
-          Error: new Error()
-        };
   };
   var tc = function (c) {
     if (typeof c !== "object") {

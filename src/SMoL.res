@@ -979,7 +979,12 @@ module Type = {
     let lookup = (env, x) => {
       switch Dict.get(env, x) {
         | Some(v) => v
-        | None => raisePrintError(`Unbound id ${x}`)
+        | None => {
+          // unbound id should error in typical type inference.
+          // but I want to preserve semantics, even when the program errors
+          // so I return a fresh type instead
+          fresh()
+        }
       }
     }
     let tc = (c: constant): t => {
