@@ -1200,6 +1200,7 @@ module Type = {
 
   let solveEqs = (eqs: array<eq>): dict<t> => {
     let step = ((a, b)) => {
+      let fail = () => raisePrintError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
       switch (a, b) {
       | (Var(a), Var(b)) => [] // todo
       | (Var(a), b) => []   // todo
@@ -1217,10 +1218,10 @@ module Type = {
             (out_a, out_b)
           ]
         } else {
-          raisePrintError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+          fail()
         }
       }
-      | _ => []
+      | _ => fail()
       }
     }
     let rec loop = (eqs) => {
