@@ -12,7 +12,6 @@ import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
-import * as Caml_splice_call from "rescript/lib/es6/caml_splice_call.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
 import * as Caml_js_exceptions from "rescript/lib/es6/caml_js_exceptions.js";
@@ -1645,6 +1644,14 @@ var KindedSourceLocation = {
   toString: toString$8
 };
 
+function s_var(t_var) {
+  if (t_var.TAG === "Src") {
+    return SExpression.SourceLocation.toString(t_var._0);
+  } else {
+    return t_var._0.toString();
+  }
+}
+
 function toString$9(t) {
   if (typeof t !== "object") {
     switch (t) {
@@ -1661,13 +1668,13 @@ function toString$9(t) {
   } else {
     switch (t.TAG) {
       case "Var" :
-          return "Var(t_var)";
+          return "Var(" + s_var(t._0) + ")";
       case "Vecof" :
-          return "Vecof(t)";
+          return "Vecof(" + toString$9(t._0) + ")";
       case "Lstof" :
-          return "Lstof(t)";
+          return "Lstof(" + toString$9(t._0) + ")";
       case "Funof" :
-          return "Funof({args: list<t>, out: t})";
+          return "(" + Core__List.toArray(Core__List.map(t.args, toString$9)).join(", ") + ") -> " + toString$9(t.out);
       
     }
   }
@@ -2270,7 +2277,206 @@ function collectEqs(p) {
 }
 
 function inferType(p) {
-  collectEqs(p);
+  var eqs = collectEqs(p);
+  var solution = Object.fromEntries([]);
+  var assign = function (t_var, t) {
+    solution[s_var(t_var)] = t;
+  };
+  var lookup = function (t_var) {
+    return solution[s_var(t_var)];
+  };
+  var step = function (param) {
+    var b = param[1];
+    var a = param[0];
+    var fail = function () {
+      var err = "Type inference failed, " + toString$9(a) + " is incompatible with " + toString$9(b);
+      throw {
+            RE_EXN_ID: SMoLPrintError,
+            _1: err,
+            Error: new Error()
+          };
+    };
+    if (typeof a !== "object") {
+      switch (a) {
+        case "Uni" :
+            if (typeof b !== "object") {
+              if (b === "Uni") {
+                return [];
+              } else {
+                return fail();
+              }
+            }
+            if (b.TAG !== "Var") {
+              return fail();
+            }
+            break;
+        case "Num" :
+            if (typeof b !== "object") {
+              if (b === "Num") {
+                return [];
+              } else {
+                return fail();
+              }
+            }
+            if (b.TAG !== "Var") {
+              return fail();
+            }
+            break;
+        case "Lgc" :
+            if (typeof b !== "object") {
+              if (b === "Lgc") {
+                return [];
+              } else {
+                return fail();
+              }
+            }
+            if (b.TAG !== "Var") {
+              return fail();
+            }
+            break;
+        case "Str" :
+            if (typeof b !== "object") {
+              if (b === "Str") {
+                return [];
+              } else {
+                return fail();
+              }
+            }
+            if (b.TAG !== "Var") {
+              return fail();
+            }
+            break;
+        
+      }
+    } else {
+      switch (a.TAG) {
+        case "Var" :
+            var a$1 = a._0;
+            var exit = 0;
+            if (typeof b !== "object") {
+              exit = 2;
+            } else {
+              if (b.TAG === "Var") {
+                var b$1 = b._0;
+                var match = lookup(a$1);
+                var match$1 = lookup(b$1);
+                if (match !== undefined) {
+                  if (match$1 !== undefined) {
+                    return [[
+                              match,
+                              match$1
+                            ]];
+                  } else {
+                    assign(b$1, match);
+                    return [];
+                  }
+                } else if (match$1 !== undefined) {
+                  assign(a$1, match$1);
+                  return [];
+                } else {
+                  if (s_var(a$1) !== s_var(b$1)) {
+                    assign(a$1, {
+                          TAG: "Var",
+                          _0: b$1
+                        });
+                  }
+                  return [];
+                }
+              }
+              exit = 2;
+            }
+            if (exit === 2) {
+              var a$2 = lookup(a$1);
+              if (a$2 !== undefined) {
+                return [[
+                          a$2,
+                          b
+                        ]];
+              } else {
+                assign(a$1, b);
+                return [];
+              }
+            }
+            break;
+        case "Vecof" :
+            if (typeof b !== "object") {
+              return fail();
+            }
+            switch (b.TAG) {
+              case "Var" :
+                  break;
+              case "Vecof" :
+                  return [[
+                            a._0,
+                            b._0
+                          ]];
+              default:
+                return fail();
+            }
+            break;
+        case "Lstof" :
+            if (typeof b !== "object") {
+              return fail();
+            }
+            switch (b.TAG) {
+              case "Var" :
+                  break;
+              case "Lstof" :
+                  return [[
+                            a._0,
+                            b._0
+                          ]];
+              default:
+                return fail();
+            }
+            break;
+        case "Funof" :
+            var args_a = a.args;
+            if (typeof b !== "object") {
+              return fail();
+            }
+            switch (b.TAG) {
+              case "Var" :
+                  break;
+              case "Funof" :
+                  var args_b = b.args;
+                  if (Core__List.length(args_a) === Core__List.length(args_b)) {
+                    return Belt_Array.concatMany([
+                                Core__List.toArray(Core__List.zip(args_a, args_b)),
+                                [[
+                                    a.out,
+                                    b.out
+                                  ]]
+                              ]);
+                  } else {
+                    return fail();
+                  }
+              default:
+                return fail();
+            }
+            break;
+        
+      }
+    }
+    return [[
+              {
+                TAG: "Var",
+                _0: b._0
+              },
+              a
+            ]];
+  };
+  var loop = function (_eqs) {
+    while(true) {
+      var eqs = _eqs;
+      if (eqs.length <= 0) {
+        return ;
+      }
+      _eqs = eqs.flatMap(step);
+      continue ;
+    };
+  };
+  loop(eqs);
   return Object.fromEntries([]);
 }
 
@@ -8434,14 +8640,16 @@ function stringFromType(t) {
                 Error: new Error()
               };
       case "Funof" :
-          return "(" + Caml_splice_call.spliceObjApply(", ", "concat", [Belt_List.toArray(Belt_List.map(t.args, stringFromType))]) + ") => " + stringFromType(t.out);
+          var args = Core__List.toArray(Core__List.map(t.args, stringFromType)).join(", ");
+          var out = stringFromType(t.out);
+          return "(" + args + ") => " + out;
       
     }
   }
 }
 
 function lookup_type(srcLoc) {
-  return stringFromType(Belt_Option.getWithDefault(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
+  return stringFromType(Core__Option.getWithDefault(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
 }
 
 function makeVec(es) {
@@ -8490,7 +8698,7 @@ function constantToString$4(c) {
   } else {
     switch (c.TAG) {
       case "Num" :
-          return String(c._0);
+          return c._0.toString();
       case "Lgc" :
           if (c._0) {
             return "true";
@@ -8519,7 +8727,7 @@ function listToString$3(es) {
               _0: ""
             };
     }
-  } else if (Belt_List.some(es, containsNL)) {
+  } else if (Core__List.some(es, containsNL)) {
     return {
             TAG: "Group",
             _0: {
@@ -8778,7 +8986,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
           }
           break;
       case "VecNew" :
-          var es$1 = Belt_List.map(es, (function (e) {
+          var es$1 = Core__List.map(es, (function (e) {
                   return e(false);
                 }));
           return {
@@ -8786,7 +8994,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                     "VecNew",
                     es$1
                   ],
-                  ann: ann(makeVec(Belt_List.map(es$1, (function (e) {
+                  ann: ann(makeVec(Core__List.map(es$1, (function (e) {
                                   return e.ann.print;
                                 }))))
                 };
@@ -8986,7 +9194,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
   } else {
     if (p.TAG === "Arith") {
       var o = p._0;
-      var es$2 = Belt_List.map(es, (function (e) {
+      var es$2 = Core__List.map(es, (function (e) {
               return e(true);
             }));
       return {
@@ -8997,7 +9205,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
                 },
                 es$2
               ],
-              ann: consumeContextWrap$3(ctx, ann, concat(" " + stringOfArith$3(o) + " ", Belt_List.map(es$2, (function (e) {
+              ann: consumeContextWrap$3(ctx, ann, concat(" " + stringOfArith$3(o) + " ", Core__List.map(es$2, (function (e) {
                               return e.ann.print;
                             }))))
             };
@@ -9045,7 +9253,7 @@ function exprAppPrmToString$3(ann, ctx, p, es) {
     }
     
   }
-  var err = "Scala doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  var err = "Scala doesn't let you use " + toString$1(p) + " on " + Core__List.length(es).toString() + " parameter(s).";
   throw {
         RE_EXN_ID: SMoLPrintError,
         _1: err,
@@ -9091,7 +9299,7 @@ function deffunToString$4(f, xs, ts, b) {
                 ann: undefined
               },
               {
-                it: exprAppToString$3(f, Belt_List.map(Belt_List.zip(xs, ts), (function (param) {
+                it: exprAppToString$3(f, Core__List.map(Core__List.zip(xs, ts), (function (param) {
                             return {
                                     it: s([
                                           "",
@@ -9152,7 +9360,7 @@ function ifStat$3(cnd, thn, els) {
 }
 
 function exprCndToString$4(ebs, ob) {
-  var ebs$1 = Belt_List.map(ebs, (function (param) {
+  var ebs$1 = Core__List.map(ebs, (function (param) {
           return {
                   it: ifStat$3(param[0], param[1], undefined),
                   ann: undefined
@@ -9282,7 +9490,7 @@ function printExp$4(param, ctx) {
                 }
               };
     case "Lam" :
-        var xs = Belt_List.map(it._0, symbolToString$4);
+        var xs = Core__List.map(it._0, symbolToString$4);
         var b = printBlock$4(it._1, false);
         return {
                 it: {
@@ -9293,7 +9501,7 @@ function printExp$4(param, ctx) {
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap$3(ctx, ann, exprLamToString$4({
-                            it: concat(", ", Belt_List.map(xs, (function (x) {
+                            it: concat(", ", Core__List.map(xs, (function (x) {
                                         var it = lookup_type(x.ann.sourceLocation);
                                         return {
                                                 it: s([
@@ -9324,7 +9532,7 @@ function printExp$4(param, ctx) {
               Error: new Error()
             };
     case "AppPrm" :
-        var es = Belt_List.map(it._1, (function (e) {
+        var es = Core__List.map(it._1, (function (e) {
                 return function (b) {
                   return printExp$4(e, b);
                 };
@@ -9344,7 +9552,7 @@ function printExp$4(param, ctx) {
               };
     case "App" :
         var e$1 = printExp$4(it._0, true);
-        var es$1 = Belt_List.map(it._1, (function (e) {
+        var es$1 = Core__List.map(it._1, (function (e) {
                 return printExp$4(e, false);
               }));
         return {
@@ -9355,7 +9563,7 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: ann(exprAppToString$3(e$1.ann.print, Belt_List.map(es$1, (function (e) {
+                  print: ann(exprAppToString$3(e$1.ann.print, Core__List.map(es$1, (function (e) {
                                   return e.ann.print;
                                 }))))
                 }
@@ -9383,7 +9591,7 @@ function printExp$4(param, ctx) {
                 }
               };
     case "And" :
-        var e_ns = Belt_List.map(it._0, (function (e_k) {
+        var e_ns = Core__List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
@@ -9393,13 +9601,13 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprAndToString$4(Belt_List.map(e_ns, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, exprAndToString$4(Core__List.map(e_ns, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Or" :
-        var e_ns$1 = Belt_List.map(it._0, (function (e_k) {
+        var e_ns$1 = Core__List.map(it._0, (function (e_k) {
                 return printExp$4(e_k, false);
               }));
         return {
@@ -9409,13 +9617,13 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$3(ctx, ann, exprOrToString$4(Belt_List.map(e_ns$1, (function (e_k) {
+                  print: consumeContextWrap$3(ctx, ann, exprOrToString$4(Core__List.map(e_ns$1, (function (e_k) {
                                   return e_k.ann.print;
                                 }))))
                 }
               };
     case "Cnd" :
-        var ebs = Belt_List.map(it._0, (function (eb) {
+        var ebs = Core__List.map(it._0, (function (eb) {
                 return [
                         printExp$4(eb[0], false),
                         printBlock$4(eb[1], false)
@@ -9430,12 +9638,12 @@ function printExp$4(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: ann(exprCndToString$4(Belt_List.map(ebs, (function (param) {
+                  print: ann(exprCndToString$4(Core__List.map(ebs, (function (param) {
                                   return [
                                           param[0].ann.print,
                                           param[1].ann.print
                                         ];
-                                })), Belt_Option.map(ob, (function (b) {
+                                })), Core__Option.map(ob, (function (b) {
                                   return b.ann.print;
                                 }))))
                 }
@@ -9470,7 +9678,7 @@ function printDef$4(param) {
         break;
     case "Fun" :
         var f = symbolToString$4(d._0);
-        var xs = Belt_List.map(d._1, symbolToString$4);
+        var xs = Core__List.map(d._1, symbolToString$4);
         var b = printBlock$4(d._2, false);
         d$1 = {
           it: {
@@ -9479,9 +9687,9 @@ function printDef$4(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$4(f.ann.print, Belt_List.map(xs, (function (x) {
+          ann: deffunToString$4(f.ann.print, Core__List.map(xs, (function (x) {
                       return x.ann.print;
-                    })), Belt_List.map(xs, (function (x) {
+                    })), Core__List.map(xs, (function (x) {
                       var it = lookup_type(x.ann.sourceLocation);
                       return {
                               it: {
@@ -9517,7 +9725,7 @@ function printDef$4(param) {
 }
 
 function obToString$3(ob) {
-  return Belt_Option.map(ob, (function (b) {
+  return Core__Option.map(ob, (function (b) {
                 return printBlock$4(b, false);
               }));
 }
@@ -9644,7 +9852,7 @@ function printOutputlet$4(o) {
                 };
           }
           content$1 = toString({
-                it: makeVec(Belt_List.map(Belt_List.map(content._0, p), fromString)),
+                it: makeVec(Core__List.map(Core__List.map(content._0, p), fromString)),
                 ann: undefined
               });
           return i + content$1;
@@ -9661,7 +9869,7 @@ function printOutputlet$4(o) {
 function printOutput$4(sepOpt, os) {
   var sep = sepOpt !== undefined ? sepOpt : " ";
   involveMutation.contents = true;
-  return Belt_List.toArray(Belt_List.map(os, printOutputlet$4)).join(sep);
+  return Core__List.toArray(Core__List.map(os, printOutputlet$4)).join(sep);
 }
 
 function printProgramFull$4(insertPrintTopLevel, p) {

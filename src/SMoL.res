@@ -12,7 +12,7 @@ type rec printNode<'id> =
   | Group(list<print<'id>>)
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
-let concat = (s, ss) => Array.join(ss, s)
+let concat = (s, ss) => Array.joinWith(ss, s)
 
 module Print = {
   type t<'id> = print<'id>
@@ -950,16 +950,22 @@ module Type = {
   | Lstof(t)
   | Funof({args: list<t>, out: t})
 
+  let s_var = (t_var) => {
+    switch t_var {
+      | Src(src) => SourceLocation.toString(src)
+      | Id(i) => Int.toString(i)
+    }
+  }
   let rec toString = (t) => {
     switch t {
-      | Var(t_var) => `Var(t_var)`
+      | Var(t_var) => `Var(${s_var(t_var)})`
       | Uni => `Uni`
       | Num => `Num`
       | Lgc => `Lgc`
       | Str => `Str`
-      | Vecof(t) => `Vecof(t)`
-      | Lstof(t) => `Lstof(t)`
-      | Funof({args, out}) => `Funof({args: list<t>, out: t})`
+      | Vecof(t) => `Vecof(${toString(t)})`
+      | Lstof(t) => `Lstof(${toString(t)})`
+      | Funof({args, out}) => `(${Array.join(args->List.map(toString)->List.toArray, ", ")}) -> ${toString(out)}`
     }
   }
 
@@ -1199,11 +1205,36 @@ module Type = {
   }
 
   let solveEqs = (eqs: array<eq>): dict<t> => {
+    let solution = Dict.fromArray([])
+    let assign = (t_var, t) => {
+      Dict.set(solution, s_var(t_var), t)
+    }
+    let lookup = (t_var) => {
+      Dict.get(solution, s_var(t_var))
+    }
     let step = ((a, b)) => {
       let fail = () => raisePrintError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+      // Js.Console.log(`stepping ${toString(a)} = ${toString(b)}`)
       switch (a, b) {
-      | (Var(a), Var(b)) => [] // todo
-      | (Var(a), b) => []   // todo
+      | (Var(a), Var(b)) => {
+        switch (lookup(a), lookup(b)) {
+          | (None, None) => {
+            if (s_var(a) != s_var(b)) {
+              assign(a, Var(b))
+            }
+            []
+          }
+          | (None, Some(b)) => assign(a, b); []
+          | (Some(a), None) => assign(b, a); []
+          | (Some(a), Some(b)) => [(a, b)]
+        }
+      }
+      | (Var(a), b) => {
+        switch lookup(a) {
+          | None => assign(a, b); []
+          | Some(a) => [(a, b)]
+        }
+      }
       | (a, Var(b)) => [(Var(b), a)]
       | (Uni, Uni) => []
       | (Num, Num) => []
@@ -1229,12 +1260,15 @@ module Type = {
         loop(eqs->Array.flatMap(step))
       }
     }
+    loop(eqs)
+    // Js.Console.log2("solution", solution)
     Dict.fromArray([])
   }
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
     let eqs = collectEqs(p)
-    solveEqs([])
+    // Js.Console.log2("eqs", eqs->Array.map(((a, b)) => (toString(a), toString(b))))
+    solveEqs(eqs)
   }
 }
 
@@ -4277,8 +4311,6 @@ module PCPrinter = {
 }
 
 module SCPrinter = {
-  open! Belt
-
   let involveMutation = ref(false)
   let type_assignment = ref(Dict.fromArray([]))
 
@@ -4291,7 +4323,11 @@ module SCPrinter = {
       | Str => "String"
       | Vecof(t) => `Buffer[${stringFromType(t)}]`
       | Lstof(_) => raisePrintError("List")
-      | Funof({args, out}) => `(${String.concatMany(", ", List.map(args, stringFromType)->List.toArray)}) => ${stringFromType(out)}`
+      | Funof({args, out}) => {
+        let args: string = Array.join(args->List.map(stringFromType)->List.toArray, ", ")
+        let out: string = stringFromType(out)
+        `(${args}) => ${out}`
+      }
     }
   }
   let lookup_type = (srcLoc: sourceLocation): string => {
