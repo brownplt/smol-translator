@@ -1768,14 +1768,14 @@ function collectEqs(p) {
           return {
                   TAG: "Funof",
                   args: Core__List.make(arity, "Num"),
-                  out: "Num"
+                  out: "Lgc"
                 };
         }
         var t = fresh();
         return {
                 TAG: "Funof",
                 args: Core__List.make(arity, t),
-                out: "Num"
+                out: "Lgc"
               };
       }
     }

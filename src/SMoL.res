@@ -1016,16 +1016,16 @@ module Type = {
     }
     let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
       switch cmp {
-        | Lt => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | NumEq => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Eq => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Gt => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Le => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Ge => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Ne => Funof({ args: List.make(~length=arity, Num), out: Num })
+        | Lt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | NumEq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Eq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Gt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Le => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Ge => Funof({ args: List.make(~length=arity, Num), out: Lgc })
+        | Ne => Funof({ args: List.make(~length=arity, Num), out: Lgc })
         | Equal => {
           let t = fresh();
-          Funof({ args: List.make(~length=arity, t), out: Num });
+          Funof({ args: List.make(~length=arity, t), out: Lgc });
         }
       }
     }
