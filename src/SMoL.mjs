@@ -3,6 +3,7 @@
 import * as Caml_obj from "rescript/lib/es6/caml_obj.js";
 import * as Belt_List from "rescript/lib/es6/belt_List.js";
 import * as Js_string from "rescript/lib/es6/js_string.js";
+import * as Belt_Array from "rescript/lib/es6/belt_Array.js";
 import * as Core__List from "@rescript/core/src/Core__List.mjs";
 import * as Belt_Option from "rescript/lib/es6/belt_Option.js";
 import * as Caml_option from "rescript/lib/es6/caml_option.js";
@@ -1643,6 +1644,34 @@ function toString$8(param) {
 var KindedSourceLocation = {
   toString: toString$8
 };
+
+function toString$9(t) {
+  if (typeof t !== "object") {
+    switch (t) {
+      case "Uni" :
+          return "Uni";
+      case "Num" :
+          return "Num";
+      case "Lgc" :
+          return "Lgc";
+      case "Str" :
+          return "Str";
+      
+    }
+  } else {
+    switch (t.TAG) {
+      case "Var" :
+          return "Var(t_var)";
+      case "Vecof" :
+          return "Vecof(t)";
+      case "Lstof" :
+          return "Lstof(t)";
+      case "Funof" :
+          return "Funof({args: list<t>, out: t})";
+      
+    }
+  }
+}
 
 var n = {
   contents: 0
@@ -3377,7 +3406,7 @@ function insertTopLevelPrint(p) {
         };
 }
 
-function toString$9(x) {
+function toString$10(x) {
   if (x === "Nonlocal") {
     return "nonlocal";
   } else {
@@ -4825,7 +4854,7 @@ function printDefBody(b, args, env) {
   var b$1 = printBlockHelper(b, "Return", match[1]);
   var print_it = concat("\n", Belt_List.concatMany([
             Belt_List.fromArray(Belt_HashMapString.toArray(match[0]).map(function (param) {
-                      var it = toString$9(param[1]) + " " + param[0];
+                      var it = toString$10(param[1]) + " " + param[0];
                       return {
                               it: {
                                 TAG: "Plain",
@@ -9730,7 +9759,7 @@ function printStandAloneTerm$4(param) {
   return toString(tmp);
 }
 
-function toString$10(t) {
+function toString$11(t) {
   switch (t.TAG) {
     case "ParseError" :
         return "ParseError: " + toString$7(t._0);
@@ -9743,7 +9772,7 @@ function toString$10(t) {
 }
 
 var TranslateError = {
-  toString: toString$10
+  toString: toString$11
 };
 
 var SMoLTranslateError = /* @__PURE__ */Caml_exceptions.create("SMoL.SMoLTranslateError");

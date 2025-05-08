@@ -950,6 +950,19 @@ module Type = {
   | Lstof(t)
   | Funof({args: list<t>, out: t})
 
+  let rec toString = (t) => {
+    switch t {
+      | Var(t_var) => `Var(t_var)`
+      | Uni => `Uni`
+      | Num => `Num`
+      | Lgc => `Lgc`
+      | Str => `Str`
+      | Vecof(t) => `Vecof(t)`
+      | Lstof(t) => `Lstof(t)`
+      | Funof({args, out}) => `Funof({args: list<t>, out: t})`
+    }
+  }
+
   let fresh = {
     let n = ref(0)
     () => {
@@ -1186,7 +1199,35 @@ module Type = {
   }
 
   let solveEqs = (eqs: array<eq>): dict<t> => {
-    // todo
+    let step = ((a, b)) => {
+      switch (a, b) {
+      | (Var(a), Var(b)) => [] // todo
+      | (Var(a), b) => []   // todo
+      | (a, Var(b)) => [(Var(b), a)]
+      | (Uni, Uni) => []
+      | (Num, Num) => []
+      | (Lgc, Lgc) => []
+      | (Str, Str) => []
+      | (Vecof(a), Vecof(b)) => [(a, b)]
+      | (Lstof(a), Lstof(b)) => [(a, b)]
+      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) => {
+        if (List.length(args_a) == List.length(args_b)) {
+          [
+            ...List.zip(args_a, args_b)->List.toArray,
+            (out_a, out_b)
+          ]
+        } else {
+          raisePrintError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+        }
+      }
+      | _ => []
+      }
+    }
+    let rec loop = (eqs) => {
+      if (Array.length(eqs) > 0) {
+        loop(eqs->Array.flatMap(step))
+      }
+    }
     Dict.fromArray([])
   }
 
