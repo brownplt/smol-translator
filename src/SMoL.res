@@ -1100,21 +1100,25 @@ module Type = {
         })
     }
     and ce = (env, e: expression<sourceLocation>) => {
+      let the_t = var(e.ann)
       switch e.it {
-        | Con(c) => addEq(var(e.ann), tc(c))
-        | Ref(x) => addEq(var(e.ann), lookup(env, x))
-        | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e);    addEq(var(e.ann), Uni)
-        | Lam(xs, b) => addEq(var(e.ann), cf(env, xs, b))
+        | Con(c) => addEq(the_t, tc(c))
+        | Ref(x) => addEq(the_t, lookup(env, x))
+        | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e); addEq(the_t, Uni)
+        | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
         | Let(k, bs, b) => raisePrintError("let")
-        | AppPrm(p, es) => es->List.forEach(e=>ce(env,e)); ca(p, es->List.map(e=>var(e.ann)), var(e.ann))
+        | AppPrm(p, es) => {
+            es->List.forEach(e=>ce(env,e))
+            ca(p, es->List.map(e=>var(e.ann)), the_t)
+        }
         | App(f, args) => {
           ce(env, f);
-          args->List.forEach(e=>ce(env,e));
+          args->List.forEach(e=>ce(env, e));
           addEq(
             var(f.ann),
             Funof({
               args: args->List.map(arg=>var(arg.ann)),
-              out: var(e.ann)
+              out: the_t
             }))
         }
         | Bgn(es, e) => raisePrintError("begin")
@@ -1123,8 +1127,8 @@ module Type = {
           ce(env, thn);
           ce(env, els);
           addEq(var(cnd.ann), Lgc);
-          addEq(var(thn.ann), var(e.ann));
-          addEq(var(els.ann), var(e.ann));
+          addEq(var(thn.ann), the_t);
+          addEq(var(els.ann), the_t);
         }
         | And(es) => {
           es->List.forEach(
@@ -1133,7 +1137,7 @@ module Type = {
               addEq(var(e.ann), Lgc)
             }
           )
-          addEq(var(e.ann), Lgc)
+          addEq(the_t, Lgc)
         }
         | Or(es) =>{
           es->List.forEach(
@@ -1142,7 +1146,7 @@ module Type = {
               addEq(var(e.ann), Lgc)
             }
           )
-          addEq(var(e.ann), Lgc)
+          addEq(the_t, Lgc)
         }
         | Cnd(branches, els) => {
           branches->List.forEach(
@@ -1150,13 +1154,13 @@ module Type = {
               ce(env, cnd);
               cb(makeEnv(xsOfBlock(thn), env), thn);
               addEq(var(cnd.ann), Lgc);
-              addEq(var(thn.ann), var(e.ann));
+              addEq(var(thn.ann), the_t);
             }
           )
           els->Option.forEach(
             (els) => {
               cb(makeEnv(xsOfBlock(els), env), els);
-              addEq(var(els.ann), var(e.ann));
+              addEq(var(els.ann), the_t);
             }
           )
         }
@@ -1165,9 +1169,10 @@ module Type = {
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
+      let the_t = var(b.ann)
       switch b.it {
-        | BRet(e) => ce(env, e); addEq(var(b.ann), var(e.ann))
-        | BCons(t, b2) => ct(env, t); cb(env, b); addEq(var(b.ann), var(b2.ann))
+        | BRet(e) => ce(env, e); addEq(the_t, var(e.ann))
+        | BCons(t, b) => ct(env, t); cb(env, b); addEq(the_t, var(b.ann))
       }
     }
     and ca = (p: Primitive.t, args: list<t>, out) => {
@@ -1186,7 +1191,7 @@ module Type = {
   }
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
-    // let eqs = collectEqs(p)
+    let eqs = collectEqs(p)
     solveEqs([])
   }
 }

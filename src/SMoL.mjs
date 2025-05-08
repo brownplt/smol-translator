@@ -1644,6 +1644,607 @@ var KindedSourceLocation = {
   toString: toString$8
 };
 
+var n = {
+  contents: 0
+};
+
+function fresh() {
+  var i = n.contents;
+  n.contents = i + 1 | 0;
+  return {
+          TAG: "Var",
+          _0: {
+            TAG: "Id",
+            _0: i
+          }
+        };
+}
+
+function collectEqs(p) {
+  var eqs = [];
+  var addEq = function (a, b) {
+    eqs.push([
+          a,
+          b
+        ]);
+  };
+  var makeEnv = function (xs, baseEnv) {
+    var env = Object.assign({}, baseEnv);
+    Core__List.forEach(xs, (function (x) {
+            env[x.it] = {
+              TAG: "Var",
+              _0: {
+                TAG: "Src",
+                _0: x.ann
+              }
+            };
+          }));
+    return env;
+  };
+  var lookup = function (env, x) {
+    var v = env[x];
+    if (v !== undefined) {
+      return v;
+    } else {
+      return fresh();
+    }
+  };
+  var tc = function (c) {
+    if (typeof c !== "object") {
+      if (c === "Uni") {
+        return "Uni";
+      }
+      throw {
+            RE_EXN_ID: SMoLPrintError,
+            _1: "list",
+            Error: new Error()
+          };
+    } else {
+      switch (c.TAG) {
+        case "Num" :
+            return "Num";
+        case "Lgc" :
+            return "Lgc";
+        case "Str" :
+            return "Str";
+        case "Sym" :
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Symbol",
+                  Error: new Error()
+                };
+        
+      }
+    }
+  };
+  var tp = function (p, arity) {
+    var exit = 0;
+    if (typeof p === "object") {
+      if (p.TAG === "Arith") {
+        return {
+                TAG: "Funof",
+                args: Core__List.make(arity, "Num"),
+                out: "Num"
+              };
+      } else {
+        var cmp = p._0;
+        if (cmp !== "Equal") {
+          return {
+                  TAG: "Funof",
+                  args: Core__List.make(arity, "Num"),
+                  out: "Num"
+                };
+        }
+        var t = fresh();
+        return {
+                TAG: "Funof",
+                args: Core__List.make(arity, t),
+                out: "Num"
+              };
+      }
+    }
+    switch (p) {
+      case "Maybe" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Maybe",
+                Error: new Error()
+              };
+      case "PairNew" :
+          var t$1 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t$1,
+                    tl: {
+                      hd: t$1,
+                      tl: /* [] */0
+                    }
+                  },
+                  out: {
+                    TAG: "Vecof",
+                    _0: t$1
+                  }
+                };
+      case "PairRefLeft" :
+      case "PairRefRight" :
+          exit = 1;
+          break;
+      case "PairSetLeft" :
+      case "PairSetRight" :
+          exit = 2;
+          break;
+      case "VecNew" :
+          var t$2 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: Core__List.make(arity, t$2),
+                  out: {
+                    TAG: "Vecof",
+                    _0: t$2
+                  }
+                };
+      case "VecRef" :
+          var t$3 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$3
+                    },
+                    tl: {
+                      hd: "Num",
+                      tl: /* [] */0
+                    }
+                  },
+                  out: t$3
+                };
+      case "VecSet" :
+          var t$4 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$4
+                    },
+                    tl: {
+                      hd: "Num",
+                      tl: {
+                        hd: t$4,
+                        tl: /* [] */0
+                      }
+                    }
+                  },
+                  out: "Uni"
+                };
+      case "VecLen" :
+          var t$5 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$5
+                    },
+                    tl: /* [] */0
+                  },
+                  out: "Num"
+                };
+      case "Err" :
+          var t1 = fresh();
+          var t2 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t1,
+                    tl: /* [] */0
+                  },
+                  out: t2
+                };
+      case "Not" :
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: "Lgc",
+                    tl: /* [] */0
+                  },
+                  out: "Lgc"
+                };
+      case "ZeroP" :
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: "Num",
+                    tl: /* [] */0
+                  },
+                  out: "Lgc"
+                };
+      case "Print" :
+          var t$6 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: t$6,
+                    tl: /* [] */0
+                  },
+                  out: "Uni"
+                };
+      case "Next" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Next",
+                Error: new Error()
+              };
+      case "StringAppend" :
+          return {
+                  TAG: "Funof",
+                  args: Core__List.make(arity, "Str"),
+                  out: "Str"
+                };
+      case "Cons" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Cons",
+                Error: new Error()
+              };
+      case "List" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "List",
+                Error: new Error()
+              };
+      case "EmptyP" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "EmptyP",
+                Error: new Error()
+              };
+      case "First" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "First",
+                Error: new Error()
+              };
+      case "Rest" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Rest",
+                Error: new Error()
+              };
+      
+    }
+    switch (exit) {
+      case 1 :
+          var t$7 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$7
+                    },
+                    tl: /* [] */0
+                  },
+                  out: t$7
+                };
+      case 2 :
+          var t$8 = fresh();
+          return {
+                  TAG: "Funof",
+                  args: {
+                    hd: {
+                      TAG: "Vecof",
+                      _0: t$8
+                    },
+                    tl: {
+                      hd: t$8,
+                      tl: /* [] */0
+                    }
+                  },
+                  out: "Uni"
+                };
+      
+    }
+  };
+  var cp = function (env, _p) {
+    while(true) {
+      var p = _p;
+      var match = p.it;
+      if (typeof match !== "object") {
+        return ;
+      }
+      ct(env, match._0);
+      _p = match._1;
+      continue ;
+    };
+  };
+  var ct = function (env, t) {
+    var d = t.it;
+    if (d.TAG === "Def") {
+      var d$1 = d._0;
+      var match = d$1.it;
+      switch (match.TAG) {
+        case "Var" :
+            var e = match._1;
+            addEq({
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: match._0.ann
+                  }
+                }, {
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: e.ann
+                  }
+                });
+            return ce(env, e);
+        case "Fun" :
+            return addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: match._0.ann
+                        }
+                      }, cf(env, match._1, match._2));
+        case "GFun" :
+            throw {
+                  RE_EXN_ID: SMoLPrintError,
+                  _1: "Generator",
+                  Error: new Error()
+                };
+        
+      }
+    } else {
+      return ce(env, d._0);
+    }
+  };
+  var cf = function (env, xs, b) {
+    cb(makeEnv(Belt_List.concatMany([
+                  xs,
+                  xsOfBlock(b)
+                ]), env), b);
+    return {
+            TAG: "Funof",
+            args: Core__List.map(xs, (function (x) {
+                    return {
+                            TAG: "Var",
+                            _0: {
+                              TAG: "Src",
+                              _0: x.ann
+                            }
+                          };
+                  })),
+            out: {
+              TAG: "Var",
+              _0: {
+                TAG: "Src",
+                _0: b.ann
+              }
+            }
+          };
+  };
+  var ce = function (env, e) {
+    var the_t = {
+      TAG: "Var",
+      _0: {
+        TAG: "Src",
+        _0: e.ann
+      }
+    };
+    var c = e.it;
+    switch (c.TAG) {
+      case "Con" :
+          return addEq(the_t, tc(c._0));
+      case "Ref" :
+          return addEq(the_t, lookup(env, c._0));
+      case "Set" :
+          var e$1 = c._1;
+          addEq(lookup(env, c._0.it), {
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: e$1.ann
+                }
+              });
+          ce(env, e$1);
+          return addEq(the_t, "Uni");
+      case "Lam" :
+          return addEq(the_t, cf(env, c._0, c._1));
+      case "Let" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "let",
+                Error: new Error()
+              };
+      case "AppPrm" :
+          var es = c._1;
+          Core__List.forEach(es, (function (e) {
+                  ce(env, e);
+                }));
+          var p = c._0;
+          var args = Core__List.map(es, (function (e) {
+                  return {
+                          TAG: "Var",
+                          _0: {
+                            TAG: "Src",
+                            _0: e.ann
+                          }
+                        };
+                }));
+          return addEq({
+                      TAG: "Funof",
+                      args: args,
+                      out: the_t
+                    }, tp(p, Core__List.length(args)));
+      case "App" :
+          var args$1 = c._1;
+          var f = c._0;
+          ce(env, f);
+          Core__List.forEach(args$1, (function (e) {
+                  ce(env, e);
+                }));
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: f.ann
+                      }
+                    }, {
+                      TAG: "Funof",
+                      args: Core__List.map(args$1, (function (arg) {
+                              return {
+                                      TAG: "Var",
+                                      _0: {
+                                        TAG: "Src",
+                                        _0: arg.ann
+                                      }
+                                    };
+                            })),
+                      out: the_t
+                    });
+      case "Bgn" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "begin",
+                Error: new Error()
+              };
+      case "If" :
+          var els = c._2;
+          var thn = c._1;
+          var cnd = c._0;
+          ce(env, cnd);
+          ce(env, thn);
+          ce(env, els);
+          addEq({
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: cnd.ann
+                }
+              }, "Lgc");
+          addEq({
+                TAG: "Var",
+                _0: {
+                  TAG: "Src",
+                  _0: thn.ann
+                }
+              }, the_t);
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: els.ann
+                      }
+                    }, the_t);
+      case "And" :
+          Core__List.forEach(c._0, (function (e) {
+                  ce(env, e);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: e.ann
+                        }
+                      }, "Lgc");
+                }));
+          return addEq(the_t, "Lgc");
+      case "Or" :
+          Core__List.forEach(c._0, (function (e) {
+                  ce(env, e);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: e.ann
+                        }
+                      }, "Lgc");
+                }));
+          return addEq(the_t, "Lgc");
+      case "Cnd" :
+          Core__List.forEach(c._0, (function (param) {
+                  var thn = param[1];
+                  var cnd = param[0];
+                  ce(env, cnd);
+                  cb(makeEnv(xsOfBlock(thn), env), thn);
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: cnd.ann
+                        }
+                      }, "Lgc");
+                  addEq({
+                        TAG: "Var",
+                        _0: {
+                          TAG: "Src",
+                          _0: thn.ann
+                        }
+                      }, the_t);
+                }));
+          return Core__Option.forEach(c._1, (function (els) {
+                        cb(makeEnv(xsOfBlock(els), env), els);
+                        addEq({
+                              TAG: "Var",
+                              _0: {
+                                TAG: "Src",
+                                _0: els.ann
+                              }
+                            }, the_t);
+                      }));
+      case "GLam" :
+      case "Yield" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "g lambda",
+                Error: new Error()
+              };
+      
+    }
+  };
+  var cb = function (env, b) {
+    var the_t = {
+      TAG: "Var",
+      _0: {
+        TAG: "Src",
+        _0: b.ann
+      }
+    };
+    var e = b.it;
+    if (e.TAG === "BRet") {
+      var e$1 = e._0;
+      ce(env, e$1);
+      return addEq(the_t, {
+                  TAG: "Var",
+                  _0: {
+                    TAG: "Src",
+                    _0: e$1.ann
+                  }
+                });
+    }
+    var b$1 = e._1;
+    ct(env, e._0);
+    cb(env, b$1);
+    addEq(the_t, {
+          TAG: "Var",
+          _0: {
+            TAG: "Src",
+            _0: b$1.ann
+          }
+        });
+  };
+  cp(makeEnv(xsOfProgram(p), Object.fromEntries([])), p);
+  return eqs;
+}
+
+function inferType(p) {
+  collectEqs(p);
+  return Object.fromEntries([]);
+}
+
 function indent(t, i) {
   var pad = Js_string.repeat(i, " ");
   return map(function (s) {
@@ -9040,7 +9641,7 @@ function printProgramFull$4(insertPrintTopLevel, p) {
   var mutVar = Js_string.includes("(set! ", s);
   var mutVec = Js_string.includes("(vec-set! ", s) || Js_string.includes("(set-left! ", s) || Js_string.includes("(set-right! ", s);
   involveMutation.contents = mutVar || mutVec;
-  type_assignment.contents = Object.fromEntries([]);
+  type_assignment.contents = inferType(p$1);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
