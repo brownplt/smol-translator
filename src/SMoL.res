@@ -961,9 +961,19 @@ module Type = {
     let makeEnv = (xs, baseEnv) => {
       let env = Dict.copy(baseEnv)
       xs->List.forEach(x => {
-        Dict.set(env, x.it, x.ann)
+        Dict.set(env, x.it, Var(x.ann))
       })
       env
+    }
+    let tc = (c: constant): t => {
+      switch c {
+        | Uni => Uni
+        | Nil => raise(TypeError("list"))
+        | Num(float) => Num
+        | Lgc(bool)  => Lgc
+        | Str(string) => Str
+        | Sym(string) => raise(TypeError("Symbol"))
+      }
     }
     let rec cp = (env, p: program<sourceLocation>) => {
       switch p.it {
@@ -974,7 +984,7 @@ module Type = {
     and ct = (env, t: term<sourceLocation>) => {
       switch t.it {
         | Def(d) => cd(env, d)
-        | Exp(e) => ignore(ce(env, e))
+        | Exp(e) => ce(env, e)
       }
     }
     and cd = (env, d: definition<sourceLocation>) => {
@@ -988,7 +998,11 @@ module Type = {
       }
     }
     and ce = (env, e: expression<sourceLocation>) => {
-      ()
+      switch e.it {
+        | Con(c) => addEq(Var(e.ann), tc(c))
+        | Ref(x) => addEq(Var(e.ann), Dict.getUnsafe(env, x))
+        | _ => ()
+      }
     }
     and cb = (env, b: block<sourceLocation>) => {
       ()
