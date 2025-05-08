@@ -35,61 +35,61 @@ for (const path of paths) {
             const programFile = `${path}/${name}.smol`;
             const outputsFile = `${path}/${name}.smol.txt`;
             // PY
-            // try {
-            //     if (!incompatibleWithPY.has(name.replace(/[.]again$/, ""))) {
-            //         const program = fs.readFileSync(programFile, 'utf8');
-            //         const outputs = fs.readFileSync(outputsFile, 'utf8');
-            //         if (!outputs.includes("@")) {
-            //             try {
-            //                 fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
-            //                 fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs, "\n"));
-            //             } catch (err) {
-            //                 fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
-            //             }
-            //         } else {
-            //             fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
-            //         }
-            //     }
-            // } catch (err) {
-            //     console.log(name);
-            //     console.error(err);
-            // }
+            try {
+                if (!incompatibleWithPY.has(name.replace(/[.]again$/, ""))) {
+                    const program = fs.readFileSync(programFile, 'utf8');
+                    const outputs = fs.readFileSync(outputsFile, 'utf8');
+                    if (!outputs.includes("@")) {
+                        try {
+                            fs.writeFileSync(`${path}/${name}.py`, SMoL.PYTranslator.translateProgram(true, program));
+                            fs.writeFileSync(`${path}/${name}.py.txt`, SMoL.PYTranslator.translateOutput(outputs, "\n"));
+                        } catch (err) {
+                            fs.writeFileSync(`${path}/${name}.py.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
+                        }
+                    } else {
+                        fs.writeFileSync(`${path}/${name}.py.err`, "Skipped translation because the outputs include `@`.");
+                    }
+                }
+            } catch (err) {
+                console.log(name);
+                console.error(err);
+            }
             // JS
-            // try {
-            //     const program = fs.readFileSync(programFile, 'utf8');
-            //     const outputs = fs.readFileSync(outputsFile, 'utf8');
-            //     if (!outputs.includes("@")) {
-            //         try {
-            //             fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(true, program));
-            //             fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateOutput(outputs, "\n"));
-            //         } catch (err) {
-            //             fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
-            //         }
-            //     } else {
-            //         fs.writeFileSync(`${path}/${name}.js.err`, "Skipped translation because the outputs include `@`.");
-            //     }
-            // } catch (err) {
-            //     console.log(name);
-            //     console.error(err);
-            // }
-            // // Pseudocode
-            // try {
-            //     const program = fs.readFileSync(programFile, 'utf8');
-            //     const outputs = fs.readFileSync(outputsFile, 'utf8');
-            //     if (!outputs.includes("@")) {
-            //         try {
-            //             fs.writeFileSync(`${path}/${name}.pseudo`, SMoL.PCTranslator.translateProgram(true, program));
-            //             fs.writeFileSync(`${path}/${name}.pseudo.txt`, SMoL.PCTranslator.translateOutput(outputs, "\n"));
-            //         } catch (err) {
-            //             fs.writeFileSync(`${path}/${name}.pseudo.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
-            //         }
-            //     } else {
-            //         fs.writeFileSync(`${path}/${name}.pseudo.err`, "Skipped translation because the outputs include `@`.");
-            //     }
-            // } catch (err) {
-            //     console.log(name);
-            //     console.error(err);
-            // }
+            try {
+                const program = fs.readFileSync(programFile, 'utf8');
+                const outputs = fs.readFileSync(outputsFile, 'utf8');
+                if (!outputs.includes("@")) {
+                    try {
+                        fs.writeFileSync(`${path}/${name}.js`, SMoL.JSTranslator.translateProgram(true, program));
+                        fs.writeFileSync(`${path}/${name}.js.txt`, SMoL.JSTranslator.translateOutput(outputs, "\n"));
+                    } catch (err) {
+                        fs.writeFileSync(`${path}/${name}.js.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
+                    }
+                } else {
+                    fs.writeFileSync(`${path}/${name}.js.err`, "Skipped translation because the outputs include `@`.");
+                }
+            } catch (err) {
+                console.log(name);
+                console.error(err);
+            }
+            // Pseudocode
+            try {
+                const program = fs.readFileSync(programFile, 'utf8');
+                const outputs = fs.readFileSync(outputsFile, 'utf8');
+                if (!outputs.includes("@")) {
+                    try {
+                        fs.writeFileSync(`${path}/${name}.pseudo`, SMoL.PCTranslator.translateProgram(true, program));
+                        fs.writeFileSync(`${path}/${name}.pseudo.txt`, SMoL.PCTranslator.translateOutput(outputs, "\n"));
+                    } catch (err) {
+                        fs.writeFileSync(`${path}/${name}.pseudo.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
+                    }
+                } else {
+                    fs.writeFileSync(`${path}/${name}.pseudo.err`, "Skipped translation because the outputs include `@`.");
+                }
+            } catch (err) {
+                console.log(name);
+                console.error(err);
+            }
             // Scala
             try {
                 if (!incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {

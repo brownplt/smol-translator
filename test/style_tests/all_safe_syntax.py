@@ -18,7 +18,7 @@ def f(y):
     return y + 1
 x = 456
 print([  ])
-print([ 1, [  ], [ 2, 3 ], 4 ])
+print([ [ 1 ], [  ], [ 2, 3 ], [ 4 ] ])
 print([ 1, 2 ])
 print([ 1, 2 ])
 print(len([ 1, 2, 3 ]))

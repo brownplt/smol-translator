@@ -937,7 +937,8 @@ module KindedSourceLocation = {
 
 
 
-
+type exn += TypeError(string)
+let raiseTypeError = (reason) => raise(TypeError(reason))
 module Type = {
   type t_var = Src(sourceLocation) | Id(int)
   type rec t =
@@ -1007,11 +1008,11 @@ module Type = {
     let tc = (c: constant): t => {
       switch c {
         | Uni => Uni
-        | Nil => raisePrintError("list")
+        | Nil => raiseTypeError("list")
         | Num(float) => Num
         | Lgc(bool)  => Lgc
         | Str(string) => Str
-        | Sym(string) => raisePrintError("Symbol")
+        | Sym(string) => raiseTypeError("Symbol")
       }
     }
     let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
@@ -1034,7 +1035,7 @@ module Type = {
     }
     let tp = (p: Primitive.t, arity: int) => {
       switch p {
-        | Maybe => raisePrintError("Maybe")
+        | Maybe => raiseTypeError("Maybe")
         | Arith(arith) => Funof({ args: List.make(~length=arity, Num), out: Num })
         | Cmp(cmp) => tp_cmp(cmp, arity)
         | PairNew => {
@@ -1086,13 +1087,13 @@ module Type = {
           let t = fresh()
           Funof({ args: list{t}, out: Uni })
         }
-        | Next => raisePrintError("Next")
+        | Next => raiseTypeError("Next")
         | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
-        | Cons => raisePrintError("Cons")
-        | List => raisePrintError("List")
-        | EmptyP => raisePrintError("EmptyP")
-        | First => raisePrintError("First")
-        | Rest => raisePrintError("Rest")
+        | Cons => raiseTypeError("Cons")
+        | List => raiseTypeError("List")
+        | EmptyP => raiseTypeError("EmptyP")
+        | First => raiseTypeError("First")
+        | Rest => raiseTypeError("Rest")
       }
     }
     let rec cp = (env, p: program<sourceLocation>) => {
@@ -1111,7 +1112,7 @@ module Type = {
       switch d.it {
         | Var(x, e) => addEq(var(x.ann), var(e.ann)); ce(env, e)
         | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
-        | GFun(f, xs, b) => raisePrintError("Generator")
+        | GFun(f, xs, b) => raiseTypeError("Generator")
       }
     }
     and cf = (env, xs, b) => {
@@ -1128,7 +1129,7 @@ module Type = {
         | Ref(x) => addEq(the_t, lookup(env, x))
         | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e); addEq(the_t, Uni)
         | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
-        | Let(k, bs, b) => raisePrintError("let")
+        | Let(k, bs, b) => raiseTypeError("let")
         | AppPrm(p, es) => {
             es->List.forEach(e=>ce(env,e))
             ca(p, es->List.map(e=>var(e.ann)), the_t)
@@ -1143,7 +1144,7 @@ module Type = {
               out: the_t
             }))
         }
-        | Bgn(es, e) => raisePrintError("begin")
+        | Bgn(es, e) => raiseTypeError("begin")
         | If(cnd, thn, els) => {
           ce(env, cnd);
           ce(env, thn);
@@ -1186,8 +1187,8 @@ module Type = {
             }
           )
         }
-        | GLam(xs, b) => raisePrintError("Generators are not supported")
-        | Yield(e) => raisePrintError("Generators are not supported")
+        | GLam(xs, b) => raiseTypeError("Generators are not supported")
+        | Yield(e) => raiseTypeError("Generators are not supported")
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
@@ -1216,7 +1217,7 @@ module Type = {
       Dict.get(solution, s_var(t_var))
     }
     let step = ((a, b)) => {
-      let fail = () => raisePrintError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+      let fail = () => raiseTypeError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
       // Js.Console.log(`stepping ${toString(a)} = ${toString(b)}`)
       switch (a, b) {
       | (Var(a), Var(b)) => {
@@ -1265,13 +1266,38 @@ module Type = {
     }
     loop(eqs)
     // Js.Console.log2("solution", solution)
-    Dict.fromArray([])
+    let rec lookup_rec = t => {
+      switch t {
+        | Var(t) => {
+          switch lookup(t) {
+            | None => Num
+            | Some(t) => lookup_rec(t)
+          }
+        }
+        | Uni => Uni
+        | Num => Num
+        | Lgc => Lgc
+        | Str => Str
+        | Vecof(t) => Vecof(lookup_rec(t))
+        | Lstof(t) => Lstof(lookup_rec(t))
+        | Funof({args, out}) => {
+          let args = args->List.map(lookup_rec)
+          let out = out->lookup_rec
+          Funof({args, out})
+        }
+      }
+    }
+    solution
+    ->Dict.toArray
+    ->Array.map(((k, t)) => (k, lookup_rec(t)))
+    ->Dict.fromArray
   }
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
-    let eqs = collectEqs(p)
-    // Js.Console.log2("eqs", eqs->Array.map(((a, b)) => `${toString(a)} == ${toString(b)}`)->Array.join("\n"))
-    solveEqs(eqs)
+    switch p->collectEqs->solveEqs {
+      | solution => solution
+      | exception TypeError(reason) => Dict.fromArray([])
+    }
   }
 }
 

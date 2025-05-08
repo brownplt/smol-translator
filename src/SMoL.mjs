@@ -1644,6 +1644,8 @@ var KindedSourceLocation = {
   toString: toString$8
 };
 
+var $$TypeError = /* @__PURE__ */Caml_exceptions.create("SMoL.TypeError");
+
 function s_var(t_var) {
   if (t_var.TAG === "Src") {
     return SExpression.SourceLocation.toString(t_var._0);
@@ -1731,7 +1733,7 @@ function collectEqs(p) {
         return "Uni";
       }
       throw {
-            RE_EXN_ID: SMoLPrintError,
+            RE_EXN_ID: $$TypeError,
             _1: "list",
             Error: new Error()
           };
@@ -1745,7 +1747,7 @@ function collectEqs(p) {
             return "Str";
         case "Sym" :
             throw {
-                  RE_EXN_ID: SMoLPrintError,
+                  RE_EXN_ID: $$TypeError,
                   _1: "Symbol",
                   Error: new Error()
                 };
@@ -1786,7 +1788,7 @@ function collectEqs(p) {
     switch (p) {
       case "Maybe" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "Maybe",
                 Error: new Error()
               };
@@ -1913,7 +1915,7 @@ function collectEqs(p) {
                 };
       case "Next" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "Next",
                 Error: new Error()
               };
@@ -1925,31 +1927,31 @@ function collectEqs(p) {
                 };
       case "Cons" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "Cons",
                 Error: new Error()
               };
       case "List" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "List",
                 Error: new Error()
               };
       case "EmptyP" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "EmptyP",
                 Error: new Error()
               };
       case "First" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "First",
                 Error: new Error()
               };
       case "Rest" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "Rest",
                 Error: new Error()
               };
@@ -2032,7 +2034,7 @@ function collectEqs(p) {
                       }, cf(env, match._1, match._2));
         case "GFun" :
             throw {
-                  RE_EXN_ID: SMoLPrintError,
+                  RE_EXN_ID: $$TypeError,
                   _1: "Generator",
                   Error: new Error()
                 };
@@ -2096,7 +2098,7 @@ function collectEqs(p) {
           return addEq(the_t, cf(env, c._0, c._1));
       case "Let" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "let",
                 Error: new Error()
               };
@@ -2148,7 +2150,7 @@ function collectEqs(p) {
                     });
       case "Bgn" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "begin",
                 Error: new Error()
               };
@@ -2238,7 +2240,7 @@ function collectEqs(p) {
       case "GLam" :
       case "Yield" :
           throw {
-                RE_EXN_ID: SMoLPrintError,
+                RE_EXN_ID: $$TypeError,
                 _1: "Generators are not supported",
                 Error: new Error()
               };
@@ -2281,207 +2283,268 @@ function collectEqs(p) {
 }
 
 function inferType(p) {
-  var eqs = collectEqs(p);
-  var solution = Object.fromEntries([]);
-  var assign = function (t_var, t) {
-    solution[s_var(t_var)] = t;
-  };
-  var lookup = function (t_var) {
-    return solution[s_var(t_var)];
-  };
-  var step = function (param) {
-    var b = param[1];
-    var a = param[0];
-    var fail = function () {
-      var err = "Type inference failed, " + toString$9(a) + " is incompatible with " + toString$9(b);
-      throw {
-            RE_EXN_ID: SMoLPrintError,
-            _1: err,
-            Error: new Error()
-          };
+  try {
+    var eqs = collectEqs(p);
+    var solution = Object.fromEntries([]);
+    var assign = function (t_var, t) {
+      solution[s_var(t_var)] = t;
     };
-    if (typeof a !== "object") {
-      switch (a) {
-        case "Uni" :
-            if (typeof b !== "object") {
-              if (b === "Uni") {
-                return [];
-              } else {
-                return fail();
-              }
-            }
-            if (b.TAG !== "Var") {
-              return fail();
-            }
-            break;
-        case "Num" :
-            if (typeof b !== "object") {
-              if (b === "Num") {
-                return [];
-              } else {
-                return fail();
-              }
-            }
-            if (b.TAG !== "Var") {
-              return fail();
-            }
-            break;
-        case "Lgc" :
-            if (typeof b !== "object") {
-              if (b === "Lgc") {
-                return [];
-              } else {
-                return fail();
-              }
-            }
-            if (b.TAG !== "Var") {
-              return fail();
-            }
-            break;
-        case "Str" :
-            if (typeof b !== "object") {
-              if (b === "Str") {
-                return [];
-              } else {
-                return fail();
-              }
-            }
-            if (b.TAG !== "Var") {
-              return fail();
-            }
-            break;
-        
-      }
-    } else {
-      switch (a.TAG) {
-        case "Var" :
-            var a$1 = a._0;
-            var exit = 0;
-            if (typeof b !== "object") {
-              exit = 2;
-            } else {
-              if (b.TAG === "Var") {
-                var b$1 = b._0;
-                var match = lookup(a$1);
-                var match$1 = lookup(b$1);
-                if (match !== undefined) {
-                  if (match$1 !== undefined) {
-                    return [[
-                              match,
-                              match$1
-                            ]];
-                  } else {
-                    assign(b$1, match);
-                    return [];
-                  }
-                } else if (match$1 !== undefined) {
-                  assign(a$1, match$1);
+    var lookup = function (t_var) {
+      return solution[s_var(t_var)];
+    };
+    var step = function (param) {
+      var b = param[1];
+      var a = param[0];
+      var fail = function () {
+        var reason = "Type inference failed, " + toString$9(a) + " is incompatible with " + toString$9(b);
+        throw {
+              RE_EXN_ID: $$TypeError,
+              _1: reason,
+              Error: new Error()
+            };
+      };
+      if (typeof a !== "object") {
+        switch (a) {
+          case "Uni" :
+              if (typeof b !== "object") {
+                if (b === "Uni") {
                   return [];
                 } else {
-                  if (s_var(a$1) !== s_var(b$1)) {
-                    assign(a$1, {
-                          TAG: "Var",
-                          _0: b$1
-                        });
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Num" :
+              if (typeof b !== "object") {
+                if (b === "Num") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Lgc" :
+              if (typeof b !== "object") {
+                if (b === "Lgc") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          case "Str" :
+              if (typeof b !== "object") {
+                if (b === "Str") {
+                  return [];
+                } else {
+                  return fail();
+                }
+              }
+              if (b.TAG !== "Var") {
+                return fail();
+              }
+              break;
+          
+        }
+      } else {
+        switch (a.TAG) {
+          case "Var" :
+              var a$1 = a._0;
+              var exit = 0;
+              if (typeof b !== "object") {
+                exit = 2;
+              } else {
+                if (b.TAG === "Var") {
+                  var b$1 = b._0;
+                  var match = lookup(a$1);
+                  var match$1 = lookup(b$1);
+                  if (match !== undefined) {
+                    if (match$1 !== undefined) {
+                      return [[
+                                match,
+                                match$1
+                              ]];
+                    } else {
+                      assign(b$1, match);
+                      return [];
+                    }
+                  } else if (match$1 !== undefined) {
+                    assign(a$1, match$1);
+                    return [];
+                  } else {
+                    if (s_var(a$1) !== s_var(b$1)) {
+                      assign(a$1, {
+                            TAG: "Var",
+                            _0: b$1
+                          });
+                    }
+                    return [];
                   }
+                }
+                exit = 2;
+              }
+              if (exit === 2) {
+                var a$2 = lookup(a$1);
+                if (a$2 !== undefined) {
+                  return [[
+                            a$2,
+                            b
+                          ]];
+                } else {
+                  assign(a$1, b);
                   return [];
                 }
               }
-              exit = 2;
-            }
-            if (exit === 2) {
-              var a$2 = lookup(a$1);
-              if (a$2 !== undefined) {
-                return [[
-                          a$2,
-                          b
-                        ]];
-              } else {
-                assign(a$1, b);
-                return [];
+              break;
+          case "Vecof" :
+              if (typeof b !== "object") {
+                return fail();
               }
-            }
-            break;
-        case "Vecof" :
-            if (typeof b !== "object") {
-              return fail();
-            }
-            switch (b.TAG) {
-              case "Var" :
-                  break;
-              case "Vecof" :
-                  return [[
-                            a._0,
-                            b._0
-                          ]];
-              default:
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Vecof" :
+                    return [[
+                              a._0,
+                              b._0
+                            ]];
+                default:
+                  return fail();
+              }
+              break;
+          case "Lstof" :
+              if (typeof b !== "object") {
                 return fail();
-            }
-            break;
-        case "Lstof" :
-            if (typeof b !== "object") {
-              return fail();
-            }
-            switch (b.TAG) {
-              case "Var" :
-                  break;
-              case "Lstof" :
-                  return [[
-                            a._0,
-                            b._0
-                          ]];
-              default:
+              }
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Lstof" :
+                    return [[
+                              a._0,
+                              b._0
+                            ]];
+                default:
+                  return fail();
+              }
+              break;
+          case "Funof" :
+              var args_a = a.args;
+              if (typeof b !== "object") {
                 return fail();
-            }
-            break;
-        case "Funof" :
-            var args_a = a.args;
-            if (typeof b !== "object") {
-              return fail();
-            }
-            switch (b.TAG) {
-              case "Var" :
-                  break;
-              case "Funof" :
-                  var args_b = b.args;
-                  if (Core__List.length(args_a) === Core__List.length(args_b)) {
-                    return Belt_Array.concatMany([
-                                Core__List.toArray(Core__List.zip(args_a, args_b)),
-                                [[
-                                    a.out,
-                                    b.out
-                                  ]]
-                              ]);
-                  } else {
-                    return fail();
-                  }
-              default:
-                return fail();
-            }
-            break;
-        
+              }
+              switch (b.TAG) {
+                case "Var" :
+                    break;
+                case "Funof" :
+                    var args_b = b.args;
+                    if (Core__List.length(args_a) === Core__List.length(args_b)) {
+                      return Belt_Array.concatMany([
+                                  Core__List.toArray(Core__List.zip(args_a, args_b)),
+                                  [[
+                                      a.out,
+                                      b.out
+                                    ]]
+                                ]);
+                    } else {
+                      return fail();
+                    }
+                default:
+                  return fail();
+              }
+              break;
+          
+        }
       }
-    }
-    return [[
-              {
-                TAG: "Var",
-                _0: b._0
-              },
-              a
-            ]];
-  };
-  var loop = function (_eqs) {
-    while(true) {
-      var eqs = _eqs;
-      if (eqs.length <= 0) {
-        return ;
-      }
-      _eqs = eqs.flatMap(step);
-      continue ;
+      return [[
+                {
+                  TAG: "Var",
+                  _0: b._0
+                },
+                a
+              ]];
     };
-  };
-  loop(eqs);
-  return Object.fromEntries([]);
+    var loop = function (_eqs) {
+      while(true) {
+        var eqs = _eqs;
+        if (eqs.length <= 0) {
+          return ;
+        }
+        _eqs = eqs.flatMap(step);
+        continue ;
+      };
+    };
+    loop(eqs);
+    var lookup_rec = function (_t) {
+      while(true) {
+        var t = _t;
+        if (typeof t !== "object") {
+          switch (t) {
+            case "Uni" :
+                return "Uni";
+            case "Num" :
+                return "Num";
+            case "Lgc" :
+                return "Lgc";
+            case "Str" :
+                return "Str";
+            
+          }
+        } else {
+          switch (t.TAG) {
+            case "Var" :
+                var t$1 = lookup(t._0);
+                if (t$1 === undefined) {
+                  return "Num";
+                }
+                _t = t$1;
+                continue ;
+            case "Vecof" :
+                return {
+                        TAG: "Vecof",
+                        _0: lookup_rec(t._0)
+                      };
+            case "Lstof" :
+                return {
+                        TAG: "Lstof",
+                        _0: lookup_rec(t._0)
+                      };
+            case "Funof" :
+                var args = Core__List.map(t.args, lookup_rec);
+                var out = lookup_rec(t.out);
+                return {
+                        TAG: "Funof",
+                        args: args,
+                        out: out
+                      };
+            
+          }
+        }
+      };
+    };
+    return Object.fromEntries(Object.entries(solution).map(function (param) {
+                    return [
+                            param[0],
+                            lookup_rec(param[1])
+                          ];
+                  }));
+  }
+  catch (raw_reason){
+    var reason = Caml_js_exceptions.internalToOCamlException(raw_reason);
+    if (reason.RE_EXN_ID === $$TypeError) {
+      return Object.fromEntries([]);
+    }
+    throw reason;
+  }
 }
 
 function indent(t, i) {
