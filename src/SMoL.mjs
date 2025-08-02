@@ -9350,11 +9350,28 @@ function defvarToString$4(x, e) {
   }
 }
 
-function deffunToString$4(f, xs, ts, b) {
+function deffunToString$4(f, t, xs, ts, b) {
   var op = "def";
+  if (toString(t).includes("=>")) {
+    s([
+          ": ",
+          ""
+        ], [t]);
+  } else {
+    s([""], []);
+  }
+  var outputType_it = {
+    TAG: "Plain",
+    _0: ""
+  };
+  var outputType = {
+    it: outputType_it,
+    ann: undefined
+  };
   return s([
               "",
               " ",
+              "",
               " =",
               ""
             ], [
@@ -9381,6 +9398,7 @@ function deffunToString$4(f, xs, ts, b) {
                           }))),
                 ann: undefined
               },
+              outputType,
               indentBlock(b, 2)
             ]);
 }
@@ -9747,6 +9765,7 @@ function printDef$4(param) {
         var f = symbolToString$4(d._0);
         var xs = Core__List.map(d._1, symbolToString$4);
         var b = printBlock$4(d._2, false);
+        var it = lookup_type(b.ann.sourceLocation);
         d$1 = {
           it: {
             TAG: "Fun",
@@ -9754,7 +9773,13 @@ function printDef$4(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$4(f.ann.print, Core__List.map(xs, (function (x) {
+          ann: deffunToString$4(f.ann.print, {
+                it: {
+                  TAG: "Plain",
+                  _0: it
+                },
+                ann: undefined
+              }, Core__List.map(xs, (function (x) {
                       return x.ann.print;
                     })), Core__List.map(xs, (function (x) {
                       var it = lookup_type(x.ann.sourceLocation);
