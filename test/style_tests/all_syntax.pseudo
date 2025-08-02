@@ -95,3 +95,8 @@ print(g())
 print(h(4, 5))
 print("foobar")
 raise "bad thing happens"
+let n = 0
+while n < 3:
+  print(n)
+  n = n + 1
+end

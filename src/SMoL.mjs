@@ -1485,6 +1485,24 @@ function parseTerm(e) {
             case "vset!" :
                 tmp = makeAppPrm(ann, "VecSet", es.tl);
                 break;
+            case "while" :
+                var match$12 = as_one_then_many("the condition followed by the loop step", es.tl);
+                var cnd = as_expr("the conditional expression", parseTerm(match$12[0]));
+                var thn = Core__List.map(match$12[1], (function (thn) {
+                        return as_expr("an expression", parseTerm(thn));
+                      }));
+                tmp = {
+                  TAG: "Exp",
+                  _0: {
+                    it: {
+                      TAG: "While",
+                      _0: cnd,
+                      _1: thn
+                    },
+                    ann: e.ann
+                  }
+                };
+                break;
             case "yield" :
                 var e$4 = as_one("an expression", es.tl);
                 var e$5 = as_expr("an expression", parseTerm(e$4));
@@ -1503,12 +1521,12 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "ZeroP", es.tl);
                 break;
             case "λ" :
-                var match$12 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$4 = Core__List.map(as_list("function parameters", match$12[0]).it, (function (arg) {
+                var match$13 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$4 = Core__List.map(as_list("function parameters", match$13[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$5 = Core__List.map(match$12[1], parseTerm);
-                var result$5 = as_expr("an expression to be returned", parseTerm(match$12[2]));
+                var terms$5 = Core__List.map(match$13[1], parseTerm);
+                var result$5 = as_expr("an expression to be returned", parseTerm(match$13[2]));
                 var it_1$2 = makeBlock(terms$5, result$5);
                 var it$5 = {
                   TAG: "Lam",
@@ -1538,9 +1556,9 @@ function parseTerm(e) {
       exit = 1;
     }
     if (exit === 1) {
-      var match$13 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
-      var e$6 = as_expr("a function", parseTerm(match$13[0]));
-      var es$1 = Core__List.map(Core__List.map(match$13[1], parseTerm), (function (e) {
+      var match$14 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
+      var e$6 = as_expr("a function", parseTerm(match$14[0]));
+      var es$1 = Core__List.map(Core__List.map(match$14[1], parseTerm), (function (e) {
               return as_expr("an argument", e);
             }));
       tmp = {
@@ -3676,6 +3694,13 @@ function insertTopLevelPrint(p) {
               tmp = {
                 TAG: "Yield",
                 _0: e$1._0
+              };
+              break;
+          case "While" :
+              tmp = {
+                TAG: "While",
+                _0: e$1._0,
+                _1: e$1._1
               };
               break;
           default:
@@ -7831,6 +7856,22 @@ function exprYieldToString$3(e) {
             ], [e]);
 }
 
+function exprWhileToString$1(e_cnd, es_thn) {
+  var es_thn_it = concat("\n", es_thn);
+  var es_thn$1 = {
+    it: es_thn_it,
+    ann: undefined
+  };
+  return s([
+              "while ",
+              ":",
+              "\nend"
+            ], [
+              e_cnd,
+              indentBlock(es_thn$1, 2)
+            ]);
+}
+
 function exprBeginToString(es, e) {
   return s([
               "begin:",
@@ -8376,11 +8417,29 @@ function printExp$3(param, ctx) {
                 }
               };
     case "While" :
-        throw {
-              RE_EXN_ID: SMoLPrintError,
-              _1: "While loops are not supported yet.",
-              Error: new Error()
-            };
+        var e_cnd$3 = printExp$3(it._0, {
+              TAG: "Expr",
+              _0: false
+            });
+        var es_thn = Belt_List.map(it._1, (function (e_thn) {
+                return printExp$3(e_thn, {
+                            TAG: "Stat",
+                            _0: "Step"
+                          });
+              }));
+        return {
+                it: {
+                  TAG: "While",
+                  _0: e_cnd$3,
+                  _1: es_thn
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextVoid$2(ctx, ann, exprWhileToString$1(e_cnd$3.ann.print, Belt_List.map(es_thn, (function (e_thn) {
+                                  return e_thn.ann.print;
+                                }))))
+                }
+              };
     
   }
 }

@@ -98,3 +98,8 @@ empty
 (print "foobar")
 
 (error "bad thing happens")
+
+(defvar n 0)
+(while (< n 3)
+  (print n)
+  (set! n (+ n 1)))

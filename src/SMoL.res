@@ -706,6 +706,17 @@ module Parser = {
           Exp(ann(Lam(args, makeBlock(terms, result))))
         }
 
+      
+      | Sequence({content: list{{it: Atom(Sym("while")), ann: _}, ...rest}}) => {
+          let (cnd, thn) = as_one_then_many(
+            "the condition followed by the loop step",
+            rest,
+          )
+          let cnd = as_expr("the conditional expression", parseTerm(cnd))
+          let thn = thn->List.map(thn=>as_expr("an expression", parseTerm(thn)))
+          Exp(ann(While(cnd, thn)))
+        }
+
       | Sequence({content: list{{it: Atom(Sym("generator")), ann: _}, ...rest}}) => {
           let (args, terms, result) = as_one_then_many_then_one(
             "the generator signature followed by the function body",
@@ -1872,6 +1883,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                   | AppPrm(Err, es) => AppPrm(Err, es)
                   | AppPrm(Print, es) => AppPrm(Print, es)
                   | Yield(e) => Yield(e)
+                  | While(e, es) => While(e, es)
                   | e => AppPrm(Print, list{{it: e, ann: moveBeginChByOne(t.ann)}})
                   },
                 }
@@ -3854,6 +3866,11 @@ module PCPrinter = {
   let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
+  let exprWhileToString = (e_cnd, es_thn) => {
+    let es_thn = Print.concat("\n", es_thn)->Print.dummy
+    Print.s`while ${e_cnd}:${indentBlock(es_thn, 2)}\nend`
+  }
+
   let exprBeginToString = (es, e) => {
     Print.s`begin:${indentBlock(Print.dummy(Print.concat("\n", list{...es, e})), 2)}\nend`
   }
@@ -4018,7 +4035,18 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
-    | While(_, _) => raisePrintError("While loops are not supported yet.")
+    | While(e_cnd, es_thn) => {
+        let e_cnd = e_cnd->printExp(Expr(false))
+        let es_thn = es_thn->List.map(e_thn => e_thn->printExp(Stat(Step)))
+        {
+          it: While(e_cnd, es_thn),
+          ann: consumeContextVoid(
+            ctx,
+            ann,
+            exprWhileToString(e_cnd.ann.print, es_thn->List.map(e_thn => e_thn.ann.print)),
+          )->addSourceLocation,
+        }
+      }
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(Expr(b)))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
