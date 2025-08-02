@@ -2244,6 +2244,19 @@ function collectEqs(p) {
                 _1: "Generators are not supported",
                 Error: new Error()
               };
+      case "While" :
+          var cnd$1 = c._0;
+          ce(env, cnd$1);
+          Core__List.forEach(c._1, (function (e) {
+                  ce(env, e);
+                }));
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: cnd$1.ann
+                      }
+                    }, "Lgc");
       
     }
   };
@@ -2881,6 +2894,19 @@ function exprCndToString(ebs, ob) {
             }, ebs$2);
 }
 
+function exprWhileToString(e_cnd, es_thn) {
+  return defvarLikeList({
+              it: {
+                TAG: "Plain",
+                _0: "while"
+              },
+              ann: undefined
+            }, e_cnd, {
+              it: concat("\n", es_thn),
+              ann: undefined
+            });
+}
+
 function exprIfToString(e_cnd, e_thn, e_els) {
   return appLikeList({
               it: {
@@ -3150,6 +3176,22 @@ function printExp(param) {
             _0: e$4
           },
           ann: exprYieldToString(e$4.ann.print)
+        };
+        break;
+    case "While" :
+        var e_cnd$1 = printExp(it._0);
+        var es_thn = Core__List.map(it._1, (function (e_cnd) {
+                return printExp(e_cnd);
+              }));
+        e = {
+          it: {
+            TAG: "While",
+            _0: e_cnd$1,
+            _1: es_thn
+          },
+          ann: exprWhileToString(e_cnd$1.ann.print, Core__List.map(es_thn, (function (e_cnd) {
+                      return e_cnd.ann.print;
+                    })))
         };
         break;
     
@@ -4894,6 +4936,12 @@ function printExp$1(param, ctx, env) {
                   print: consumeContextWrapEvenReturn(ctx, ann, exprYieldToString$1(e$2.ann.print))
                 }
               };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -6542,6 +6590,12 @@ function printExp$2(param, ctx) {
                   print: consumeContextWrapEvenReturn$1(ctx, ann, exprYieldToString$2(e$2.ann.print))
                 }
               };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -8321,6 +8375,12 @@ function printExp$3(param, ctx) {
                   print: consumeContextWrapEvenReturn$2(ctx, ann, exprYieldToString$3(e$3.ann.print))
                 }
               };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -9730,6 +9790,12 @@ function printExp$4(param, ctx) {
         throw {
               RE_EXN_ID: SMoLPrintError,
               _1: "Generators are not supported by Scala.",
+              Error: new Error()
+            };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
               Error: new Error()
             };
     

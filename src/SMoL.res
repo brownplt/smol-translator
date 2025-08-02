@@ -291,6 +291,7 @@ type rec expressionNode<'ann> =
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
+  | While(expression<'ann>, list<expression<'ann>>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
 and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
 and bind<'ann> = annotated<bindNode<'ann>, 'ann>
@@ -1185,6 +1186,13 @@ module Type = {
         }
       | GLam(_xs, _b) => raiseTypeError("Generators are not supported")
       | Yield(_e) => raiseTypeError("Generators are not supported")
+      | While(cnd, thn) => {
+          ce(env, cnd)
+          thn->List.forEach(e => {
+            ce(env, e)
+          })
+          addEq(var(cnd.ann), Lgc)
+        }
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
@@ -1443,6 +1451,10 @@ module SMoLPrinter = {
     beginLikeList(Print.fromString("cond"), ebs)
   }
 
+  let exprWhileToString = (e_cnd, es_thn) => {
+    defvarLikeList(Print.fromString("while"), e_cnd, Print.concat("\n", es_thn)->Print.dummy)
+  }
+
   let exprIfToString = (e_cnd, e_thn, e_els) => {
     appLikeList(Print.fromString("if"), list{e_cnd, e_thn, e_els})
   }
@@ -1556,6 +1568,14 @@ module SMoLPrinter = {
         {
           ann: exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print),
           it: If(e_cnd, e_thn, e_els),
+        }
+      }
+    | While(e_cnd, es_thn) => {
+        let e_cnd = e_cnd->printExp
+        let es_thn = es_thn->List.map(e_cnd => e_cnd->printExp)
+        {
+          ann: exprWhileToString(e_cnd.ann.print, es_thn->List.map(e_cnd => e_cnd.ann.print)),
+          it: While(e_cnd, es_thn),
         }
       }
     | And(e_ns) => {
@@ -2344,6 +2364,7 @@ module PYPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | GLam(xs, b) => {
         let xs = xs->List.map(symbolToString)
         let b = b->printLamBody(xs, env)
@@ -3166,6 +3187,7 @@ module JSPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | Yield(e) => {
         let e = e->printExp(Expr(false))
         {
@@ -3996,6 +4018,7 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(Expr(b)))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
@@ -4735,6 +4758,7 @@ module SCPrinter = {
       }
     | GLam(_xs, _b) => raisePrintError("Generators are not supported by Scala.")
     | Yield(_e) => raisePrintError("Generators are not supported by Scala.")
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(b))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
