@@ -12,7 +12,7 @@ type rec printNode<'id> =
   | Group(list<print<'id>>)
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
-let concat = (s, ss) => Array.joinWith(ss, s)
+let concat = (s, ss) => Array.join(ss, s)
 
 module Print = {
   type t<'id> = print<'id>
@@ -259,7 +259,7 @@ module Primitive = {
     }
   }
 }
-open Primitive
+open! Primitive
 
 type symbol = string
 
@@ -268,11 +268,11 @@ module LetKind = {
     | Plain
     | Nested
     | Recursive
-  let toString = (t) => {
+  let toString = t => {
     switch t {
-      | Plain => "let"
-      | Nested => "let*"
-      | Recursive => "letrec"
+    | Plain => "let"
+    | Nested => "let*"
+    | Recursive => "letrec"
     }
   }
 }
@@ -291,6 +291,7 @@ type rec expressionNode<'ann> =
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
+  | While(expression<'ann>, list<expression<'ann>>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
 and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)
 and bind<'ann> = annotated<bindNode<'ann>, 'ann>
@@ -626,10 +627,7 @@ module Parser = {
   }
 
   let rec parseLet = (letKind, ann, rest) => {
-    let (xes, ts, result) = as_one_then_many_then_one(
-      "the bindings followed by the body",
-      rest,
-    )
+    let (xes, ts, result) = as_one_then_many_then_one("the bindings followed by the body", rest)
     let xes =
       as_list("variable-expression pairs", xes).it
       ->List.map(xe => as_list("a variable and an expression", xe))
@@ -708,6 +706,17 @@ module Parser = {
           Exp(ann(Lam(args, makeBlock(terms, result))))
         }
 
+      
+      | Sequence({content: list{{it: Atom(Sym("while")), ann: _}, ...rest}}) => {
+          let (cnd, thn) = as_one_then_many(
+            "the condition followed by the loop step",
+            rest,
+          )
+          let cnd = as_expr("the conditional expression", parseTerm(cnd))
+          let thn = thn->List.map(thn=>as_expr("an expression", parseTerm(thn)))
+          Exp(ann(While(cnd, thn)))
+        }
+
       | Sequence({content: list{{it: Atom(Sym("generator")), ann: _}, ...rest}}) => {
           let (args, terms, result) = as_one_then_many_then_one(
             "the generator signature followed by the function body",
@@ -764,14 +773,14 @@ module Parser = {
         }
 
       | Sequence({content: list{{it: Atom(Sym("and")), ann: _}, ...rest}}) => {
-        let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
-        Exp(ann(And(e_ns)))
-      }
+          let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+          Exp(ann(And(e_ns)))
+        }
 
       | Sequence({content: list{{it: Atom(Sym("or")), ann: _}, ...rest}}) => {
-        let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
-        Exp(ann(Or(e_ns)))
-      }
+          let e_ns = rest->List.map(parseTerm)->List.map(e => as_expr("an expression", e))
+          Exp(ann(Or(e_ns)))
+        }
 
       | Sequence({content: list{{it: Atom(Sym("cond")), ann: _}, ...branches}}) => {
           let branches =
@@ -800,15 +809,12 @@ module Parser = {
           loop(list{}, branches)
         }
 
-      | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) => {
+      | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) =>
         parseLet(LetKind.Plain, ann, rest)
-        }
-      | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) => {
+      | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) =>
         parseLet(LetKind.Nested, ann, rest)
-        }
-      | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => {
+      | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) =>
         parseLet(LetKind.Recursive, ann, rest)
-        }
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
       | Sequence({content: list{{it: Atom(Sym("maybe?")), ann: _}, ...es}}) =>
@@ -876,12 +882,18 @@ module Parser = {
       | Sequence({content: list{{it: Atom(Sym("error")), ann: _}, ...es}}) =>
         makeAppPrm(ann, Err, es)
       | Sequence({content: list{{it: Atom(Sym("not")), ann: _}, ...es}}) => makeAppPrm(ann, Not, es)
-      | Sequence({content: list{{it: Atom(Sym("zero?")), ann: _}, ...es}}) => makeAppPrm(ann, ZeroP, es)
-      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) => makeAppPrm(ann, Print, es)
-      | Sequence({content: list{{it: Atom(Sym("list")), ann: _}, ...es}}) => makeAppPrm(ann, List, es)
-      | Sequence({content: list{{it: Atom(Sym("empty?")), ann: _}, ...es}}) => makeAppPrm(ann, EmptyP, es)
-      | Sequence({content: list{{it: Atom(Sym("first")), ann: _}, ...es}}) => makeAppPrm(ann, First, es)
-      | Sequence({content: list{{it: Atom(Sym("rest")), ann: _}, ...es}}) => makeAppPrm(ann, Rest, es)
+      | Sequence({content: list{{it: Atom(Sym("zero?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, ZeroP, es)
+      | Sequence({content: list{{it: Atom(Sym("print")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Print, es)
+      | Sequence({content: list{{it: Atom(Sym("list")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, List, es)
+      | Sequence({content: list{{it: Atom(Sym("empty?")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, EmptyP, es)
+      | Sequence({content: list{{it: Atom(Sym("first")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, First, es)
+      | Sequence({content: list{{it: Atom(Sym("rest")), ann: _}, ...es}}) =>
+        makeAppPrm(ann, Rest, es)
       | Sequence({content: es}) => {
           let (e, es) = as_one_then_many(
             "a function call/application, which includes a function and then zero or more arguments",
@@ -935,50 +947,49 @@ module KindedSourceLocation = {
   }
 }
 
-
-
 type exn += TypeError(string)
-let raiseTypeError = (reason) => raise(TypeError(reason))
+let raiseTypeError = reason => raise(TypeError(reason))
 module Type = {
   type t_var = Src(sourceLocation) | Id(int)
   type rec t =
-  | Var(t_var)
-  | Uni
-  | Num
-  | Lgc
-  | Str
-  | Vecof(t)
-  | Lstof(t)
-  | Funof({args: list<t>, out: t})
+    | Var(t_var)
+    | Uni
+    | Num
+    | Lgc
+    | Str
+    | Vecof(t)
+    | Lstof(t)
+    | Funof({args: list<t>, out: t})
 
-  let s_var = (t_var) => {
+  let s_var = t_var => {
     switch t_var {
-      | Src(src) => SourceLocation.toString(src)
-      | Id(i) => Int.toString(i)
+    | Src(src) => SourceLocation.toString(src)
+    | Id(i) => Int.toString(i)
     }
   }
-  let rec toString = (t) => {
+  let rec toString = t => {
     switch t {
-      | Var(t_var) => `Var(${s_var(t_var)})`
-      | Uni => `Uni`
-      | Num => `Num`
-      | Lgc => `Lgc`
-      | Str => `Str`
-      | Vecof(t) => `Vecof(${toString(t)})`
-      | Lstof(t) => `Lstof(${toString(t)})`
-      | Funof({args, out}) => `(${Array.join(args->List.map(toString)->List.toArray, ", ")}) -> ${toString(out)}`
+    | Var(t_var) => `Var(${s_var(t_var)})`
+    | Uni => `Uni`
+    | Num => `Num`
+    | Lgc => `Lgc`
+    | Str => `Str`
+    | Vecof(t) => `Vecof(${toString(t)})`
+    | Lstof(t) => `Lstof(${toString(t)})`
+    | Funof({args, out}) =>
+      `(${Array.join(args->List.map(toString)->List.toArray, ", ")}) -> ${toString(out)}`
     }
   }
 
   let fresh = {
     let n = ref(0)
     () => {
-      let i = n.contents;
-      n := i + 1;
+      let i = n.contents
+      n := i + 1
       Var(Id(i))
     }
   }
-  let var = (srcLoc) => Var(Src(srcLoc))
+  let var = srcLoc => Var(Src(srcLoc))
 
   type eq = (t, t)
 
@@ -996,213 +1007,219 @@ module Type = {
     }
     let lookup = (env, x) => {
       switch Dict.get(env, x) {
-        | Some(v) => v
-        | None => {
-          // unbound id should error in typical type inference.
-          // but I want to preserve semantics, even when the program errors
-          // so I return a fresh type instead
-          fresh()
-        }
+      | Some(v) => v
+      | None =>
+        // unbound id should error in typical type inference.
+        // but I want to preserve semantics, even when the program errors
+        // so I return a fresh type instead
+        fresh()
       }
     }
     let tc = (c: constant): t => {
       switch c {
-        | Uni => Uni
-        | Nil => raiseTypeError("list")
-        | Num(float) => Num
-        | Lgc(bool)  => Lgc
-        | Str(string) => Str
-        | Sym(string) => raiseTypeError("Symbol")
+      | Uni => Uni
+      | Nil => raiseTypeError("list")
+      | Num(_float) => Num
+      | Lgc(_bool) => Lgc
+      | Str(_string) => Str
+      | Sym(_string) => raiseTypeError("Symbol")
       }
     }
     let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
       switch cmp {
-        | Lt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | NumEq => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Gt => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Le => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Ge => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Ne => Funof({ args: List.make(~length=arity, Num), out: Lgc })
-        | Eq => {
-          let t = fresh();
-          Funof({ args: List.make(~length=arity, t), out: Lgc });
+      | Lt => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | NumEq => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | Gt => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | Le => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | Ge => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | Ne => Funof({args: List.make(~length=arity, Num), out: Lgc})
+      | Eq => {
+          let t = fresh()
+          Funof({args: List.make(~length=arity, t), out: Lgc})
         }
-        | Equal => {
-          let t = fresh();
-          Funof({ args: List.make(~length=arity, t), out: Lgc });
+      | Equal => {
+          let t = fresh()
+          Funof({args: List.make(~length=arity, t), out: Lgc})
         }
       }
     }
     let tp = (p: Primitive.t, arity: int) => {
       switch p {
-        | Maybe => raiseTypeError("Maybe")
-        | Arith(arith) => Funof({ args: List.make(~length=arity, Num), out: Num })
-        | Cmp(cmp) => tp_cmp(cmp, arity)
-        | PairNew => {
-          let t = fresh();
-          Funof({ args: list{t, t}, out: Vecof(t) })
-        }
-        | PairRefLeft => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t)}, out: t })
-        }
-        | PairRefRight => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t)}, out: t })
-        }
-        | PairSetLeft => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t), t}, out: Uni })
-        }
-        | PairSetRight => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t), t}, out: Uni })
-        }
-        | VecNew => {
-          let t = fresh();
-          Funof({ args: List.make(~length=arity, t), out: Vecof(t) })
-        }
-        | VecRef => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t), Num }, out: t })
-        }
-        | VecSet => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t), Num, t}, out: Uni })
-        }
-        | VecLen => {
-          let t = fresh();
-          Funof({ args: list{Vecof(t) }, out: Num })
-        }
-        | Err => {
-          let t1 = fresh();
-          let t2 = fresh();
-          Funof({ args: list{t1}, out: t2 })
-        }
-        | Not => Funof({ args: list{Lgc}, out: Lgc })
-        | ZeroP => {
-          Funof({ args: list{Num}, out: Lgc })
-        }
-        | Print => {
+      | Maybe => raiseTypeError("Maybe")
+      | Arith(_arith) => Funof({args: List.make(~length=arity, Num), out: Num})
+      | Cmp(cmp) => tp_cmp(cmp, arity)
+      | PairNew => {
           let t = fresh()
-          Funof({ args: list{t}, out: Uni })
+          Funof({args: list{t, t}, out: Vecof(t)})
         }
-        | Next => raiseTypeError("Next")
-        | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
-        | Cons => raiseTypeError("Cons")
-        | List => raiseTypeError("List")
-        | EmptyP => raiseTypeError("EmptyP")
-        | First => raiseTypeError("First")
-        | Rest => raiseTypeError("Rest")
+      | PairRefLeft => {
+          let t = fresh()
+          Funof({args: list{Vecof(t)}, out: t})
+        }
+      | PairRefRight => {
+          let t = fresh()
+          Funof({args: list{Vecof(t)}, out: t})
+        }
+      | PairSetLeft => {
+          let t = fresh()
+          Funof({args: list{Vecof(t), t}, out: Uni})
+        }
+      | PairSetRight => {
+          let t = fresh()
+          Funof({args: list{Vecof(t), t}, out: Uni})
+        }
+      | VecNew => {
+          let t = fresh()
+          Funof({args: List.make(~length=arity, t), out: Vecof(t)})
+        }
+      | VecRef => {
+          let t = fresh()
+          Funof({args: list{Vecof(t), Num}, out: t})
+        }
+      | VecSet => {
+          let t = fresh()
+          Funof({args: list{Vecof(t), Num, t}, out: Uni})
+        }
+      | VecLen => {
+          let t = fresh()
+          Funof({args: list{Vecof(t)}, out: Num})
+        }
+      | Err => {
+          let t1 = fresh()
+          let t2 = fresh()
+          Funof({args: list{t1}, out: t2})
+        }
+      | Not => Funof({args: list{Lgc}, out: Lgc})
+      | ZeroP => Funof({args: list{Num}, out: Lgc})
+      | Print => {
+          let t = fresh()
+          Funof({args: list{t}, out: Uni})
+        }
+      | Next => raiseTypeError("Next")
+      | StringAppend => Funof({args: List.make(~length=arity, Str), out: Str})
+      | Cons => raiseTypeError("Cons")
+      | List => raiseTypeError("List")
+      | EmptyP => raiseTypeError("EmptyP")
+      | First => raiseTypeError("First")
+      | Rest => raiseTypeError("Rest")
       }
     }
     let rec cp = (env, p: program<sourceLocation>) => {
       switch p.it {
-        | PNil => ()
-        | PCons(t, p) => ct(env, t); cp(env, p)
+      | PNil => ()
+      | PCons(t, p) =>
+        ct(env, t)
+        cp(env, p)
       }
     }
     and ct = (env, t: term<sourceLocation>) => {
       switch t.it {
-        | Def(d) => cd(env, d)
-        | Exp(e) => ce(env, e)
+      | Def(d) => cd(env, d)
+      | Exp(e) => ce(env, e)
       }
     }
     and cd = (env, d: definition<sourceLocation>) => {
       switch d.it {
-        | Var(x, e) => addEq(var(x.ann), var(e.ann)); ce(env, e)
-        | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
-        | GFun(f, xs, b) => raiseTypeError("Generator")
+      | Var(x, e) =>
+        addEq(var(x.ann), var(e.ann))
+        ce(env, e)
+      | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
+      | GFun(_f, _xs, _b) => raiseTypeError("Generator")
       }
     }
     and cf = (env, xs, b) => {
-      cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b);
+      cb(makeEnv(list{...xs, ...xsOfBlock(b)}, env), b)
       Funof({
-          args: xs->List.map(x=>var(x.ann)),
-          out: var(b.ann)
-        })
+        args: xs->List.map(x => var(x.ann)),
+        out: var(b.ann),
+      })
     }
     and ce = (env, e: expression<sourceLocation>) => {
       let the_t = var(e.ann)
       switch e.it {
-        | Con(c) => addEq(the_t, tc(c))
-        | Ref(x) => addEq(the_t, lookup(env, x))
-        | Set(x, e) => addEq(lookup(env, x.it), var(e.ann)); ce(env, e); addEq(the_t, Uni)
-        | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
-        | Let(k, bs, b) => raiseTypeError("let")
-        | AppPrm(p, es) => {
-            es->List.forEach(e=>ce(env,e))
-            ca(p, es->List.map(e=>var(e.ann)), the_t)
+      | Con(c) => addEq(the_t, tc(c))
+      | Ref(x) => addEq(the_t, lookup(env, x))
+      | Set(x, e) =>
+        addEq(lookup(env, x.it), var(e.ann))
+        ce(env, e)
+        addEq(the_t, Uni)
+      | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
+      | Let(_k, _bs, _b) => raiseTypeError("let")
+      | AppPrm(p, es) => {
+          es->List.forEach(e => ce(env, e))
+          ca(p, es->List.map(e => var(e.ann)), the_t)
         }
-        | App(f, args) => {
-          ce(env, f);
-          args->List.forEach(e=>ce(env, e));
+      | App(f, args) => {
+          ce(env, f)
+          args->List.forEach(e => ce(env, e))
           addEq(
             var(f.ann),
             Funof({
-              args: args->List.map(arg=>var(arg.ann)),
-              out: the_t
-            }))
-        }
-        | Bgn(es, e) => raiseTypeError("begin")
-        | If(cnd, thn, els) => {
-          ce(env, cnd);
-          ce(env, thn);
-          ce(env, els);
-          addEq(var(cnd.ann), Lgc);
-          addEq(var(thn.ann), the_t);
-          addEq(var(els.ann), the_t);
-        }
-        | And(es) => {
-          es->List.forEach(
-            e => {
-              ce(env, e);
-              addEq(var(e.ann), Lgc)
-            }
+              args: args->List.map(arg => var(arg.ann)),
+              out: the_t,
+            }),
           )
+        }
+      | Bgn(_es, _e) => raiseTypeError("begin")
+      | If(cnd, thn, els) => {
+          ce(env, cnd)
+          ce(env, thn)
+          ce(env, els)
+          addEq(var(cnd.ann), Lgc)
+          addEq(var(thn.ann), the_t)
+          addEq(var(els.ann), the_t)
+        }
+      | And(es) => {
+          es->List.forEach(e => {
+            ce(env, e)
+            addEq(var(e.ann), Lgc)
+          })
           addEq(the_t, Lgc)
         }
-        | Or(es) =>{
-          es->List.forEach(
-            e => {
-              ce(env, e);
-              addEq(var(e.ann), Lgc)
-            }
-          )
+      | Or(es) => {
+          es->List.forEach(e => {
+            ce(env, e)
+            addEq(var(e.ann), Lgc)
+          })
           addEq(the_t, Lgc)
         }
-        | Cnd(branches, els) => {
-          branches->List.forEach(
-            ((cnd, thn)) => {
-              ce(env, cnd);
-              cb(makeEnv(xsOfBlock(thn), env), thn);
-              addEq(var(cnd.ann), Lgc);
-              addEq(var(thn.ann), the_t);
-            }
-          )
-          els->Option.forEach(
-            (els) => {
-              cb(makeEnv(xsOfBlock(els), env), els);
-              addEq(var(els.ann), the_t);
-            }
-          )
+      | Cnd(branches, els) => {
+          branches->List.forEach(((cnd, thn)) => {
+            ce(env, cnd)
+            cb(makeEnv(xsOfBlock(thn), env), thn)
+            addEq(var(cnd.ann), Lgc)
+            addEq(var(thn.ann), the_t)
+          })
+          els->Option.forEach(els => {
+            cb(makeEnv(xsOfBlock(els), env), els)
+            addEq(var(els.ann), the_t)
+          })
         }
-        | GLam(xs, b) => raiseTypeError("Generators are not supported")
-        | Yield(e) => raiseTypeError("Generators are not supported")
+      | GLam(_xs, _b) => raiseTypeError("Generators are not supported")
+      | Yield(_e) => raiseTypeError("Generators are not supported")
+      | While(cnd, thn) => {
+          ce(env, cnd)
+          thn->List.forEach(e => {
+            ce(env, e)
+          })
+          addEq(var(cnd.ann), Lgc)
+        }
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
       let the_t = var(b.ann)
       switch b.it {
-        | BRet(e) => ce(env, e); addEq(the_t, var(e.ann))
-        | BCons(t, b) => ct(env, t); cb(env, b); addEq(the_t, var(b.ann))
+      | BRet(e) =>
+        ce(env, e)
+        addEq(the_t, var(e.ann))
+      | BCons(t, b) =>
+        ct(env, t)
+        cb(env, b)
+        addEq(the_t, var(b.ann))
       }
     }
     and ca = (p: Primitive.t, args: list<t>, out) => {
-      addEq(
-        Funof({args, out}),
-        tp(p: Primitive.t, List.length(args))
-      )
+      addEq(Funof({args, out}), tp((p: Primitive.t), List.length(args)))
     }
     cp(makeEnv(xsOfProgram(p), Dict.fromArray([])), p)
     eqs
@@ -1213,32 +1230,37 @@ module Type = {
     let assign = (t_var, t) => {
       Dict.set(solution, s_var(t_var), t)
     }
-    let lookup = (t_var) => {
+    let lookup = t_var => {
       Dict.get(solution, s_var(t_var))
     }
     let step = ((a, b)) => {
-      let fail = () => raiseTypeError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
+      let fail = () =>
+        raiseTypeError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
       // Js.Console.log(`stepping ${toString(a)} = ${toString(b)}`)
       switch (a, b) {
-      | (Var(a), Var(b)) => {
+      | (Var(a), Var(b)) =>
         switch (lookup(a), lookup(b)) {
-          | (None, None) => {
-            if (s_var(a) != s_var(b)) {
+        | (None, None) => {
+            if s_var(a) != s_var(b) {
               assign(a, Var(b))
             }
             []
           }
-          | (None, Some(b)) => assign(a, b); []
-          | (Some(a), None) => assign(b, a); []
-          | (Some(a), Some(b)) => [(a, b)]
+        | (None, Some(b)) =>
+          assign(a, b)
+          []
+        | (Some(a), None) =>
+          assign(b, a)
+          []
+        | (Some(a), Some(b)) => [(a, b)]
         }
-      }
-      | (Var(a), b) => {
+      | (Var(a), b) =>
         switch lookup(a) {
-          | None => assign(a, b); []
-          | Some(a) => [(a, b)]
+        | None =>
+          assign(a, b)
+          []
+        | Some(a) => [(a, b)]
         }
-      }
       | (a, Var(b)) => [(Var(b), a)]
       | (Uni, Uni) => []
       | (Num, Num) => []
@@ -1246,21 +1268,17 @@ module Type = {
       | (Str, Str) => []
       | (Vecof(a), Vecof(b)) => [(a, b)]
       | (Lstof(a), Lstof(b)) => [(a, b)]
-      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) => {
-        if (List.length(args_a) == List.length(args_b)) {
-          [
-            ...List.zip(args_a, args_b)->List.toArray,
-            (out_a, out_b)
-          ]
+      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) =>
+        if List.length(args_a) == List.length(args_b) {
+          [...List.zip(args_a, args_b)->List.toArray, (out_a, out_b)]
         } else {
           fail()
         }
-      }
       | _ => fail()
       }
     }
-    let rec loop = (eqs) => {
-      if (Array.length(eqs) > 0) {
+    let rec loop = eqs => {
+      if Array.length(eqs) > 0 {
         loop(eqs->Array.flatMap(step))
       }
     }
@@ -1268,19 +1286,18 @@ module Type = {
     // Js.Console.log2("solution", solution)
     let rec lookup_rec = t => {
       switch t {
-        | Var(t) => {
-          switch lookup(t) {
-            | None => Num
-            | Some(t) => lookup_rec(t)
-          }
+      | Var(t) =>
+        switch lookup(t) {
+        | None => Num
+        | Some(t) => lookup_rec(t)
         }
-        | Uni => Uni
-        | Num => Num
-        | Lgc => Lgc
-        | Str => Str
-        | Vecof(t) => Vecof(lookup_rec(t))
-        | Lstof(t) => Lstof(lookup_rec(t))
-        | Funof({args, out}) => {
+      | Uni => Uni
+      | Num => Num
+      | Lgc => Lgc
+      | Str => Str
+      | Vecof(t) => Vecof(lookup_rec(t))
+      | Lstof(t) => Lstof(lookup_rec(t))
+      | Funof({args, out}) => {
           let args = args->List.map(lookup_rec)
           let out = out->lookup_rec
           Funof({args, out})
@@ -1295,18 +1312,11 @@ module Type = {
 
   let inferType = (p: program<sourceLocation>): dict<t> => {
     switch p->collectEqs->solveEqs {
-      | solution => solution
-      | exception TypeError(reason) => Dict.fromArray([])
+    | solution => solution
+    | exception TypeError(_reason) => Dict.fromArray([])
     }
   }
 }
-
-
-
-
-
-
-
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
@@ -1452,16 +1462,20 @@ module SMoLPrinter = {
     beginLikeList(Print.fromString("cond"), ebs)
   }
 
+  let exprWhileToString = (e_cnd, es_thn) => {
+    defvarLikeList(Print.fromString("while"), e_cnd, Print.concat("\n", es_thn)->Print.dummy)
+  }
+
   let exprIfToString = (e_cnd, e_thn, e_els) => {
     appLikeList(Print.fromString("if"), list{e_cnd, e_thn, e_els})
   }
 
-  let exprAndToString = (e_ns) => {
-    exprAppToString(Print.dummy(Print.s`and`), list{...e_ns})
+  let exprAndToString = e_ns => {
+    exprAppToString(Print.dummy(Print.s`and`), e_ns)
   }
 
-  let exprOrToString = (e_ns) => {
-    exprAppToString(Print.dummy(Print.s`or`), list{...e_ns})
+  let exprOrToString = e_ns => {
+    exprAppToString(Print.dummy(Print.s`or`), e_ns)
   }
 
   let symbolToString = ({it, ann: sourceLocation}) => {
@@ -1540,7 +1554,7 @@ module SMoLPrinter = {
         let b = b->printBlock
         {
           ann: letLikeList(
-            LetKind.toString(kind) |> Print.fromString,
+            Print.fromString(LetKind.toString(kind)),
             xes->List.map(xe => xe.ann.print)->bindsLikeList->Print.dummy,
             b.ann.print,
           ),
@@ -1567,20 +1581,28 @@ module SMoLPrinter = {
           it: If(e_cnd, e_thn, e_els),
         }
       }
+    | While(e_cnd, es_thn) => {
+        let e_cnd = e_cnd->printExp
+        let es_thn = es_thn->List.map(e_cnd => e_cnd->printExp)
+        {
+          ann: exprWhileToString(e_cnd.ann.print, es_thn->List.map(e_cnd => e_cnd.ann.print)),
+          it: While(e_cnd, es_thn),
+        }
+      }
     | And(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k))
-      {
-        ann: exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
-        it: And(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k))
+        {
+          ann: exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+          it: And(e_ns),
+        }
       }
-    }
     | Or(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k))
-      {
-        ann: exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
-        it: Or(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k))
+        {
+          ann: exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+          it: Or(e_ns),
+        }
       }
-    }
     | Bgn(es, e) => {
         let es = es->List.map(printExp)
         let e = e->printExp
@@ -1861,6 +1883,7 @@ let rec insertTopLevelPrint = (p: program<sourceLocation>): program<sourceLocati
                   | AppPrm(Err, es) => AppPrm(Err, es)
                   | AppPrm(Print, es) => AppPrm(Print, es)
                   | Yield(e) => Yield(e)
+                  | While(e, es) => While(e, es)
                   | e => AppPrm(Print, list{{it: e, ann: moveBeginChByOne(t.ann)}})
                   },
                 }
@@ -2101,11 +2124,7 @@ module PYPrinter = {
         let e1 = e1(true)
         {
           it: (ZeroP, list{e1}),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            Print.s`${e1.ann.print} == 0`,
-          ),
+          ann: consumeContextWrap(ctx, ann, Print.s`${e1.ann.print} == 0`),
         }
       }
     | (PairNew, list{e1, e2}) => {
@@ -2276,19 +2295,19 @@ module PYPrinter = {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
   }
 
-  let exprAndToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprAndToString = e_ns => {
+    if e_ns == list{} {
       Print.s`True`
     } else {
-      Print.concat(" and ", list{...e_ns})
+      Print.concat(" and ", e_ns)
     }
   }
 
-  let exprOrToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprOrToString = e_ns => {
+    if e_ns == list{} {
       Print.s`False`
     } else {
-      Print.concat(" or ", list{...e_ns})
+      Print.concat(" or ", e_ns)
     }
   }
 
@@ -2357,6 +2376,7 @@ module PYPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | GLam(xs, b) => {
         let xs = xs->List.map(symbolToString)
         let b = b->printLamBody(xs, env)
@@ -2453,27 +2473,27 @@ module PYPrinter = {
       }
 
     | And(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: And(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: And(e_ns),
+        }
       }
-    }
     | Or(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: Or(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false), env))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: Or(e_ns),
+        }
       }
-    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Python")
     }
   }
@@ -2916,11 +2936,7 @@ module JSPrinter = {
         let e1 = e1(true)
         {
           it: (ZeroP, list{e1}),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            Print.s`${e1.ann.print} == 0`,
-          ),
+          ann: consumeContextWrap(ctx, ann, Print.s`${e1.ann.print} == 0`),
         }
       }
     | (PairNew, list{e1, e2}) => {
@@ -3088,19 +3104,19 @@ module JSPrinter = {
     Print.s`${e_cnd} ? ${e_thn} : ${e_els}`
   }
 
-  let exprAndToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprAndToString = e_ns => {
+    if e_ns == list{} {
       Print.s`true`
     } else {
-      Print.concat(" && ", list{...e_ns})
+      Print.concat(" && ", e_ns)
     }
   }
 
-  let exprOrToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprOrToString = e_ns => {
+    if e_ns == list{} {
       Print.s`false`
     } else {
-      Print.concat(" || ", list{...e_ns})
+      Print.concat(" || ", e_ns)
     }
   }
 
@@ -3183,6 +3199,7 @@ module JSPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | Yield(e) => {
         let e = e->printExp(Expr(false))
         {
@@ -3264,27 +3281,27 @@ module JSPrinter = {
       }
 
     | And(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: And(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: And(e_ns),
+        }
       }
-    }
     | Or(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: Or(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: Or(e_ns),
+        }
       }
-    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by JavaScript")
     }
   }
@@ -3663,11 +3680,7 @@ module PCPrinter = {
         let e1 = e1(true)
         {
           it: (ZeroP, list{e1}),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            Print.s`${e1.ann.print} == 0`,
-          ),
+          ann: consumeContextWrap(ctx, ann, Print.s`${e1.ann.print} == 0`),
         }
       }
     | (PairNew, list{e1, e2}) => {
@@ -3784,33 +3797,37 @@ module PCPrinter = {
         }
       }
     | (List, es) => {
-      let es = es -> List.map(e => e(false))
-      {
-        it: (List, es),
-        ann: consumeContext(ctx, ann, Print.s`list[ ${Print.concat(", ", es->List.map(e=>e.ann.print)) |> Print.dummy} ]`)
+        let es = es->List.map(e => e(false))
+        {
+          it: (List, es),
+          ann: consumeContext(
+            ctx,
+            ann,
+            Print.s`list[ ${Print.dummy(Print.concat(", ", es->List.map(e => e.ann.print)))} ]`,
+          ),
+        }
       }
-    }
     | (EmptyP, list{e1}) => {
-      let e1 = e1(false)
-      {
-        it: (EmptyP, list{e1}),
-        ann: consumeContext(ctx, ann, Print.s`is-empty(${e1.ann.print})`)
+        let e1 = e1(false)
+        {
+          it: (EmptyP, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`is-empty(${e1.ann.print})`),
+        }
       }
-    }
     | (First, list{e1}) => {
-      let e1 = e1(true)
-      {
-        it: (First, list{e1}),
-        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.first`)
+        let e1 = e1(true)
+        {
+          it: (First, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.first`),
+        }
       }
-    }
     | (Rest, list{e1}) => {
-      let e1 = e1(true)
-      {
-        it: (Rest, list{e1}),
-        ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.rest`)
+        let e1 = e1(true)
+        {
+          it: (Rest, list{e1}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}.rest`),
+        }
       }
-    }
     | _ =>
       raisePrintError(
         `Pseudocode doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
@@ -3849,8 +3866,13 @@ module PCPrinter = {
   let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
+  let exprWhileToString = (e_cnd, es_thn) => {
+    let es_thn = Print.concat("\n", es_thn)->Print.dummy
+    Print.s`while ${e_cnd}:${indentBlock(es_thn, 2)}\nend`
+  }
+
   let exprBeginToString = (es, e) => {
-    Print.s`begin:${indentBlock(Print.concat("\n", list{...es, e}) |> Print.dummy, 2)}\nend`
+    Print.s`begin:${indentBlock(Print.dummy(Print.concat("\n", list{...es, e})), 2)}\nend`
   }
 
   let ifStat = (cnd, thn, els) => {
@@ -3876,19 +3898,19 @@ module PCPrinter = {
     Print.s`${e_thn} if ${e_cnd} else ${e_els}`
   }
 
-  let exprAndToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprAndToString = e_ns => {
+    if e_ns == list{} {
       Print.s`True`
     } else {
-      Print.concat(" ∧ ", list{...e_ns})
+      Print.concat(" ∧ ", e_ns)
     }
   }
 
-  let exprOrToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprOrToString = e_ns => {
+    if e_ns == list{} {
       Print.s`False`
     } else {
-      Print.concat(" ∨ ", list{...e_ns})
+      Print.concat(" ∨ ", e_ns)
     }
   }
 
@@ -3912,32 +3934,32 @@ module PCPrinter = {
     let ann = {
       open! LetKind
       switch k {
-        | Plain => ""
-        | Nested => "*"
-        | Recursive => "rec"
+      | Plain => ""
+      | Nested => "*"
+      | Recursive => "rec"
       }
     }
-    let xes = Print.concat("\n", xes) |> Print.dummy
+    let xes = Print.dummy(Print.concat("\n", xes))
     Print.s`let${Print.fromString(ann)}:${indentBlock(xes, 2)}\ndo:${indentBlock(b, 2)}\nend`
   }
 
-  let rec printBind = ({ ann: sourceLocation, it: (x, e)}: bind<sourceLocation>): bind<printAnn> => {
+  let rec printBind = ({ann: sourceLocation, it: (x, e)}: bind<sourceLocation>): bind<printAnn> => {
     let x = x->symbolToString
     let e = e->printExp(Expr(false))
     let print = {
       it: Print.s`${x.ann.print} = ${e.ann.print}`,
       ann: Some({
         nodeKind: Bind,
-        sourceLocation
-      })
+        sourceLocation,
+      }),
     }
     {
       it: (x, e),
       ann: {
         sourceLocation,
-        print
+        print,
       },
-  }
+    }
   }
   and printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
     let ann = it => {
@@ -4013,6 +4035,18 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
+    | While(e_cnd, es_thn) => {
+        let e_cnd = e_cnd->printExp(Expr(false))
+        let es_thn = es_thn->List.map(e_thn => e_thn->printExp(Stat(Step)))
+        {
+          it: While(e_cnd, es_thn),
+          ann: consumeContextVoid(
+            ctx,
+            ann,
+            exprWhileToString(e_cnd.ann.print, es_thn->List.map(e_thn => e_thn.ann.print)),
+          )->addSourceLocation,
+        }
+      }
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(Expr(b)))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
@@ -4034,17 +4068,17 @@ module PCPrinter = {
         }
       }
     | Let(k, xes, b) => {
-      let xes = xes->List.map(printBind)
-      let b = b->printBlock(ctx)
-      {
+        let xes = xes->List.map(printBind)
+        let b = b->printBlock(ctx)
+        {
           it: Let(k, xes, b),
           ann: consumeContext(
             ctx,
             ann,
             exprLetToString(k, xes->List.map(xe => xe.ann.print), b.ann.print),
           )->addSourceLocation,
+        }
       }
-    }
     | Cnd(ebs, ob) =>
       switch ctx {
       | Expr(_) =>
@@ -4094,40 +4128,39 @@ module PCPrinter = {
       }
 
     | And(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: And(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: And(e_ns),
+        }
       }
-    }
     | Or(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: Or(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, Expr(false)))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: Or(e_ns),
+        }
       }
-    }
     | Bgn(es, e) => {
-      let es = es->List.map(e_k => printExp(e_k, Expr(false)))
-      let e = printExp(e, Expr(false))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprBeginToString(es->List.map(e => e.ann.print), e.ann.print),
-        )->addSourceLocation,
-        it: Bgn(es, e)
+        let es = es->List.map(e_k => printExp(e_k, Expr(false)))
+        let e = printExp(e, Expr(false))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprBeginToString(es->List.map(e => e.ann.print), e.ann.print),
+          )->addSourceLocation,
+          it: Bgn(es, e),
+        }
       }
-
-    }
     }
   }
   and printDef = ({ann: sourceLocation, it: d}): definition<printAnn> => {
@@ -4343,16 +4376,16 @@ module SCPrinter = {
   let involveMutation = ref(false)
   let type_assignment = ref(Dict.fromArray([]))
 
-  let rec stringFromType = (t) => {
+  let rec stringFromType = t => {
     switch t {
-      | Type.Var(_) => "Int"
-      | Uni => "Unit"
-      | Num => "Int"
-      | Lgc => "Boolean"
-      | Str => "String"
-      | Vecof(t) => `Buffer[${stringFromType(t)}]`
-      | Lstof(_) => raisePrintError("List")
-      | Funof({args, out}) => {
+    | Type.Var(_) => "Int"
+    | Uni => "Unit"
+    | Num => "Int"
+    | Lgc => "Boolean"
+    | Str => "String"
+    | Vecof(t) => `Buffer[${stringFromType(t)}]`
+    | Lstof(_) => raisePrintError("List")
+    | Funof({args, out}) => {
         let args: string = Array.join(args->List.map(stringFromType)->List.toArray, ", ")
         let out: string = stringFromType(out)
         `(${args}) => ${out}`
@@ -4361,7 +4394,7 @@ module SCPrinter = {
   }
   let lookup_type = (srcLoc: sourceLocation): string => {
     Dict.get(type_assignment.contents, SourceLocation.toString(srcLoc))
-    ->Option.getWithDefault(Type.Num)
+    ->Option.getOr(Type.Num)
     ->stringFromType
   }
 
@@ -4493,11 +4526,7 @@ module SCPrinter = {
         let e1 = e1(true)
         {
           it: (ZeroP, list{e1}),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            Print.s`${e1.ann.print} == 0`,
-          ),
+          ann: consumeContextWrap(ctx, ann, Print.s`${e1.ann.print} == 0`),
         }
       }
     | (PairNew, list{e1, e2}) => {
@@ -4615,10 +4644,16 @@ module SCPrinter = {
     }
   }
 
-  let funLike = (op, x, xs, ts, e) => {
+  let funLike = (op, x, _t, xs, ts, e) => {
+    // let outputType = if String.includes(t->Print.toString, "=>") {
+    //   Print.s`: ${t}`
+    // } else {
+    //   Print.s``
+    // }->Print.dummy
+    let outputType = Print.fromString("")
     Print.s`${Print.fromString(op)} ${Print.dummy(
       exprAppToString(x, List.zip(xs, ts)->List.map(((x, t)) => Print.dummy(Print.s`${x} : ${t}`))),
-    )} =${indentBlock(e, 2)}`
+    )}${outputType} =${indentBlock(e, 2)}`
   }
 
   let defvarToString = (x, e) => {
@@ -4629,8 +4664,8 @@ module SCPrinter = {
     }
   }
 
-  let deffunToString = (f, xs, ts, b) => {
-    funLike("def", f, xs, ts, b)
+  let deffunToString = (f, t, xs, ts, b) => {
+    funLike("def", f, t, xs, ts, b)
   }
   let exprSetToString = (x, e) => {
     Print.s`${x} = ${e}`
@@ -4660,19 +4695,19 @@ module SCPrinter = {
     Print.s`if (${e_cnd}) {${indentBlock(e_thn, 2)}\n} else {${indentBlock(e_els, 2)}\n}`
   }
 
-  let exprAndToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprAndToString = e_ns => {
+    if e_ns == list{} {
       Print.s`true`
     } else {
-      Print.concat(" && ", list{...e_ns})
+      Print.concat(" && ", e_ns)
     }
   }
 
-  let exprOrToString = (e_ns) => {
-    if (e_ns == list{}) {
+  let exprOrToString = e_ns => {
+    if e_ns == list{} {
       Print.s`false`
     } else {
-      Print.concat(" || ", list{...e_ns})
+      Print.concat(" || ", e_ns)
     }
   }
 
@@ -4736,7 +4771,13 @@ module SCPrinter = {
             exprLamToString(
               Print.concat(
                 ", ",
-                xs->List.map(x => Print.dummy(Print.s`${x.ann.print} : ${Print.fromString(lookup_type(x.ann.sourceLocation))}`)),
+                xs->List.map(x =>
+                  Print.dummy(
+                    Print.s`${x.ann.print} : ${Print.fromString(
+                      lookup_type(x.ann.sourceLocation),
+                    )}`,
+                  )
+                ),
               )->Print.dummy,
               b.ann.print,
             ),
@@ -4745,6 +4786,7 @@ module SCPrinter = {
       }
     | GLam(_xs, _b) => raisePrintError("Generators are not supported by Scala.")
     | Yield(_e) => raisePrintError("Generators are not supported by Scala.")
+    | While(_, _) => raisePrintError("While loops are not supported yet.")
     | AppPrm(p, es) => {
         let es = es->List.map(e => b => e->printExp(b))
         let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
@@ -4793,27 +4835,27 @@ module SCPrinter = {
         }
       }
     | And(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: And(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprAndToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: And(e_ns),
+        }
       }
-    }
     | Or(e_ns) => {
-      let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
-      {
-        ann: consumeContextWrap(
-          ctx,
-          ann,
-          exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
-        )->addSourceLocation,
-        it: Or(e_ns)
+        let e_ns = e_ns->List.map(e_k => printExp(e_k, false))
+        {
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprOrToString(e_ns->List.map(e_k => e_k.ann.print)),
+          )->addSourceLocation,
+          it: Or(e_ns),
+        }
       }
-    }
     | Bgn(_es, _e) => raisePrintError("`begin` expressions are not supported by Scala.")
     }
   }
@@ -4833,9 +4875,12 @@ module SCPrinter = {
         let b = b->printBlock(false)
         {
           ann: deffunToString(
-            f.ann.print, xs->List.map(x => x.ann.print),
+            f.ann.print,
+            Print.fromString(lookup_type(b.ann.sourceLocation)),
+            xs->List.map(x => x.ann.print),
             xs->List.map(x => Print.fromString(lookup_type(x.ann.sourceLocation))),
-            b.ann.print),
+            b.ann.print,
+          ),
           it: Fun(f, xs, b),
         }
       }

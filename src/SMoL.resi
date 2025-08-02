@@ -105,6 +105,7 @@ type rec expressionNode<'ann> =
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
   | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
+  | While(expression<'ann>, list<expression<'ann>>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
 
 and bindNode<'ann> = (annotated<symbol, 'ann>, expression<'ann>)

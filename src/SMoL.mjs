@@ -1485,6 +1485,24 @@ function parseTerm(e) {
             case "vset!" :
                 tmp = makeAppPrm(ann, "VecSet", es.tl);
                 break;
+            case "while" :
+                var match$12 = as_one_then_many("the condition followed by the loop step", es.tl);
+                var cnd = as_expr("the conditional expression", parseTerm(match$12[0]));
+                var thn = Core__List.map(match$12[1], (function (thn) {
+                        return as_expr("an expression", parseTerm(thn));
+                      }));
+                tmp = {
+                  TAG: "Exp",
+                  _0: {
+                    it: {
+                      TAG: "While",
+                      _0: cnd,
+                      _1: thn
+                    },
+                    ann: e.ann
+                  }
+                };
+                break;
             case "yield" :
                 var e$4 = as_one("an expression", es.tl);
                 var e$5 = as_expr("an expression", parseTerm(e$4));
@@ -1503,12 +1521,12 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "ZeroP", es.tl);
                 break;
             case "λ" :
-                var match$12 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$4 = Core__List.map(as_list("function parameters", match$12[0]).it, (function (arg) {
+                var match$13 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$4 = Core__List.map(as_list("function parameters", match$13[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$5 = Core__List.map(match$12[1], parseTerm);
-                var result$5 = as_expr("an expression to be returned", parseTerm(match$12[2]));
+                var terms$5 = Core__List.map(match$13[1], parseTerm);
+                var result$5 = as_expr("an expression to be returned", parseTerm(match$13[2]));
                 var it_1$2 = makeBlock(terms$5, result$5);
                 var it$5 = {
                   TAG: "Lam",
@@ -1538,9 +1556,9 @@ function parseTerm(e) {
       exit = 1;
     }
     if (exit === 1) {
-      var match$13 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
-      var e$6 = as_expr("a function", parseTerm(match$13[0]));
-      var es$1 = Core__List.map(Core__List.map(match$13[1], parseTerm), (function (e) {
+      var match$14 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
+      var e$6 = as_expr("a function", parseTerm(match$14[0]));
+      var es$1 = Core__List.map(Core__List.map(match$14[1], parseTerm), (function (e) {
               return as_expr("an argument", e);
             }));
       tmp = {
@@ -2244,6 +2262,19 @@ function collectEqs(p) {
                 _1: "Generators are not supported",
                 Error: new Error()
               };
+      case "While" :
+          var cnd$1 = c._0;
+          ce(env, cnd$1);
+          Core__List.forEach(c._1, (function (e) {
+                  ce(env, e);
+                }));
+          return addEq({
+                      TAG: "Var",
+                      _0: {
+                        TAG: "Src",
+                        _0: cnd$1.ann
+                      }
+                    }, "Lgc");
       
     }
   };
@@ -2538,12 +2569,12 @@ function inferType(p) {
                           ];
                   }));
   }
-  catch (raw_reason){
-    var reason = Caml_js_exceptions.internalToOCamlException(raw_reason);
-    if (reason.RE_EXN_ID === $$TypeError) {
+  catch (raw__reason){
+    var _reason = Caml_js_exceptions.internalToOCamlException(raw__reason);
+    if (_reason.RE_EXN_ID === $$TypeError) {
       return Object.fromEntries([]);
     }
-    throw reason;
+    throw _reason;
   }
 }
 
@@ -2881,6 +2912,19 @@ function exprCndToString(ebs, ob) {
             }, ebs$2);
 }
 
+function exprWhileToString(e_cnd, es_thn) {
+  return defvarLikeList({
+              it: {
+                TAG: "Plain",
+                _0: "while"
+              },
+              ann: undefined
+            }, e_cnd, {
+              it: concat("\n", es_thn),
+              ann: undefined
+            });
+}
+
 function exprIfToString(e_cnd, e_thn, e_els) {
   return appLikeList({
               it: {
@@ -3150,6 +3194,22 @@ function printExp(param) {
             _0: e$4
           },
           ann: exprYieldToString(e$4.ann.print)
+        };
+        break;
+    case "While" :
+        var e_cnd$1 = printExp(it._0);
+        var es_thn = Core__List.map(it._1, (function (e_cnd) {
+                return printExp(e_cnd);
+              }));
+        e = {
+          it: {
+            TAG: "While",
+            _0: e_cnd$1,
+            _1: es_thn
+          },
+          ann: exprWhileToString(e_cnd$1.ann.print, Core__List.map(es_thn, (function (e_cnd) {
+                      return e_cnd.ann.print;
+                    })))
         };
         break;
     
@@ -3634,6 +3694,13 @@ function insertTopLevelPrint(p) {
               tmp = {
                 TAG: "Yield",
                 _0: e$1._0
+              };
+              break;
+          case "While" :
+              tmp = {
+                TAG: "While",
+                _0: e$1._0,
+                _1: e$1._1
               };
               break;
           default:
@@ -4894,6 +4961,12 @@ function printExp$1(param, ctx, env) {
                   print: consumeContextWrapEvenReturn(ctx, ann, exprYieldToString$1(e$2.ann.print))
                 }
               };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -6542,6 +6615,12 @@ function printExp$2(param, ctx) {
                   print: consumeContextWrapEvenReturn$1(ctx, ann, exprYieldToString$2(e$2.ann.print))
                 }
               };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -7777,6 +7856,22 @@ function exprYieldToString$3(e) {
             ], [e]);
 }
 
+function exprWhileToString$1(e_cnd, es_thn) {
+  var es_thn_it = concat("\n", es_thn);
+  var es_thn$1 = {
+    it: es_thn_it,
+    ann: undefined
+  };
+  return s([
+              "while ",
+              ":",
+              "\nend"
+            ], [
+              e_cnd,
+              indentBlock(es_thn$1, 2)
+            ]);
+}
+
 function exprBeginToString(es, e) {
   return s([
               "begin:",
@@ -8321,6 +8416,30 @@ function printExp$3(param, ctx) {
                   print: consumeContextWrapEvenReturn$2(ctx, ann, exprYieldToString$3(e$3.ann.print))
                 }
               };
+    case "While" :
+        var e_cnd$3 = printExp$3(it._0, {
+              TAG: "Expr",
+              _0: false
+            });
+        var es_thn = Belt_List.map(it._1, (function (e_thn) {
+                return printExp$3(e_thn, {
+                            TAG: "Stat",
+                            _0: "Step"
+                          });
+              }));
+        return {
+                it: {
+                  TAG: "While",
+                  _0: e_cnd$3,
+                  _1: es_thn
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextVoid$2(ctx, ann, exprWhileToString$1(e_cnd$3.ann.print, Belt_List.map(es_thn, (function (e_thn) {
+                                  return e_thn.ann.print;
+                                }))))
+                }
+              };
     
   }
 }
@@ -8716,7 +8835,7 @@ function stringFromType(t) {
 }
 
 function lookup_type(srcLoc) {
-  return stringFromType(Core__Option.getWithDefault(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
+  return stringFromType(Core__Option.getOr(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
 }
 
 function makeVec(es) {
@@ -9350,11 +9469,20 @@ function defvarToString$4(x, e) {
   }
 }
 
-function deffunToString$4(f, xs, ts, b) {
+function deffunToString$4(f, t, xs, ts, b) {
   var op = "def";
+  var outputType_it = {
+    TAG: "Plain",
+    _0: ""
+  };
+  var outputType = {
+    it: outputType_it,
+    ann: undefined
+  };
   return s([
               "",
               " ",
+              "",
               " =",
               ""
             ], [
@@ -9381,6 +9509,7 @@ function deffunToString$4(f, xs, ts, b) {
                           }))),
                 ann: undefined
               },
+              outputType,
               indentBlock(b, 2)
             ]);
 }
@@ -9722,6 +9851,12 @@ function printExp$4(param, ctx) {
               _1: "Generators are not supported by Scala.",
               Error: new Error()
             };
+    case "While" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "While loops are not supported yet.",
+              Error: new Error()
+            };
     
   }
 }
@@ -9747,6 +9882,7 @@ function printDef$4(param) {
         var f = symbolToString$4(d._0);
         var xs = Core__List.map(d._1, symbolToString$4);
         var b = printBlock$4(d._2, false);
+        var it = lookup_type(b.ann.sourceLocation);
         d$1 = {
           it: {
             TAG: "Fun",
@@ -9754,7 +9890,13 @@ function printDef$4(param) {
             _1: xs,
             _2: b
           },
-          ann: deffunToString$4(f.ann.print, Core__List.map(xs, (function (x) {
+          ann: deffunToString$4(f.ann.print, {
+                it: {
+                  TAG: "Plain",
+                  _0: it
+                },
+                ann: undefined
+              }, Core__List.map(xs, (function (x) {
                       return x.ann.print;
                     })), Core__List.map(xs, (function (x) {
                       var it = lookup_type(x.ann.sourceLocation);
