@@ -12,7 +12,7 @@ type rec printNode<'id> =
   | Group(list<print<'id>>)
 and print<'id> = annotated<printNode<'id>, option<'id>>
 
-let concat = (s, ss) => Array.joinWith(ss, s)
+let concat = (s, ss) => Array.join(ss, s)
 
 module Print = {
   type t<'id> = print<'id>
@@ -259,7 +259,7 @@ module Primitive = {
     }
   }
 }
-open Primitive
+open! Primitive
 
 type symbol = string
 
@@ -797,21 +797,12 @@ module Parser = {
           loop(list{}, branches)
         }
 
-      | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) => parseLet(
-          LetKind.Plain,
-          ann,
-          rest,
-        )
-      | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) => parseLet(
-          LetKind.Nested,
-          ann,
-          rest,
-        )
-      | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) => parseLet(
-          LetKind.Recursive,
-          ann,
-          rest,
-        )
+      | Sequence({content: list{{it: Atom(Sym("let")), ann: _}, ...rest}}) =>
+        parseLet(LetKind.Plain, ann, rest)
+      | Sequence({content: list{{it: Atom(Sym("let*")), ann: _}, ...rest}}) =>
+        parseLet(LetKind.Nested, ann, rest)
+      | Sequence({content: list{{it: Atom(Sym("letrec")), ann: _}, ...rest}}) =>
+        parseLet(LetKind.Recursive, ann, rest)
 
       | Atom(atom) => Exp(ann(expr_of_atom(atom)))
       | Sequence({content: list{{it: Atom(Sym("maybe?")), ann: _}, ...es}}) =>
@@ -1005,7 +996,8 @@ module Type = {
     let lookup = (env, x) => {
       switch Dict.get(env, x) {
       | Some(v) => v
-      | None => // unbound id should error in typical type inference.
+      | None =>
+        // unbound id should error in typical type inference.
         // but I want to preserve semantics, even when the program errors
         // so I return a fresh type instead
         fresh()
@@ -1015,10 +1007,10 @@ module Type = {
       switch c {
       | Uni => Uni
       | Nil => raiseTypeError("list")
-      | Num(float) => Num
-      | Lgc(bool) => Lgc
-      | Str(string) => Str
-      | Sym(string) => raiseTypeError("Symbol")
+      | Num(_float) => Num
+      | Lgc(_bool) => Lgc
+      | Str(_string) => Str
+      | Sym(_string) => raiseTypeError("Symbol")
       }
     }
     let tp_cmp = (cmp: Primitive.cmp, arity: int) => {
@@ -1042,7 +1034,7 @@ module Type = {
     let tp = (p: Primitive.t, arity: int) => {
       switch p {
       | Maybe => raiseTypeError("Maybe")
-      | Arith(arith) => Funof({args: List.make(~length=arity, Num), out: Num})
+      | Arith(_arith) => Funof({args: List.make(~length=arity, Num), out: Num})
       | Cmp(cmp) => tp_cmp(cmp, arity)
       | PairNew => {
           let t = fresh()
@@ -1120,7 +1112,7 @@ module Type = {
         addEq(var(x.ann), var(e.ann))
         ce(env, e)
       | Fun(f, xs, b) => addEq(var(f.ann), cf(env, xs, b))
-      | GFun(f, xs, b) => raiseTypeError("Generator")
+      | GFun(_f, _xs, _b) => raiseTypeError("Generator")
       }
     }
     and cf = (env, xs, b) => {
@@ -1140,7 +1132,7 @@ module Type = {
         ce(env, e)
         addEq(the_t, Uni)
       | Lam(xs, b) => addEq(the_t, cf(env, xs, b))
-      | Let(k, bs, b) => raiseTypeError("let")
+      | Let(_k, _bs, _b) => raiseTypeError("let")
       | AppPrm(p, es) => {
           es->List.forEach(e => ce(env, e))
           ca(p, es->List.map(e => var(e.ann)), the_t)
@@ -1156,7 +1148,7 @@ module Type = {
             }),
           )
         }
-      | Bgn(es, e) => raiseTypeError("begin")
+      | Bgn(_es, _e) => raiseTypeError("begin")
       | If(cnd, thn, els) => {
           ce(env, cnd)
           ce(env, thn)
@@ -1191,8 +1183,8 @@ module Type = {
             addEq(var(els.ann), the_t)
           })
         }
-      | GLam(xs, b) => raiseTypeError("Generators are not supported")
-      | Yield(e) => raiseTypeError("Generators are not supported")
+      | GLam(_xs, _b) => raiseTypeError("Generators are not supported")
+      | Yield(_e) => raiseTypeError("Generators are not supported")
       }
     }
     and cb = (env, b: block<sourceLocation>) => {
@@ -1227,7 +1219,8 @@ module Type = {
         raiseTypeError(`Type inference failed, ${toString(a)} is incompatible with ${toString(b)}`)
       // Js.Console.log(`stepping ${toString(a)} = ${toString(b)}`)
       switch (a, b) {
-      | (Var(a), Var(b)) => switch (lookup(a), lookup(b)) {
+      | (Var(a), Var(b)) =>
+        switch (lookup(a), lookup(b)) {
         | (None, None) => {
             if s_var(a) != s_var(b) {
               assign(a, Var(b))
@@ -1242,7 +1235,8 @@ module Type = {
           []
         | (Some(a), Some(b)) => [(a, b)]
         }
-      | (Var(a), b) => switch lookup(a) {
+      | (Var(a), b) =>
+        switch lookup(a) {
         | None =>
           assign(a, b)
           []
@@ -1255,9 +1249,8 @@ module Type = {
       | (Str, Str) => []
       | (Vecof(a), Vecof(b)) => [(a, b)]
       | (Lstof(a), Lstof(b)) => [(a, b)]
-      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) => if (
-          List.length(args_a) == List.length(args_b)
-        ) {
+      | (Funof({args: args_a, out: out_a}), Funof({args: args_b, out: out_b})) =>
+        if List.length(args_a) == List.length(args_b) {
           [...List.zip(args_a, args_b)->List.toArray, (out_a, out_b)]
         } else {
           fail()
@@ -1274,7 +1267,8 @@ module Type = {
     // Js.Console.log2("solution", solution)
     let rec lookup_rec = t => {
       switch t {
-      | Var(t) => switch lookup(t) {
+      | Var(t) =>
+        switch lookup(t) {
         | None => Num
         | Some(t) => lookup_rec(t)
         }
@@ -1300,7 +1294,7 @@ module Type = {
   let inferType = (p: program<sourceLocation>): dict<t> => {
     switch p->collectEqs->solveEqs {
     | solution => solution
-    | exception TypeError(reason) => Dict.fromArray([])
+    | exception TypeError(_reason) => Dict.fromArray([])
     }
   }
 }
@@ -4349,7 +4343,7 @@ module SCPrinter = {
   }
   let lookup_type = (srcLoc: sourceLocation): string => {
     Dict.get(type_assignment.contents, SourceLocation.toString(srcLoc))
-    ->Option.getWithDefault(Type.Num)
+    ->Option.getOr(Type.Num)
     ->stringFromType
   }
 
@@ -4599,12 +4593,12 @@ module SCPrinter = {
     }
   }
 
-  let funLike = (op, x, t, xs, ts, e) => {
-    let outputType = if (String.includes(t->Print.toString, "=>")) {
-      Print.s`: ${t}`
-    } else {
-      Print.s``
-    }->Print.dummy
+  let funLike = (op, x, _t, xs, ts, e) => {
+    // let outputType = if String.includes(t->Print.toString, "=>") {
+    //   Print.s`: ${t}`
+    // } else {
+    //   Print.s``
+    // }->Print.dummy
     let outputType = Print.fromString("")
     Print.s`${Print.fromString(op)} ${Print.dummy(
       exprAppToString(x, List.zip(xs, ts)->List.map(((x, t)) => Print.dummy(Print.s`${x} : ${t}`))),

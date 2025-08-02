@@ -2538,12 +2538,12 @@ function inferType(p) {
                           ];
                   }));
   }
-  catch (raw_reason){
-    var reason = Caml_js_exceptions.internalToOCamlException(raw_reason);
-    if (reason.RE_EXN_ID === $$TypeError) {
+  catch (raw__reason){
+    var _reason = Caml_js_exceptions.internalToOCamlException(raw__reason);
+    if (_reason.RE_EXN_ID === $$TypeError) {
       return Object.fromEntries([]);
     }
-    throw reason;
+    throw _reason;
   }
 }
 
@@ -8716,7 +8716,7 @@ function stringFromType(t) {
 }
 
 function lookup_type(srcLoc) {
-  return stringFromType(Core__Option.getWithDefault(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
+  return stringFromType(Core__Option.getOr(type_assignment.contents[SExpression.SourceLocation.toString(srcLoc)], "Num"));
 }
 
 function makeVec(es) {
@@ -9352,14 +9352,6 @@ function defvarToString$4(x, e) {
 
 function deffunToString$4(f, t, xs, ts, b) {
   var op = "def";
-  if (toString(t).includes("=>")) {
-    s([
-          ": ",
-          ""
-        ], [t]);
-  } else {
-    s([""], []);
-  }
   var outputType_it = {
     TAG: "Plain",
     _0: ""
