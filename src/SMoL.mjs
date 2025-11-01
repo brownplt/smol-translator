@@ -7180,6 +7180,32 @@ function consumeContextWrap$2(ctx, ann, e) {
   }
 }
 
+function consumeContextVoidWrap(ctx, ann, e) {
+  if (ctx.TAG === "Expr") {
+    if (ctx._0) {
+      return ann(paren$2(e));
+    } else {
+      return ann(e);
+    }
+  } else if (ctx._0 === "Step") {
+    return {
+            it: s([
+                  "",
+                  ""
+                ], [ann(e)]),
+            ann: undefined
+          };
+  } else {
+    return {
+            it: s([
+                  "",
+                  "\nreturn"
+                ], [ann(e)]),
+            ann: undefined
+          };
+  }
+}
+
 function consumeContextVoid$2(ctx, ann, e) {
   var e$1 = ann(e);
   if (ctx.TAG === "Expr") {
@@ -7216,35 +7242,6 @@ function consumeContextEscapeWrap$2(ctx, ann, e) {
             ann: undefined
           };
   }
-}
-
-function consumeContextStat$2(ctx, ann, e) {
-  var e$1 = ann(e);
-  if (ctx.TAG !== "Expr") {
-    if (ctx._0 === "Step") {
-      return {
-              it: s([
-                    "",
-                    ""
-                  ], [e$1]),
-              ann: undefined
-            };
-    } else {
-      return {
-              it: s([
-                    "",
-                    "\nreturn"
-                  ], [e$1]),
-              ann: undefined
-            };
-    }
-  }
-  var err = toString(e$1) + " can't be used as a expression in Pseudocode";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
 }
 
 function stringOfArith$2(o) {
@@ -7368,7 +7365,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$2(ctx, ann, s([
+                      ann: consumeContextVoidWrap(ctx, ann, s([
                                 "",
                                 "[0] = ",
                                 ""
@@ -7398,7 +7395,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$2(ctx, ann, s([
+                      ann: consumeContextVoidWrap(ctx, ann, s([
                                 "",
                                 "[1] = ",
                                 ""
@@ -7483,7 +7480,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextStat$2(ctx, ann, s([
+                        ann: consumeContextVoidWrap(ctx, ann, s([
                                   "",
                                   "[",
                                   "] = ",
@@ -8130,7 +8127,7 @@ function printExp$3(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextStat$2(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
+                  print: consumeContextVoidWrap(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
                 }
               };
     case "Lam" :

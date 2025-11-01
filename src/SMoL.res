@@ -3601,6 +3601,15 @@ module PCPrinter = {
     }
   }
 
+  let consumeContextVoidWrap = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => paren(e)->ann
+    | Expr(false) => e->ann
+    | Stat(Step) => (Print.s`${e->ann}`)->Print.dummy
+    | Stat(Return) => (Print.s`${e->ann}\nreturn`)->Print.dummy
+    }
+  }
+
   let consumeContextVoid = (ctx, ann, e) => {
     let e = e->ann
     switch ctx {
@@ -3617,15 +3626,6 @@ module PCPrinter = {
     | Expr(true) => e
     | Expr(false) => e
     | Stat(_) => (Print.s`${e}`)->Print.dummy
-    }
-  }
-
-  let consumeContextStat = (ctx, ann, e) => {
-    let e = e->ann
-    switch ctx {
-    | Expr(_) => raisePrintError(`${Print.toString(e)} can't be used as a expression in Pseudocode`)
-    | Stat(Step) => (Print.s`${e}`)->Print.dummy
-    | Stat(Return) => (Print.s`${e}\nreturn`)->Print.dummy
     }
   }
 
@@ -3710,7 +3710,7 @@ module PCPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetLeft, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
+          ann: consumeContextVoidWrap(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
         }
       }
     | (PairSetRight, list{e1, e2}) => {
@@ -3718,7 +3718,7 @@ module PCPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetRight, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
+          ann: consumeContextVoidWrap(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
         }
       }
     | (VecNew, es) => {
@@ -3746,7 +3746,7 @@ module PCPrinter = {
         let e3 = e3(false)
         {
           it: (VecSet, list{e1, e2, e3}),
-          ann: consumeContextStat(
+          ann: consumeContextVoidWrap(
             ctx,
             ann,
             Print.s`${e1.ann.print}[${e2.ann.print}] = ${e3.ann.print}`,
@@ -3987,7 +3987,7 @@ module PCPrinter = {
         let e: expression<printAnn> = e->printExp(Expr(false))
         {
           it: Set(x, e),
-          ann: consumeContextStat(
+          ann: consumeContextVoidWrap(
             ctx,
             ann,
             exprSetToString(x.ann.print, e.ann.print),
