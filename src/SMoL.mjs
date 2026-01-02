@@ -4004,6 +4004,26 @@ function consumeContextWrap(ctx, ann, e) {
   }
 }
 
+function consumeContextVoidWrap(ctx, ann, e) {
+  if (ctx.TAG === "Expr") {
+    if (ctx._0) {
+      return ann(paren(e));
+    } else {
+      return ann(e);
+    }
+  } else if (ctx._0 === "Step") {
+    return ann(e);
+  } else {
+    return {
+            it: s([
+                  "",
+                  "\nreturn"
+                ], [ann(e)]),
+            ann: undefined
+          };
+  }
+}
+
 function consumeContextVoid(ctx, ann, e) {
   var e$1 = ann(e);
   if (ctx.TAG === "Expr" || ctx._0 === "Step") {
@@ -4021,29 +4041,6 @@ function consumeContextVoid(ctx, ann, e) {
 
 function consumeContextEscapeWrap(ctx, ann, e) {
   return ann(e);
-}
-
-function consumeContextStat(ctx, ann, e) {
-  var e$1 = ann(e);
-  if (ctx.TAG !== "Expr") {
-    if (ctx._0 === "Step") {
-      return e$1;
-    } else {
-      return {
-              it: s([
-                    "",
-                    "\nreturn"
-                  ], [e$1]),
-              ann: undefined
-            };
-    }
-  }
-  var err = toString(e$1) + " can't be used as a expression in Python";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
 }
 
 function stringOfArith(o) {
@@ -4102,7 +4099,7 @@ function handleVecSet(ctx, ann, e1, e2, e3) {
           e2,
           e3
         ]);
-  return consumeContextStat(ctx, ann, e);
+  return consumeContextVoidWrap(ctx, ann, e);
 }
 
 function exprAppPrmToString(ann, ctx, p, es) {
@@ -4755,7 +4752,7 @@ function printExp$1(param, ctx, env) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextStat(ctx, ann, exprSetToString$1(x$2.ann.print, e.ann.print, ctx))
+                  print: consumeContextVoidWrap(ctx, ann, exprSetToString$1(x$2.ann.print, e.ann.print, ctx))
                 }
               };
     case "Lam" :
@@ -5666,7 +5663,7 @@ function consumeContextWrap$1(ctx, ann, e) {
   }
 }
 
-function consumeContextVoidWrap(ctx, ann, e) {
+function consumeContextVoidWrap$1(ctx, ann, e) {
   if (ctx.TAG === "Expr") {
     if (ctx._0) {
       return {
@@ -5868,7 +5865,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap(ctx, ann, s([
+                      ann: consumeContextVoidWrap$1(ctx, ann, s([
                                 "",
                                 "[0] = ",
                                 ""
@@ -5898,7 +5895,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap(ctx, ann, s([
+                      ann: consumeContextVoidWrap$1(ctx, ann, s([
                                 "",
                                 "[1] = ",
                                 ""
@@ -5983,7 +5980,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextVoidWrap(ctx, ann, s([
+                        ann: consumeContextVoidWrap$1(ctx, ann, s([
                                   "",
                                   "[",
                                   "] = ",
@@ -6412,7 +6409,7 @@ function printExp$2(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextVoidWrap(ctx, ann, exprSetToString$2(x$1.ann.print, e.ann.print))
+                  print: consumeContextVoidWrap$1(ctx, ann, exprSetToString$2(x$1.ann.print, e.ann.print))
                 }
               };
     case "Lam" :
@@ -7233,7 +7230,7 @@ function consumeContextWrap$2(ctx, ann, e) {
   }
 }
 
-function consumeContextVoidWrap$1(ctx, ann, e) {
+function consumeContextVoidWrap$2(ctx, ann, e) {
   if (ctx.TAG === "Expr") {
     if (ctx._0) {
       return ann(paren$2(e));
@@ -7418,7 +7415,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap$1(ctx, ann, s([
+                      ann: consumeContextVoidWrap$2(ctx, ann, s([
                                 "",
                                 "[0] = ",
                                 ""
@@ -7448,7 +7445,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap$1(ctx, ann, s([
+                      ann: consumeContextVoidWrap$2(ctx, ann, s([
                                 "",
                                 "[1] = ",
                                 ""
@@ -7533,7 +7530,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextVoidWrap$1(ctx, ann, s([
+                        ann: consumeContextVoidWrap$2(ctx, ann, s([
                                   "",
                                   "[",
                                   "] = ",
@@ -8180,7 +8177,7 @@ function printExp$3(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextVoidWrap$1(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
+                  print: consumeContextVoidWrap$2(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
                 }
               };
     case "Lam" :

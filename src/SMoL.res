@@ -2040,6 +2040,15 @@ module PYPrinter = {
     }
   }
 
+  let consumeContextVoidWrap = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => paren(e)->ann
+    | Expr(false) => e->ann
+    | Stat(Step) => e->ann
+    | Stat(Return) => (Print.s`${e->ann}\nreturn`)->Print.dummy
+    }
+  }
+
   let consumeContextVoid = (ctx, ann, e) => {
     let e = e->ann
     switch ctx {
@@ -2057,15 +2066,6 @@ module PYPrinter = {
     | Expr(false) => e
     | Stat(Step) => e
     | Stat(Return) => e
-    }
-  }
-
-  let consumeContextStat = (ctx, ann, e) => {
-    let e = e->ann
-    switch ctx {
-    | Expr(_) => raisePrintError(`${Print.toString(e)} can't be used as a expression in Python`)
-    | Stat(Step) => e
-    | Stat(Return) => (Print.s`${e}\nreturn`)->Print.dummy
     }
   }
 
@@ -2096,7 +2096,7 @@ module PYPrinter = {
     | Expr(_) => Print.s`${e1}[${e2}] := ${e3}`
     | _ => Print.s`${e1}[${e2}] = ${e3}`
     }
-    consumeContextStat(ctx, ann, e)
+    consumeContextVoidWrap(ctx, ann, e)
   }
 
   let exprAppPrmToString = (ann, ctx, p: Primitive.t, es: list<bool => expression<printAnn>>) => {
@@ -2357,7 +2357,7 @@ module PYPrinter = {
         let e: expression<printAnn> = e->printExp(Expr(false), env)
         {
           it: Set(x, e),
-          ann: consumeContextStat(
+          ann: consumeContextVoidWrap(
             ctx,
             ann,
             exprSetToString(x.ann.print, e.ann.print, ctx),
