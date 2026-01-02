@@ -1,6 +1,6 @@
 {
   "name": "@brownplt/smol-translator",
-  "version": "9.0.0",
+  "version": "9.1.0",
   "description": "Translate SMoL programs to other programming languages",
   "type": "module",
   "main": "src/SMoL.mjs",
@@ -25,7 +25,7 @@
     "@brownplt/s-expression": "github:brownplt/s-expression",
     "@rescript/core": "^1.6.1",
     "install": "^0.13.0",
-    "npm": "^10.8.2",
+    "npm": "^11.7.0",
     "rescript": "^11.1.4"
   }
 }
