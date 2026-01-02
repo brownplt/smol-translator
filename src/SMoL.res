@@ -706,14 +706,10 @@ module Parser = {
           Exp(ann(Lam(args, makeBlock(terms, result))))
         }
 
-      
       | Sequence({content: list{{it: Atom(Sym("while")), ann: _}, ...rest}}) => {
-          let (cnd, thn) = as_one_then_many(
-            "the condition followed by the loop step",
-            rest,
-          )
+          let (cnd, thn) = as_one_then_many("the condition followed by the loop step", rest)
           let cnd = as_expr("the conditional expression", parseTerm(cnd))
-          let thn = thn->List.map(thn=>as_expr("an expression", parseTerm(thn)))
+          let thn = thn->List.map(thn => as_expr("an expression", parseTerm(thn)))
           Exp(ann(While(cnd, thn)))
         }
 
@@ -2095,6 +2091,14 @@ module PYPrinter = {
     }
   }
 
+  let handleVecSet = (ctx, ann, e1, e2, e3) => {
+    let e = switch ctx {
+    | Expr(_) => Print.s`${e1}[${e2}] := ${e3}`
+    | _ => Print.s`${e1}[${e2}] = ${e3}`
+    }
+    consumeContextStat(ctx, ann, e)
+  }
+
   let exprAppPrmToString = (ann, ctx, p: Primitive.t, es: list<bool => expression<printAnn>>) => {
     switch (p, es) {
     | (Arith(o), es) => {
@@ -2154,7 +2158,7 @@ module PYPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetLeft, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
+          ann: handleVecSet(ctx, ann, e1.ann.print, Print.fromString("0"), e2.ann.print),
         }
       }
     | (PairSetRight, list{e1, e2}) => {
@@ -2162,7 +2166,7 @@ module PYPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetRight, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
+          ann: handleVecSet(ctx, ann, e1.ann.print, Print.fromString("1"), e2.ann.print),
         }
       }
     | (VecNew, es) => {
@@ -2190,11 +2194,7 @@ module PYPrinter = {
         let e3 = e3(false)
         {
           it: (VecSet, list{e1, e2, e3}),
-          ann: consumeContextStat(
-            ctx,
-            ann,
-            Print.s`${e1.ann.print}[${e2.ann.print}] = ${e3.ann.print}`,
-          ),
+          ann: handleVecSet(ctx, ann, e1.ann.print, e2.ann.print, e3.ann.print),
         }
       }
     | (VecLen, list{e1}) => {
@@ -2262,8 +2262,11 @@ module PYPrinter = {
     funLike("def", f, xs, b)
   }
 
-  let exprSetToString = (x, e) => {
-    defvarLike("", x, e)
+  let exprSetToString = (x, e, ctx) => {
+    switch ctx {
+    | Expr(_) => Group(list{Print.fromString(""), x, Print.fromString(" := "), e})
+    | _ => defvarLike("", x, e)
+    }
   }
 
   let exprLamToString = (xs, b) => {
@@ -2357,7 +2360,7 @@ module PYPrinter = {
           ann: consumeContextStat(
             ctx,
             ann,
-            exprSetToString(x.ann.print, e.ann.print),
+            exprSetToString(x.ann.print, e.ann.print, ctx),
           )->addSourceLocation,
         }
       }
@@ -2857,6 +2860,15 @@ module JSPrinter = {
     }
   }
 
+  let consumeContextVoidWrap = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => (Print.s`${paren(e)->ann}`)->Print.dummy
+    | Expr(false) => (Print.s`${e->ann}`)->Print.dummy
+    | Stat(Step) => (Print.s`${e->ann};`)->Print.dummy
+    | Stat(Return) => (Print.s`${e->ann};\nreturn;`)->Print.dummy
+    }
+  }
+
   let consumeContextVoid = (ctx, ann, e) => {
     let e = e->ann
     switch ctx {
@@ -2873,15 +2885,6 @@ module JSPrinter = {
     | Expr(true) => e
     | Expr(false) => e
     | Stat(_) => (Print.s`${e};`)->Print.dummy
-    }
-  }
-
-  let consumeContextStat = (ctx, ann, e) => {
-    let e = e->ann
-    switch ctx {
-    | Expr(_) => raisePrintError(`${Print.toString(e)} can't be used as a expression in JavaScript`)
-    | Stat(Step) => (Print.s`${e};`)->Print.dummy
-    | Stat(Return) => (Print.s`${e};\nreturn;`)->Print.dummy
     }
   }
 
@@ -2966,7 +2969,7 @@ module JSPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetLeft, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
+          ann: consumeContextVoidWrap(ctx, ann, Print.s`${e1.ann.print}[0] = ${e2.ann.print}`),
         }
       }
     | (PairSetRight, list{e1, e2}) => {
@@ -2974,7 +2977,7 @@ module JSPrinter = {
         let e2 = e2(false)
         {
           it: (PairSetRight, list{e1, e2}),
-          ann: consumeContextStat(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
+          ann: consumeContextVoidWrap(ctx, ann, Print.s`${e1.ann.print}[1] = ${e2.ann.print}`),
         }
       }
     | (VecNew, es) => {
@@ -3002,7 +3005,7 @@ module JSPrinter = {
         let e3 = e3(false)
         {
           it: (VecSet, list{e1, e2, e3}),
-          ann: consumeContextStat(
+          ann: consumeContextVoidWrap(
             ctx,
             ann,
             Print.s`${e1.ann.print}[${e2.ann.print}] = ${e3.ann.print}`,
@@ -3162,7 +3165,7 @@ module JSPrinter = {
         let e: expression<printAnn> = e->printExp(Expr(false))
         {
           it: Set(x, e),
-          ann: consumeContextStat(
+          ann: consumeContextVoidWrap(
             ctx,
             ann,
             exprSetToString(x.ann.print, e.ann.print),

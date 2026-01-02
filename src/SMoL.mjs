@@ -4081,6 +4081,30 @@ function stringOfCmp(o) {
   }
 }
 
+function handleVecSet(ctx, ann, e1, e2, e3) {
+  var e;
+  e = ctx.TAG === "Expr" ? s([
+          "",
+          "[",
+          "] := ",
+          ""
+        ], [
+          e1,
+          e2,
+          e3
+        ]) : s([
+          "",
+          "[",
+          "] = ",
+          ""
+        ], [
+          e1,
+          e2,
+          e3
+        ]);
+  return consumeContextStat(ctx, ann, e);
+}
+
 function exprAppPrmToString(ann, ctx, p, es) {
   if (typeof p !== "object") {
     switch (p) {
@@ -4167,14 +4191,13 @@ function exprAppPrmToString(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(ctx, ann, s([
-                                "",
-                                "[0] = ",
-                                ""
-                              ], [
-                                e1$3.ann.print,
-                                e2$1.ann.print
-                              ]))
+                      ann: handleVecSet(ctx, ann, e1$3.ann.print, {
+                            it: {
+                              TAG: "Plain",
+                              _0: "0"
+                            },
+                            ann: undefined
+                          }, e2$1.ann.print)
                     };
             }
             
@@ -4197,14 +4220,13 @@ function exprAppPrmToString(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat(ctx, ann, s([
-                                "",
-                                "[1] = ",
-                                ""
-                              ], [
-                                e1$4.ann.print,
-                                e2$2.ann.print
-                              ]))
+                      ann: handleVecSet(ctx, ann, e1$4.ann.print, {
+                            it: {
+                              TAG: "Plain",
+                              _0: "1"
+                            },
+                            ann: undefined
+                          }, e2$2.ann.print)
                     };
             }
             
@@ -4282,16 +4304,7 @@ function exprAppPrmToString(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextStat(ctx, ann, s([
-                                  "",
-                                  "[",
-                                  "] = ",
-                                  ""
-                                ], [
-                                  e1$6.ann.print,
-                                  e2$4.ann.print,
-                                  e3.ann.print
-                                ]))
+                        ann: handleVecSet(ctx, ann, e1$6.ann.print, e2$4.ann.print, e3.ann.print)
                       };
               }
               
@@ -4531,8 +4544,39 @@ function defgenToString$1(f, xs, b) {
   return funLike("def", f, xs, b);
 }
 
-function exprSetToString$1(x, e) {
-  return defvarLike("", x, e);
+function exprSetToString$1(x, e, ctx) {
+  if (ctx.TAG === "Expr") {
+    return {
+            TAG: "Group",
+            _0: {
+              hd: {
+                it: {
+                  TAG: "Plain",
+                  _0: ""
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: x,
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: "Plain",
+                      _0: " := "
+                    },
+                    ann: undefined
+                  },
+                  tl: {
+                    hd: e,
+                    tl: /* [] */0
+                  }
+                }
+              }
+            }
+          };
+  } else {
+    return defvarLike("", x, e);
+  }
 }
 
 function exprLamToString$1(xs, b) {
@@ -4711,7 +4755,7 @@ function printExp$1(param, ctx, env) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextStat(ctx, ann, exprSetToString$1(x$2.ann.print, e.ann.print))
+                  print: consumeContextStat(ctx, ann, exprSetToString$1(x$2.ann.print, e.ann.print, ctx))
                 }
               };
     case "Lam" :
@@ -5622,6 +5666,44 @@ function consumeContextWrap$1(ctx, ann, e) {
   }
 }
 
+function consumeContextVoidWrap(ctx, ann, e) {
+  if (ctx.TAG === "Expr") {
+    if (ctx._0) {
+      return {
+              it: s([
+                    "",
+                    ""
+                  ], [ann(paren$1(e))]),
+              ann: undefined
+            };
+    } else {
+      return {
+              it: s([
+                    "",
+                    ""
+                  ], [ann(e)]),
+              ann: undefined
+            };
+    }
+  } else if (ctx._0 === "Step") {
+    return {
+            it: s([
+                  "",
+                  ";"
+                ], [ann(e)]),
+            ann: undefined
+          };
+  } else {
+    return {
+            it: s([
+                  "",
+                  ";\nreturn;"
+                ], [ann(e)]),
+            ann: undefined
+          };
+  }
+}
+
 function consumeContextVoid$1(ctx, ann, e) {
   var e$1 = ann(e);
   if (ctx.TAG === "Expr") {
@@ -5658,35 +5740,6 @@ function consumeContextEscapeWrap$1(ctx, ann, e) {
             ann: undefined
           };
   }
-}
-
-function consumeContextStat$1(ctx, ann, e) {
-  var e$1 = ann(e);
-  if (ctx.TAG !== "Expr") {
-    if (ctx._0 === "Step") {
-      return {
-              it: s([
-                    "",
-                    ";"
-                  ], [e$1]),
-              ann: undefined
-            };
-    } else {
-      return {
-              it: s([
-                    "",
-                    ";\nreturn;"
-                  ], [e$1]),
-              ann: undefined
-            };
-    }
-  }
-  var err = toString(e$1) + " can't be used as a expression in JavaScript";
-  throw {
-        RE_EXN_ID: SMoLPrintError,
-        _1: err,
-        Error: new Error()
-      };
 }
 
 function stringOfArith$1(o) {
@@ -5815,7 +5868,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1(ctx, ann, s([
+                      ann: consumeContextVoidWrap(ctx, ann, s([
                                 "",
                                 "[0] = ",
                                 ""
@@ -5845,7 +5898,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextStat$1(ctx, ann, s([
+                      ann: consumeContextVoidWrap(ctx, ann, s([
                                 "",
                                 "[1] = ",
                                 ""
@@ -5930,7 +5983,7 @@ function exprAppPrmToString$1(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextStat$1(ctx, ann, s([
+                        ann: consumeContextVoidWrap(ctx, ann, s([
                                   "",
                                   "[",
                                   "] = ",
@@ -6359,7 +6412,7 @@ function printExp$2(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextStat$1(ctx, ann, exprSetToString$2(x$1.ann.print, e.ann.print))
+                  print: consumeContextVoidWrap(ctx, ann, exprSetToString$2(x$1.ann.print, e.ann.print))
                 }
               };
     case "Lam" :
@@ -7180,7 +7233,7 @@ function consumeContextWrap$2(ctx, ann, e) {
   }
 }
 
-function consumeContextVoidWrap(ctx, ann, e) {
+function consumeContextVoidWrap$1(ctx, ann, e) {
   if (ctx.TAG === "Expr") {
     if (ctx._0) {
       return ann(paren$2(e));
@@ -7365,7 +7418,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap(ctx, ann, s([
+                      ann: consumeContextVoidWrap$1(ctx, ann, s([
                                 "",
                                 "[0] = ",
                                 ""
@@ -7395,7 +7448,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                           }
                         }
                       ],
-                      ann: consumeContextVoidWrap(ctx, ann, s([
+                      ann: consumeContextVoidWrap$1(ctx, ann, s([
                                 "",
                                 "[1] = ",
                                 ""
@@ -7480,7 +7533,7 @@ function exprAppPrmToString$2(ann, ctx, p, es) {
                             }
                           }
                         ],
-                        ann: consumeContextVoidWrap(ctx, ann, s([
+                        ann: consumeContextVoidWrap$1(ctx, ann, s([
                                   "",
                                   "[",
                                   "] = ",
@@ -8127,7 +8180,7 @@ function printExp$3(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextVoidWrap(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
+                  print: consumeContextVoidWrap$1(ctx, ann, exprSetToString$3(x$1.ann.print, e.ann.print))
                 }
               };
     case "Lam" :
