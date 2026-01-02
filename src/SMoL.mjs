@@ -1320,32 +1320,11 @@ function parseTerm(e) {
             case "first" :
                 tmp = makeAppPrm(ann, "First", es.tl);
                 break;
-            case "generator" :
-                var match$8 = as_one_then_many_then_one("the generator signature followed by the function body", es.tl);
-                var args$2 = Core__List.map(as_list("generator parameters", match$8[0]).it, (function (arg) {
-                        return as_id("a parameter", arg);
-                      }));
-                var terms$3 = Core__List.map(match$8[1], parseTerm);
-                var result$3 = as_expr("an expression to be returned", parseTerm(match$8[2]));
-                var it_1 = makeBlock(terms$3, result$3);
-                var it$3 = {
-                  TAG: "GLam",
-                  _0: args$2,
-                  _1: it_1
-                };
-                tmp = {
-                  TAG: "Exp",
-                  _0: {
-                    it: it$3,
-                    ann: e.ann
-                  }
-                };
-                break;
             case "if" :
-                var match$9 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es.tl);
-                var e_cnd = as_expr("a (conditional) expression", parseTerm(match$9[0]));
-                var e_thn = as_expr("an expression", parseTerm(match$9[1]));
-                var e_els = as_expr("an expression", parseTerm(match$9[2]));
+                var match$8 = as_three("three expressions (i.e., a condition, the \"then\" branch, and the \"else\" branch)", es.tl);
+                var e_cnd = as_expr("a (conditional) expression", parseTerm(match$8[0]));
+                var e_thn = as_expr("an expression", parseTerm(match$8[1]));
+                var e_els = as_expr("an expression", parseTerm(match$8[2]));
                 tmp = {
                   TAG: "Exp",
                   _0: {
@@ -1360,22 +1339,22 @@ function parseTerm(e) {
                 };
                 break;
             case "lambda" :
-                var match$10 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$3 = Core__List.map(as_list("function parameters", match$10[0]).it, (function (arg) {
+                var match$9 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$2 = Core__List.map(as_list("function parameters", match$9[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$4 = Core__List.map(match$10[1], parseTerm);
-                var result$4 = as_expr("an expression to be returned", parseTerm(match$10[2]));
-                var it_1$1 = makeBlock(terms$4, result$4);
-                var it$4 = {
+                var terms$3 = Core__List.map(match$9[1], parseTerm);
+                var result$3 = as_expr("an expression to be returned", parseTerm(match$9[2]));
+                var it_1 = makeBlock(terms$3, result$3);
+                var it$3 = {
                   TAG: "Lam",
-                  _0: args$3,
-                  _1: it_1$1
+                  _0: args$2,
+                  _1: it_1
                 };
                 tmp = {
                   TAG: "Exp",
                   _0: {
-                    it: it$4,
+                    it: it$3,
                     ann: e.ann
                   }
                 };
@@ -1440,9 +1419,9 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "PairRefRight", es.tl);
                 break;
             case "set!" :
-                var match$11 = as_two("a variable and an expression", es.tl);
-                var x$1 = as_id("a variable to be set", match$11[0]);
-                var e$3 = as_expr("an expression", parseTerm(match$11[1]));
+                var match$10 = as_two("a variable and an expression", es.tl);
+                var x$1 = as_id("a variable to be set", match$10[0]);
+                var e$3 = as_expr("an expression", parseTerm(match$10[1]));
                 tmp = {
                   TAG: "Exp",
                   _0: {
@@ -1486,9 +1465,9 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "VecSet", es.tl);
                 break;
             case "while" :
-                var match$12 = as_one_then_many("the condition followed by the loop step", es.tl);
-                var cnd = as_expr("the conditional expression", parseTerm(match$12[0]));
-                var thn = Core__List.map(match$12[1], (function (thn) {
+                var match$11 = as_one_then_many("the condition followed by the loop step", es.tl);
+                var cnd = as_expr("the conditional expression", parseTerm(match$11[0]));
+                var thn = Core__List.map(match$11[1], (function (thn) {
                         return as_expr("an expression", parseTerm(thn));
                       }));
                 tmp = {
@@ -1521,22 +1500,22 @@ function parseTerm(e) {
                 tmp = makeAppPrm(ann, "ZeroP", es.tl);
                 break;
             case "λ" :
-                var match$13 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
-                var args$4 = Core__List.map(as_list("function parameters", match$13[0]).it, (function (arg) {
+                var match$12 = as_one_then_many_then_one("the function signature followed by the function body", es.tl);
+                var args$3 = Core__List.map(as_list("function parameters", match$12[0]).it, (function (arg) {
                         return as_id("a parameter", arg);
                       }));
-                var terms$5 = Core__List.map(match$13[1], parseTerm);
-                var result$5 = as_expr("an expression to be returned", parseTerm(match$13[2]));
-                var it_1$2 = makeBlock(terms$5, result$5);
-                var it$5 = {
+                var terms$4 = Core__List.map(match$12[1], parseTerm);
+                var result$4 = as_expr("an expression to be returned", parseTerm(match$12[2]));
+                var it_1$1 = makeBlock(terms$4, result$4);
+                var it$4 = {
                   TAG: "Lam",
-                  _0: args$4,
-                  _1: it_1$2
+                  _0: args$3,
+                  _1: it_1$1
                 };
                 tmp = {
                   TAG: "Exp",
                   _0: {
-                    it: it$5,
+                    it: it$4,
                     ann: e.ann
                   }
                 };
@@ -1556,9 +1535,9 @@ function parseTerm(e) {
       exit = 1;
     }
     if (exit === 1) {
-      var match$14 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
-      var e$6 = as_expr("a function", parseTerm(match$14[0]));
-      var es$1 = Core__List.map(Core__List.map(match$14[1], parseTerm), (function (e) {
+      var match$13 = as_one_then_many("a function call/application, which includes a function and then zero or more arguments", es);
+      var e$6 = as_expr("a function", parseTerm(match$13[0]));
+      var es$1 = Core__List.map(Core__List.map(match$13[1], parseTerm), (function (e) {
               return as_expr("an argument", e);
             }));
       tmp = {
@@ -2255,7 +2234,6 @@ function collectEqs(p) {
                               }
                             }, the_t);
                       }));
-      case "GLam" :
       case "Yield" :
           throw {
                 RE_EXN_ID: $$TypeError,
@@ -2808,19 +2786,6 @@ function exprLamToString(xs, b) {
             }, b);
 }
 
-function exprGLamToString(xs, b) {
-  return defvarLikeList({
-              it: {
-                TAG: "Plain",
-                _0: "generator"
-              },
-              ann: undefined
-            }, {
-              it: plainList(xs),
-              ann: undefined
-            }, b);
-}
-
 function exprYieldToString(e) {
   return appLikeList({
               it: {
@@ -3170,20 +3135,6 @@ function printExp(param) {
                     })), Core__Option.map(ob, (function (b) {
                       return b.ann.print;
                     })))
-        };
-        break;
-    case "GLam" :
-        var xs$1 = Core__List.map(it._0, symbolToString);
-        var b$2 = printBlock(it._1);
-        e = {
-          it: {
-            TAG: "Lam",
-            _0: xs$1,
-            _1: b$2
-          },
-          ann: exprGLamToString(Core__List.map(xs$1, (function (x) {
-                      return x.ann.print;
-                    })), b$2.ann.print)
         };
         break;
     case "Yield" :
@@ -4968,25 +4919,6 @@ function printExp$1(param, ctx, env) {
                                 }))))
                 }
               };
-    case "GLam" :
-        var xs$1 = Belt_List.map(it._0, symbolToString$1);
-        var b$1 = printLamBody(it._1, xs$1, env);
-        return {
-                it: {
-                  TAG: "GLam",
-                  _0: xs$1,
-                  _1: b$1
-                },
-                ann: {
-                  sourceLocation: sourceLocation,
-                  print: consumeContextWrap(ctx, ann, exprLamToString$1({
-                            it: concat(",", Belt_List.map(xs$1, (function (x) {
-                                        return x.ann.print;
-                                      }))),
-                            ann: undefined
-                          }, b$1.ann.print))
-                }
-              };
     case "Yield" :
         var e$2 = printExp$1(it._0, {
               TAG: "Expr",
@@ -6626,28 +6558,6 @@ function printExp$2(param, ctx) {
                                 })), Belt_Option.map(ob, (function (b) {
                                   return b.ann.print;
                                 }))))
-                }
-              };
-    case "GLam" :
-        var xs$1 = Belt_List.map(it._0, symbolToString$2);
-        var b$1 = printBlock$2(it._1, {
-              TAG: "Stat",
-              _0: "Return"
-            });
-        return {
-                it: {
-                  TAG: "GLam",
-                  _0: xs$1,
-                  _1: b$1
-                },
-                ann: {
-                  sourceLocation: sourceLocation,
-                  print: consumeContextWrap$1(ctx, ann, exprLamToString$2({
-                            it: concat(",", Belt_List.map(xs$1, (function (x) {
-                                        return x.ann.print;
-                                      }))),
-                            ann: undefined
-                          }, b$1.ann.print))
                 }
               };
     case "Yield" :
@@ -8426,28 +8336,6 @@ function printExp$3(param, ctx) {
                                 }))))
                 }
               };
-    case "GLam" :
-        var xs$1 = Belt_List.map(it._0, symbolToString$3);
-        var b$2 = printBlock$3(it._1, {
-              TAG: "Stat",
-              _0: "Return"
-            });
-        return {
-                it: {
-                  TAG: "GLam",
-                  _0: xs$1,
-                  _1: b$2
-                },
-                ann: {
-                  sourceLocation: sourceLocation,
-                  print: consumeContextWrap$2(ctx, ann, exprLamToString$3({
-                            it: concat(",", Belt_List.map(xs$1, (function (x) {
-                                        return x.ann.print;
-                                      }))),
-                            ann: undefined
-                          }, b$2.ann.print))
-                }
-              };
     case "Yield" :
         var e$3 = printExp$3(it._0, {
               TAG: "Expr",
@@ -9891,7 +9779,6 @@ function printExp$4(param, ctx) {
                                 }))))
                 }
               };
-    case "GLam" :
     case "Yield" :
         throw {
               RE_EXN_ID: SMoLPrintError,

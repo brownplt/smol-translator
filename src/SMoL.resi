@@ -10,7 +10,7 @@ module Print: {
   let toString: t<'id> => string
   let toSourceMap: (print<'id>, 'id => string) => Map.t<string, SExpression.sourceLocation>
   let fromString: string => t<'id>
-  let map: (string => string) => (t<'id>) => t<'id>
+  let map: (string => string) => t<'id> => t<'id>
   let concat2: (t<'id>, string, t<'id>) => printNode<'id>
   let concat: (string, list<t<'id>>) => printNode<'id>
   let wrap: (string, t<'id>, string) => printNode<'id>
@@ -88,7 +88,7 @@ module LetKind: {
     | Plain
     | Nested
     | Recursive
-  let toString: (t) => string
+  let toString: t => string
 }
 type rec expressionNode<'ann> =
   | Con(constant)
@@ -103,7 +103,7 @@ type rec expressionNode<'ann> =
   | And(list<expression<'ann>>)
   | Or(list<expression<'ann>>)
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
-  | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
+  // | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
   | While(expression<'ann>, list<expression<'ann>>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>

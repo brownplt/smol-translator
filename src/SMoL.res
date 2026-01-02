@@ -289,7 +289,7 @@ type rec expressionNode<'ann> =
   | And(list<expression<'ann>>)
   | Or(list<expression<'ann>>)
   | Cnd(list<(expression<'ann>, block<'ann>)>, option<block<'ann>>)
-  | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
+  // | GLam(list<annotated<symbol, 'ann>>, block<'ann>)
   | Yield(expression<'ann>)
   | While(expression<'ann>, list<expression<'ann>>)
 and expression<'ann> = annotated<expressionNode<'ann>, 'ann>
@@ -713,17 +713,17 @@ module Parser = {
           Exp(ann(While(cnd, thn)))
         }
 
-      | Sequence({content: list{{it: Atom(Sym("generator")), ann: _}, ...rest}}) => {
-          let (args, terms, result) = as_one_then_many_then_one(
-            "the generator signature followed by the function body",
-            rest,
-          )
-          let args =
-            as_list("generator parameters", args).it->List.map(arg => as_id("a parameter", arg))
-          let terms = terms->List.map(parseTerm)
-          let result = as_expr("an expression to be returned", parseTerm(result))
-          Exp(ann(GLam(args, makeBlock(terms, result))))
-        }
+      // | Sequence({content: list{{it: Atom(Sym("generator")), ann: _}, ...rest}}) => {
+      //     let (args, terms, result) = as_one_then_many_then_one(
+      //       "the generator signature followed by the function body",
+      //       rest,
+      //     )
+      //     let args =
+      //       as_list("generator parameters", args).it->List.map(arg => as_id("a parameter", arg))
+      //     let terms = terms->List.map(parseTerm)
+      //     let result = as_expr("an expression to be returned", parseTerm(result))
+      //     Exp(ann(GLam(args, makeBlock(terms, result))))
+      //   }
 
       | Sequence({content: list{{it: Atom(Sym("yield")), ann: _}, ...rest}}) => {
           let e = as_one("an expression", rest)
@@ -1191,7 +1191,7 @@ module Type = {
             addEq(var(els.ann), the_t)
           })
         }
-      | GLam(_xs, _b) => raiseTypeError("Generators are not supported")
+      // | GLam(_xs, _b) => raiseTypeError("Generators are not supported")
       | Yield(_e) => raiseTypeError("Generators are not supported")
       | While(cnd, thn) => {
           ce(env, cnd)
@@ -1434,9 +1434,9 @@ module SMoLPrinter = {
   let exprLamToString = (xs, b) => {
     defvarLikeList(Print.fromString("lambda"), Print.dummy(plainList(xs)), b)
   }
-  let exprGLamToString = (xs, b) => {
-    defvarLikeList(Print.fromString("generator"), Print.dummy(plainList(xs)), b)
-  }
+  // let exprGLamToString = (xs, b) => {
+  //   defvarLikeList(Print.fromString("generator"), Print.dummy(plainList(xs)), b)
+  // }
 
   let exprYieldToString = e => appLikeList(Print.fromString("yield"), list{e})
 
@@ -1512,14 +1512,14 @@ module SMoLPrinter = {
           it: Lam(xs, b),
         }
       }
-    | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock
-        {
-          ann: exprGLamToString(xs->List.map(x => x.ann.print), b.ann.print),
-          it: Lam(xs, b),
-        }
-      }
+    // | GLam(xs, b) => {
+    //     let xs = xs->List.map(symbolToString)
+    //     let b = b->printBlock
+    //     {
+    //       ann: exprGLamToString(xs->List.map(x => x.ann.print), b.ann.print),
+    //       it: Lam(xs, b),
+    //     }
+    //   }
     | Yield(e) => {
         let e = e->printExp
         {
@@ -2272,7 +2272,7 @@ module PYPrinter = {
   let exprLamToString = (xs, b) => {
     Print.s`lambda ${xs}: ${b}`
   }
-  let exprGLamToString = exprLamToString
+  // let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
   let ifStat = (cnd, thn, els) => {
@@ -2380,21 +2380,21 @@ module PYPrinter = {
         }
       }
     | While(_, _) => raisePrintError("While loops are not supported yet.")
-    | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printLamBody(xs, env)
-        {
-          it: GLam(xs, b),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            exprGLamToString(
-              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
-              b.ann.print,
-            ),
-          )->addSourceLocation,
-        }
-      }
+    // | GLam(xs, b) => {
+    //     let xs = xs->List.map(symbolToString)
+    //     let b = b->printLamBody(xs, env)
+    //     {
+    //       it: GLam(xs, b),
+    //       ann: consumeContextWrap(
+    //         ctx,
+    //         ann,
+    //         exprGLamToString(
+    //           Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+    //           b.ann.print,
+    //         ),
+    //       )->addSourceLocation,
+    //     }
+    //   }
     | Yield(e) => {
         let e = e->printExp(Expr(false), env)
         {
@@ -3084,7 +3084,7 @@ module JSPrinter = {
   let exprLamToString = (xs, b) => {
     Print.s`(${xs}) => {${indentBlock(b, 2)}\n}`
   }
-  let exprGLamToString = exprLamToString
+  // let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
   let ifStat = (cnd, thn, els) => {
@@ -3187,21 +3187,21 @@ module JSPrinter = {
           )->addSourceLocation,
         }
       }
-    | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Stat(Return))
-        {
-          it: GLam(xs, b),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            exprGLamToString(
-              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
-              b.ann.print,
-            ),
-          )->addSourceLocation,
-        }
-      }
+    // | GLam(xs, b) => {
+    //     let xs = xs->List.map(symbolToString)
+    //     let b = b->printBlock(Stat(Return))
+    //     {
+    //       it: GLam(xs, b),
+    //       ann: consumeContextWrap(
+    //         ctx,
+    //         ann,
+    //         exprGLamToString(
+    //           Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+    //           b.ann.print,
+    //         ),
+    //       )->addSourceLocation,
+    //     }
+    //   }
     | While(_, _) => raisePrintError("While loops are not supported yet.")
     | Yield(e) => {
         let e = e->printExp(Expr(false))
@@ -3866,7 +3866,7 @@ module PCPrinter = {
   let exprLamToString = (xs, b) => {
     Print.s`lam (${xs}):${indentBlock(b, 2)}\nend`
   }
-  let exprGLamToString = exprLamToString
+  // let exprGLamToString = exprLamToString
   let exprYieldToString = e => Print.s`yield ${e}`
 
   let exprWhileToString = (e_cnd, es_thn) => {
@@ -4012,21 +4012,21 @@ module PCPrinter = {
           )->addSourceLocation,
         }
       }
-    | GLam(xs, b) => {
-        let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Stat(Return))
-        {
-          it: GLam(xs, b),
-          ann: consumeContextWrap(
-            ctx,
-            ann,
-            exprGLamToString(
-              Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
-              b.ann.print,
-            ),
-          )->addSourceLocation,
-        }
-      }
+    // | GLam(xs, b) => {
+    //     let xs = xs->List.map(symbolToString)
+    //     let b = b->printBlock(Stat(Return))
+    //     {
+    //       it: GLam(xs, b),
+    //       ann: consumeContextWrap(
+    //         ctx,
+    //         ann,
+    //         exprGLamToString(
+    //           Print.concat(",", xs->List.map(x => x.ann.print))->Print.dummy,
+    //           b.ann.print,
+    //         ),
+    //       )->addSourceLocation,
+    //     }
+    //   }
     | Yield(e) => {
         let e = e->printExp(Expr(false))
         {
@@ -4787,7 +4787,7 @@ module SCPrinter = {
           )->addSourceLocation,
         }
       }
-    | GLam(_xs, _b) => raisePrintError("Generators are not supported by Scala.")
+    // | GLam(_xs, _b) => raisePrintError("Generators are not supported by Scala.")
     | Yield(_e) => raisePrintError("Generators are not supported by Scala.")
     | While(_, _) => raisePrintError("While loops are not supported yet.")
     | AppPrm(p, es) => {
