@@ -418,10 +418,15 @@ module ParseError = {
     switch t {
     | SExprParseError(msg) => `expecting a (valid) s-expression, but the input is not: ${msg}`
     | SExprKindError(_kind, context, sexpr) =>
-      `expecting a ${context}, given ${SExpr.toString(sexpr)}`
+      `expecting a ${context}, given ${SExpr.toString(sexpr)} at ${SourceLocation.toString(sexpr.ann)}`
     | SExprArityError(_arity_expectation, context, es) =>
-      `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`
-    | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)}`
+      `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`->String.concat(
+        switch (es->List.head, es->List.reverse->List.head) {
+          | (Some(a), Some(z)) => `at ${SourceLocation.toString({ begin: a.ann.begin, end: z.ann.end })}`
+          | _ => ""
+        }
+      )
+    | LiteralListError(sexpr) => `expecting a constant or a vector, given ${SExpr.toString(sexpr)} at ${SourceLocation.toString(sexpr.ann)}`
     | TermKindError(_term_kind, context, term) =>
       // `expecting ${context}, given ${SMoLPrinter.printTerm(term)}`
       `expecting ${context}, given something else at ${SourcePoint.toString(

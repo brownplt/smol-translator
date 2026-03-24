@@ -514,11 +514,19 @@ function toString$7(t) {
     case "SExprParseError" :
         return "expecting a (valid) s-expression, but the input is not: " + t._0;
     case "SExprKindError" :
-        return "expecting a " + t._1 + ", given " + SExpression.SExpr.toString(t._2);
+        var sexpr = t._2;
+        return "expecting a " + t._1 + ", given " + SExpression.SExpr.toString(sexpr) + " at " + SExpression.SourceLocation.toString(sexpr.ann);
     case "SExprArityError" :
-        return "expecting " + t._1 + ", given " + Core__List.toArray(Core__List.map(t._2, SExpression.SExpr.toString)).join(" ");
+        var es = t._2;
+        var match = Core__List.head(es);
+        var match$1 = Core__List.head(Core__List.reverse(es));
+        return ("expecting " + t._1 + ", given " + Core__List.toArray(Core__List.map(es, SExpression.SExpr.toString)).join(" ")).concat(match !== undefined && match$1 !== undefined ? "at " + SExpression.SourceLocation.toString({
+                          begin: match.ann.begin,
+                          end: match$1.ann.end
+                        }) : "");
     case "LiteralListError" :
-        return "expecting a constant or a vector, given " + SExpression.SExpr.toString(t._0);
+        var sexpr$1 = t._0;
+        return "expecting a constant or a vector, given " + SExpression.SExpr.toString(sexpr$1) + " at " + SExpression.SourceLocation.toString(sexpr$1.ann);
     case "TermKindError" :
         var term = t._2;
         return "expecting " + t._1 + ", given something else at " + SExpression.SourcePoint.toString(term.ann.begin) + "-" + SExpression.SourcePoint.toString(term.ann.end);
