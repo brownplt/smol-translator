@@ -422,7 +422,7 @@ module ParseError = {
     | SExprArityError(_arity_expectation, context, es) =>
       `expecting ${context}, given ${concat(" ", es->List.map(SExpr.toString)->List.toArray)}`->String.concat(
         switch (es->List.head, es->List.reverse->List.head) {
-          | (Some(a), Some(z)) => `at ${SourceLocation.toString({ begin: a.ann.begin, end: z.ann.end })}`
+          | (Some(a), Some(z)) => ` at ${SourceLocation.toString({ begin: a.ann.begin, end: z.ann.end })}`
           | _ => ""
         }
       )

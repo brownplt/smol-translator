@@ -520,7 +520,7 @@ function toString$7(t) {
         var es = t._2;
         var match = Core__List.head(es);
         var match$1 = Core__List.head(Core__List.reverse(es));
-        return ("expecting " + t._1 + ", given " + Core__List.toArray(Core__List.map(es, SExpression.SExpr.toString)).join(" ")).concat(match !== undefined && match$1 !== undefined ? "at " + SExpression.SourceLocation.toString({
+        return ("expecting " + t._1 + ", given " + Core__List.toArray(Core__List.map(es, SExpression.SExpr.toString)).join(" ")).concat(match !== undefined && match$1 !== undefined ? " at " + SExpression.SourceLocation.toString({
                           begin: match.ann.begin,
                           end: match$1.ann.end
                         }) : "");
