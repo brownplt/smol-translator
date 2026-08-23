@@ -1,0 +1,11 @@
+(deffun (foobar)
+  (defvar n 0)
+  (lambda ()
+    (set! n (+ n 1))
+    n))
+(defvar f (foobar))
+(defvar g (foobar))
+
+(f)
+(f)
+(g)

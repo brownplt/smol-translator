@@ -1,0 +1,4 @@
+(defvar x 66)
+(defvar v (mvec 82 x 93))
+(set! x 1)
+v

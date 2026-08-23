@@ -1,0 +1,8 @@
+(deffun (bar y)
+  (deffun (addy x)
+    (+ x y))
+  addy)
+(defvar f (bar 2))
+(defvar g (bar 4))
+(f 2)
+(g 2)

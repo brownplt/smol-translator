@@ -1,0 +1,5 @@
+(deffun (foobar n)
+  (defvar m 4)
+  (+ n m))
+
+(+ (foobar 2) m)

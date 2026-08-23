@@ -1,0 +1,7 @@
+(defvar aa 3)
+(deffun (abc bb)
+  (deffun (h)
+    (defvar cc 2)
+    (* aa bb cc))
+  (h))
+(* (abc 4) 1)

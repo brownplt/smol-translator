@@ -1,0 +1,6 @@
+(defvar cat 7)
+(deffun (k dog)
+  (defvar cat 4)
+  (+ cat dog))
+
+(+ (k 1) cat)

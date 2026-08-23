@@ -1,0 +1,4 @@
+(defvar v1 (mvec 23))
+(defvar v2 v1)
+(vec-set! v1 0 45)
+v2

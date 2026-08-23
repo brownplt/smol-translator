@@ -1,0 +1,4 @@
+(defvar nn (mvec 66))
+(defvar mm (mvec 77 nn))
+(vec-set! nn 0 77)
+mm

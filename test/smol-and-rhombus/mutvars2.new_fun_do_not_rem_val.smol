@@ -1,0 +1,5 @@
+(defvar x 1)
+(deffun (f n)
+  (+ x n))
+(set! x 2)
+(f 30)

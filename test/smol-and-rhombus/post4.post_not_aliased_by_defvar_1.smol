@@ -1,0 +1,5 @@
+(defvar n 3)
+(defvar m n)
+(set! n 6)
+n
+m

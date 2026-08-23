@@ -1,0 +1,7 @@
+(defvar a 1)
+(deffun (foo)
+  (lambda (b)
+    (+ a b)))
+(defvar bar (foo))
+(set! a 3)
+(bar 0)

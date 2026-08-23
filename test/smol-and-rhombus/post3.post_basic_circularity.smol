@@ -1,0 +1,3 @@
+(defvar ns (mvec 74 85))
+(vec-set! ns 0 ns)
+(vec-ref ns 1)

@@ -1,0 +1,7 @@
+(defvar x 1)
+(deffun (f)
+  (lambda (y)
+    (+ x y)))
+(defvar g (f))
+(set! x 2)
+(g 0)

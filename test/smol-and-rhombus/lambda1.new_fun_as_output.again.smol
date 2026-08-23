@@ -1,0 +1,6 @@
+(deffun (fun1)
+  (deffun (average x y)
+    (/ (+ x y) 2))
+  average)
+(defvar x (fun1))
+(x 20 40)

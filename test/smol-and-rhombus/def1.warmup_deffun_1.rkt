@@ -1,0 +1,6 @@
+#lang rhombus
+
+fun f(x, y, z):
+    x + (y + z)
+
+f(2, 1, 3)

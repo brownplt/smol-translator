@@ -1,0 +1,5 @@
+(deffun (f)
+  42)
+(defvar g f)
+(defvar h g)
+(h)

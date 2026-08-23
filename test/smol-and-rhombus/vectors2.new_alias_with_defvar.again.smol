@@ -1,0 +1,4 @@
+(defvar foo (mvec 65 48))
+(defvar bar foo)
+(vec-set! bar 0 55)
+foo

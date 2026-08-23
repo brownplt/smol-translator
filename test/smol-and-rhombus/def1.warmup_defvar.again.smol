@@ -1,0 +1,4 @@
+(defvar a 10)
+(defvar b (* 2 a))
+a
+b

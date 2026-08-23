@@ -1,0 +1,5 @@
+(defvar baz (+ bar 1))
+(defvar bar 2)
+
+baz
+bar

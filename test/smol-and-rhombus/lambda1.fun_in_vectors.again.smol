@@ -1,0 +1,6 @@
+(deffun (inc n)
+  (+ n 1))
+(deffun (dec n)
+  (- n 1))
+(defvar v (mvec inc dec))
+((vec-ref v 1) 2)

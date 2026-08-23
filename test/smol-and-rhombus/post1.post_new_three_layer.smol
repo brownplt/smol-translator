@@ -1,0 +1,7 @@
+(defvar a 3)
+(deffun (foo b)
+  (deffun (bar)
+    (defvar c 6)
+    (+ a b c))
+  (bar))
+(+ (foo 4) 2)

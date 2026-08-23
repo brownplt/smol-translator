@@ -1,0 +1,5 @@
+(deffun (foo bar)
+  (defvar zzz 8)
+  (* bar zzz))
+
+(* (foo 9) zzz)

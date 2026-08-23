@@ -1,0 +1,5 @@
+(deffun (k a)
+  (defvar b 1)
+  (+ a b))
+
+(+ (k 3) b)

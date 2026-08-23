@@ -1,0 +1,12 @@
+(deffun (foo)
+  (defvar n 0)
+  (deffun (bar)
+    (set! n (+ n 1))
+    n)
+  bar)
+(defvar f (foo))
+(defvar g (foo))
+
+(f)
+(f)
+(g)

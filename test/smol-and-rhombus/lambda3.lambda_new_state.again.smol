@@ -1,0 +1,7 @@
+(defvar a 2)
+(deffun (make)
+  (lambda (b)
+    (+ a b)))
+(defvar fun (make))
+(set! a 1)
+(fun 1)

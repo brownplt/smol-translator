@@ -1,0 +1,4 @@
+(defvar x (mvec 62))
+(defvar y x)
+(vec-set! y 0 34)
+x

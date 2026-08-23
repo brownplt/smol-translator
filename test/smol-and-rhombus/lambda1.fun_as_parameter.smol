@@ -1,0 +1,5 @@
+(deffun (twice f x)
+  (f (f x)))
+(deffun (double x)
+  (+ x x))
+(twice double 1)

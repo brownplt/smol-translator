@@ -1,0 +1,4 @@
+(deffun (f a b c)
+  (defvar q (+ b c))
+  (* a q))
+(f 3 2 1)

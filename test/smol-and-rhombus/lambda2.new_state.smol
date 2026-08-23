@@ -1,0 +1,8 @@
+(defvar x 1)
+(deffun (f)
+  (deffun (addx y)
+    (+ x y))
+  addx)
+(defvar g (f))
+(set! x 2)
+(g 0)

@@ -1,0 +1,4 @@
+(defvar x 7)
+(deffun (fun n)
+  (* n 2))
+(mvec (fun x) x)

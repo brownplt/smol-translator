@@ -1,0 +1,5 @@
+(deffun (f1)
+  5)
+(defvar f2 f1)
+(defvar f3 f2)
+(* (f3) 10)
