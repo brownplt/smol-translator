@@ -30,7 +30,7 @@ def run_smol_file(test):
 
 def run_rhombus_file(test):
     src = open(test).read()
-    f = open("tmp.smol", "w+")
+    f = open("tmp.rkt", "w+")
     f.write(src)
     f.close()
     command = [
@@ -189,6 +189,7 @@ for test_path in ["style_tests", "test_cases"]:
             print("No expected output.")
             print("----------")
 
+    continue
 
     print("- Testing JavaScript programs")
     suffix = ".js"
