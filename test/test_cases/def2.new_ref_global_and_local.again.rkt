@@ -1,11 +1,10 @@
 #lang rhombus
 
 def a = 9
-fun fun():
+fun fun_():
   def b = 2
   fun prod():
     a * b
-
   prod()
 
-fun()
+fun_()
