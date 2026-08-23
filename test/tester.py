@@ -28,6 +28,30 @@ def run_smol_file(test):
     return actual_result
 
 
+def run_rhombus_file(test):
+    src = open(test).read()
+    f = open("tmp.smol", "w+")
+    f.write(src)
+    f.close()
+    command = [
+        "racket",
+        "tmp.rkt"
+    ]
+    actual_result = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout = actual_result.stdout.decode('utf-8')
+    stderr = actual_result.stderr.decode('utf-8')
+    if stderr == "":
+        actual_result = stdout
+    else:
+        actual_result = stdout + "\n" + "error"
+    # Remove Newlines
+    actual_result = actual_result.strip().split("\n")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    return actual_result
+
+
 def run_js_file(test):
     command = [
         "node",
@@ -118,6 +142,36 @@ for test_path in ["style_tests", "test_cases"]:
             wished_results = "{}.smol.txt".format(test[:-len(suffix)])
             wished_results = open(wished_results).read().strip().replace("\n", " ")
             actual_results = run_smol_file(test)
+            if wished_results == actual_results:
+                # print("PASSED {}".format(test))
+                pass
+            else:
+                print("FAILED {}".format(test))
+                print("Program:")
+                print(program)
+                print("Wished: {}".format(repr(wished_results)))
+                print("Actual: {}".format(repr(actual_results)))
+                print("----------")
+        except FileNotFoundError as e:
+            print("FAILED {}".format(test))
+            print("Program:")
+            print(program)
+            print("No expected output.")
+            print("----------")
+
+    print("- Testing rhombus programs")
+    suffix = ".rkt"
+    # i = 0
+    for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
+        # i = i + 1
+        # if i > 10:
+        #     break
+        print(f"-- {test}")
+        program = open(test).read()
+        try:
+            wished_results = "{}.rkt.txt".format(test[:-len(suffix)])
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
+            actual_results = run_rhombus_file(test)
             if wished_results == actual_results:
                 # print("PASSED {}".format(test))
                 pass
