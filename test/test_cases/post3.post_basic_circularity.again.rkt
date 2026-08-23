@@ -1,0 +1,5 @@
+#lang rhombus
+
+def abc = Array(84, 82, 85, 86)
+abc[1] := abc
+abc[0]

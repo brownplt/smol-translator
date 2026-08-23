@@ -1,0 +1,5 @@
+#lang rhombus
+
+def mutable rent = 10
+rent := 10 * 2
+rent

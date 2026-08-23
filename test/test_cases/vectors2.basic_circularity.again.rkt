@@ -1,0 +1,5 @@
+#lang rhombus
+
+def x = Array(84, 73, 69, 52)
+x[1] := x
+x[0]

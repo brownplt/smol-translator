@@ -1,0 +1,5 @@
+#lang rhombus
+
+def v = Array(83, 64)
+v[0] := 66
+v

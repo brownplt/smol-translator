@@ -1,0 +1,4 @@
+#lang rhombus
+
+def x = 12(54)
+3
