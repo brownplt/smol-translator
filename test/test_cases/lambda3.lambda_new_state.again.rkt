@@ -5,6 +5,6 @@ fun make():
   fun (b):
     a + b
 
-def fun = make()
+def fun_ = make()
 a := 1
-fun(1)
+fun_(1)

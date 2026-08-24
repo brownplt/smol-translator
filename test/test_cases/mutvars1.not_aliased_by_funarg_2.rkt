@@ -1,7 +1,7 @@
 #lang rhombus
 
 def x = 12
-fun f(y):
+fun f(mutable y):
   y := 0
   x
 

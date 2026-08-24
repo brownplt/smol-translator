@@ -1,7 +1,7 @@
 #lang rhombus
 
 def n = 2
-fun h(m):
+fun h(mutable m):
   m := 7
   n
 

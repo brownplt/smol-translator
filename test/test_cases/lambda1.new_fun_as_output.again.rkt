@@ -2,8 +2,7 @@
 
 fun fun1():
   fun average(x, y):
-    /(x + y, 2)
-
+    (x + y) / 2
   average
 
 def x = fun1()
