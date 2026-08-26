@@ -90,6 +90,24 @@ for (const path of paths) {
                 console.log(name);
                 console.error(err);
             }
+            // Rhombus
+            try {
+                const program = fs.readFileSync(programFile, 'utf8');
+                const outputs = fs.readFileSync(outputsFile, 'utf8');
+                if (!outputs.includes("@")) {
+                    try {
+                        fs.writeFileSync(`${path}/${name}.rhm`, SMoL.translateProgram("SMoL", "Rhombus", true, program));
+                        fs.writeFileSync(`${path}/${name}.rhm.txt`, SMoL.translateOutput("Rhombus", "\n", outputs));
+                    } catch (err) {
+                        fs.writeFileSync(`${path}/${name}.rhm.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
+                    }
+                } else {
+                    fs.writeFileSync(`${path}/${name}.rhm.err`, "Skipped translation because the outputs include `@`.");
+                }
+            } catch (err) {
+                console.log(name);
+                console.error(err);
+            }
             // Scala
             try {
                 if (!incompatibleWithScala3.has(name.replace(/[.]again$/, ""))) {

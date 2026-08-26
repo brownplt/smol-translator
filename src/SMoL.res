@@ -5119,13 +5119,15 @@ let programAsTerm = (p: program<_>): term<_> => {
 module RhombusPrinter = {
   open! Belt
 
-  // Rhombus binds only `when`, `unless`, `mutable` and `values`, but the
-  // reader on the other side of this translation treats a few more as forms,
-  // so a name matching any of them is prefixed rather than left to collide.
+  // Binding one of these as a name shadows the form of the same name for the
+  // rest of that scope, so a later `fun f(): ...` stops being a definition and
+  // becomes a misplaced expression. Checked against Rhombus one word at a time
+  // by binding it and then using every form this printer emits.
   let reservedNames = [
     "block",
     "cond",
     "def",
+    "fun",
     "if",
     "let",
     "mutable",
@@ -5136,14 +5138,16 @@ module RhombusPrinter = {
   ]
 
   /// A SMoL name as Rhombus spells it. SMoL allows `kebab-case` and a trailing
-  /// `?` or `!`; Rhombus identifiers are alphanumeric plus `_`, so the first
-  /// becomes camelCase — the same conversion the JavaScript printer makes — and
-  /// anything still illegal becomes `_`.
+  /// `?` or `!`; Rhombus identifiers are alphanumeric plus `_`. Kebab becomes
+  /// camelCase, the same conversion the JavaScript printer makes, `?` and `!`
+  /// become `_q` and `_e`, and anything else still illegal becomes `_`.
   let printName = x => {
     let camel = %re("/-./g")
     let matchFn = (matchPart, _offset, _wholeString) =>
       Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
     let x = Js.String2.unsafeReplaceBy0(x, camel, matchFn)
+    let x = Js.String2.replaceByRe(x, %re("/[?]/g"), "_q")
+    let x = Js.String2.replaceByRe(x, %re("/[!]/g"), "_e")
     let x = Js.String2.replaceByRe(x, %re("/[^A-Za-z0-9_]/g"), "_")
     if reservedNames->Array.some(reserved => reserved == x) {
       `_${x}`
@@ -5152,21 +5156,29 @@ module RhombusPrinter = {
     }
   }
 
-  // Rhombus requires `mutable` on a binding before `:=` will accept it, and
-  // the SMoL AST does not record it, so it is recovered by looking for the
-  // names something assigns. The scan is by name and ignores shadowing, which
-  // can only mark a binding mutable that did not need to be, never the reverse.
-  let mutatedNames = ref(Dict.make())
+  // Rhombus requires `mutable` on a binding before `:=` will accept it, and the
+  // SMoL AST does not record it, so it has to be recovered.
+  //
+  // Deliberately, this asks only whether the program mutates *anything* and
+  // then marks every binding, exactly as the Scala printer decides `var`
+  // against `val`. Marking only the names that are actually assigned would be
+  // easy and would read better, but these programs are written to test whether
+  // a reader can tell mutating a variable from mutating what it points at, and
+  // a precise annotation answers that question for them.
+  let involveMutation = ref(false)
 
-  let isMutated = x => mutatedNames.contents->Dict.get(x)->Option.isSome
+  let isMutated = _ => involveMutation.contents
 
   let collectMutated = (p: program<sourceLocation>) => {
-    let names = Dict.make()
+    let mutates = ref(false)
     let rec expression = ({it, _}: expression<sourceLocation>) =>
       switch it {
-      | Set(x, e) =>
-        names->Dict.set(x.it, true)
+      | Set(_, e) =>
+        mutates := true
         expression(e)
+      | AppPrm(VecSet, es) | AppPrm(PairSetLeft, es) | AppPrm(PairSetRight, es) =>
+        mutates := true
+        es->List.forEach(expression)
       | Con(_) | Ref(_) => ()
       | Lam(_, b) => block(b)
       | Let(_, bs, b) =>
@@ -5219,7 +5231,7 @@ module RhombusPrinter = {
         program(p)
       }
     program(p)
-    names
+    mutates.contents
   }
 
   // A binder writes `mutable` only where something assigns the name.
@@ -5851,7 +5863,7 @@ module RhombusPrinter = {
     } else {
       p
     }
-    mutatedNames := collectMutated(p)
+    involveMutation := collectMutated(p)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
@@ -5886,7 +5898,7 @@ module RhombusPrinter = {
     Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
 
   let printStandAloneTerm = (t: term<sourceLocation>): string => {
-    mutatedNames := Dict.make()
+    involveMutation := false
     Print.toString(printTerm(t, Step).ann.print)
   }
 }

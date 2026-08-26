@@ -10170,6 +10170,7 @@ var reservedNames = [
   "block",
   "cond",
   "def",
+  "fun",
   "if",
   "let",
   "mutable",
@@ -10185,26 +10186,26 @@ function printName$5(x) {
     return matchPart.substring(1).toUpperCase();
   };
   var x$1 = x.replace(camel, matchFn);
-  var x$2 = x$1.replace(/[^A-Za-z0-9_]/g, "_");
+  var x$2 = x$1.replace(/[?]/g, "_q");
+  var x$3 = x$2.replace(/[!]/g, "_e");
+  var x$4 = x$3.replace(/[^A-Za-z0-9_]/g, "_");
   if (Belt_Array.some(reservedNames, (function (reserved) {
-            return reserved === x$2;
+            return reserved === x$4;
           }))) {
-    return "_" + x$2;
+    return "_" + x$4;
   } else {
-    return x$2;
+    return x$4;
   }
 }
 
-var mutatedNames = {
-  contents: {}
+var involveMutation$1 = {
+  contents: false
 };
 
-function isMutated(x) {
-  return Belt_Option.isSome(mutatedNames.contents[x]);
-}
-
 function collectMutated(p) {
-  var names = {};
+  var mutates = {
+    contents: false
+  };
   var expression = function (_param) {
     while(true) {
       var param = _param;
@@ -10214,7 +10215,7 @@ function collectMutated(p) {
         case "Ref" :
             return ;
         case "Set" :
-            names[it._0.it] = true;
+            mutates.contents = true;
             _param = it._1;
             continue ;
         case "Lam" :
@@ -10225,7 +10226,25 @@ function collectMutated(p) {
                   }));
             return block(it._2);
         case "AppPrm" :
-            return Belt_List.forEach(it._1, expression);
+            var exit = 0;
+            var tmp = it._0;
+            if (typeof tmp === "object") {
+              return Belt_List.forEach(it._1, expression);
+            }
+            switch (tmp) {
+              case "PairSetLeft" :
+              case "PairSetRight" :
+              case "VecSet" :
+                  exit = 2;
+                  break;
+              default:
+                return Belt_List.forEach(it._1, expression);
+            }
+            if (exit === 2) {
+              mutates.contents = true;
+              return Belt_List.forEach(it._1, expression);
+            }
+            break;
         case "Bgn" :
             Belt_List.forEach(it._0, expression);
             _param = it._1;
@@ -10296,11 +10315,11 @@ function collectMutated(p) {
     };
   };
   program(p);
-  return names;
+  return mutates.contents;
 }
 
 function binderOf(keyword, x) {
-  if (isMutated(x)) {
+  if (involveMutation$1.contents) {
     return keyword + " mutable";
   } else {
     return keyword;
@@ -10922,7 +10941,7 @@ function exprIfToString$5(cnd, thn, els, inStat) {
 }
 
 function parameterPrint(x) {
-  if (isMutated(x.it)) {
+  if (involveMutation$1.contents) {
     return {
             it: s([
                   "mutable ",
@@ -11734,7 +11753,7 @@ function printOutput$5(sepOpt, os) {
 
 function printProgramFull$5(insertPrintTopLevel, p) {
   var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  mutatedNames.contents = collectMutated(p$1);
+  involveMutation$1.contents = collectMutated(p$1);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -11811,7 +11830,7 @@ function printProgram$5(insertPrintTopLevel, p) {
 }
 
 function printStandAloneTerm$5(t) {
-  mutatedNames.contents = {};
+  involveMutation$1.contents = false;
   return toString(printTerm$5(t, "Step").ann.print);
 }
 

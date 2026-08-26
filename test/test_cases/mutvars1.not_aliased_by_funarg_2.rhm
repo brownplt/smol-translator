@@ -1,0 +1,5 @@
+def mutable x = 12
+fun f(mutable y):
+  y := 0
+  x
+println(f(x))
