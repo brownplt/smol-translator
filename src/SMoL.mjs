@@ -10398,6 +10398,67 @@ function guillemets(e) {
             ], [e]);
 }
 
+function claimsBars(_param) {
+  while(true) {
+    var param = _param;
+    var it = param.it;
+    switch (it.TAG) {
+      case "Set" :
+          _param = it._1;
+          continue ;
+      case "Lam" :
+          return blockClaimsBars(it._1);
+      case "If" :
+      case "Cnd" :
+          return true;
+      default:
+        return false;
+    }
+  };
+}
+
+function blockClaimsBars(_param) {
+  while(true) {
+    var param = _param;
+    var it = param.it;
+    if (it.TAG === "BRet") {
+      return claimsBars(it._0);
+    }
+    if (termClaimsBars(it._0)) {
+      return true;
+    }
+    _param = it._1;
+    continue ;
+  };
+}
+
+function termClaimsBars(param) {
+  var it = param.it;
+  if (it.TAG !== "Def") {
+    return claimsBars(it._0);
+  }
+  var d = it._0.it;
+  switch (d.TAG) {
+    case "Var" :
+        return claimsBars(d._1);
+    case "Fun" :
+    case "GFun" :
+        return blockClaimsBars(d._2);
+    
+  }
+}
+
+function fenceBlock(source, printed) {
+  if (blockClaimsBars(source)) {
+    return {
+            it: guillemets(printed),
+            ann: undefined
+          };
+  } else {
+    return printed;
+  }
+}
+
 function listToString$4(es) {
   if (Belt_List.some(es, containsNL)) {
     return {
@@ -10867,10 +10928,7 @@ function exprLamToString$5(xs, b, inStat) {
                 ""
               ], [
                 xs$1,
-                {
-                  it: guillemets(b),
-                  ann: undefined
-                }
+                b
               ]);
   }
 }
@@ -10937,14 +10995,8 @@ function exprIfToString$5(cnd, thn, els, inStat) {
                 ""
               ], [
                 cnd,
-                {
-                  it: guillemets(thn),
-                  ann: undefined
-                },
-                {
-                  it: guillemets(els),
-                  ann: undefined
-                }
+                thn,
+                els
               ]);
   }
 }
@@ -11062,10 +11114,7 @@ function exprCndToString$5(ebs, ob, inStat) {
                           ""
                         ], [
                           test,
-                          {
-                            it: guillemets(body),
-                            ann: undefined
-                          }
+                          body
                         ]),
                     ann: undefined
                   };
@@ -11084,10 +11133,7 @@ function exprCndToString$5(ebs, ob, inStat) {
                   it: s([
                         "| ~else: ",
                         ""
-                      ], [{
-                          it: guillemets(ob),
-                          ann: undefined
-                        }]),
+                      ], [ob]),
                   ann: undefined
                 }),
             tl: /* [] */0
@@ -11182,6 +11228,7 @@ function printExp$5(param, ctx) {
                 }
               };
     case "Lam" :
+        var bodySource = it._1;
         var xs = Belt_List.map(it._0, symbolToString$5);
         var bodyCtx = inStat ? ({
               TAG: "Stat",
@@ -11190,7 +11237,8 @@ function printExp$5(param, ctx) {
               TAG: "Expr",
               _0: false
             });
-        var b = printBlock$5(it._1, bodyCtx);
+        var b = printBlock$5(bodySource, bodyCtx);
+        var body = inStat ? b.ann.print : fenceBlock(bodySource, b.ann.print);
         return {
                 it: {
                   TAG: "Lam",
@@ -11199,7 +11247,7 @@ function printExp$5(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, exprLamToString$5(Belt_List.map(xs, parameterPrint), b.ann.print, inStat))
+                  print: consumeContextWrap$4(ctx, ann, exprLamToString$5(Belt_List.map(xs, parameterPrint), body, inStat))
                 }
               };
     case "Let" :
@@ -11412,7 +11460,7 @@ function printExp$5(param, ctx) {
                     tl: /* [] */0
                   }
                 ]));
-        var body = {
+        var body$1 = {
           it: body_it,
           ann: undefined
         };
@@ -11424,10 +11472,12 @@ function printExp$5(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, inStat ? exprBlockStatToString(body) : exprBgnToString$1(body))
+                  print: consumeContextWrap$4(ctx, ann, inStat ? exprBlockStatToString(body$1) : exprBgnToString$1(body$1))
                 }
               };
     case "If" :
+        var elsSource = it._2;
+        var thnSource = it._1;
         var branchCtx = inStat ? ({
               TAG: "Stat",
               _0: "Return"
@@ -11439,8 +11489,20 @@ function printExp$5(param, ctx) {
               TAG: "Expr",
               _0: false
             });
-        var e_thn = printExp$5(it._1, branchCtx);
-        var e_els = printExp$5(it._2, branchCtx);
+        var e_thn = printExp$5(thnSource, branchCtx);
+        var e_els = printExp$5(elsSource, branchCtx);
+        var branch = function (source, printed) {
+          if (inStat) {
+            return printed;
+          } else if (claimsBars(source)) {
+            return {
+                    it: guillemets(printed),
+                    ann: undefined
+                  };
+          } else {
+            return printed;
+          }
+        };
         return {
                 it: {
                   TAG: "If",
@@ -11450,7 +11512,7 @@ function printExp$5(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, exprIfToString$5(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print, inStat))
+                  print: consumeContextWrap$4(ctx, ann, exprIfToString$5(e_cnd.ann.print, branch(thnSource, e_thn.ann.print), branch(elsSource, e_els.ann.print), inStat))
                 }
               };
     case "And" :
@@ -11499,33 +11561,46 @@ function printExp$5(param, ctx) {
               TAG: "Expr",
               _0: false
             });
+        var printBody = function (source) {
+          var printed = printBlock$5(source, bodyCtx$3);
+          var fenced = inStat ? printed.ann.print : fenceBlock(source, printed.ann.print);
+          return [
+                  printed,
+                  fenced
+                ];
+        };
         var ebs = Belt_List.map(it._0, (function (param) {
                 return [
                         printExp$5(param[0], {
                               TAG: "Expr",
                               _0: false
                             }),
-                        printBlock$5(param[1], bodyCtx$3)
+                        printBody(param[1])
                       ];
               }));
-        var ob = Belt_Option.map(it._1, (function (b) {
-                return printBlock$5(b, bodyCtx$3);
-              }));
+        var ob = Belt_Option.map(it._1, printBody);
         return {
                 it: {
                   TAG: "Cnd",
-                  _0: ebs,
-                  _1: ob
+                  _0: Belt_List.map(ebs, (function (param) {
+                          return [
+                                  param[0],
+                                  param[1][0]
+                                ];
+                        })),
+                  _1: Belt_Option.map(ob, (function (param) {
+                          return param[0];
+                        }))
                 },
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap$4(ctx, ann, exprCndToString$5(Belt_List.map(ebs, (function (param) {
                                   return [
                                           param[0].ann.print,
-                                          param[1].ann.print
+                                          param[1][1]
                                         ];
-                                })), Belt_Option.map(ob, (function (b) {
-                                  return b.ann.print;
+                                })), Belt_Option.map(ob, (function (param) {
+                                  return param[1];
                                 })), inStat))
                 }
               };
@@ -11550,7 +11625,7 @@ function printExp$5(param, ctx) {
         var body_it$1 = concat(joiner$1, Belt_List.map(es_thn, (function (e) {
                     return e.ann.print;
                   })));
-        var body$1 = {
+        var body$2 = {
           it: body_it$1,
           ann: undefined
         };
@@ -11562,7 +11637,7 @@ function printExp$5(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, exprWhileToString$2(e_cnd$1.ann.print, body$1, inStat))
+                  print: consumeContextWrap$4(ctx, ann, exprWhileToString$2(e_cnd$1.ann.print, body$2, inStat))
                 }
               };
     

@@ -5286,10 +5286,51 @@ module RhombusPrinter = {
 
   let paren = e => Print.s`(${e->Print.dummy})`
 
-  /// A body written where an expression is expected. `«...»` keeps it on one
-  /// line and, more importantly, stops the layout rules from re-associating
-  /// what follows it.
+  /// A body written where an expression is expected, when it needs fencing off.
   let guillemets = e => Print.s`«${e}»`
+
+  // Whether printing this inline leaves a `|` at the top level of the result.
+  // Such a form would otherwise have its bars claimed by the one enclosing it:
+  // `if a | if b | 1 | 2 | 3` gives the *outer* `if` four branches. Anything
+  // else — a call, an operator, a `block:` — either has no bars or keeps them
+  // inside a bracket, and so needs no fencing.
+  let rec claimsBars = ({it, _}: expression<sourceLocation>) =>
+    switch it {
+    | If(_, _, _) | Cnd(_, _) => true
+    | Lam(_, b) => blockClaimsBars(b)
+    | Set(_, e) => claimsBars(e)
+    | _ => false
+    }
+  and blockClaimsBars = ({it, _}: block<sourceLocation>) =>
+    switch it {
+    | BRet(e) => claimsBars(e)
+    | BCons(t, b) => termClaimsBars(t) || blockClaimsBars(b)
+    }
+  and termClaimsBars = ({it, _}: term<sourceLocation>) =>
+    switch it {
+    | Exp(e) => claimsBars(e)
+    | Def({it: d, _}) =>
+      switch d {
+      | Var(_, e) => claimsBars(e)
+      | Fun(_, _, b) | GFun(_, _, b) => blockClaimsBars(b)
+      }
+    }
+
+  /// Fence `printed` off only when `source` would otherwise claim the bars of
+  /// the form around it.
+  let fenceExpression = (source, printed) =>
+    if claimsBars(source) {
+      guillemets(printed)->Print.dummy
+    } else {
+      printed
+    }
+
+  let fenceBlock = (source, printed) =>
+    if blockClaimsBars(source) {
+      guillemets(printed)->Print.dummy
+    } else {
+      printed
+    }
 
   let listToString = es =>
     if es->List.some(containsNL) {
@@ -5463,7 +5504,7 @@ module RhombusPrinter = {
     if inStat {
       Print.s`fun (${xs}):${indentBlock(b, 2)}`
     } else {
-      Print.s`fun (${xs}): ${Print.dummy(guillemets(b))}`
+      Print.s`fun (${xs}): ${b}`
     }
   }
 
@@ -5487,7 +5528,7 @@ module RhombusPrinter = {
     if inStat {
       Print.s`if ${cnd}\n| ${indent(thn, 2)}\n| ${indent(els, 2)}`
     } else {
-      Print.s`if ${cnd} | ${guillemets(thn)->Print.dummy} | ${guillemets(els)->Print.dummy}`
+      Print.s`if ${cnd} | ${thn} | ${els}`
     }
 
   let exprAndToString = es => Print.concat(" && ", es)
@@ -5537,7 +5578,7 @@ module RhombusPrinter = {
         // indented past that rather than just past the `|`.
         (Print.s`| ${test}:${indentBlock(body, 4)}`)->Print.dummy
       } else {
-        (Print.s`| ${test}: ${Print.dummy(guillemets(body))}`)->Print.dummy
+        (Print.s`| ${test}: ${body}`)->Print.dummy
       }
     let clauses = ebs->List.map(((e, b)) => clause(e, b))
     let clauses = switch ob {
@@ -5548,7 +5589,7 @@ module RhombusPrinter = {
         if inStat {
           (Print.s`| ~else:${indentBlock(b, 4)}`)->Print.dummy
         } else {
-          (Print.s`| ~else: ${Print.dummy(guillemets(b))}`)->Print.dummy
+          (Print.s`| ~else: ${b}`)->Print.dummy
         },
       }
     }
@@ -5607,20 +5648,25 @@ module RhombusPrinter = {
           )->addSourceLocation,
         }
       }
-    | Lam(xs, b) => {
+    | Lam(xs, bodySource) => {
         let xs = xs->List.map(symbolToString)
         let bodyCtx = if inStat {
           Stat(Return)
         } else {
           Expr(false)
         }
-        let b = b->printBlock(bodyCtx)
+        let b = bodySource->printBlock(bodyCtx)
+        let body = if inStat {
+          b.ann.print
+        } else {
+          fenceBlock(bodySource, b.ann.print)
+        }
         {
           it: Lam(xs, b),
           ann: consumeContextWrap(
             ctx,
             ann,
-            exprLamToString(xs->List.map(parameterPrint), b.ann.print, inStat),
+            exprLamToString(xs->List.map(parameterPrint), body, inStat),
           )->addSourceLocation,
         }
       }
@@ -5709,37 +5755,56 @@ module RhombusPrinter = {
         } else {
           Expr(false)
         }
-        let ebs =
-          ebs->List.map(((e, b)) => (e->printExp(Expr(false)), b->printBlock(bodyCtx)))
-        let ob = ob->Option.map(b => b->printBlock(bodyCtx))
+        let printBody = source => {
+          let printed = source->printBlock(bodyCtx)
+          let fenced = if inStat {
+            printed.ann.print
+          } else {
+            fenceBlock(source, printed.ann.print)
+          }
+          (printed, fenced)
+        }
+        let ebs = ebs->List.map(((e, b)) => (e->printExp(Expr(false)), printBody(b)))
+        let ob = ob->Option.map(printBody)
         {
-          it: Cnd(ebs, ob),
+          it: Cnd(ebs->List.map(((e, (b, _))) => (e, b)), ob->Option.map(((b, _)) => b)),
           ann: consumeContextWrap(
             ctx,
             ann,
             exprCndToString(
-              ebs->List.map(((e, b)) => (e.ann.print, b.ann.print)),
-              ob->Option.map(b => b.ann.print),
+              ebs->List.map(((e, (_, body))) => (e.ann.print, body)),
+              ob->Option.map(((_, body)) => body),
               inStat,
             ),
           )->addSourceLocation,
         }
       }
-    | If(e_cnd, e_thn, e_els) => {
+    | If(cndSource, thnSource, elsSource) => {
         let branchCtx = if inStat {
           Stat(Return)
         } else {
           Expr(false)
         }
-        let e_cnd = e_cnd->printExp(Expr(false))
-        let e_thn = e_thn->printExp(branchCtx)
-        let e_els = e_els->printExp(branchCtx)
+        let e_cnd = cndSource->printExp(Expr(false))
+        let e_thn = thnSource->printExp(branchCtx)
+        let e_els = elsSource->printExp(branchCtx)
+        let branch = (source, printed) =>
+          if inStat {
+            printed
+          } else {
+            fenceExpression(source, printed)
+          }
         {
           it: If(e_cnd, e_thn, e_els),
           ann: consumeContextWrap(
             ctx,
             ann,
-            exprIfToString(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print, inStat),
+            exprIfToString(
+              e_cnd.ann.print,
+              branch(thnSource, e_thn.ann.print),
+              branch(elsSource, e_els.ann.print),
+              inStat,
+            ),
           )->addSourceLocation,
         }
       }
