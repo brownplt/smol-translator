@@ -414,9 +414,11 @@ module ParseError = {
     | SExprArityError(Arity.t, string, list<sexpr>)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
+    | RhombusParseError(string)
   let toString = t => {
     switch t {
     | SExprParseError(msg) => `expecting a (valid) s-expression, but the input is not: ${msg}`
+    | RhombusParseError(msg) => `expecting a (valid) Rhombus program, but the input is not: ${msg}`
     | SExprKindError(_kind, context, sexpr) =>
       `expecting a ${context}, given ${SExpr.toString(sexpr)} at ${SourceLocation.toString(sexpr.ann)}`
     | SExprArityError(_arity_expectation, context, es) =>
@@ -5114,6 +5116,255 @@ let programAsTerm = (p: program<_>): term<_> => {
   }
 }
 
+/// Reads Rhombus by calling the tygr-shrubbery parser, compiled to WebAssembly.
+///
+/// `RhombusReader.init()` has to be awaited once before any of this works;
+/// browsers will not compile a wasm module that size synchronously on the main
+/// thread. `isReady` reports whether that has happened, so a caller gets a
+/// clear message instead of a stray JavaScript exception.
+module RhombusReader = {
+  @module("./RhombusReader.mjs")
+  external init: unit => promise<unit> = "init"
+
+  @module("./RhombusReader.mjs")
+  external parseProgramJson: string => string = "parseProgramJson"
+
+  @module("./RhombusReader.mjs")
+  external isReady: unit => bool = "isReady"
+}
+
+module RhombusParser: Parser = {
+  exception Malformed(string)
+
+  let malformed = (what, json) =>
+    raise(Malformed(`expecting ${what}, given ${JSON.stringify(json)}`))
+
+  let asObject = json =>
+    switch json {
+    | JSON.Object(fields) => fields
+    | _ => malformed("an object", json)
+    }
+  let asArray = json =>
+    switch json {
+    | JSON.Array(items) => items
+    | _ => malformed("an array", json)
+    }
+  let asString = json =>
+    switch json {
+    | JSON.String(text) => text
+    | _ => malformed("a string", json)
+    }
+  let asFloat = json =>
+    switch json {
+    | JSON.Number(value) => value
+    | _ => malformed("a number", json)
+    }
+  let asBool = json =>
+    switch json {
+    | JSON.Boolean(value) => value
+    | _ => malformed("a boolean", json)
+    }
+
+  let field = (json, name) =>
+    switch json->asObject->Dict.get(name) {
+    | Some(value) => value
+    | None => malformed(`a "${name}" field`, json)
+    }
+  let tag = json => json->field("tag")->asString
+
+  let list = (json, decode) => json->asArray->List.fromArray->List.map(decode)
+
+  let sourcePoint = json => {
+    ln: json->field("ln")->asFloat->Float.toInt,
+    ch: json->field("ch")->asFloat->Float.toInt,
+  }
+  let sourceLocation = json => {
+    begin: json->field("begin")->sourcePoint,
+    end: json->field("end")->sourcePoint,
+  }
+  let annotated = (json, decode) => {
+    it: json->field("it")->decode,
+    ann: json->field("ann")->sourceLocation,
+  }
+  let symbol = json => json->annotated(asString)
+
+  let constant = json =>
+    switch json->tag {
+    | "Uni" => Uni
+    | "Nil" => Nil
+    | "Num" => Num(json->field("value")->asFloat)
+    | "Lgc" => Lgc(json->field("value")->asBool)
+    | "Str" => Str(json->field("value")->asString)
+    | "Sym" => Sym(json->field("value")->asString)
+    | other => malformed(`a constant, not "${other}"`, json)
+    }
+
+  // The reader spells every primitive as one flat tag; Arith and Cmp group
+  // them here the way the ReScript type does.
+  let primitive = json =>
+    switch json->tag {
+    | "Add" => Primitive.Arith(Add)
+    | "Sub" => Arith(Sub)
+    | "Mul" => Arith(Mul)
+    | "Div" => Arith(Div)
+    | "Lt" => Cmp(Lt)
+    | "NumEq" => Cmp(NumEq)
+    | "Eq" => Cmp(Eq)
+    | "Gt" => Cmp(Gt)
+    | "Le" => Cmp(Le)
+    | "Ge" => Cmp(Ge)
+    | "Ne" => Cmp(Ne)
+    | "Equal" => Cmp(Equal)
+    | "Maybe" => Maybe
+    | "PairNew" => PairNew
+    | "PairRefLeft" => PairRefLeft
+    | "PairRefRight" => PairRefRight
+    | "PairSetLeft" => PairSetLeft
+    | "PairSetRight" => PairSetRight
+    | "VecNew" => VecNew
+    | "VecRef" => VecRef
+    | "VecSet" => VecSet
+    | "VecLen" => VecLen
+    | "Err" => Err
+    | "Not" => Not
+    | "ZeroP" => ZeroP
+    | "Print" => Print
+    | "Next" => Next
+    | "StringAppend" => StringAppend
+    | "Cons" => Cons
+    | "List" => List
+    | "EmptyP" => EmptyP
+    | "First" => First
+    | "Rest" => Rest
+    | other => malformed(`a primitive, not "${other}"`, json)
+    }
+
+  let letKind = json =>
+    switch json->tag {
+    | "Plain" => LetKind.Plain
+    | "Nested" => Nested
+    | "Recursive" => Recursive
+    | other => malformed(`a let kind, not "${other}"`, json)
+    }
+
+  let rec expression = json => json->annotated(expressionNode)
+  and expressionNode = json =>
+    switch json->tag {
+    | "Con" => Con(json->field("value")->constant)
+    | "Ref" => Ref(json->field("name")->asString)
+    | "Set" => Set(json->field("name")->symbol, json->field("value")->expression)
+    | "Lam" => Lam(json->field("params")->list(symbol), json->field("body")->block)
+    | "Let" =>
+      Let(
+        json->field("kind")->letKind,
+        json->field("binds")->list(bind),
+        json->field("body")->block,
+      )
+    | "AppPrm" => AppPrm(json->field("prim")->primitive, json->field("args")->list(expression))
+    | "App" => App(json->field("func")->expression, json->field("args")->list(expression))
+    | "Bgn" => Bgn(json->field("exps")->list(expression), json->field("result")->expression)
+    | "If" =>
+      If(
+        json->field("cnd")->expression,
+        json->field("thn")->expression,
+        json->field("els")->expression,
+      )
+    | "And" => And(json->field("exps")->list(expression))
+    | "Or" => Or(json->field("exps")->list(expression))
+    | "Cnd" =>
+      Cnd(
+        json->field("clauses")->list(clause),
+        switch json->field("els") {
+        | JSON.Null => None
+        | els => Some(els->block)
+        },
+      )
+    | "Yield" => Yield(json->field("value")->expression)
+    | "While" => While(json->field("cnd")->expression, json->field("body")->list(expression))
+    | other => malformed(`an expression, not "${other}"`, json)
+    }
+  and clause = json =>
+    switch json->asArray {
+    | [test, body] => (test->expression, body->block)
+    | _ => malformed("a two-element cond clause", json)
+    }
+  and bind = json =>
+    json->annotated(node =>
+      switch node->asArray {
+      | [name, value] => (name->symbol, value->expression)
+      | _ => malformed("a two-element binding", node)
+      }
+    )
+  and block = json => json->annotated(blockNode)
+  and blockNode = json =>
+    switch json->tag {
+    | "BRet" => BRet(json->field("value")->expression)
+    | "BCons" => BCons(json->field("head")->term, json->field("tail")->block)
+    | other => malformed(`a block, not "${other}"`, json)
+    }
+  and definition = json => json->annotated(definitionNode)
+  and definitionNode = json =>
+    switch json->tag {
+    | "Var" => Var(json->field("name")->symbol, json->field("value")->expression)
+    | "Fun" =>
+      Fun(
+        json->field("name")->symbol,
+        json->field("params")->list(symbol),
+        json->field("body")->block,
+      )
+    | "GFun" =>
+      GFun(
+        json->field("name")->symbol,
+        json->field("params")->list(symbol),
+        json->field("body")->block,
+      )
+    | other => malformed(`a definition, not "${other}"`, json)
+    }
+  and term = json => json->annotated(termNode)
+  and termNode = json =>
+    switch json->tag {
+    | "Def" => Def(json->field("def")->definition)
+    | "Exp" => Exp(json->field("exp")->expression)
+    | other => malformed(`a term, not "${other}"`, json)
+    }
+  and program = json => json->annotated(programNode)
+  and programNode = json =>
+    switch json->tag {
+    | "PNil" => PNil
+    | "PCons" => PCons(json->field("head")->term, json->field("tail")->program)
+    | other => malformed(`a program, not "${other}"`, json)
+    }
+
+  let parseProgram = (src): program<sourceLocation> => {
+    if !RhombusReader.isReady() {
+      raiseParseError(
+        RhombusParseError(
+          "the Rhombus reader is not initialised: await RhombusReader.init() first",
+        ),
+      )
+    }
+    let json = switch RhombusReader.parseProgramJson(src) {
+    | text => JSON.parseExn(text)
+    | exception Exn.Error(err) =>
+      raiseParseError(
+        RhombusParseError(err->Exn.message->Option.getOr("the Rhombus reader failed")),
+      )
+    }
+    switch json->field("error") {
+    | message => raiseParseError(RhombusParseError(message->asString))
+    | exception Malformed(_) =>
+      switch json->field("ok")->program {
+      | p => p
+      | exception Malformed(why) => raiseParseError(RhombusParseError(why))
+      }
+    }
+  }
+
+  // Expected-output strings are values, not Rhombus source, so they are read
+  // the same way for either front end.
+  let parseOutput = Parser.parseOutput
+}
+
 module MakeTranslator = (R: Parser, P: Printer) => {
   let translateName = P.printName
   let translateOutput = (src, ~sep: string=" ") => {
@@ -5159,6 +5410,7 @@ module MakeTranslator = (R: Parser, P: Printer) => {
 }
 
 module SMoLTranslator = MakeTranslator(Parser, SMoLPrinter)
+module RhombusToSMoLTranslator = MakeTranslator(RhombusParser, SMoLPrinter)
 module PYTranslator = MakeTranslator(Parser, PYPrinter)
 module JSTranslator = MakeTranslator(Parser, JSPrinter)
 module PCTranslator = MakeTranslator(Parser, PCPrinter)
