@@ -211,6 +211,7 @@ module type Printer = {
 }
 
 module SMoLPrinter: Printer
+module RhombusPrinter: Printer
 module PYPrinter: Printer
 module JSPrinter: Printer
 module PCPrinter: Printer
@@ -239,8 +240,30 @@ module RhombusReader: {
 }
 
 module SMoLTranslator: Translator
-module RhombusToSMoLTranslator: Translator
+module RhombusTranslator: Translator
 module PYTranslator: Translator
 module JSTranslator: Translator
 module PCTranslator: Translator
 module SCTranslator: Translator
+
+module Language: {
+  type t =
+    | SMoL
+    | Rhombus
+    | Python
+    | JavaScript
+    | PseudoCode
+    | Scala
+  let toString: t => string
+  let isReadable: t => bool
+}
+
+let parseProgramIn: (Language.t, string) => program<sourceLocation>
+let translateProgram: (~input: Language.t, ~output: Language.t, bool, string) => string
+let translateProgramFull: (
+  ~input: Language.t,
+  ~output: Language.t,
+  bool,
+  string,
+) => program<printAnn>
+let translateOutput: (~output: Language.t, ~sep: string=?, string) => string

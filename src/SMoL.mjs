@@ -10166,6 +10166,1655 @@ function programAsTerm(p) {
       };
 }
 
+var reservedNames = [
+  "block",
+  "cond",
+  "def",
+  "if",
+  "let",
+  "mutable",
+  "unless",
+  "values",
+  "when",
+  "while"
+];
+
+function printName$5(x) {
+  var camel = /-./g;
+  var matchFn = function (matchPart, _offset, _wholeString) {
+    return matchPart.substring(1).toUpperCase();
+  };
+  var x$1 = x.replace(camel, matchFn);
+  var x$2 = x$1.replace(/[^A-Za-z0-9_]/g, "_");
+  if (Belt_Array.some(reservedNames, (function (reserved) {
+            return reserved === x$2;
+          }))) {
+    return "_" + x$2;
+  } else {
+    return x$2;
+  }
+}
+
+var mutatedNames = {
+  contents: {}
+};
+
+function isMutated(x) {
+  return Belt_Option.isSome(mutatedNames.contents[x]);
+}
+
+function collectMutated(p) {
+  var names = {};
+  var expression = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      switch (it.TAG) {
+        case "Con" :
+        case "Ref" :
+            return ;
+        case "Set" :
+            names[it._0.it] = true;
+            _param = it._1;
+            continue ;
+        case "Lam" :
+            return block(it._1);
+        case "Let" :
+            Belt_List.forEach(it._1, (function (param) {
+                    expression(param.it[1]);
+                  }));
+            return block(it._2);
+        case "AppPrm" :
+            return Belt_List.forEach(it._1, expression);
+        case "Bgn" :
+            Belt_List.forEach(it._0, expression);
+            _param = it._1;
+            continue ;
+        case "If" :
+            expression(it._0);
+            expression(it._1);
+            _param = it._2;
+            continue ;
+        case "And" :
+        case "Or" :
+            return Belt_List.forEach(it._0, expression);
+        case "Cnd" :
+            Belt_List.forEach(it._0, (function (param) {
+                    expression(param[0]);
+                    block(param[1]);
+                  }));
+            return Belt_Option.forEach(it._1, block);
+        case "Yield" :
+            _param = it._0;
+            continue ;
+        case "App" :
+        case "While" :
+            break;
+        
+      }
+      expression(it._0);
+      return Belt_List.forEach(it._1, expression);
+    };
+  };
+  var block = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      if (it.TAG === "BRet") {
+        return expression(it._0);
+      }
+      term(it._0);
+      _param = it._1;
+      continue ;
+    };
+  };
+  var term = function (param) {
+    var it = param.it;
+    if (it.TAG !== "Def") {
+      return expression(it._0);
+    }
+    var d = it._0.it;
+    switch (d.TAG) {
+      case "Var" :
+          return expression(d._1);
+      case "Fun" :
+      case "GFun" :
+          return block(d._2);
+      
+    }
+  };
+  var program = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      if (typeof it !== "object") {
+        return ;
+      }
+      term(it._0);
+      _param = it._1;
+      continue ;
+    };
+  };
+  program(p);
+  return names;
+}
+
+function binderOf(keyword, x) {
+  if (isMutated(x)) {
+    return keyword + " mutable";
+  } else {
+    return keyword;
+  }
+}
+
+function constantToString$5(c) {
+  if (typeof c !== "object") {
+    if (c === "Uni") {
+      return "#void";
+    } else {
+      return "[]";
+    }
+  }
+  switch (c.TAG) {
+    case "Num" :
+        var n = c._0;
+        if (n !== n) {
+          return "#nan";
+        } else if (n > 1.7976931348623157e308) {
+          return "#inf";
+        } else if (n < -1.7976931348623157e308) {
+          return "#neginf";
+        } else {
+          return String(n);
+        }
+    case "Lgc" :
+        if (c._0) {
+          return "#true";
+        } else {
+          return "#false";
+        }
+    case "Str" :
+        return JSON.stringify(c._0);
+    case "Sym" :
+        return "#'" + c._0;
+    
+  }
+}
+
+function symbolToString$5(param) {
+  var sourceLocation = param.ann;
+  var it = param.it;
+  return {
+          it: it,
+          ann: {
+            sourceLocation: sourceLocation,
+            print: {
+              it: {
+                TAG: "Plain",
+                _0: printName$5(it)
+              },
+              ann: {
+                nodeKind: "Name",
+                sourceLocation: sourceLocation
+              }
+            }
+          }
+        };
+}
+
+function paren$4(e) {
+  return s([
+              "(",
+              ")"
+            ], [{
+                it: e,
+                ann: undefined
+              }]);
+}
+
+function guillemets(e) {
+  return s([
+              "«",
+              "»"
+            ], [e]);
+}
+
+function listToString$4(es) {
+  if (Belt_List.some(es, containsNL)) {
+    return {
+            TAG: "Group",
+            _0: {
+              hd: {
+                it: {
+                  TAG: "Plain",
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: indentBlock({
+                      it: concat(",\n", es),
+                      ann: undefined
+                    }, 2),
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: "Plain",
+                      _0: "\n)"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
+  } else {
+    return {
+            TAG: "Group",
+            _0: {
+              hd: {
+                it: {
+                  TAG: "Plain",
+                  _0: "("
+                },
+                ann: undefined
+              },
+              tl: {
+                hd: {
+                  it: concat(", ", es),
+                  ann: undefined
+                },
+                tl: {
+                  hd: {
+                    it: {
+                      TAG: "Plain",
+                      _0: ")"
+                    },
+                    ann: undefined
+                  },
+                  tl: /* [] */0
+                }
+              }
+            }
+          };
+  }
+}
+
+function exprAppToString$4(e, es) {
+  return {
+          TAG: "Group",
+          _0: {
+            hd: e,
+            tl: {
+              hd: {
+                it: listToString$4(es),
+                ann: undefined
+              },
+              tl: /* [] */0
+            }
+          }
+        };
+}
+
+function consumeContext$3(ctx, ann, e) {
+  var e$1 = ann(e);
+  if (ctx.TAG === "Expr") {
+    return e$1;
+  } else {
+    return {
+            it: s([
+                  "",
+                  ""
+                ], [e$1]),
+            ann: undefined
+          };
+  }
+}
+
+function consumeContextWrap$4(ctx, ann, e) {
+  if (ctx.TAG === "Expr") {
+    if (ctx._0) {
+      return ann(paren$4(e));
+    } else {
+      return ann(e);
+    }
+  } else {
+    return {
+            it: s([
+                  "",
+                  ""
+                ], [ann(e)]),
+            ann: undefined
+          };
+  }
+}
+
+function stringOfArith$4(o) {
+  switch (o) {
+    case "Add" :
+        return "+";
+    case "Sub" :
+        return "-";
+    case "Mul" :
+        return "*";
+    case "Div" :
+        return "/";
+    
+  }
+}
+
+function stringOfCmp$4(o) {
+  switch (o) {
+    case "Lt" :
+        return "<";
+    case "NumEq" :
+        return ".=";
+    case "Eq" :
+        return "===";
+    case "Gt" :
+        return ">";
+    case "Le" :
+        return "<=";
+    case "Ge" :
+        return ">=";
+    case "Ne" :
+        return "!=";
+    case "Equal" :
+        return "==";
+    
+  }
+}
+
+function nameOfPrimitive(p) {
+  if (typeof p === "object") {
+    return ;
+  }
+  switch (p) {
+    case "PairNew" :
+        return "Pair";
+    case "PairRefLeft" :
+        return "Pair.first";
+    case "PairRefRight" :
+        return "Pair.rest";
+    case "VecNew" :
+        return "Array";
+    case "VecLen" :
+        return "Array.length";
+    case "Err" :
+        return "error";
+    case "Print" :
+        return "println";
+    case "Cons" :
+        return "List.cons";
+    case "List" :
+        return "List";
+    case "EmptyP" :
+        return "List.is_empty";
+    case "First" :
+        return "List.first";
+    case "Rest" :
+        return "List.rest";
+    default:
+      return ;
+  }
+}
+
+function exprAppPrmToString$4(ann, ctx, p, es) {
+  var infix = function (op, es) {
+    var es$1 = Belt_List.map(es, (function (e) {
+            return e(true);
+          }));
+    return {
+            it: [
+              p,
+              es$1
+            ],
+            ann: consumeContextWrap$4(ctx, ann, concat(" " + op + " ", Belt_List.map(es$1, (function (e) {
+                            return e.ann.print;
+                          }))))
+          };
+  };
+  if (typeof p !== "object") {
+    switch (p) {
+      case "PairSetLeft" :
+      case "PairSetRight" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Rhombus pairs are immutable, so `set-left!` and `set-right!` have no form.",
+                Error: new Error()
+              };
+      case "VecRef" :
+          if (es) {
+            var match = es.tl;
+            if (match && !match.tl) {
+              var e1 = es.hd(true);
+              var e2 = match.hd(false);
+              return {
+                      it: [
+                        p,
+                        {
+                          hd: e1,
+                          tl: {
+                            hd: e2,
+                            tl: /* [] */0
+                          }
+                        }
+                      ],
+                      ann: consumeContext$3(ctx, ann, s([
+                                "",
+                                "[",
+                                "]"
+                              ], [
+                                e1.ann.print,
+                                e2.ann.print
+                              ]))
+                    };
+            }
+            
+          }
+          break;
+      case "VecSet" :
+          if (es) {
+            var match$1 = es.tl;
+            if (match$1) {
+              var match$2 = match$1.tl;
+              if (match$2 && !match$2.tl) {
+                var e1$1 = es.hd(true);
+                var e2$1 = match$1.hd(false);
+                var e3 = match$2.hd(false);
+                return {
+                        it: [
+                          p,
+                          {
+                            hd: e1$1,
+                            tl: {
+                              hd: e2$1,
+                              tl: {
+                                hd: e3,
+                                tl: /* [] */0
+                              }
+                            }
+                          }
+                        ],
+                        ann: consumeContextWrap$4(ctx, ann, s([
+                                  "",
+                                  "[",
+                                  "] := ",
+                                  ""
+                                ], [
+                                  e1$1.ann.print,
+                                  e2$1.ann.print,
+                                  e3.ann.print
+                                ]))
+                      };
+              }
+              
+            }
+            
+          }
+          break;
+      case "Not" :
+          if (es && !es.tl) {
+            var e = es.hd(true);
+            return {
+                    it: [
+                      p,
+                      {
+                        hd: e,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap$4(ctx, ann, s([
+                              "!",
+                              ""
+                            ], [e.ann.print]))
+                  };
+          }
+          break;
+      case "ZeroP" :
+          if (es && !es.tl) {
+            var e$1 = es.hd(true);
+            return {
+                    it: [
+                      p,
+                      {
+                        hd: e$1,
+                        tl: /* [] */0
+                      }
+                    ],
+                    ann: consumeContextWrap$4(ctx, ann, s([
+                              "",
+                              " == 0"
+                            ], [e$1.ann.print]))
+                  };
+          }
+          break;
+      case "Maybe" :
+      case "Next" :
+          throw {
+                RE_EXN_ID: SMoLPrintError,
+                _1: "Generators are not supported by Rhombus.",
+                Error: new Error()
+              };
+      case "StringAppend" :
+          return infix("++", es);
+      default:
+        
+    }
+  } else if (p.TAG === "Arith") {
+    var o = p._0;
+    var exit = 0;
+    if (o === "Sub") {
+      if (es && !es.tl) {
+        var e$2 = es.hd(true);
+        return {
+                it: [
+                  p,
+                  {
+                    hd: e$2,
+                    tl: /* [] */0
+                  }
+                ],
+                ann: consumeContextWrap$4(ctx, ann, s([
+                          "- ",
+                          ""
+                        ], [e$2.ann.print]))
+              };
+      }
+      exit = 2;
+    } else {
+      exit = 2;
+    }
+    if (exit === 2) {
+      return infix(stringOfArith$4(o), es);
+    }
+    
+  } else if (es) {
+    var match$3 = es.tl;
+    if (match$3 && !match$3.tl) {
+      return infix(stringOfCmp$4(p._0), {
+                  hd: es.hd,
+                  tl: {
+                    hd: match$3.hd,
+                    tl: /* [] */0
+                  }
+                });
+    }
+    
+  }
+  var name = nameOfPrimitive(p);
+  if (name !== undefined) {
+    var es$1 = Belt_List.map(es, (function (e) {
+            return e(false);
+          }));
+    return {
+            it: [
+              p,
+              es$1
+            ],
+            ann: consumeContext$3(ctx, ann, exprAppToString$4({
+                      it: {
+                        TAG: "Plain",
+                        _0: name
+                      },
+                      ann: undefined
+                    }, Belt_List.map(es$1, (function (e) {
+                            return e.ann.print;
+                          }))))
+          };
+  }
+  var err = "Rhombus doesn't let you use " + toString$1(p) + " on " + String(Belt_List.length(es)) + " parameter(s).";
+  throw {
+        RE_EXN_ID: SMoLPrintError,
+        _1: err,
+        Error: new Error()
+      };
+}
+
+function defvarToString$5(x, name, e) {
+  var it = binderOf("def", name);
+  return s([
+              "",
+              " ",
+              " = ",
+              ""
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: it
+                },
+                ann: undefined
+              },
+              x,
+              e
+            ]);
+}
+
+function deffunToString$5(f, xs, b) {
+  var op = "fun";
+  return s([
+              "",
+              " ",
+              ":",
+              ""
+            ], [
+              {
+                it: {
+                  TAG: "Plain",
+                  _0: op
+                },
+                ann: undefined
+              },
+              {
+                it: exprAppToString$4(f, xs),
+                ann: undefined
+              },
+              indentBlock(b, 2)
+            ]);
+}
+
+function exprSetToString$5(x, e) {
+  return s([
+              "",
+              " := ",
+              ""
+            ], [
+              x,
+              e
+            ]);
+}
+
+function exprLamToString$5(xs, b) {
+  return s([
+              "fun (",
+              "): ",
+              ""
+            ], [
+              {
+                it: concat(", ", xs),
+                ann: undefined
+              },
+              {
+                it: guillemets(b),
+                ann: undefined
+              }
+            ]);
+}
+
+function exprBgnToString$1(b) {
+  return s([
+              "block: ",
+              ""
+            ], [{
+                it: guillemets(b),
+                ann: undefined
+              }]);
+}
+
+function exprBlockStatToString(b) {
+  return s([
+              "block:",
+              ""
+            ], [indentBlock(b, 2)]);
+}
+
+function exprWhileToString$2(cnd, body, inStat) {
+  if (inStat) {
+    return s([
+                "while ",
+                ":",
+                ""
+              ], [
+                cnd,
+                indentBlock(body, 2)
+              ]);
+  } else {
+    return s([
+                "while ",
+                ": ",
+                ""
+              ], [
+                cnd,
+                {
+                  it: guillemets(body),
+                  ann: undefined
+                }
+              ]);
+  }
+}
+
+function exprIfToString$5(cnd, thn, els, inStat) {
+  var thn_it = guillemets(thn);
+  var thn$1 = {
+    it: thn_it,
+    ann: undefined
+  };
+  var els_it = guillemets(els);
+  var els$1 = {
+    it: els_it,
+    ann: undefined
+  };
+  if (inStat) {
+    return s([
+                "if ",
+                "\n| ",
+                "\n| ",
+                ""
+              ], [
+                cnd,
+                thn$1,
+                els$1
+              ]);
+  } else {
+    return s([
+                "if ",
+                " | ",
+                " | ",
+                ""
+              ], [
+                cnd,
+                thn$1,
+                els$1
+              ]);
+  }
+}
+
+function parameterPrint(x) {
+  if (isMutated(x.it)) {
+    return {
+            it: s([
+                  "mutable ",
+                  ""
+                ], [x.ann.print]),
+            ann: undefined
+          };
+  } else {
+    return x.ann.print;
+  }
+}
+
+function exprLetToString$1(k, xs, xes, b, inStat) {
+  switch (k) {
+    case "Plain" :
+        if (xes !== /* [] */0) {
+          return s([
+                      "(fun (",
+                      "): ",
+                      ")(",
+                      ")"
+                    ], [
+                      {
+                        it: concat(", ", xs),
+                        ann: undefined
+                      },
+                      {
+                        it: guillemets(b),
+                        ann: undefined
+                      },
+                      {
+                        it: concat(", ", xes),
+                        ann: undefined
+                      }
+                    ]);
+        }
+        break;
+    case "Nested" :
+    case "Recursive" :
+        break;
+    
+  }
+  var body = xes === /* [] */0 ? b : (
+      inStat ? ({
+            it: s([
+                  "",
+                  "\n",
+                  ""
+                ], [
+                  {
+                    it: concat("\n", xes),
+                    ann: undefined
+                  },
+                  b
+                ]),
+            ann: undefined
+          }) : ({
+            it: s([
+                  "",
+                  "; ",
+                  ""
+                ], [
+                  {
+                    it: concat("; ", xes),
+                    ann: undefined
+                  },
+                  b
+                ]),
+            ann: undefined
+          })
+    );
+  if (inStat) {
+    return s([
+                "block:",
+                ""
+              ], [indentBlock(body, 2)]);
+  } else {
+    return s([
+                "block: ",
+                ""
+              ], [{
+                  it: guillemets(body),
+                  ann: undefined
+                }]);
+  }
+}
+
+function exprCndToString$5(ebs, ob, inStat) {
+  var clauses = Belt_List.map(ebs, (function (param) {
+          var test = param[0];
+          var body = param[1];
+          if (inStat) {
+            return {
+                    it: s([
+                          "| ",
+                          ":",
+                          ""
+                        ], [
+                          test,
+                          indentBlock(body, 4)
+                        ]),
+                    ann: undefined
+                  };
+          } else {
+            return {
+                    it: s([
+                          "| ",
+                          ": ",
+                          ""
+                        ], [
+                          test,
+                          {
+                            it: guillemets(body),
+                            ann: undefined
+                          }
+                        ]),
+                    ann: undefined
+                  };
+          }
+        }));
+  var clauses$1 = ob !== undefined ? Belt_List.concatMany([
+          clauses,
+          {
+            hd: inStat ? ({
+                  it: s([
+                        "| ~else:",
+                        ""
+                      ], [indentBlock(ob, 4)]),
+                  ann: undefined
+                }) : ({
+                  it: s([
+                        "| ~else: ",
+                        ""
+                      ], [{
+                          it: guillemets(ob),
+                          ann: undefined
+                        }]),
+                  ann: undefined
+                }),
+            tl: /* [] */0
+          }
+        ]) : clauses;
+  if (inStat) {
+    return s([
+                "cond\n",
+                ""
+              ], [{
+                  it: concat("\n", clauses$1),
+                  ann: undefined
+                }]);
+  } else {
+    return s([
+                "cond ",
+                ""
+              ], [{
+                  it: concat(" ", clauses$1),
+                  ann: undefined
+                }]);
+  }
+}
+
+function inStatContext(ctx) {
+  if (ctx.TAG === "Expr") {
+    return false;
+  } else {
+    return true;
+  }
+}
+
+function printExp$5(param, ctx) {
+  var sourceLocation = param.ann;
+  var it = param.it;
+  var ann = function (it) {
+    return {
+            it: it,
+            ann: {
+              nodeKind: "Expression",
+              sourceLocation: sourceLocation
+            }
+          };
+  };
+  var inStat = inStatContext(ctx);
+  switch (it.TAG) {
+    case "Con" :
+        var c = it._0;
+        return {
+                it: {
+                  TAG: "Con",
+                  _0: c
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContext$3(ctx, ann, {
+                        TAG: "Plain",
+                        _0: constantToString$5(c)
+                      })
+                }
+              };
+    case "Ref" :
+        var x = it._0;
+        return {
+                it: {
+                  TAG: "Ref",
+                  _0: x
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContext$3(ctx, ann, {
+                        TAG: "Plain",
+                        _0: printName$5(x)
+                      })
+                }
+              };
+    case "Set" :
+        var x$1 = symbolToString$5(it._0);
+        var e = printExp$5(it._1, {
+              TAG: "Expr",
+              _0: false
+            });
+        return {
+                it: {
+                  TAG: "Set",
+                  _0: x$1,
+                  _1: e
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprSetToString$5(x$1.ann.print, e.ann.print))
+                }
+              };
+    case "Lam" :
+        var xs = Belt_List.map(it._0, symbolToString$5);
+        var b = printBlock$5(it._1, {
+              TAG: "Expr",
+              _0: false
+            });
+        return {
+                it: {
+                  TAG: "Lam",
+                  _0: xs,
+                  _1: b
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprLamToString$5(Belt_List.map(xs, parameterPrint), b.ann.print))
+                }
+              };
+    case "Let" :
+        var xes = it._1;
+        var k = it._0;
+        var names = Belt_List.map(xes, (function (param) {
+                return parameterPrint(symbolToString$5(param.it[0]));
+              }));
+        var keyword;
+        switch (k) {
+          case "Plain" :
+          case "Nested" :
+              keyword = "let";
+              break;
+          case "Recursive" :
+              keyword = "def";
+              break;
+          
+        }
+        var xes$1 = Belt_List.map(xes, (function (xe) {
+                var sourceLocation = xe.ann;
+                var match = xe.it;
+                var x = match[0];
+                var keyword$1 = binderOf(keyword, x.it);
+                var x$1 = symbolToString$5(x);
+                var e = printExp$5(match[1], {
+                      TAG: "Expr",
+                      _0: false
+                    });
+                var print_it = s([
+                      "",
+                      " ",
+                      " = ",
+                      ""
+                    ], [
+                      {
+                        it: {
+                          TAG: "Plain",
+                          _0: keyword$1
+                        },
+                        ann: undefined
+                      },
+                      x$1.ann.print,
+                      e.ann.print
+                    ]);
+                var print_ann = {
+                  nodeKind: "Bind",
+                  sourceLocation: sourceLocation
+                };
+                var print = {
+                  it: print_it,
+                  ann: print_ann
+                };
+                return {
+                        it: [
+                          x$1,
+                          e
+                        ],
+                        ann: {
+                          sourceLocation: sourceLocation,
+                          print: print
+                        }
+                      };
+              }));
+        var bodyCtx;
+        switch (k) {
+          case "Plain" :
+              bodyCtx = xes$1 !== /* [] */0 || !inStat ? ({
+                    TAG: "Expr",
+                    _0: false
+                  }) : ({
+                    TAG: "Stat",
+                    _0: "Return"
+                  });
+              break;
+          case "Nested" :
+          case "Recursive" :
+              bodyCtx = inStat ? ({
+                    TAG: "Stat",
+                    _0: "Return"
+                  }) : ({
+                    TAG: "Expr",
+                    _0: false
+                  });
+              break;
+          
+        }
+        var b$1 = printBlock$5(it._2, bodyCtx);
+        var values = Belt_List.map(xes$1, (function (param) {
+                return param.it[1].ann.print;
+              }));
+        var binds;
+        var exit = 0;
+        switch (k) {
+          case "Plain" :
+              if (xes$1 !== /* [] */0) {
+                binds = values;
+              } else {
+                exit = 1;
+              }
+              break;
+          case "Nested" :
+          case "Recursive" :
+              exit = 1;
+              break;
+          
+        }
+        if (exit === 1) {
+          binds = Belt_List.map(xes$1, (function (xe) {
+                  return xe.ann.print;
+                }));
+        }
+        return {
+                it: {
+                  TAG: "Let",
+                  _0: k,
+                  _1: xes$1,
+                  _2: b$1
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprLetToString$1(k, names, binds, b$1.ann.print, inStat))
+                }
+              };
+    case "AppPrm" :
+        var es = Belt_List.map(it._1, (function (e) {
+                return function (b) {
+                  return printExp$5(e, {
+                              TAG: "Expr",
+                              _0: b
+                            });
+                };
+              }));
+        var match = exprAppPrmToString$4(ann, ctx, it._0, es);
+        var match$1 = match.it;
+        return {
+                it: {
+                  TAG: "AppPrm",
+                  _0: match$1[0],
+                  _1: match$1[1]
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: match.ann
+                }
+              };
+    case "App" :
+        var e$1 = printExp$5(it._0, {
+              TAG: "Expr",
+              _0: true
+            });
+        var es$1 = Belt_List.map(it._1, (function (e) {
+                return printExp$5(e, {
+                            TAG: "Expr",
+                            _0: false
+                          });
+              }));
+        return {
+                it: {
+                  TAG: "App",
+                  _0: e$1,
+                  _1: es$1
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContext$3(ctx, ann, exprAppToString$4(e$1.ann.print, Belt_List.map(es$1, (function (e) {
+                                  return e.ann.print;
+                                }))))
+                }
+              };
+    case "Bgn" :
+        var bodyCtx$1 = inStat ? ({
+              TAG: "Stat",
+              _0: "Step"
+            }) : ({
+              TAG: "Expr",
+              _0: false
+            });
+        var es$2 = Belt_List.map(it._0, (function (e) {
+                return printExp$5(e, bodyCtx$1);
+              }));
+        var e$2 = printExp$5(it._1, bodyCtx$1);
+        var joiner = inStat ? "\n" : "; ";
+        var body_it = concat(joiner, Belt_List.concatMany([
+                  Belt_List.map(es$2, (function (e) {
+                          return e.ann.print;
+                        })),
+                  {
+                    hd: e$2.ann.print,
+                    tl: /* [] */0
+                  }
+                ]));
+        var body = {
+          it: body_it,
+          ann: undefined
+        };
+        return {
+                it: {
+                  TAG: "Bgn",
+                  _0: es$2,
+                  _1: e$2
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, inStat ? exprBlockStatToString(body) : exprBgnToString$1(body))
+                }
+              };
+    case "If" :
+        var e_cnd = printExp$5(it._0, {
+              TAG: "Expr",
+              _0: false
+            });
+        var e_thn = printExp$5(it._1, {
+              TAG: "Expr",
+              _0: false
+            });
+        var e_els = printExp$5(it._2, {
+              TAG: "Expr",
+              _0: false
+            });
+        return {
+                it: {
+                  TAG: "If",
+                  _0: e_cnd,
+                  _1: e_thn,
+                  _2: e_els
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprIfToString$5(e_cnd.ann.print, e_thn.ann.print, e_els.ann.print, inStat))
+                }
+              };
+    case "And" :
+        var es$3 = Belt_List.map(it._0, (function (e) {
+                return printExp$5(e, {
+                            TAG: "Expr",
+                            _0: true
+                          });
+              }));
+        return {
+                it: {
+                  TAG: "And",
+                  _0: es$3
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, concat(" && ", Belt_List.map(es$3, (function (e) {
+                                  return e.ann.print;
+                                }))))
+                }
+              };
+    case "Or" :
+        var es$4 = Belt_List.map(it._0, (function (e) {
+                return printExp$5(e, {
+                            TAG: "Expr",
+                            _0: true
+                          });
+              }));
+        return {
+                it: {
+                  TAG: "Or",
+                  _0: es$4
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, concat(" || ", Belt_List.map(es$4, (function (e) {
+                                  return e.ann.print;
+                                }))))
+                }
+              };
+    case "Cnd" :
+        var bodyCtx$2 = inStat ? ({
+              TAG: "Stat",
+              _0: "Return"
+            }) : ({
+              TAG: "Expr",
+              _0: false
+            });
+        var ebs = Belt_List.map(it._0, (function (param) {
+                return [
+                        printExp$5(param[0], {
+                              TAG: "Expr",
+                              _0: false
+                            }),
+                        printBlock$5(param[1], bodyCtx$2)
+                      ];
+              }));
+        var ob = Belt_Option.map(it._1, (function (b) {
+                return printBlock$5(b, bodyCtx$2);
+              }));
+        return {
+                it: {
+                  TAG: "Cnd",
+                  _0: ebs,
+                  _1: ob
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprCndToString$5(Belt_List.map(ebs, (function (param) {
+                                  return [
+                                          param[0].ann.print,
+                                          param[1].ann.print
+                                        ];
+                                })), Belt_Option.map(ob, (function (b) {
+                                  return b.ann.print;
+                                })), inStat))
+                }
+              };
+    case "Yield" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "`yield` is not supported by Rhombus.",
+              Error: new Error()
+            };
+    case "While" :
+        var e_cnd$1 = printExp$5(it._0, {
+              TAG: "Expr",
+              _0: false
+            });
+        var es_thn = Belt_List.map(it._1, (function (e_thn) {
+                return printExp$5(e_thn, {
+                            TAG: "Stat",
+                            _0: "Step"
+                          });
+              }));
+        var joiner$1 = inStat ? "\n" : "; ";
+        var body_it$1 = concat(joiner$1, Belt_List.map(es_thn, (function (e) {
+                    return e.ann.print;
+                  })));
+        var body$1 = {
+          it: body_it$1,
+          ann: undefined
+        };
+        return {
+                it: {
+                  TAG: "While",
+                  _0: e_cnd$1,
+                  _1: es_thn
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: consumeContextWrap$4(ctx, ann, exprWhileToString$2(e_cnd$1.ann.print, body$1, inStat))
+                }
+              };
+    
+  }
+}
+
+function printDef$5(param) {
+  var sourceLocation = param.ann;
+  var d = param.it;
+  var annPrint = function (print) {
+    return {
+            it: print,
+            ann: {
+              nodeKind: "Definition",
+              sourceLocation: sourceLocation
+            }
+          };
+  };
+  switch (d.TAG) {
+    case "Var" :
+        var x = d._0;
+        var name = x.it;
+        var x$1 = symbolToString$5(x);
+        var e = printExp$5(d._1, {
+              TAG: "Expr",
+              _0: false
+            });
+        return {
+                it: {
+                  TAG: "Var",
+                  _0: x$1,
+                  _1: e
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: annPrint(defvarToString$5(x$1.ann.print, name, e.ann.print))
+                }
+              };
+    case "Fun" :
+        var f = symbolToString$5(d._0);
+        var xs = Belt_List.map(d._1, symbolToString$5);
+        var b = printBlock$5(d._2, {
+              TAG: "Stat",
+              _0: "Return"
+            });
+        return {
+                it: {
+                  TAG: "Fun",
+                  _0: f,
+                  _1: xs,
+                  _2: b
+                },
+                ann: {
+                  sourceLocation: sourceLocation,
+                  print: annPrint(deffunToString$5(f.ann.print, Belt_List.map(xs, parameterPrint), b.ann.print))
+                }
+              };
+    case "GFun" :
+        throw {
+              RE_EXN_ID: SMoLPrintError,
+              _1: "Generators are not supported by Rhombus.",
+              Error: new Error()
+            };
+    
+  }
+}
+
+function printBlockHelper$3(param, ctx, joiner) {
+  var sourceLocation = param.ann;
+  var b = param.it;
+  var annPrint = function (print) {
+    return {
+            it: print,
+            ann: {
+              nodeKind: "Block",
+              sourceLocation: sourceLocation
+            }
+          };
+  };
+  if (b.TAG === "BRet") {
+    var e = printExp$5(b._0, ctx);
+    return {
+            it: {
+              TAG: "BRet",
+              _0: e
+            },
+            ann: {
+              sourceLocation: sourceLocation,
+              print: annPrint({
+                    TAG: "Group",
+                    _0: {
+                      hd: e.ann.print,
+                      tl: /* [] */0
+                    }
+                  })
+            }
+          };
+  }
+  var t = printTerm$5(b._0, "Step");
+  var b$1 = printBlockHelper$3(b._1, ctx, joiner);
+  var print = annPrint(s([
+            "",
+            "",
+            "",
+            ""
+          ], [
+            t.ann.print,
+            {
+              it: {
+                TAG: "Plain",
+                _0: joiner
+              },
+              ann: undefined
+            },
+            b$1.ann.print
+          ]));
+  return {
+          it: {
+            TAG: "BCons",
+            _0: t,
+            _1: b$1
+          },
+          ann: {
+            sourceLocation: sourceLocation,
+            print: print
+          }
+        };
+}
+
+function printBlock$5(b, ctx) {
+  if (ctx.TAG === "Expr") {
+    return printBlockHelper$3(b, {
+                TAG: "Expr",
+                _0: ctx._0
+              }, "; ");
+  } else {
+    return printBlockHelper$3(b, {
+                TAG: "Stat",
+                _0: ctx._0
+              }, "\n");
+  }
+}
+
+function printTerm$5(param, ctx) {
+  var sourceLocation = param.ann;
+  var it = param.it;
+  if (it.TAG === "Def") {
+    var it$1 = printDef$5(it._0);
+    return {
+            it: {
+              TAG: "Def",
+              _0: it$1
+            },
+            ann: {
+              sourceLocation: sourceLocation,
+              print: {
+                it: {
+                  TAG: "Group",
+                  _0: {
+                    hd: it$1.ann.print,
+                    tl: /* [] */0
+                  }
+                },
+                ann: undefined
+              }
+            }
+          };
+  }
+  var it$2 = printExp$5(it._0, {
+        TAG: "Stat",
+        _0: ctx
+      });
+  return {
+          it: {
+            TAG: "Exp",
+            _0: it$2
+          },
+          ann: {
+            sourceLocation: sourceLocation,
+            print: {
+              it: {
+                TAG: "Group",
+                _0: {
+                  hd: it$2.ann.print,
+                  tl: /* [] */0
+                }
+              },
+              ann: undefined
+            }
+          }
+        };
+}
+
+function printOutputlet$5(o) {
+  var p = function (v) {
+    switch (v.TAG) {
+      case "Ref" :
+          return "...";
+      case "Con" :
+          return constantToString$5(v._0);
+      case "Struct" :
+          var content = v._1;
+          if (content.TAG === "Lst") {
+            return "[" + Belt_List.toArray(Belt_List.map(content._0, p)).join(", ") + "]";
+          } else {
+            return "Array(" + Belt_List.toArray(Belt_List.map(content._0, p)).join(", ") + ")";
+          }
+      
+    }
+  };
+  if (typeof o !== "object") {
+    return "error";
+  } else {
+    return p(o._0);
+  }
+}
+
+function printOutput$5(sepOpt, os) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  return Belt_List.toArray(Belt_List.map(os, printOutputlet$5)).join(sep);
+}
+
+function printProgramFull$5(insertPrintTopLevel, p) {
+  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
+  mutatedNames.contents = collectMutated(p$1);
+  var print = function (param) {
+    var sourceLocation = param.ann;
+    var it = param.it;
+    var annPrint = function (print) {
+      return {
+              sourceLocation: sourceLocation,
+              print: {
+                it: print,
+                ann: {
+                  nodeKind: "Program",
+                  sourceLocation: sourceLocation
+                }
+              }
+            };
+    };
+    if (typeof it !== "object") {
+      return {
+              it: "PNil",
+              ann: {
+                sourceLocation: sourceLocation,
+                print: {
+                  it: {
+                    TAG: "Plain",
+                    _0: ""
+                  },
+                  ann: {
+                    nodeKind: "Program",
+                    sourceLocation: sourceLocation
+                  }
+                }
+              }
+            };
+    }
+    var t = printTerm$5(it._0, "Step");
+    var p = print(it._1);
+    return {
+            it: {
+              TAG: "PCons",
+              _0: t,
+              _1: p
+            },
+            ann: annPrint({
+                  TAG: "Group",
+                  _0: {
+                    hd: t.ann.print,
+                    tl: {
+                      hd: p.it === "PNil" ? ({
+                            it: {
+                              TAG: "Plain",
+                              _0: ""
+                            },
+                            ann: undefined
+                          }) : ({
+                            it: {
+                              TAG: "Plain",
+                              _0: "\n"
+                            },
+                            ann: undefined
+                          }),
+                      tl: {
+                        hd: p.ann.print,
+                        tl: /* [] */0
+                      }
+                    }
+                  }
+                })
+          };
+  };
+  return print(p$1);
+}
+
+function printProgram$5(insertPrintTopLevel, p) {
+  return toString(printProgramFull$5(insertPrintTopLevel, p).ann.print);
+}
+
+function printStandAloneTerm$5(t) {
+  mutatedNames.contents = {};
+  return toString(printTerm$5(t, "Step").ann.print);
+}
+
 function init(prim) {
   return RhombusReaderMjs.init();
 }
@@ -10884,7 +12533,7 @@ function translateOutput$1(src, sepOpt) {
     throw err;
   }
   try {
-    return printOutput(sep, output);
+    return printOutput$5(sep, output);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -10905,7 +12554,7 @@ function translateOutput$1(src, sepOpt) {
 function translateStandAloneTerm$1(src) {
   var p;
   try {
-    p = parseProgram$1(src);
+    p = parseProgram(src);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -10922,7 +12571,7 @@ function translateStandAloneTerm$1(src) {
     throw err;
   }
   try {
-    return printStandAloneTerm(programAsTerm(p));
+    return printStandAloneTerm$5(programAsTerm(p));
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -10943,7 +12592,7 @@ function translateStandAloneTerm$1(src) {
 function translateProgram$1(printTopLevel, src) {
   var p;
   try {
-    p = parseProgram$1(src);
+    p = parseProgram(src);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -10960,7 +12609,7 @@ function translateProgram$1(printTopLevel, src) {
     throw err;
   }
   try {
-    return printProgram(printTopLevel, p);
+    return printProgram$5(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -10981,7 +12630,7 @@ function translateProgram$1(printTopLevel, src) {
 function translateProgramFull$1(printTopLevel, src) {
   var p;
   try {
-    p = parseProgram$1(src);
+    p = parseProgram(src);
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -10998,7 +12647,7 @@ function translateProgramFull$1(printTopLevel, src) {
     throw err;
   }
   try {
-    return printProgramFull(printTopLevel, p);
+    return printProgramFull$5(printTopLevel, p);
   }
   catch (raw_err$1){
     var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
@@ -11016,8 +12665,8 @@ function translateProgramFull$1(printTopLevel, src) {
   }
 }
 
-var RhombusToSMoLTranslator = {
-  translateName: printName,
+var RhombusTranslator = {
+  translateName: printName$5,
   translateOutput: translateOutput$1,
   translateStandAloneTerm: translateStandAloneTerm$1,
   translateProgram: translateProgram$1,
@@ -11668,6 +13317,221 @@ var SCTranslator = {
   translateProgramFull: translateProgramFull$5
 };
 
+function toString$12(t) {
+  switch (t) {
+    case "SMoL" :
+        return "SMoL";
+    case "Rhombus" :
+        return "Rhombus";
+    case "Python" :
+        return "Python";
+    case "JavaScript" :
+        return "JavaScript";
+    case "PseudoCode" :
+        return "PseudoCode";
+    case "Scala" :
+        return "Scala";
+    
+  }
+}
+
+function isReadable(t) {
+  switch (t) {
+    case "SMoL" :
+    case "Rhombus" :
+        return true;
+    default:
+      return false;
+  }
+}
+
+var Language = {
+  toString: toString$12,
+  isReadable: isReadable
+};
+
+function parseProgramIn(input, src) {
+  var parse;
+  switch (input) {
+    case "SMoL" :
+        parse = parseProgram;
+        break;
+    case "Rhombus" :
+        parse = parseProgram$1;
+        break;
+    default:
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "KindError",
+              _0: toString$12(input) + " programs cannot be read, only printed."
+            },
+            Error: new Error()
+          };
+  }
+  try {
+    return parse(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+}
+
+function printerOf(output) {
+  switch (output) {
+    case "SMoL" :
+        return {
+                printName: printName,
+                printOutputlet: printOutputlet,
+                printOutput: printOutput,
+                printStandAloneTerm: printStandAloneTerm,
+                printProgram: printProgram,
+                printProgramFull: printProgramFull
+              };
+    case "Rhombus" :
+        return {
+                printName: printName$5,
+                printOutputlet: printOutputlet$5,
+                printOutput: printOutput$5,
+                printStandAloneTerm: printStandAloneTerm$5,
+                printProgram: printProgram$5,
+                printProgramFull: printProgramFull$5
+              };
+    case "Python" :
+        return {
+                printName: printName$1,
+                printOutputlet: printOutputlet$1,
+                printOutput: printOutput$1,
+                printStandAloneTerm: printStandAloneTerm$1,
+                printProgram: printProgram$1,
+                printProgramFull: printProgramFull$1
+              };
+    case "JavaScript" :
+        return {
+                printName: printName$2,
+                printOutputlet: printOutputlet$2,
+                printOutput: printOutput$2,
+                printStandAloneTerm: printStandAloneTerm$2,
+                printProgram: printProgram$2,
+                printProgramFull: printProgramFull$2
+              };
+    case "PseudoCode" :
+        return {
+                printName: printName$3,
+                printOutputlet: printOutputlet$3,
+                printOutput: printOutput$3,
+                printStandAloneTerm: printStandAloneTerm$3,
+                printProgram: printProgram$3,
+                printProgramFull: printProgramFull$3
+              };
+    case "Scala" :
+        return {
+                printName: printName$4,
+                printOutputlet: printOutputlet$4,
+                printOutput: printOutput$4,
+                printStandAloneTerm: printStandAloneTerm$4,
+                printProgram: printProgram$4,
+                printProgramFull: printProgramFull$4
+              };
+    
+  }
+}
+
+function translateProgram$6(input, output, insertPrintTopLevel, src) {
+  var p = parseProgramIn(input, src);
+  var P = printerOf(output);
+  try {
+    return P.printProgram(insertPrintTopLevel, p);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+}
+
+function translateProgramFull$6(input, output, insertPrintTopLevel, src) {
+  var p = parseProgramIn(input, src);
+  var P = printerOf(output);
+  try {
+    return P.printProgramFull(insertPrintTopLevel, p);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+}
+
+function translateOutput$6(output, sepOpt, src) {
+  var sep = sepOpt !== undefined ? sepOpt : " ";
+  var os;
+  try {
+    os = parseOutput(src);
+  }
+  catch (raw_err){
+    var err = Caml_js_exceptions.internalToOCamlException(raw_err);
+    if (err.RE_EXN_ID === SMoLParseError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "ParseError",
+              _0: err._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err;
+  }
+  var P = printerOf(output);
+  try {
+    return P.printOutput(sep, os);
+  }
+  catch (raw_err$1){
+    var err$1 = Caml_js_exceptions.internalToOCamlException(raw_err$1);
+    if (err$1.RE_EXN_ID === SMoLPrintError) {
+      throw {
+            RE_EXN_ID: SMoLTranslateError,
+            _1: {
+              TAG: "PrintError",
+              _0: err$1._1
+            },
+            Error: new Error()
+          };
+    }
+    throw err$1;
+  }
+}
+
 var Print = {
   toString: toString,
   toSourceMap: toSourceMap,
@@ -11693,6 +13557,15 @@ var SMoLPrinter = {
   printStandAloneTerm: printStandAloneTerm,
   printProgram: printProgram,
   printProgramFull: printProgramFull
+};
+
+var RhombusPrinter = {
+  printName: printName$5,
+  printOutputlet: printOutputlet$5,
+  printOutput: printOutput$5,
+  printStandAloneTerm: printStandAloneTerm$5,
+  printProgram: printProgram$5,
+  printProgramFull: printProgramFull$5
 };
 
 var PYPrinter = {
@@ -11752,6 +13625,7 @@ export {
   SMoLPrintError ,
   KindedSourceLocation ,
   SMoLPrinter ,
+  RhombusPrinter ,
   PYPrinter ,
   JSPrinter ,
   PCPrinter ,
@@ -11760,10 +13634,15 @@ export {
   SMoLTranslateError ,
   RhombusReader ,
   SMoLTranslator ,
-  RhombusToSMoLTranslator ,
+  RhombusTranslator ,
   PYTranslator ,
   JSTranslator ,
   PCTranslator ,
   SCTranslator ,
+  Language ,
+  parseProgramIn ,
+  translateProgram$6 as translateProgram,
+  translateProgramFull$6 as translateProgramFull,
+  translateOutput$6 as translateOutput,
 }
 /* type_assignment Not a pure module */
