@@ -1321,6 +1321,11 @@ module Type = {
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
+module type Parser = {
+  let parseOutput: string => output
+  let parseProgram: string => program<sourceLocation>
+}
+
 module type Printer = {
   let printName: string => string
   let printOutputlet: outputlet => string
@@ -5109,10 +5114,10 @@ let programAsTerm = (p: program<_>): term<_> => {
   }
 }
 
-module MakeTranslator = (P: Printer) => {
+module MakeTranslator = (R: Parser, P: Printer) => {
   let translateName = P.printName
   let translateOutput = (src, ~sep: string=" ") => {
-    switch Parser.parseOutput(src) {
+    switch R.parseOutput(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | output =>
       switch P.printOutput(~sep, output) {
@@ -5122,7 +5127,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateStandAloneTerm = src => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printStandAloneTerm(programAsTerm(p)) {
@@ -5132,7 +5137,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateProgram = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printProgram(printTopLevel, p) {
@@ -5142,7 +5147,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateProgramFull = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printProgramFull(printTopLevel, p) {
@@ -5153,8 +5158,8 @@ module MakeTranslator = (P: Printer) => {
   }
 }
 
-module SMoLTranslator = MakeTranslator(SMoLPrinter)
-module PYTranslator = MakeTranslator(PYPrinter)
-module JSTranslator = MakeTranslator(JSPrinter)
-module PCTranslator = MakeTranslator(PCPrinter)
-module SCTranslator = MakeTranslator(SCPrinter)
+module SMoLTranslator = MakeTranslator(Parser, SMoLPrinter)
+module PYTranslator = MakeTranslator(Parser, PYPrinter)
+module JSTranslator = MakeTranslator(Parser, JSPrinter)
+module PCTranslator = MakeTranslator(Parser, PCPrinter)
+module SCTranslator = MakeTranslator(Parser, SCPrinter)

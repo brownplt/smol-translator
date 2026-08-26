@@ -195,6 +195,11 @@ module KindedSourceLocation: {
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
+module type Parser = {
+  let parseOutput: string => output
+  let parseProgram: string => program<sourceLocation>
+}
+
 module type Printer = {
   let printName: string => string
   let printOutputlet: outputlet => string
