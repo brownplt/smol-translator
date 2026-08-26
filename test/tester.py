@@ -77,12 +77,12 @@ def run_rhombus_file(test):
     src = open(test).read()
     prefix = "#lang rhombus"
     dst = prefix + "\n" + src + "\n"
-    f = open("tmp.rhm", "w+")
+    f = open("tmp.rkt", "w+")
     f.write(dst)
     f.close()
     command = [
         "racket",
-        "tmp.rhm"
+        "tmp.rkt"
     ]
     actual_result = subprocess.run(
         command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
@@ -228,12 +228,12 @@ for test_path in ["style_tests", "test_cases"]:
             print("----------")
 
     print("- Testing Rhombus programs")
-    suffix = ".rhm"
+    suffix = ".rkt"
     for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
         print(f"-- {test}")
         program = open(test).read()
         try:
-            wished_results = "{}.rhm.txt".format(test[:-len(suffix)])
+            wished_results = "{}.rkt.txt".format(test[:-len(suffix)])
             wished_results = open(wished_results).read().strip().replace("\n", " ")
             actual_results = run_rhombus_file(test)
             if wished_results == actual_results:

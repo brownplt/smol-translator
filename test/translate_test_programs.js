@@ -96,13 +96,13 @@ for (const path of paths) {
                 const outputs = fs.readFileSync(outputsFile, 'utf8');
                 if (!outputs.includes("@")) {
                     try {
-                        fs.writeFileSync(`${path}/${name}.rhm`, SMoL.translateProgram("SMoL", "Rhombus", true, program));
-                        fs.writeFileSync(`${path}/${name}.rhm.txt`, SMoL.translateOutput("Rhombus", "\n", outputs));
+                        fs.writeFileSync(`${path}/${name}.rkt`, SMoL.translateProgram("SMoL", "Rhombus", true, program));
+                        fs.writeFileSync(`${path}/${name}.rkt.txt`, SMoL.translateOutput("Rhombus", "\n", outputs));
                     } catch (err) {
-                        fs.writeFileSync(`${path}/${name}.rhm.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
+                        fs.writeFileSync(`${path}/${name}.rkt.err`, `An error occurred in translation:\n${SMoL.TranslateError.toString(err._1)}`);
                     }
                 } else {
-                    fs.writeFileSync(`${path}/${name}.rhm.err`, "Skipped translation because the outputs include `@`.");
+                    fs.writeFileSync(`${path}/${name}.rkt.err`, "Skipped translation because the outputs include `@`.");
                 }
             } catch (err) {
                 console.log(name);

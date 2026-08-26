@@ -5150,7 +5150,7 @@ module RhombusPrinter = {
     let x = Js.String2.replaceByRe(x, %re("/[!]/g"), "_e")
     let x = Js.String2.replaceByRe(x, %re("/[^A-Za-z0-9_]/g"), "_")
     if reservedNames->Array.some(reserved => reserved == x) {
-      `_${x}`
+      `${x}_`
     } else {
       x
     }
@@ -5458,8 +5458,14 @@ module RhombusPrinter = {
 
   let exprSetToString = (x, e) => Print.s`${x} := ${e}`
 
-  let exprLamToString = (xs, b) =>
-    Print.s`fun (${Print.dummy(Print.concat(", ", xs))}): ${Print.dummy(guillemets(b))}`
+  let exprLamToString = (xs, b, inStat) => {
+    let xs = Print.dummy(Print.concat(", ", xs))
+    if inStat {
+      Print.s`fun (${xs}):${indentBlock(b, 2)}`
+    } else {
+      Print.s`fun (${xs}): ${Print.dummy(guillemets(b))}`
+    }
+  }
 
   let exprBgnToString = b => Print.s`block: ${Print.dummy(guillemets(b))}`
 
@@ -5472,15 +5478,17 @@ module RhombusPrinter = {
       Print.s`while ${cnd}: ${Print.dummy(guillemets(body))}`
     }
 
-  let exprIfToString = (cnd, thn, els, inStat) => {
-    let thn = guillemets(thn)->Print.dummy
-    let els = guillemets(els)->Print.dummy
+  // Laid out over lines wherever that parses, which is anywhere the form is a
+  // group of its own — a statement, or the right-hand side of a binding. The
+  // bars then sit at that group's own column, which is what shrubbery wants. It
+  // does not parse inside parentheses, so an `if` used as an argument keeps the
+  // one-line form and its branches keep their guillemets.
+  let exprIfToString = (cnd, thn, els, inStat) =>
     if inStat {
-      Print.s`if ${cnd}\n| ${thn}\n| ${els}`
+      Print.s`if ${cnd}\n| ${indent(thn, 2)}\n| ${indent(els, 2)}`
     } else {
-      Print.s`if ${cnd} | ${thn} | ${els}`
+      Print.s`if ${cnd} | ${guillemets(thn)->Print.dummy} | ${guillemets(els)->Print.dummy}`
     }
-  }
 
   let exprAndToString = es => Print.concat(" && ", es)
   let exprOrToString = es => Print.concat(" || ", es)
@@ -5562,11 +5570,12 @@ module RhombusPrinter = {
   // binding takes is decided by the LetKind it belongs to.
   let rec printBind = (
     keyword,
+    ctx,
     {ann: sourceLocation, it: (x, e)}: bind<sourceLocation>,
   ): bind<printAnn> => {
     let keyword = binderOf(keyword, x.it)
     let x = x->symbolToString
-    let e = e->printExp(Expr(false))
+    let e = e->printExp(ctx)
     let print = {
       it: Print.s`${Print.fromString(keyword)} ${x.ann.print} = ${e.ann.print}`,
       ann: Some({nodeKind: Bind, sourceLocation}),
@@ -5600,13 +5609,18 @@ module RhombusPrinter = {
       }
     | Lam(xs, b) => {
         let xs = xs->List.map(symbolToString)
-        let b = b->printBlock(Expr(false))
+        let bodyCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
+        }
+        let b = b->printBlock(bodyCtx)
         {
           it: Lam(xs, b),
           ann: consumeContextWrap(
             ctx,
             ann,
-            exprLamToString(xs->List.map(parameterPrint), b.ann.print),
+            exprLamToString(xs->List.map(parameterPrint), b.ann.print, inStat),
           )->addSourceLocation,
         }
       }
@@ -5652,7 +5666,18 @@ module RhombusPrinter = {
         | Recursive => "def"
         | Plain | Nested => "let"
         }
-        let xes = xes->List.map(xe => printBind(keyword, xe))
+        // A parallel `let` becomes a call, so its values land inside
+        // parentheses and cannot be spread over lines.
+        let bindCtx = switch k {
+        | Plain if xes != list{} => Expr(false)
+        | _ =>
+          if inStat {
+            Stat(Return)
+          } else {
+            Expr(false)
+          }
+        }
+        let xes = xes->List.map(xe => printBind(keyword, bindCtx, xe))
         // A parallel `let` becomes a call, so its body has to be an expression.
         let bodyCtx = switch k {
         | Plain if xes != list{} => Expr(false)
@@ -5701,9 +5726,14 @@ module RhombusPrinter = {
         }
       }
     | If(e_cnd, e_thn, e_els) => {
+        let branchCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
+        }
         let e_cnd = e_cnd->printExp(Expr(false))
-        let e_thn = e_thn->printExp(Expr(false))
-        let e_els = e_els->printExp(Expr(false))
+        let e_thn = e_thn->printExp(branchCtx)
+        let e_els = e_els->printExp(branchCtx)
         {
           it: If(e_cnd, e_thn, e_els),
           ann: consumeContextWrap(
@@ -5774,7 +5804,9 @@ module RhombusPrinter = {
     | Var(x, e) => {
         let name = x.it
         let x = x->symbolToString
-        let e = e->printExp(Expr(false))
+        // A definition is its own group, so its value may be laid out over
+        // lines: `def f = fun (x):` with an indented body, and so on.
+        let e = e->printExp(Stat(Return))
         {
           ann: {sourceLocation, print: defvarToString(x.ann.print, name, e.ann.print)->annPrint},
           it: Var(x, e),

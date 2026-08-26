@@ -1,6 +1,0 @@
-def mutable a = 2
-fun make():
-  fun (mutable b): «a + b»
-def mutable _fun = make()
-a := 1
-println(_fun(1))

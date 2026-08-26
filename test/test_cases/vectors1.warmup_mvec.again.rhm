@@ -1,4 +1,0 @@
-def x = 7
-fun _fun(n):
-  n * 2
-println(Array(_fun(x), x))

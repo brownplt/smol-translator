@@ -1,7 +1,7 @@
 def a = 9
-fun _fun():
+fun fun_():
   def b = 2
   fun prod():
     a * b
   prod()
-println(_fun())
+println(fun_())

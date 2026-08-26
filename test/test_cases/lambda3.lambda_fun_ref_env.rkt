@@ -1,5 +1,6 @@
 fun bar(y):
-  fun (x): «x + y»
+  fun (x):
+    x + y
 def f = bar(2)
 def g = bar(4)
 println(f(2))

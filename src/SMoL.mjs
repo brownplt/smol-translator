@@ -10192,7 +10192,7 @@ function printName$5(x) {
   if (Belt_Array.some(reservedNames, (function (reserved) {
             return reserved === x$4;
           }))) {
-    return "_" + x$4;
+    return x$4 + "_";
   } else {
     return x$4;
   }
@@ -10845,21 +10845,34 @@ function exprSetToString$5(x, e) {
             ]);
 }
 
-function exprLamToString$5(xs, b) {
-  return s([
-              "fun (",
-              "): ",
-              ""
-            ], [
-              {
-                it: concat(", ", xs),
-                ann: undefined
-              },
-              {
-                it: guillemets(b),
-                ann: undefined
-              }
-            ]);
+function exprLamToString$5(xs, b, inStat) {
+  var xs_it = concat(", ", xs);
+  var xs$1 = {
+    it: xs_it,
+    ann: undefined
+  };
+  if (inStat) {
+    return s([
+                "fun (",
+                "):",
+                ""
+              ], [
+                xs$1,
+                indentBlock(b, 2)
+              ]);
+  } else {
+    return s([
+                "fun (",
+                "): ",
+                ""
+              ], [
+                xs$1,
+                {
+                  it: guillemets(b),
+                  ann: undefined
+                }
+              ]);
+  }
 }
 
 function exprBgnToString$1(b) {
@@ -10905,16 +10918,6 @@ function exprWhileToString$2(cnd, body, inStat) {
 }
 
 function exprIfToString$5(cnd, thn, els, inStat) {
-  var thn_it = guillemets(thn);
-  var thn$1 = {
-    it: thn_it,
-    ann: undefined
-  };
-  var els_it = guillemets(els);
-  var els$1 = {
-    it: els_it,
-    ann: undefined
-  };
   if (inStat) {
     return s([
                 "if ",
@@ -10923,8 +10926,8 @@ function exprIfToString$5(cnd, thn, els, inStat) {
                 ""
               ], [
                 cnd,
-                thn$1,
-                els$1
+                indent(thn, 2),
+                indent(els, 2)
               ]);
   } else {
     return s([
@@ -10934,8 +10937,14 @@ function exprIfToString$5(cnd, thn, els, inStat) {
                 ""
               ], [
                 cnd,
-                thn$1,
-                els$1
+                {
+                  it: guillemets(thn),
+                  ann: undefined
+                },
+                {
+                  it: guillemets(els),
+                  ann: undefined
+                }
               ]);
   }
 }
@@ -11174,10 +11183,14 @@ function printExp$5(param, ctx) {
               };
     case "Lam" :
         var xs = Belt_List.map(it._0, symbolToString$5);
-        var b = printBlock$5(it._1, {
+        var bodyCtx = inStat ? ({
+              TAG: "Stat",
+              _0: "Return"
+            }) : ({
               TAG: "Expr",
               _0: false
             });
+        var b = printBlock$5(it._1, bodyCtx);
         return {
                 it: {
                   TAG: "Lam",
@@ -11186,7 +11199,7 @@ function printExp$5(param, ctx) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, exprLamToString$5(Belt_List.map(xs, parameterPrint), b.ann.print))
+                  print: consumeContextWrap$4(ctx, ann, exprLamToString$5(Belt_List.map(xs, parameterPrint), b.ann.print, inStat))
                 }
               };
     case "Let" :
@@ -11206,16 +11219,36 @@ function printExp$5(param, ctx) {
               break;
           
         }
+        var bindCtx;
+        switch (k) {
+          case "Plain" :
+              bindCtx = xes !== /* [] */0 || !inStat ? ({
+                    TAG: "Expr",
+                    _0: false
+                  }) : ({
+                    TAG: "Stat",
+                    _0: "Return"
+                  });
+              break;
+          case "Nested" :
+          case "Recursive" :
+              bindCtx = inStat ? ({
+                    TAG: "Stat",
+                    _0: "Return"
+                  }) : ({
+                    TAG: "Expr",
+                    _0: false
+                  });
+              break;
+          
+        }
         var xes$1 = Belt_List.map(xes, (function (xe) {
                 var sourceLocation = xe.ann;
                 var match = xe.it;
                 var x = match[0];
                 var keyword$1 = binderOf(keyword, x.it);
                 var x$1 = symbolToString$5(x);
-                var e = printExp$5(match[1], {
-                      TAG: "Expr",
-                      _0: false
-                    });
+                var e = printExp$5(match[1], bindCtx);
                 var print_it = s([
                       "",
                       " ",
@@ -11251,10 +11284,10 @@ function printExp$5(param, ctx) {
                         }
                       };
               }));
-        var bodyCtx;
+        var bodyCtx$1;
         switch (k) {
           case "Plain" :
-              bodyCtx = xes$1 !== /* [] */0 || !inStat ? ({
+              bodyCtx$1 = xes$1 !== /* [] */0 || !inStat ? ({
                     TAG: "Expr",
                     _0: false
                   }) : ({
@@ -11264,7 +11297,7 @@ function printExp$5(param, ctx) {
               break;
           case "Nested" :
           case "Recursive" :
-              bodyCtx = inStat ? ({
+              bodyCtx$1 = inStat ? ({
                     TAG: "Stat",
                     _0: "Return"
                   }) : ({
@@ -11274,7 +11307,7 @@ function printExp$5(param, ctx) {
               break;
           
         }
-        var b$1 = printBlock$5(it._2, bodyCtx);
+        var b$1 = printBlock$5(it._2, bodyCtx$1);
         var values = Belt_List.map(xes$1, (function (param) {
                 return param.it[1].ann.print;
               }));
@@ -11358,7 +11391,7 @@ function printExp$5(param, ctx) {
                 }
               };
     case "Bgn" :
-        var bodyCtx$1 = inStat ? ({
+        var bodyCtx$2 = inStat ? ({
               TAG: "Stat",
               _0: "Step"
             }) : ({
@@ -11366,9 +11399,9 @@ function printExp$5(param, ctx) {
               _0: false
             });
         var es$2 = Belt_List.map(it._0, (function (e) {
-                return printExp$5(e, bodyCtx$1);
+                return printExp$5(e, bodyCtx$2);
               }));
-        var e$2 = printExp$5(it._1, bodyCtx$1);
+        var e$2 = printExp$5(it._1, bodyCtx$2);
         var joiner = inStat ? "\n" : "; ";
         var body_it = concat(joiner, Belt_List.concatMany([
                   Belt_List.map(es$2, (function (e) {
@@ -11395,18 +11428,19 @@ function printExp$5(param, ctx) {
                 }
               };
     case "If" :
+        var branchCtx = inStat ? ({
+              TAG: "Stat",
+              _0: "Return"
+            }) : ({
+              TAG: "Expr",
+              _0: false
+            });
         var e_cnd = printExp$5(it._0, {
               TAG: "Expr",
               _0: false
             });
-        var e_thn = printExp$5(it._1, {
-              TAG: "Expr",
-              _0: false
-            });
-        var e_els = printExp$5(it._2, {
-              TAG: "Expr",
-              _0: false
-            });
+        var e_thn = printExp$5(it._1, branchCtx);
+        var e_els = printExp$5(it._2, branchCtx);
         return {
                 it: {
                   TAG: "If",
@@ -11458,7 +11492,7 @@ function printExp$5(param, ctx) {
                 }
               };
     case "Cnd" :
-        var bodyCtx$2 = inStat ? ({
+        var bodyCtx$3 = inStat ? ({
               TAG: "Stat",
               _0: "Return"
             }) : ({
@@ -11471,11 +11505,11 @@ function printExp$5(param, ctx) {
                               TAG: "Expr",
                               _0: false
                             }),
-                        printBlock$5(param[1], bodyCtx$2)
+                        printBlock$5(param[1], bodyCtx$3)
                       ];
               }));
         var ob = Belt_Option.map(it._1, (function (b) {
-                return printBlock$5(b, bodyCtx$2);
+                return printBlock$5(b, bodyCtx$3);
               }));
         return {
                 it: {
@@ -11553,8 +11587,8 @@ function printDef$5(param) {
         var name = x.it;
         var x$1 = symbolToString$5(x);
         var e = printExp$5(d._1, {
-              TAG: "Expr",
-              _0: false
+              TAG: "Stat",
+              _0: "Return"
             });
         return {
                 it: {
