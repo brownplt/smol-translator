@@ -414,9 +414,11 @@ module ParseError = {
     | SExprArityError(Arity.t, string, list<sexpr>)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
+    | RhombusParseError(string)
   let toString = t => {
     switch t {
     | SExprParseError(msg) => `expecting a (valid) s-expression, but the input is not: ${msg}`
+    | RhombusParseError(msg) => `expecting a (valid) Rhombus program, but the input is not: ${msg}`
     | SExprKindError(_kind, context, sexpr) =>
       `expecting a ${context}, given ${SExpr.toString(sexpr)} at ${SourceLocation.toString(sexpr.ann)}`
     | SExprArityError(_arity_expectation, context, es) =>
@@ -1320,6 +1322,11 @@ module Type = {
 }
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
+
+module type Parser = {
+  let parseOutput: string => output
+  let parseProgram: string => program<sourceLocation>
+}
 
 module type Printer = {
   let printName: string => string
@@ -5109,10 +5116,1143 @@ let programAsTerm = (p: program<_>): term<_> => {
   }
 }
 
-module MakeTranslator = (P: Printer) => {
+module RhombusPrinter = {
+  open! Belt
+
+  // Binding one of these as a name shadows the form of the same name for the
+  // rest of that scope, so a later `fun f(): ...` stops being a definition and
+  // becomes a misplaced expression. Checked against Rhombus one word at a time
+  // by binding it and then using every form this printer emits.
+  let reservedNames = [
+    "block",
+    "cond",
+    "def",
+    "fun",
+    "if",
+    "let",
+    "mutable",
+    "unless",
+    "values",
+    "when",
+    "while",
+  ]
+
+  /// A SMoL name as Rhombus spells it. SMoL allows `kebab-case` and a trailing
+  /// `?` or `!`; Rhombus identifiers are alphanumeric plus `_`. Kebab becomes
+  /// camelCase, the same conversion the JavaScript printer makes, `?` and `!`
+  /// become `_q` and `_e`, and anything else still illegal becomes `_`.
+  let printName = x => {
+    let camel = %re("/-./g")
+    let matchFn = (matchPart, _offset, _wholeString) =>
+      Js.String2.toUpperCase(Js.String2.substringToEnd(matchPart, ~from=1))
+    let x = Js.String2.unsafeReplaceBy0(x, camel, matchFn)
+    let x = Js.String2.replaceByRe(x, %re("/[?]/g"), "_q")
+    let x = Js.String2.replaceByRe(x, %re("/[!]/g"), "_e")
+    let x = Js.String2.replaceByRe(x, %re("/[^A-Za-z0-9_]/g"), "_")
+    if reservedNames->Array.some(reserved => reserved == x) {
+      `${x}_`
+    } else {
+      x
+    }
+  }
+
+  // Rhombus requires `mutable` on a binding before `:=` will accept it, and the
+  // SMoL AST does not record it, so it has to be recovered.
+  //
+  // Deliberately, this asks only whether the program mutates *anything* and
+  // then marks every binding, exactly as the Scala printer decides `var`
+  // against `val`. Marking only the names that are actually assigned would be
+  // easy and would read better, but these programs are written to test whether
+  // a reader can tell mutating a variable from mutating what it points at, and
+  // a precise annotation answers that question for them.
+  let involveMutation = ref(false)
+
+  let isMutated = _ => involveMutation.contents
+
+  let collectMutated = (p: program<sourceLocation>) => {
+    let mutates = ref(false)
+    let rec expression = ({it, _}: expression<sourceLocation>) =>
+      switch it {
+      | Set(_, e) =>
+        mutates := true
+        expression(e)
+      | AppPrm(VecSet, es) | AppPrm(PairSetLeft, es) | AppPrm(PairSetRight, es) =>
+        mutates := true
+        es->List.forEach(expression)
+      | Con(_) | Ref(_) => ()
+      | Lam(_, b) => block(b)
+      | Let(_, bs, b) =>
+        bs->List.forEach(({it: (_, e), _}) => expression(e))
+        block(b)
+      | AppPrm(_, es) => es->List.forEach(expression)
+      | App(e, es) =>
+        expression(e)
+        es->List.forEach(expression)
+      | Bgn(es, e) =>
+        es->List.forEach(expression)
+        expression(e)
+      | If(e1, e2, e3) =>
+        expression(e1)
+        expression(e2)
+        expression(e3)
+      | And(es) | Or(es) => es->List.forEach(expression)
+      | Cnd(ebs, ob) =>
+        ebs->List.forEach(((e, b)) => {
+          expression(e)
+          block(b)
+        })
+        ob->Option.forEach(block)
+      | Yield(e) => expression(e)
+      | While(e, es) =>
+        expression(e)
+        es->List.forEach(expression)
+      }
+    and block = ({it, _}: block<sourceLocation>) =>
+      switch it {
+      | BRet(e) => expression(e)
+      | BCons(t, b) =>
+        term(t)
+        block(b)
+      }
+    and term = ({it, _}: term<sourceLocation>) =>
+      switch it {
+      | Exp(e) => expression(e)
+      | Def({it: d, _}) =>
+        switch d {
+        | Var(_, e) => expression(e)
+        | Fun(_, _, b) | GFun(_, _, b) => block(b)
+        }
+      }
+    and program = ({it, _}: program<sourceLocation>) =>
+      switch it {
+      | PNil => ()
+      | PCons(t, p) =>
+        term(t)
+        program(p)
+      }
+    program(p)
+    mutates.contents
+  }
+
+  // A binder writes `mutable` only where something assigns the name.
+  let binderOf = (keyword, x) =>
+    if isMutated(x) {
+      `${keyword} mutable`
+    } else {
+      keyword
+    }
+
+  let numberToString = n =>
+    // NaN is the only value unequal to itself, and the infinities are the only
+    // ones past the largest finite double. Spelling the tests out avoids
+    // depending on which Float module is in scope here.
+    if n != n {
+      "#nan"
+    } else if n > 1.7976931348623157e308 {
+      "#inf"
+    } else if n < -1.7976931348623157e308 {
+      "#neginf"
+    } else {
+      // JavaScript prints a whole number without a fraction, so 1.0 stays `1`.
+      // SMoL does not distinguish the two, and `1.0` would read oddly.
+      Float.toString(n)
+    }
+
+  let constantToString = c => {
+    switch c {
+    | Uni => "#void"
+    | Nil => "[]"
+    | Num(n) => numberToString(n)
+    | Lgc(l) =>
+      if l {
+        "#true"
+      } else {
+        "#false"
+      }
+    | Str(s) => JSON.stringify(String(s))
+    | Sym(s) => `#'${s}`
+    }
+  }
+
+  let symbolToString = ({it, ann: sourceLocation}) => {
+    {
+      it,
+      ann: {
+        sourceLocation,
+        print: {it: Plain(printName(it)), ann: Some({nodeKind: Name, sourceLocation})},
+      },
+    }
+  }
+
+  let paren = e => Print.s`(${e->Print.dummy})`
+
+  /// A body written where an expression is expected, when it needs fencing off.
+  let guillemets = e => Print.s`«${e}»`
+
+  // Whether printing this inline leaves a `|` at the top level of the result.
+  // Such a form would otherwise have its bars claimed by the one enclosing it:
+  // `if a | if b | 1 | 2 | 3` gives the *outer* `if` four branches. Anything
+  // else — a call, an operator, a `block:` — either has no bars or keeps them
+  // inside a bracket, and so needs no fencing.
+  let rec claimsBars = ({it, _}: expression<sourceLocation>) =>
+    switch it {
+    | If(_, _, _) | Cnd(_, _) => true
+    | Lam(_, b) => blockClaimsBars(b)
+    | Set(_, e) => claimsBars(e)
+    | _ => false
+    }
+  and blockClaimsBars = ({it, _}: block<sourceLocation>) =>
+    switch it {
+    | BRet(e) => claimsBars(e)
+    | BCons(t, b) => termClaimsBars(t) || blockClaimsBars(b)
+    }
+  and termClaimsBars = ({it, _}: term<sourceLocation>) =>
+    switch it {
+    | Exp(e) => claimsBars(e)
+    | Def({it: d, _}) =>
+      switch d {
+      | Var(_, e) => claimsBars(e)
+      | Fun(_, _, b) | GFun(_, _, b) => blockClaimsBars(b)
+      }
+    }
+
+  /// Fence `printed` off only when `source` would otherwise claim the bars of
+  /// the form around it.
+  let fenceExpression = (source, printed) =>
+    if claimsBars(source) {
+      guillemets(printed)->Print.dummy
+    } else {
+      printed
+    }
+
+  let fenceBlock = (source, printed) =>
+    if blockClaimsBars(source) {
+      guillemets(printed)->Print.dummy
+    } else {
+      printed
+    }
+
+  let listToString = es =>
+    if es->List.some(containsNL) {
+      Group(list{
+        Print.fromString("("),
+        indentBlock(Print.dummy(Print.concat(",\n", es)), 2),
+        Print.fromString("\n)"),
+      })
+    } else {
+      Group(list{Print.fromString("("), Print.dummy(Print.concat(", ", es)), Print.fromString(")")})
+    }
+
+  let exprAppToString = (e, es) => Group(list{e, Print.dummy(listToString(es))})
+
+  // Rhombus has no `return`: the last expression of a body is its value, so a
+  // statement context adds nothing to what an expression context prints.
+  let consumeContext = (ctx, ann, e) => {
+    let e = ann(e)
+    switch ctx {
+    | Expr(_) => e
+    | Stat(_) => (Print.s`${e}`)->Print.dummy
+    }
+  }
+
+  let consumeContextWrap = (ctx, ann, e) => {
+    switch ctx {
+    | Expr(true) => paren(e)->ann
+    | Expr(false) => e->ann
+    | Stat(_) => (Print.s`${e->ann}`)->Print.dummy
+    }
+  }
+
+  let stringOfArith = o =>
+    switch o {
+    | Add => "+"
+    | Sub => "-"
+    | Mul => "*"
+    | Div => "/"
+    }
+
+  let stringOfCmp = o =>
+    switch o {
+    | Lt => "<"
+    | Gt => ">"
+    | Le => "<="
+    | Ge => ">="
+    | Ne => "!="
+    | Equal => "=="
+    | Eq => "==="
+    | NumEq => ".="
+    }
+
+  // Rhombus writes a pair's head and a list's head both as `.first`, so the
+  // qualified names are what keep PairRefLeft and First apart.
+  let nameOfPrimitive = (p: Primitive.t) =>
+    switch p {
+    | VecNew => Some("Array")
+    | VecLen => Some("Array.length")
+    | PairNew => Some("Pair")
+    | PairRefLeft => Some("Pair.first")
+    | PairRefRight => Some("Pair.rest")
+    | List => Some("List")
+    | Cons => Some("List.cons")
+    | First => Some("List.first")
+    | Rest => Some("List.rest")
+    | EmptyP => Some("List.is_empty")
+    | Err => Some("error")
+    | Print => Some("println")
+    | _ => None
+    }
+
+  let exprAppPrmToString = (ann, ctx, p: Primitive.t, es: list<bool => expression<printAnn>>) => {
+    let call = (name, es) => {
+      let es = es->List.map(e => e(false))
+      {
+        it: (p, es),
+        ann: consumeContext(
+          ctx,
+          ann,
+          exprAppToString(Print.fromString(name), es->List.map(e => e.ann.print)),
+        ),
+      }
+    }
+    let infix = (op, es) => {
+      let es = es->List.map(e => e(true))
+      {
+        it: (p, es),
+        ann: consumeContextWrap(
+          ctx,
+          ann,
+          Print.concat(` ${op} `, es->List.map(e => e.ann.print)),
+        ),
+      }
+    }
+    switch (p, es) {
+    | (Arith(Sub), list{e}) => {
+        let e = e(true)
+        {
+          it: (p, list{e}),
+          ann: consumeContextWrap(ctx, ann, Print.s`- ${e.ann.print}`),
+        }
+      }
+    | (Arith(o), es) => infix(stringOfArith(o), es)
+    | (Cmp(o), list{e1, e2}) => infix(stringOfCmp(o), list{e1, e2})
+    | (StringAppend, es) => infix("++", es)
+    | (Not, list{e}) => {
+        let e = e(true)
+        {
+          it: (p, list{e}),
+          ann: consumeContextWrap(ctx, ann, Print.s`!${e.ann.print}`),
+        }
+      }
+    | (ZeroP, list{e}) => {
+        // Rhombus has no `zero?`; comparing against zero is the same test.
+        let e = e(true)
+        {
+          it: (p, list{e}),
+          ann: consumeContextWrap(ctx, ann, Print.s`${e.ann.print} == 0`),
+        }
+      }
+    | (VecRef, list{e1, e2}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        {
+          it: (p, list{e1, e2}),
+          ann: consumeContext(ctx, ann, Print.s`${e1.ann.print}[${e2.ann.print}]`),
+        }
+      }
+    | (VecSet, list{e1, e2, e3}) => {
+        let e1 = e1(true)
+        let e2 = e2(false)
+        let e3 = e3(false)
+        {
+          it: (p, list{e1, e2, e3}),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            Print.s`${e1.ann.print}[${e2.ann.print}] := ${e3.ann.print}`,
+          ),
+        }
+      }
+    | (PairSetLeft, _) | (PairSetRight, _) =>
+      raisePrintError("Rhombus pairs are immutable, so `set-left!` and `set-right!` have no form.")
+    | (Maybe, _) | (Next, _) =>
+      raisePrintError(`Generators are not supported by Rhombus.`)
+    | (p, es) =>
+      switch nameOfPrimitive(p) {
+      | Some(name) => call(name, es)
+      | None =>
+        raisePrintError(
+          `Rhombus doesn't let you use ${Primitive.toString(p)} on ${Int.toString(
+              List.length(es),
+            )} parameter(s).`,
+        )
+      }
+    }
+  }
+
+  let funLike = (op, x, xs, e) =>
+    Print.s`${Print.fromString(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}`
+
+  let defvarToString = (x, name, e) =>
+    Print.s`${Print.fromString(binderOf("def", name))} ${x} = ${e}`
+
+  let deffunToString = (f, xs, b) => funLike("fun", f, xs, b)
+
+  let exprSetToString = (x, e) => Print.s`${x} := ${e}`
+
+  let exprLamToString = (xs, b, inStat) => {
+    let xs = Print.dummy(Print.concat(", ", xs))
+    if inStat {
+      Print.s`fun (${xs}):${indentBlock(b, 2)}`
+    } else {
+      Print.s`fun (${xs}): ${b}`
+    }
+  }
+
+  let exprBgnToString = b => Print.s`block: ${Print.dummy(guillemets(b))}`
+
+  let exprBlockStatToString = b => Print.s`block:${indentBlock(b, 2)}`
+
+  let exprWhileToString = (cnd, body, inStat) =>
+    if inStat {
+      Print.s`while ${cnd}:${indentBlock(body, 2)}`
+    } else {
+      Print.s`while ${cnd}: ${Print.dummy(guillemets(body))}`
+    }
+
+  // Laid out over lines wherever that parses, which is anywhere the form is a
+  // group of its own — a statement, or the right-hand side of a binding. The
+  // bars then sit at that group's own column, which is what shrubbery wants. It
+  // does not parse inside parentheses, so an `if` used as an argument keeps the
+  // one-line form and its branches keep their guillemets.
+  let exprIfToString = (cnd, thn, els, inStat) =>
+    if inStat {
+      Print.s`if ${cnd}\n| ${indent(thn, 2)}\n| ${indent(els, 2)}`
+    } else {
+      Print.s`if ${cnd} | ${thn} | ${els}`
+    }
+
+  let exprAndToString = es => Print.concat(" && ", es)
+  let exprOrToString = es => Print.concat(" || ", es)
+
+  let exprYieldToString = _ => raisePrintError("`yield` is not supported by Rhombus.")
+
+  /// A parameter, carrying `mutable` when something assigns it.
+  let parameterPrint = (x: annotated<symbol, printAnn>) =>
+    if isMutated(x.it) {
+      (Print.s`mutable ${x.ann.print}`)->Print.dummy
+    } else {
+      x.ann.print
+    }
+
+  let exprLetToString = (k: LetKind.t, xs, xes, b, inStat) => {
+    switch k {
+    // Parallel binding is exactly an immediately-applied function, which is
+    // also the only one of the three Rhombus has no body form for.
+    | Plain if xes != list{} =>
+      Print.s`(fun (${Print.dummy(Print.concat(", ", xs))}): ${Print.dummy(
+          guillemets(b),
+        )})(${Print.dummy(Print.concat(", ", xes))})`
+    | _ =>
+      // `let` and `def` inside a body are Rhombus's sequential and recursive
+      // binding; `Plain` with nothing bound is just the scope `block:` opens.
+      let binds = xes
+      let body = if binds == list{} {
+        b
+      } else if inStat {
+        (Print.s`${Print.dummy(Print.concat("\n", binds))}\n${b}`)->Print.dummy
+      } else {
+        (Print.s`${Print.dummy(Print.concat("; ", binds))}; ${b}`)->Print.dummy
+      }
+      if inStat {
+        Print.s`block:${indentBlock(body, 2)}`
+      } else {
+        Print.s`block: ${Print.dummy(guillemets(body))}`
+      }
+    }
+  }
+
+  let exprCndToString = (ebs: list<(_, _)>, ob, inStat) => {
+    let clause = (test, body) =>
+      if inStat {
+        // The clause's group starts after its `| `, so the body has to be
+        // indented past that rather than just past the `|`.
+        (Print.s`| ${test}:${indentBlock(body, 4)}`)->Print.dummy
+      } else {
+        (Print.s`| ${test}: ${body}`)->Print.dummy
+      }
+    let clauses = ebs->List.map(((e, b)) => clause(e, b))
+    let clauses = switch ob {
+    | None => clauses
+    | Some(b) =>
+      list{
+        ...clauses,
+        if inStat {
+          (Print.s`| ~else:${indentBlock(b, 4)}`)->Print.dummy
+        } else {
+          (Print.s`| ~else: ${b}`)->Print.dummy
+        },
+      }
+    }
+    if inStat {
+      Print.s`cond\n${Print.dummy(Print.concat("\n", clauses))}`
+    } else {
+      Print.s`cond ${Print.dummy(Print.concat(" ", clauses))}`
+    }
+  }
+
+  let inStatContext = ctx =>
+    switch ctx {
+    | Stat(_) => true
+    | Expr(_) => false
+    }
+
+  // Rhombus `let` binds sequentially and does not see itself, which is exactly
+  // `let*`; `def` inside a body is the recursive one. So which keyword a
+  // binding takes is decided by the LetKind it belongs to.
+  let rec printBind = (
+    keyword,
+    ctx,
+    {ann: sourceLocation, it: (x, e)}: bind<sourceLocation>,
+  ): bind<printAnn> => {
+    let keyword = binderOf(keyword, x.it)
+    let x = x->symbolToString
+    let e = e->printExp(ctx)
+    let print = {
+      it: Print.s`${Print.fromString(keyword)} ${x.ann.print} = ${e.ann.print}`,
+      ann: Some({nodeKind: Bind, sourceLocation}),
+    }
+    {it: (x, e), ann: {sourceLocation, print}}
+  }
+  and printExp = ({it, ann: sourceLocation}, ctx): expression<printAnn> => {
+    let ann = it => {it, ann: Some({nodeKind: Expression, sourceLocation})}
+    let addSourceLocation = print => {sourceLocation, print}
+    let inStat = inStatContext(ctx)
+    switch it {
+    | Con(c) => {
+        it: Con(c),
+        ann: consumeContext(ctx, ann, Plain(constantToString(c)))->addSourceLocation,
+      }
+    | Ref(x) => {
+        it: Ref(x),
+        ann: consumeContext(ctx, ann, Plain(x->printName))->addSourceLocation,
+      }
+    | Set(x, e) => {
+        let x = symbolToString(x)
+        let e: expression<printAnn> = e->printExp(Expr(false))
+        {
+          it: Set(x, e),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprSetToString(x.ann.print, e.ann.print),
+          )->addSourceLocation,
+        }
+      }
+    | Lam(xs, bodySource) => {
+        let xs = xs->List.map(symbolToString)
+        let bodyCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
+        }
+        let b = bodySource->printBlock(bodyCtx)
+        let body = if inStat {
+          b.ann.print
+        } else {
+          fenceBlock(bodySource, b.ann.print)
+        }
+        {
+          it: Lam(xs, b),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprLamToString(xs->List.map(parameterPrint), body, inStat),
+          )->addSourceLocation,
+        }
+      }
+    | Yield(_) => exprYieldToString()
+    | While(e_cnd, es_thn) => {
+        let e_cnd = e_cnd->printExp(Expr(false))
+        let es_thn = es_thn->List.map(e_thn => e_thn->printExp(Stat(Step)))
+        let joiner = if inStat {
+          "\n"
+        } else {
+          "; "
+        }
+        let body = Print.concat(joiner, es_thn->List.map(e => e.ann.print))->Print.dummy
+        {
+          it: While(e_cnd, es_thn),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprWhileToString(e_cnd.ann.print, body, inStat),
+          )->addSourceLocation,
+        }
+      }
+    | AppPrm(p, es) => {
+        let es = es->List.map(e => b => e->printExp(Expr(b)))
+        let {it: (p, es), ann: print} = exprAppPrmToString(ann, ctx, p, es)
+        {it: AppPrm(p, es), ann: print->addSourceLocation}
+      }
+    | App(e, es) => {
+        let e = e->printExp(Expr(true))
+        let es = es->List.map(e => e->printExp(Expr(false)))
+        {
+          it: App(e, es),
+          ann: consumeContext(
+            ctx,
+            ann,
+            exprAppToString(e.ann.print, es->List.map(e => e.ann.print)),
+          )->addSourceLocation,
+        }
+      }
+    | Let(k, xes, b) => {
+        let names = xes->List.map(({it: (x, _), _}) => x->symbolToString->parameterPrint)
+        let keyword = switch k {
+        | Recursive => "def"
+        | Plain | Nested => "let"
+        }
+        // A parallel `let` becomes a call, so its values land inside
+        // parentheses and cannot be spread over lines.
+        let bindCtx = switch k {
+        | Plain if xes != list{} => Expr(false)
+        | _ =>
+          if inStat {
+            Stat(Return)
+          } else {
+            Expr(false)
+          }
+        }
+        let xes = xes->List.map(xe => printBind(keyword, bindCtx, xe))
+        // A parallel `let` becomes a call, so its body has to be an expression.
+        let bodyCtx = switch k {
+        | Plain if xes != list{} => Expr(false)
+        | _ =>
+          if inStat {
+            Stat(Return)
+          } else {
+            Expr(false)
+          }
+        }
+        let b = b->printBlock(bodyCtx)
+        let values = xes->List.map(({it: (_, e), _}) => e.ann.print)
+        let binds = switch k {
+        | Plain if xes != list{} => values
+        | _ => xes->List.map(xe => xe.ann.print)
+        }
+        {
+          it: Let(k, xes, b),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprLetToString(k, names, binds, b.ann.print, inStat),
+          )->addSourceLocation,
+        }
+      }
+    | Cnd(ebs, ob) => {
+        let bodyCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
+        }
+        let printBody = source => {
+          let printed = source->printBlock(bodyCtx)
+          let fenced = if inStat {
+            printed.ann.print
+          } else {
+            fenceBlock(source, printed.ann.print)
+          }
+          (printed, fenced)
+        }
+        let ebs = ebs->List.map(((e, b)) => (e->printExp(Expr(false)), printBody(b)))
+        let ob = ob->Option.map(printBody)
+        {
+          it: Cnd(ebs->List.map(((e, (b, _))) => (e, b)), ob->Option.map(((b, _)) => b)),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprCndToString(
+              ebs->List.map(((e, (_, body))) => (e.ann.print, body)),
+              ob->Option.map(((_, body)) => body),
+              inStat,
+            ),
+          )->addSourceLocation,
+        }
+      }
+    | If(cndSource, thnSource, elsSource) => {
+        let branchCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
+        }
+        let e_cnd = cndSource->printExp(Expr(false))
+        let e_thn = thnSource->printExp(branchCtx)
+        let e_els = elsSource->printExp(branchCtx)
+        let branch = (source, printed) =>
+          if inStat {
+            printed
+          } else {
+            fenceExpression(source, printed)
+          }
+        {
+          it: If(e_cnd, e_thn, e_els),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprIfToString(
+              e_cnd.ann.print,
+              branch(thnSource, e_thn.ann.print),
+              branch(elsSource, e_els.ann.print),
+              inStat,
+            ),
+          )->addSourceLocation,
+        }
+      }
+    | And(es) => {
+        let es = es->List.map(e => e->printExp(Expr(true)))
+        {
+          it: And(es),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprAndToString(es->List.map(e => e.ann.print)),
+          )->addSourceLocation,
+        }
+      }
+    | Or(es) => {
+        let es = es->List.map(e => e->printExp(Expr(true)))
+        {
+          it: Or(es),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            exprOrToString(es->List.map(e => e.ann.print)),
+          )->addSourceLocation,
+        }
+      }
+    | Bgn(es, e) => {
+        let bodyCtx = if inStat {
+          Stat(Step)
+        } else {
+          Expr(false)
+        }
+        let es = es->List.map(e => e->printExp(bodyCtx))
+        let e = e->printExp(bodyCtx)
+        let joiner = if inStat {
+          "\n"
+        } else {
+          "; "
+        }
+        let body =
+          Print.concat(
+            joiner,
+            list{...es->List.map(e => e.ann.print), e.ann.print},
+          )->Print.dummy
+        {
+          it: Bgn(es, e),
+          ann: consumeContextWrap(
+            ctx,
+            ann,
+            if inStat {
+              exprBlockStatToString(body)
+            } else {
+              exprBgnToString(body)
+            },
+          )->addSourceLocation,
+        }
+      }
+    }
+  }
+  and printDef = ({ann: sourceLocation, it: d}): definition<printAnn> => {
+    let annPrint = print => {it: print, ann: Some({nodeKind: Definition, sourceLocation})}
+    switch d {
+    | Var(x, e) => {
+        let name = x.it
+        let x = x->symbolToString
+        // A definition is its own group, so its value may be laid out over
+        // lines: `def f = fun (x):` with an indented body, and so on.
+        let e = e->printExp(Stat(Return))
+        {
+          ann: {sourceLocation, print: defvarToString(x.ann.print, name, e.ann.print)->annPrint},
+          it: Var(x, e),
+        }
+      }
+    | Fun(f, xs, b) => {
+        let f = f->symbolToString
+        let xs = xs->List.map(symbolToString)
+        let b = b->printBlock(Stat(Return))
+        {
+          ann: {
+            sourceLocation,
+            print: deffunToString(
+              f.ann.print,
+              xs->List.map(parameterPrint),
+              b.ann.print,
+            )->annPrint,
+          },
+          it: Fun(f, xs, b),
+        }
+      }
+    | GFun(_, _, _) => raisePrintError("Generators are not supported by Rhombus.")
+    }
+  }
+  and printBlockHelper = ({ann: sourceLocation, it: b}, ctx, joiner) => {
+    let annPrint = print => {it: print, ann: Some({nodeKind: Block, sourceLocation})}
+    switch b {
+    | BRet(e) => {
+        let e = e->printExp(ctx)
+        {ann: {print: annPrint(Group(list{e.ann.print})), sourceLocation}, it: BRet(e)}
+      }
+    | BCons(t, b) => {
+        let t = printTerm(t, Step)
+        let b = b->printBlockHelper(ctx, joiner)
+        let print =
+          (Print.s`${t.ann.print}${Print.fromString(joiner)}${b.ann.print}`)->annPrint
+        {ann: {print, sourceLocation}, it: BCons(t, b)}
+      }
+    }
+  }
+  and printBlock = (b, ctx) => {
+    // A body reads the same either way; only how its terms are separated
+    // changes, since `«a; b»` is what lets one sit inside an expression.
+    switch ctx {
+    | Stat(c) => printBlockHelper(b, Stat(c), "\n")
+    | Expr(c) => printBlockHelper(b, Expr(c), "; ")
+    }
+  }
+  and printTerm = ({ann: sourceLocation, it}: term<sourceLocation>, ctx): term<printAnn> => {
+    switch it {
+    | Exp(it) => {
+        let it = printExp(it, Stat(ctx))
+        {it: Exp(it), ann: {sourceLocation, print: group(list{it.ann.print})}}
+      }
+    | Def(it) => {
+        let it = printDef(it)
+        {it: Def(it), ann: {sourceLocation, print: group(list{it.ann.print})}}
+      }
+    }
+  }
+
+  let printOutputlet = o => {
+    let rec p = (v: val): string => {
+      switch v {
+      | Ref(_) => "..."
+      | Con(c) => constantToString(c)
+      | Struct(_, content) =>
+        switch content {
+        | Lst(es) => `[${concat(", ", es->List.map(p)->List.toArray)}]`
+        | Vec(es) => `Array(${concat(", ", es->List.map(p)->List.toArray)})`
+        }
+      }
+    }
+    switch o {
+    | OErr => "error"
+    | OVal(v) => p(v)
+    }
+  }
+
+  let printOutput = (~sep=" ", os): string =>
+    concat(sep, os->List.map(printOutputlet)->List.toArray)
+
+  let printProgramFull = (insertPrintTopLevel, p) => {
+    let p = if insertPrintTopLevel {
+      insertTopLevelPrint(p)
+    } else {
+      p
+    }
+    involveMutation := collectMutated(p)
+    let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
+      let annPrint = print => {
+        sourceLocation,
+        print: {it: print, ann: Some({nodeKind: Program, sourceLocation})},
+      }
+      switch it {
+      | PNil => {it: PNil, ann: Plain("")->annPrint}
+      | PCons(t, p) => {
+          let t = printTerm(t, Step)
+          let p = print(p)
+          {
+            it: PCons(t, p),
+            ann: annPrint(
+              Group(list{
+                t.ann.print,
+                if p.it == PNil {
+                  Print.fromString("")
+                } else {
+                  Print.fromString("\n")
+                },
+                p.ann.print,
+              }),
+            ),
+          }
+        }
+      }
+    }
+    print(p)
+  }
+
+  let printProgram = (insertPrintTopLevel, p) =>
+    Print.toString(printProgramFull(insertPrintTopLevel, p).ann.print)
+
+  let printStandAloneTerm = (t: term<sourceLocation>): string => {
+    involveMutation := false
+    Print.toString(printTerm(t, Step).ann.print)
+  }
+}
+
+/// Reads Rhombus by calling the tygr-shrubbery parser, compiled to WebAssembly.
+///
+/// `RhombusReader.init()` has to be awaited once before any of this works;
+/// browsers will not compile a wasm module that size synchronously on the main
+/// thread. `isReady` reports whether that has happened, so a caller gets a
+/// clear message instead of a stray JavaScript exception.
+module RhombusReader = {
+  @module("./RhombusReader.mjs")
+  external init: unit => promise<unit> = "init"
+
+  @module("./RhombusReader.mjs")
+  external parseProgramJson: string => string = "parseProgramJson"
+
+  @module("./RhombusReader.mjs")
+  external isReady: unit => bool = "isReady"
+}
+
+module RhombusParser: Parser = {
+  exception Malformed(string)
+
+  let malformed = (what, json) =>
+    raise(Malformed(`expecting ${what}, given ${JSON.stringify(json)}`))
+
+  let asObject = json =>
+    switch json {
+    | JSON.Object(fields) => fields
+    | _ => malformed("an object", json)
+    }
+  let asArray = json =>
+    switch json {
+    | JSON.Array(items) => items
+    | _ => malformed("an array", json)
+    }
+  let asString = json =>
+    switch json {
+    | JSON.String(text) => text
+    | _ => malformed("a string", json)
+    }
+  let asFloat = json =>
+    switch json {
+    | JSON.Number(value) => value
+    | _ => malformed("a number", json)
+    }
+  let asBool = json =>
+    switch json {
+    | JSON.Boolean(value) => value
+    | _ => malformed("a boolean", json)
+    }
+
+  let field = (json, name) =>
+    switch json->asObject->Dict.get(name) {
+    | Some(value) => value
+    | None => malformed(`a "${name}" field`, json)
+    }
+  let tag = json => json->field("tag")->asString
+
+  let list = (json, decode) => json->asArray->List.fromArray->List.map(decode)
+
+  let sourcePoint = json => {
+    ln: json->field("ln")->asFloat->Float.toInt,
+    ch: json->field("ch")->asFloat->Float.toInt,
+  }
+  let sourceLocation = json => {
+    begin: json->field("begin")->sourcePoint,
+    end: json->field("end")->sourcePoint,
+  }
+  let annotated = (json, decode) => {
+    it: json->field("it")->decode,
+    ann: json->field("ann")->sourceLocation,
+  }
+  let symbol = json => json->annotated(asString)
+
+  let constant = json =>
+    switch json->tag {
+    | "Uni" => Uni
+    | "Nil" => Nil
+    | "Num" => Num(json->field("value")->asFloat)
+    | "Lgc" => Lgc(json->field("value")->asBool)
+    | "Str" => Str(json->field("value")->asString)
+    | "Sym" => Sym(json->field("value")->asString)
+    | other => malformed(`a constant, not "${other}"`, json)
+    }
+
+  // The reader spells every primitive as one flat tag; Arith and Cmp group
+  // them here the way the ReScript type does.
+  let primitive = json =>
+    switch json->tag {
+    | "Add" => Primitive.Arith(Add)
+    | "Sub" => Arith(Sub)
+    | "Mul" => Arith(Mul)
+    | "Div" => Arith(Div)
+    | "Lt" => Cmp(Lt)
+    | "NumEq" => Cmp(NumEq)
+    | "Eq" => Cmp(Eq)
+    | "Gt" => Cmp(Gt)
+    | "Le" => Cmp(Le)
+    | "Ge" => Cmp(Ge)
+    | "Ne" => Cmp(Ne)
+    | "Equal" => Cmp(Equal)
+    | "Maybe" => Maybe
+    | "PairNew" => PairNew
+    | "PairRefLeft" => PairRefLeft
+    | "PairRefRight" => PairRefRight
+    | "PairSetLeft" => PairSetLeft
+    | "PairSetRight" => PairSetRight
+    | "VecNew" => VecNew
+    | "VecRef" => VecRef
+    | "VecSet" => VecSet
+    | "VecLen" => VecLen
+    | "Err" => Err
+    | "Not" => Not
+    | "ZeroP" => ZeroP
+    | "Print" => Print
+    | "Next" => Next
+    | "StringAppend" => StringAppend
+    | "Cons" => Cons
+    | "List" => List
+    | "EmptyP" => EmptyP
+    | "First" => First
+    | "Rest" => Rest
+    | other => malformed(`a primitive, not "${other}"`, json)
+    }
+
+  let letKind = json =>
+    switch json->tag {
+    | "Plain" => LetKind.Plain
+    | "Nested" => Nested
+    | "Recursive" => Recursive
+    | other => malformed(`a let kind, not "${other}"`, json)
+    }
+
+  let rec expression = json => json->annotated(expressionNode)
+  and expressionNode = json =>
+    switch json->tag {
+    | "Con" => Con(json->field("value")->constant)
+    | "Ref" => Ref(json->field("name")->asString)
+    | "Set" => Set(json->field("name")->symbol, json->field("value")->expression)
+    | "Lam" => Lam(json->field("params")->list(symbol), json->field("body")->block)
+    | "Let" =>
+      Let(
+        json->field("kind")->letKind,
+        json->field("binds")->list(bind),
+        json->field("body")->block,
+      )
+    | "AppPrm" => AppPrm(json->field("prim")->primitive, json->field("args")->list(expression))
+    | "App" => App(json->field("func")->expression, json->field("args")->list(expression))
+    | "Bgn" => Bgn(json->field("exps")->list(expression), json->field("result")->expression)
+    | "If" =>
+      If(
+        json->field("cnd")->expression,
+        json->field("thn")->expression,
+        json->field("els")->expression,
+      )
+    | "And" => And(json->field("exps")->list(expression))
+    | "Or" => Or(json->field("exps")->list(expression))
+    | "Cnd" =>
+      Cnd(
+        json->field("clauses")->list(clause),
+        switch json->field("els") {
+        | JSON.Null => None
+        | els => Some(els->block)
+        },
+      )
+    | "Yield" => Yield(json->field("value")->expression)
+    | "While" => While(json->field("cnd")->expression, json->field("body")->list(expression))
+    | other => malformed(`an expression, not "${other}"`, json)
+    }
+  and clause = json =>
+    switch json->asArray {
+    | [test, body] => (test->expression, body->block)
+    | _ => malformed("a two-element cond clause", json)
+    }
+  and bind = json =>
+    json->annotated(node =>
+      switch node->asArray {
+      | [name, value] => (name->symbol, value->expression)
+      | _ => malformed("a two-element binding", node)
+      }
+    )
+  and block = json => json->annotated(blockNode)
+  and blockNode = json =>
+    switch json->tag {
+    | "BRet" => BRet(json->field("value")->expression)
+    | "BCons" => BCons(json->field("head")->term, json->field("tail")->block)
+    | other => malformed(`a block, not "${other}"`, json)
+    }
+  and definition = json => json->annotated(definitionNode)
+  and definitionNode = json =>
+    switch json->tag {
+    | "Var" => Var(json->field("name")->symbol, json->field("value")->expression)
+    | "Fun" =>
+      Fun(
+        json->field("name")->symbol,
+        json->field("params")->list(symbol),
+        json->field("body")->block,
+      )
+    | "GFun" =>
+      GFun(
+        json->field("name")->symbol,
+        json->field("params")->list(symbol),
+        json->field("body")->block,
+      )
+    | other => malformed(`a definition, not "${other}"`, json)
+    }
+  and term = json => json->annotated(termNode)
+  and termNode = json =>
+    switch json->tag {
+    | "Def" => Def(json->field("def")->definition)
+    | "Exp" => Exp(json->field("exp")->expression)
+    | other => malformed(`a term, not "${other}"`, json)
+    }
+  and program = json => json->annotated(programNode)
+  and programNode = json =>
+    switch json->tag {
+    | "PNil" => PNil
+    | "PCons" => PCons(json->field("head")->term, json->field("tail")->program)
+    | other => malformed(`a program, not "${other}"`, json)
+    }
+
+  let parseProgram = (src): program<sourceLocation> => {
+    if !RhombusReader.isReady() {
+      raiseParseError(
+        RhombusParseError(
+          "the Rhombus reader is not initialised: await RhombusReader.init() first",
+        ),
+      )
+    }
+    let json = switch RhombusReader.parseProgramJson(src) {
+    | text => JSON.parseExn(text)
+    | exception Exn.Error(err) =>
+      raiseParseError(
+        RhombusParseError(err->Exn.message->Option.getOr("the Rhombus reader failed")),
+      )
+    }
+    switch json->field("error") {
+    | message => raiseParseError(RhombusParseError(message->asString))
+    | exception Malformed(_) =>
+      switch json->field("ok")->program {
+      | p => p
+      | exception Malformed(why) => raiseParseError(RhombusParseError(why))
+      }
+    }
+  }
+
+  // Expected-output strings are values, not Rhombus source, so they are read
+  // the same way for either front end.
+  let parseOutput = Parser.parseOutput
+}
+
+module MakeTranslator = (R: Parser, P: Printer) => {
   let translateName = P.printName
   let translateOutput = (src, ~sep: string=" ") => {
-    switch Parser.parseOutput(src) {
+    switch R.parseOutput(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | output =>
       switch P.printOutput(~sep, output) {
@@ -5122,7 +6262,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateStandAloneTerm = src => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printStandAloneTerm(programAsTerm(p)) {
@@ -5132,7 +6272,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateProgram = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printProgram(printTopLevel, p) {
@@ -5142,7 +6282,7 @@ module MakeTranslator = (P: Printer) => {
     }
   }
   let translateProgramFull = (printTopLevel, src) => {
-    switch Parser.parseProgram(src) {
+    switch R.parseProgram(src) {
     | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
     | p =>
       switch P.printProgramFull(printTopLevel, p) {
@@ -5153,8 +6293,102 @@ module MakeTranslator = (P: Printer) => {
   }
 }
 
-module SMoLTranslator = MakeTranslator(SMoLPrinter)
-module PYTranslator = MakeTranslator(PYPrinter)
-module JSTranslator = MakeTranslator(JSPrinter)
-module PCTranslator = MakeTranslator(PCPrinter)
-module SCTranslator = MakeTranslator(SCPrinter)
+module SMoLTranslator = MakeTranslator(Parser, SMoLPrinter)
+module RhombusTranslator = MakeTranslator(Parser, RhombusPrinter)
+module PYTranslator = MakeTranslator(Parser, PYPrinter)
+module JSTranslator = MakeTranslator(Parser, JSPrinter)
+module PCTranslator = MakeTranslator(Parser, PCPrinter)
+module SCTranslator = MakeTranslator(Parser, SCPrinter)
+
+/// Which syntax a program is written in. The two front ends are SMoL's
+/// s-expressions and Rhombus; every language can be printed.
+module Language = {
+  type t =
+    | SMoL
+    | Rhombus
+    | Python
+    | JavaScript
+    | PseudoCode
+    | Scala
+
+  let toString = t =>
+    switch t {
+    | SMoL => "SMoL"
+    | Rhombus => "Rhombus"
+    | Python => "Python"
+    | JavaScript => "JavaScript"
+    | PseudoCode => "PseudoCode"
+    | Scala => "Scala"
+    }
+
+  /// Whether a program can be *read* in this language. Only the two front ends
+  /// can; the rest are output only.
+  let isReadable = t =>
+    switch t {
+    | SMoL | Rhombus => true
+    | Python | JavaScript | PseudoCode | Scala => false
+    }
+}
+
+/// Read `src` as `input`. Dispatching here rather than through a functor for
+/// each pairing keeps the translator count linear in the languages instead of
+/// quadratic.
+let parseProgramIn = (input: Language.t, src): program<sourceLocation> => {
+  let parse = switch input {
+  | SMoL => Parser.parseProgram
+  | Rhombus => RhombusParser.parseProgram
+  | other =>
+    raise(
+      SMoLTranslateError(KindError(`${Language.toString(other)} programs cannot be read, only printed.`)),
+    )
+  }
+  switch parse(src) {
+  | p => p
+  | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+  }
+}
+
+let printerOf = (output: Language.t): module(Printer) =>
+  switch output {
+  | SMoL => module(SMoLPrinter: Printer)
+  | Rhombus => module(RhombusPrinter: Printer)
+  | Python => module(PYPrinter: Printer)
+  | JavaScript => module(JSPrinter: Printer)
+  | PseudoCode => module(PCPrinter: Printer)
+  | Scala => module(SCPrinter: Printer)
+  }
+
+/// Translate a program from one language to another.
+let translateProgram = (~input, ~output, insertPrintTopLevel, src) => {
+  let p = parseProgramIn(input, src)
+  module P = unpack(printerOf(output))
+  switch P.printProgram(insertPrintTopLevel, p) {
+  | printed => printed
+  | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+  }
+}
+
+/// As {!translateProgram}, but keeping every node's own printed form, for
+/// source maps.
+let translateProgramFull = (~input, ~output, insertPrintTopLevel, src) => {
+  let p = parseProgramIn(input, src)
+  module P = unpack(printerOf(output))
+  switch P.printProgramFull(insertPrintTopLevel, p) {
+  | printed => printed
+  | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+  }
+}
+
+/// Translate an expected-output string. Outputs are values rather than source,
+/// so they are read the same way whichever language the program is in.
+let translateOutput = (~output, ~sep=" ", src) => {
+  let os = switch Parser.parseOutput(src) {
+  | os => os
+  | exception SMoLParseError(err) => raise(SMoLTranslateError(ParseError(err)))
+  }
+  module P = unpack(printerOf(output))
+  switch P.printOutput(~sep, os) {
+  | printed => printed
+  | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
+  }
+}

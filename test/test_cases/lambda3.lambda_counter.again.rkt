@@ -1,14 +1,10 @@
-#lang rhombus
-
-fun build_dbl():
+fun buildDbl():
   def mutable n = 1
   fun ():
     n := n * 2
     n
-
-def dbl1 = build_dbl()
-def dbl2 = build_dbl()
-
-dbl1()
-dbl2()
-dbl1()
+def mutable dbl1 = buildDbl()
+def mutable dbl2 = buildDbl()
+println(dbl1())
+println(dbl2())
+println(dbl1())

@@ -173,6 +173,7 @@ module ParseError: {
     | SExprArityError(Arity.t, string, list<sexpr>)
     | LiteralListError(sexpr)
     | TermKindError(TermKind.t, string, term<sourceLocation>)
+    | RhombusParseError(string)
   let toString: t => string
 }
 type exn += SMoLParseError(ParseError.t)
@@ -195,6 +196,11 @@ module KindedSourceLocation: {
 
 type printAnn = {sourceLocation: sourceLocation, print: print<kindedSourceLocation>}
 
+module type Parser = {
+  let parseOutput: string => output
+  let parseProgram: string => program<sourceLocation>
+}
+
 module type Printer = {
   let printName: string => string
   let printOutputlet: outputlet => string
@@ -205,6 +211,7 @@ module type Printer = {
 }
 
 module SMoLPrinter: Printer
+module RhombusPrinter: Printer
 module PYPrinter: Printer
 module JSPrinter: Printer
 module PCPrinter: Printer
@@ -225,8 +232,38 @@ module type Translator = {
   let translateProgram: (bool, string) => string
   let translateProgramFull: (bool, string) => program<printAnn>
 }
+module RhombusReader: {
+  /// Compile the Rhombus reader. Await this once before parsing Rhombus;
+  /// awaiting it again is free.
+  let init: unit => promise<unit>
+  let isReady: unit => bool
+}
+
 module SMoLTranslator: Translator
+module RhombusTranslator: Translator
 module PYTranslator: Translator
 module JSTranslator: Translator
 module PCTranslator: Translator
 module SCTranslator: Translator
+
+module Language: {
+  type t =
+    | SMoL
+    | Rhombus
+    | Python
+    | JavaScript
+    | PseudoCode
+    | Scala
+  let toString: t => string
+  let isReadable: t => bool
+}
+
+let parseProgramIn: (Language.t, string) => program<sourceLocation>
+let translateProgram: (~input: Language.t, ~output: Language.t, bool, string) => string
+let translateProgramFull: (
+  ~input: Language.t,
+  ~output: Language.t,
+  bool,
+  string,
+) => program<printAnn>
+let translateOutput: (~output: Language.t, ~sep: string=?, string) => string

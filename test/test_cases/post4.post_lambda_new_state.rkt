@@ -1,0 +1,7 @@
+def mutable a = 1
+fun foo():
+  fun (mutable b):
+    a + b
+def mutable bar = foo()
+a := 3
+println(bar(0))

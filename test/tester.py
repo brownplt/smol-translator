@@ -73,6 +73,36 @@ def run_py_file(test):
     return actual_result
 
 
+def run_rhombus_file(test):
+    src = open(test).read()
+    prefix = "#lang rhombus"
+    dst = prefix + "\n" + src + "\n"
+    f = open("tmp.rkt", "w+")
+    f.write(dst)
+    f.close()
+    command = [
+        "racket",
+        "tmp.rkt"
+    ]
+    actual_result = subprocess.run(
+        command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout = actual_result.stdout.decode('utf-8')
+    stderr = actual_result.stderr.decode('utf-8')
+    if stderr == "":
+        actual_result = stdout
+    else:
+        actual_result = stdout + "\n" + "error"
+    actual_result = actual_result.strip().split("\n")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    # A void result prints as #void, the way Python prints None and JavaScript
+    # prints undefined; the expected outputs record nothing for it.
+    actual_result = actual_result.strip().split("#void")
+    actual_result = [s for s in actual_result if s != '']
+    actual_result = " ".join(s.strip() for s in actual_result)
+    return actual_result
+
+
 def run_scala_file(test):
     src = open(test).read()
     prefix = "import scala.collection.mutable.Buffer; object Main {def main(args: Array[String]): Unit = {"
@@ -196,6 +226,32 @@ for test_path in ["style_tests", "test_cases"]:
             print(program)
             print("No expected output.")
             print("----------")
+
+    print("- Testing Rhombus programs")
+    suffix = ".rkt"
+    for test in glob.glob("./test/{}/*{}".format(test_path, suffix)):
+        print(f"-- {test}")
+        program = open(test).read()
+        try:
+            wished_results = "{}.rkt.txt".format(test[:-len(suffix)])
+            wished_results = open(wished_results).read().strip().replace("\n", " ")
+            actual_results = run_rhombus_file(test)
+            if wished_results == actual_results:
+                pass
+            else:
+                print("FAILED {}".format(test))
+                print("Program:")
+                print(program)
+                print("Wished: {}".format(repr(wished_results)))
+                print("Actual: {}".format(repr(actual_results)))
+                print("----------")
+        except FileNotFoundError as e:
+            print("FAILED {}".format(test))
+            print("Program:")
+            print(program)
+            print("No expected output.")
+            print("----------")
+
 
     print("- Testing Scala programs")
     suffix = ".scala"
