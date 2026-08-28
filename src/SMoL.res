@@ -5270,7 +5270,16 @@ module RhombusPrinter = {
         "#false"
       }
     | Str(s) => JSON.stringify(String(s))
-    | Sym(s) => `#'${s}`
+    // `#'x` is Rhombus's symbol literal, but only an identifier may follow the
+    // quote. Stacker renders a runtime address as a symbol named `@254`, which
+    // is not one, so anything that cannot be quoted is written bare — as the
+    // other five printers write every symbol.
+    | Sym(s) =>
+      if Js.Re.test_(%re("/^[A-Za-z_][A-Za-z0-9_]*$/"), s) {
+        `#'${s}`
+      } else {
+        s
+      }
     }
   }
 
