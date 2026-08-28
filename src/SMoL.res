@@ -5553,15 +5553,30 @@ module RhombusPrinter = {
       x.ann.print
     }
 
-  let exprLetToString = (k: LetKind.t, xs, xes, b, inStat) => {
+  // Rhombus binds sequentially, and binding one name sequentially is binding it
+  // in parallel, so only two or more names at once need the call below.
+  let needsCall = (k: LetKind.t, binds) =>
     switch k {
-    // Parallel binding is exactly an immediately-applied function, which is
-    // also the only one of the three Rhombus has no body form for.
-    | Plain if xes != list{} =>
-      Print.s`(fun (${Print.dummy(Print.concat(", ", xs))}): ${Print.dummy(
-          guillemets(b),
-        )})(${Print.dummy(Print.concat(", ", xes))})`
-    | _ =>
+    | Plain => List.length(binds) > 1
+    | Nested | Recursive => false
+    }
+
+  let exprLetToString = (k: LetKind.t, xs, xes, b, inStat) =>
+    if needsCall(k, xes) {
+      // Binding several names in parallel is exactly an immediately-applied
+      // function, which is also the only one of the three Rhombus has no body
+      // form for. Opening the parenthesis at the end of the line starts the
+      // function on one of its own, and a form that starts a line is one whose
+      // body may be laid out over the lines under it.
+      let params = Print.dummy(Print.concat(", ", xs))
+      let args = Print.dummy(Print.concat(", ", xes))
+      if inStat {
+        let f = (Print.s`fun (${params}):${indentBlock(b, 2)}`)->Print.dummy
+        Print.s`(${indentBlock(f, 2)}\n)(${args})`
+      } else {
+        Print.s`(fun (${params}): ${Print.dummy(guillemets(b))})(${args})`
+      }
+    } else {
       // `let` and `def` inside a body are Rhombus's sequential and recursive
       // binding; `Plain` with nothing bound is just the scope `block:` opens.
       let binds = xes
@@ -5578,27 +5593,26 @@ module RhombusPrinter = {
         Print.s`block: ${Print.dummy(guillemets(body))}`
       }
     }
-  }
 
   let exprCndToString = (ebs: list<(_, _)>, ob, inStat) => {
-    let clause = (test, body) =>
-      if inStat {
+    let clause = (test, (body, beside)) =>
+      if beside {
+        (Print.s`| ${test}: ${body}`)->Print.dummy
+      } else {
         // The clause's group starts after its `| `, so the body has to be
         // indented past that rather than just past the `|`.
         (Print.s`| ${test}:${indentBlock(body, 4)}`)->Print.dummy
-      } else {
-        (Print.s`| ${test}: ${body}`)->Print.dummy
       }
     let clauses = ebs->List.map(((e, b)) => clause(e, b))
     let clauses = switch ob {
     | None => clauses
-    | Some(b) =>
+    | Some((b, beside)) =>
       list{
         ...clauses,
-        if inStat {
-          (Print.s`| ~else:${indentBlock(b, 4)}`)->Print.dummy
-        } else {
+        if beside {
           (Print.s`| ~else: ${b}`)->Print.dummy
+        } else {
+          (Print.s`| ~else:${indentBlock(b, 4)}`)->Print.dummy
         },
       }
     }
@@ -5721,33 +5735,26 @@ module RhombusPrinter = {
         | Recursive => "def"
         | Plain | Nested => "let"
         }
+        let asCall = needsCall(k, xes)
         // A parallel `let` becomes a call, so its values land inside
         // parentheses and cannot be spread over lines.
-        let bindCtx = switch k {
-        | Plain if xes != list{} => Expr(false)
-        | _ =>
-          if inStat {
-            Stat(Return)
-          } else {
-            Expr(false)
-          }
+        let bindCtx = if inStat && !asCall {
+          Stat(Return)
+        } else {
+          Expr(false)
         }
         let xes = xes->List.map(xe => printBind(keyword, bindCtx, xe))
-        // A parallel `let` becomes a call, so its body has to be an expression.
-        let bodyCtx = switch k {
-        | Plain if xes != list{} => Expr(false)
-        | _ =>
-          if inStat {
-            Stat(Return)
-          } else {
-            Expr(false)
-          }
+        let bodyCtx = if inStat {
+          Stat(Return)
+        } else {
+          Expr(false)
         }
         let b = b->printBlock(bodyCtx)
         let values = xes->List.map(({it: (_, e), _}) => e.ann.print)
-        let binds = switch k {
-        | Plain if xes != list{} => values
-        | _ => xes->List.map(xe => xe.ann.print)
+        let binds = if asCall {
+          values
+        } else {
+          xes->List.map(xe => xe.ann.print)
         }
         {
           it: Let(k, xes, b),
@@ -5759,30 +5766,33 @@ module RhombusPrinter = {
         }
       }
     | Cnd(ebs, ob) => {
-        let bodyCtx = if inStat {
-          Stat(Return)
-        } else {
-          Expr(false)
-        }
+        // A body of one short expression reads better beside its test than
+        // indented under it, and it fits there exactly when its expression
+        // form needs neither fencing nor lines of its own.
         let printBody = source => {
-          let printed = source->printBlock(bodyCtx)
-          let fenced = if inStat {
-            printed.ann.print
+          let beside = source->printBlock(Expr(false))
+          if !inStat {
+            (beside, fenceBlock(source, beside.ann.print), true)
+          } else if !blockClaimsBars(source) && !containsNL(beside.ann.print) {
+            (beside, beside.ann.print, true)
           } else {
-            fenceBlock(source, printed.ann.print)
+            let under = source->printBlock(Stat(Return))
+            (under, under.ann.print, false)
           }
-          (printed, fenced)
         }
         let ebs = ebs->List.map(((e, b)) => (e->printExp(Expr(false)), printBody(b)))
         let ob = ob->Option.map(printBody)
         {
-          it: Cnd(ebs->List.map(((e, (b, _))) => (e, b)), ob->Option.map(((b, _)) => b)),
+          it: Cnd(
+            ebs->List.map(((e, (b, _, _))) => (e, b)),
+            ob->Option.map(((b, _, _)) => b),
+          ),
           ann: consumeContextWrap(
             ctx,
             ann,
             exprCndToString(
-              ebs->List.map(((e, (_, body))) => (e.ann.print, body)),
-              ob->Option.map(((_, body)) => body),
+              ebs->List.map(((e, (_, body, beside))) => (e.ann.print, (body, beside))),
+              ob->Option.map(((_, body, beside)) => (body, beside)),
               inStat,
             ),
           )->addSourceLocation,

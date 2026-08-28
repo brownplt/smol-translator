@@ -3,5 +3,6 @@ lib/
 .DS_Store
 test/tutorials.json
 test_result.out
+tmp.rkt
 tmp.scala
 tmp.smol

@@ -11020,35 +11020,64 @@ function parameterPrint(x) {
   }
 }
 
-function exprLetToString$1(k, xs, xes, b, inStat) {
+function needsCall(k, binds) {
   switch (k) {
     case "Plain" :
-        if (xes !== /* [] */0) {
-          return s([
-                      "(fun (",
-                      "): ",
-                      ")(",
-                      ")"
-                    ], [
-                      {
-                        it: concat(", ", xs),
-                        ann: undefined
-                      },
-                      {
-                        it: guillemets(b),
-                        ann: undefined
-                      },
-                      {
-                        it: concat(", ", xes),
-                        ann: undefined
-                      }
-                    ]);
-        }
-        break;
+        return Belt_List.length(binds) > 1;
     case "Nested" :
     case "Recursive" :
-        break;
+        return false;
     
+  }
+}
+
+function exprLetToString$1(k, xs, xes, b, inStat) {
+  if (needsCall(k, xes)) {
+    var params_it = concat(", ", xs);
+    var params = {
+      it: params_it,
+      ann: undefined
+    };
+    var args_it = concat(", ", xes);
+    var args = {
+      it: args_it,
+      ann: undefined
+    };
+    if (!inStat) {
+      return s([
+                  "(fun (",
+                  "): ",
+                  ")(",
+                  ")"
+                ], [
+                  params,
+                  {
+                    it: guillemets(b),
+                    ann: undefined
+                  },
+                  args
+                ]);
+    }
+    var f_it = s([
+          "fun (",
+          "):",
+          ""
+        ], [
+          params,
+          indentBlock(b, 2)
+        ]);
+    var f = {
+      it: f_it,
+      ann: undefined
+    };
+    return s([
+                "(",
+                "\n)(",
+                ")"
+              ], [
+                indentBlock(f, 2),
+                args
+              ]);
   }
   var body = xes === /* [] */0 ? b : (
       inStat ? ({
@@ -11098,20 +11127,9 @@ function exprLetToString$1(k, xs, xes, b, inStat) {
 function exprCndToString$5(ebs, ob, inStat) {
   var clauses = Belt_List.map(ebs, (function (param) {
           var test = param[0];
-          var body = param[1];
-          if (inStat) {
-            return {
-                    it: s([
-                          "| ",
-                          ":",
-                          ""
-                        ], [
-                          test,
-                          indentBlock(body, 4)
-                        ]),
-                    ann: undefined
-                  };
-          } else {
+          var param$1 = param[1];
+          var body = param$1[0];
+          if (param$1[1]) {
             return {
                     it: s([
                           "| ",
@@ -11123,27 +11141,45 @@ function exprCndToString$5(ebs, ob, inStat) {
                         ]),
                     ann: undefined
                   };
+          } else {
+            return {
+                    it: s([
+                          "| ",
+                          ":",
+                          ""
+                        ], [
+                          test,
+                          indentBlock(body, 4)
+                        ]),
+                    ann: undefined
+                  };
           }
         }));
-  var clauses$1 = ob !== undefined ? Belt_List.concatMany([
+  var clauses$1;
+  if (ob !== undefined) {
+    var b = ob[0];
+    clauses$1 = Belt_List.concatMany([
           clauses,
           {
-            hd: inStat ? ({
-                  it: s([
-                        "| ~else:",
-                        ""
-                      ], [indentBlock(ob, 4)]),
-                  ann: undefined
-                }) : ({
+            hd: ob[1] ? ({
                   it: s([
                         "| ~else: ",
                         ""
-                      ], [ob]),
+                      ], [b]),
+                  ann: undefined
+                }) : ({
+                  it: s([
+                        "| ~else:",
+                        ""
+                      ], [indentBlock(b, 4)]),
                   ann: undefined
                 }),
             tl: /* [] */0
           }
-        ]) : clauses;
+        ]);
+  } else {
+    clauses$1 = clauses;
+  }
   if (inStat) {
     return s([
                 "cond\n",
@@ -11272,29 +11308,14 @@ function printExp$5(param, ctx) {
               break;
           
         }
-        var bindCtx;
-        switch (k) {
-          case "Plain" :
-              bindCtx = xes !== /* [] */0 || !inStat ? ({
-                    TAG: "Expr",
-                    _0: false
-                  }) : ({
-                    TAG: "Stat",
-                    _0: "Return"
-                  });
-              break;
-          case "Nested" :
-          case "Recursive" :
-              bindCtx = inStat ? ({
-                    TAG: "Stat",
-                    _0: "Return"
-                  }) : ({
-                    TAG: "Expr",
-                    _0: false
-                  });
-              break;
-          
-        }
+        var asCall = needsCall(k, xes);
+        var bindCtx = inStat && !asCall ? ({
+              TAG: "Stat",
+              _0: "Return"
+            }) : ({
+              TAG: "Expr",
+              _0: false
+            });
         var xes$1 = Belt_List.map(xes, (function (xe) {
                 var sourceLocation = xe.ann;
                 var match = xe.it;
@@ -11337,54 +11358,20 @@ function printExp$5(param, ctx) {
                         }
                       };
               }));
-        var bodyCtx$1;
-        switch (k) {
-          case "Plain" :
-              bodyCtx$1 = xes$1 !== /* [] */0 || !inStat ? ({
-                    TAG: "Expr",
-                    _0: false
-                  }) : ({
-                    TAG: "Stat",
-                    _0: "Return"
-                  });
-              break;
-          case "Nested" :
-          case "Recursive" :
-              bodyCtx$1 = inStat ? ({
-                    TAG: "Stat",
-                    _0: "Return"
-                  }) : ({
-                    TAG: "Expr",
-                    _0: false
-                  });
-              break;
-          
-        }
+        var bodyCtx$1 = inStat ? ({
+              TAG: "Stat",
+              _0: "Return"
+            }) : ({
+              TAG: "Expr",
+              _0: false
+            });
         var b$1 = printBlock$5(it._2, bodyCtx$1);
         var values = Belt_List.map(xes$1, (function (param) {
                 return param.it[1].ann.print;
               }));
-        var binds;
-        var exit = 0;
-        switch (k) {
-          case "Plain" :
-              if (xes$1 !== /* [] */0) {
-                binds = values;
-              } else {
-                exit = 1;
-              }
-              break;
-          case "Nested" :
-          case "Recursive" :
-              exit = 1;
-              break;
-          
-        }
-        if (exit === 1) {
-          binds = Belt_List.map(xes$1, (function (xe) {
+        var binds = asCall ? values : Belt_List.map(xes$1, (function (xe) {
                   return xe.ann.print;
                 }));
-        }
         return {
                 it: {
                   TAG: "Let",
@@ -11559,19 +11546,33 @@ function printExp$5(param, ctx) {
                 }
               };
     case "Cnd" :
-        var bodyCtx$3 = inStat ? ({
-              TAG: "Stat",
-              _0: "Return"
-            }) : ({
-              TAG: "Expr",
-              _0: false
-            });
         var printBody = function (source) {
-          var printed = printBlock$5(source, bodyCtx$3);
-          var fenced = inStat ? printed.ann.print : fenceBlock(source, printed.ann.print);
+          var beside = printBlock$5(source, {
+                TAG: "Expr",
+                _0: false
+              });
+          if (!inStat) {
+            return [
+                    beside,
+                    fenceBlock(source, beside.ann.print),
+                    true
+                  ];
+          }
+          if (!blockClaimsBars(source) && !includes(beside.ann.print, "\n")) {
+            return [
+                    beside,
+                    beside.ann.print,
+                    true
+                  ];
+          }
+          var under = printBlock$5(source, {
+                TAG: "Stat",
+                _0: "Return"
+              });
           return [
-                  printed,
-                  fenced
+                  under,
+                  under.ann.print,
+                  false
                 ];
         };
         var ebs = Belt_List.map(it._0, (function (param) {
@@ -11600,12 +11601,19 @@ function printExp$5(param, ctx) {
                 ann: {
                   sourceLocation: sourceLocation,
                   print: consumeContextWrap$4(ctx, ann, exprCndToString$5(Belt_List.map(ebs, (function (param) {
+                                  var match = param[1];
                                   return [
                                           param[0].ann.print,
-                                          param[1][1]
+                                          [
+                                            match[1],
+                                            match[2]
+                                          ]
                                         ];
                                 })), Belt_Option.map(ob, (function (param) {
-                                  return param[1];
+                                  return [
+                                          param[1],
+                                          param[2]
+                                        ];
                                 })), inStat))
                 }
               };
