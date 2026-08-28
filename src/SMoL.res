@@ -5736,6 +5736,14 @@ module RhombusPrinter = {
         | Plain | Nested => "let"
         }
         let asCall = needsCall(k, xes)
+        // A scope that binds nothing and holds one expression is that
+        // expression. Saying so keeps `block:` from stacking up: reading
+        // `block: «let a = 1; a + 1»` gives a `Let` with no bindings around
+        // the one that binds `a`, and printing both would write two.
+        let isOnlyAScope = switch (xes, b.it) {
+        | (list{}, BRet(_)) => true
+        | _ => false
+        }
         // A parallel `let` becomes a call, so its values land inside
         // parentheses and cannot be spread over lines.
         let bindCtx = if inStat && !asCall {
@@ -5761,7 +5769,11 @@ module RhombusPrinter = {
           ann: consumeContextWrap(
             ctx,
             ann,
-            exprLetToString(k, names, binds, b.ann.print, inStat),
+            if isOnlyAScope {
+              Print.s`${b.ann.print}`
+            } else {
+              exprLetToString(k, names, binds, b.ann.print, inStat)
+            },
           )->addSourceLocation,
         }
       }

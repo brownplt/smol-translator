@@ -11292,6 +11292,7 @@ function printExp$5(param, ctx) {
                 }
               };
     case "Let" :
+        var b$1 = it._2;
         var xes = it._1;
         var k = it._0;
         var names = Belt_List.map(xes, (function (param) {
@@ -11309,6 +11310,8 @@ function printExp$5(param, ctx) {
           
         }
         var asCall = needsCall(k, xes);
+        var match = b$1.it;
+        var isOnlyAScope = xes || match.TAG !== "BRet" ? false : true;
         var bindCtx = inStat && !asCall ? ({
               TAG: "Stat",
               _0: "Return"
@@ -11365,7 +11368,7 @@ function printExp$5(param, ctx) {
               TAG: "Expr",
               _0: false
             });
-        var b$1 = printBlock$5(it._2, bodyCtx$1);
+        var b$2 = printBlock$5(b$1, bodyCtx$1);
         var values = Belt_List.map(xes$1, (function (param) {
                 return param.it[1].ann.print;
               }));
@@ -11377,11 +11380,14 @@ function printExp$5(param, ctx) {
                   TAG: "Let",
                   _0: k,
                   _1: xes$1,
-                  _2: b$1
+                  _2: b$2
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: consumeContextWrap$4(ctx, ann, exprLetToString$1(k, names, binds, b$1.ann.print, inStat))
+                  print: consumeContextWrap$4(ctx, ann, isOnlyAScope ? s([
+                              "",
+                              ""
+                            ], [b$2.ann.print]) : exprLetToString$1(k, names, binds, b$2.ann.print, inStat))
                 }
               };
     case "AppPrm" :
@@ -11393,17 +11399,17 @@ function printExp$5(param, ctx) {
                             });
                 };
               }));
-        var match = exprAppPrmToString$4(ann, ctx, it._0, es);
-        var match$1 = match.it;
+        var match$1 = exprAppPrmToString$4(ann, ctx, it._0, es);
+        var match$2 = match$1.it;
         return {
                 it: {
                   TAG: "AppPrm",
-                  _0: match$1[0],
-                  _1: match$1[1]
+                  _0: match$2[0],
+                  _1: match$2[1]
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: match.ann
+                  print: match$1.ann
                 }
               };
     case "App" :
