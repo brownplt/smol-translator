@@ -1,4 +1,4 @@
-println(#true && #false)
-println(#true || #false)
-println(!#true)
-println(!#false)
+#true && #false
+#true || #false
+!#true
+!#false

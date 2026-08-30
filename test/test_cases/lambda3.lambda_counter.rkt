@@ -5,6 +5,6 @@ fun foobar():
     n
 def mutable f = foobar()
 def mutable g = foobar()
-println(f())
-println(f())
-println(g())
+f()
+f()
+g()

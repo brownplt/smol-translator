@@ -4,6 +4,6 @@ fun f1():
 fun f2():
   t := 4
   f1()
-println(f2())
+f2()
 t := 2
-println(f1())
+f1()

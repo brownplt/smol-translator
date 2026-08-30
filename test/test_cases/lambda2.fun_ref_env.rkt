@@ -4,5 +4,5 @@ fun bar(y):
   addy
 def f = bar(2)
 def g = bar(4)
-println(f(2))
-println(g(2))
+f(2)
+g(2)

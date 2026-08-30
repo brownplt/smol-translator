@@ -3,4 +3,4 @@ fun f(mutable y):
   y[0] := 32
   y[0]
 def mutable z = f(x)
-println(x[0])
+x[0]

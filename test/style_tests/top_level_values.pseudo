@@ -1,0 +1,8 @@
+print("hi")
+if True:
+  print("yes")
+else:
+  print("no")
+end
+print(42)
+print(vec[ 3, 4 ])

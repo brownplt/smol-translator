@@ -3,5 +3,5 @@ fun k(b):
     a + b
 def foo = k(3)
 def bar = k(2)
-println(foo(3))
-println(bar(3))
+foo(3)
+bar(3)

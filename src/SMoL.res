@@ -5985,12 +5985,14 @@ module RhombusPrinter = {
   let printOutput = (~sep=" ", os): string =>
     concat(sep, os->List.map(printOutputlet)->List.toArray)
 
-  let printProgramFull = (insertPrintTopLevel, p) => {
-    let p = if insertPrintTopLevel {
-      insertTopLevelPrint(p)
-    } else {
-      p
-    }
+  // Rhombus shows the value of a top-level expression on its own, as SMoL
+  // does, so it needs no `println` wrapped around one — and a wrapper would
+  // be worse than redundant: `println` writes a string without its quotes and
+  // a symbol without its `#\'`, which is not how Rhombus writes a value.
+  // `printOutputlet` above says as much. So the flag is ignored here, exactly
+  // as the SMoL printer ignores it; the output languages that show nothing by
+  // themselves are the ones that need it.
+  let printProgramFull = (_insertPrintTopLevel, p) => {
     involveMutation := collectMutated(p)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {

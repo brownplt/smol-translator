@@ -4,4 +4,4 @@ fun i():
 fun j():
   def s = 76
   i()
-println(j())
+j()

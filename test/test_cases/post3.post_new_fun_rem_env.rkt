@@ -4,6 +4,6 @@ fun foo():
 fun bar():
   n := 3
   foo()
-println(bar())
+bar()
 n := 5
-println(foo())
+foo()

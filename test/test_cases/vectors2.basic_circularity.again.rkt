@@ -1,3 +1,3 @@
 def mutable x = Array(84, 73, 69, 52)
 x[1] := x
-println(x[0])
+x[0]

@@ -6,6 +6,6 @@ fun f():
   dbl
 def mutable dbl1 = f()
 def mutable dbl2 = f()
-println(dbl1())
-println(dbl2())
-println(dbl1())
+dbl1()
+dbl2()
+dbl1()

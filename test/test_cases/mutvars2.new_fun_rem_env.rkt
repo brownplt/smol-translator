@@ -4,6 +4,6 @@ fun f():
 fun g():
   x := 0
   f()
-println(g())
+g()
 x := 1
-println(f())
+f()

@@ -4,6 +4,6 @@ fun h():
 fun k():
   a := 2
   h()
-println(k())
+k()
 a := 6
-println(h())
+h()

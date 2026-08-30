@@ -5,4 +5,4 @@ fun f():
   addx
 def mutable g = f()
 x := 2
-println(g(0))
+g(0)

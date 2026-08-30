@@ -11879,9 +11879,8 @@ function printOutput$5(sepOpt, os) {
   return Belt_List.toArray(Belt_List.map(os, printOutputlet$5)).join(sep);
 }
 
-function printProgramFull$5(insertPrintTopLevel, p) {
-  var p$1 = insertPrintTopLevel ? insertTopLevelPrint(p) : p;
-  involveMutation$1.contents = collectMutated(p$1);
+function printProgramFull$5(_insertPrintTopLevel, p) {
+  involveMutation$1.contents = collectMutated(p);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -11950,7 +11949,7 @@ function printProgramFull$5(insertPrintTopLevel, p) {
                 })
           };
   };
-  return print(p$1);
+  return print(p);
 }
 
 function printProgram$5(insertPrintTopLevel, p) {

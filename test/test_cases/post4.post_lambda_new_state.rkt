@@ -4,4 +4,4 @@ fun foo():
     a + b
 def mutable bar = foo()
 a := 3
-println(bar(0))
+bar(0)

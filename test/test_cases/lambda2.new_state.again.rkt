@@ -5,4 +5,4 @@ fun make():
   f
 def mutable g = make()
 a := 1
-println(g(1))
+g(1)

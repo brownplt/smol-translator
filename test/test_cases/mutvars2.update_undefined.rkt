@@ -1,2 +1,2 @@
 foobar := 2
-println(foobar)
+foobar

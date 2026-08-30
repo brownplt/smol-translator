@@ -1,2 +1,2 @@
 cond
-| ~else: println(42)
+| ~else: 42

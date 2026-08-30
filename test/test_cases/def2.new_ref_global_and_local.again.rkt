@@ -4,4 +4,4 @@ fun fun_():
   fun prod():
     a * b
   prod()
-println(fun_())
+fun_()

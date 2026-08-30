@@ -4,4 +4,4 @@ fun f1(m):
     def l = 4
     n + m + l
   f2()
-println(f1(1) + 3)
+f1(1) + 3

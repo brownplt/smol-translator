@@ -4,4 +4,4 @@ fun make():
     a + b
 def mutable fun_ = make()
 a := 1
-println(fun_(1))
+fun_(1)

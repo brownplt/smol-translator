@@ -4,4 +4,4 @@ fun f():
 fun g():
   def x = 2
   f()
-println(g())
+g()

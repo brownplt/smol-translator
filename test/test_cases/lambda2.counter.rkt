@@ -6,6 +6,6 @@ fun foo():
   bar
 def mutable f = foo()
 def mutable g = foo()
-println(f())
-println(f())
-println(g())
+f()
+f()
+g()

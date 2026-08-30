@@ -4,4 +4,4 @@ fun f(y):
     def z = 2
     x + y + z
   g()
-println(f(3) + 4)
+f(3) + 4

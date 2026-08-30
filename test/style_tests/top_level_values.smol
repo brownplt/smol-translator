@@ -1,0 +1,4 @@
+"hi"
+(if #t "yes" "no")
+42
+(mvec 3 4)

@@ -4,4 +4,4 @@ fun abc(bb):
     def cc = 2
     aa * bb * cc
   h()
-println(abc(4) * 1)
+abc(4) * 1

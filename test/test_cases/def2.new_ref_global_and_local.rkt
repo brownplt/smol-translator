@@ -4,4 +4,4 @@ fun f():
   fun g():
     x + y
   g()
-println(f())
+f()

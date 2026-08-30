@@ -3,4 +3,4 @@ fun inc(x):
 fun g():
   inc
 def f = g()
-println(f(10))
+f(10)
