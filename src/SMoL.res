@@ -5270,16 +5270,14 @@ module RhombusPrinter = {
         "#false"
       }
     | Str(s) => JSON.stringify(String(s))
-    // `#'x` is Rhombus's symbol literal, but only an identifier may follow the
-    // quote. Stacker renders a runtime address as a symbol named `@254`, which
-    // is not one, so anything that cannot be quoted is written bare — as the
-    // other five printers write every symbol.
-    | Sym(s) =>
-      if Js.Re.test_(%re("/^[A-Za-z_][A-Za-z0-9_]*$/"), s) {
-        `#'${s}`
-      } else {
-        s
-      }
+    // Written bare, as the other five printers write a symbol. Rhombus does
+    // spell a symbol `#'x`, but no SMoL program can produce one: the language
+    // has no symbol literal, and the only symbols that reach a value are the
+    // runtime addresses Stacker renders as `@254`, which cannot follow a `#'`
+    // anyway. So the quote never lands on a symbol — only on a name or a word
+    // that something upstream handed to the value printer by mistake, where it
+    // is noise.
+    | Sym(s) => s
     }
   }
 

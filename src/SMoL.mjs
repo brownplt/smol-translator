@@ -10355,12 +10355,7 @@ function constantToString$5(c) {
     case "Str" :
         return JSON.stringify(c._0);
     case "Sym" :
-        var s = c._0;
-        if (/^[A-Za-z_][A-Za-z0-9_]*$/.test(s)) {
-          return "#'" + s;
-        } else {
-          return s;
-        }
+        return c._0;
     
   }
 }
