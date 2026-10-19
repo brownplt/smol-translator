@@ -211,7 +211,14 @@ module type Printer = {
 }
 
 module SMoLPrinter: Printer
-module RhombusPrinter: Printer
+module RhombusPrinter: {
+  include Printer
+  /// When true, `mutable` goes only on names that some `set!` assigns. When
+  /// false (the default), every binding gets it once the program mutates
+  /// anything, so the annotation does not give away which kind of mutation a
+  /// program performs. Prefer `~preciseMutation` on `translateProgram`.
+  let preciseMutation: ref<bool>
+}
 module PYPrinter: Printer
 module JSPrinter: Printer
 module PCPrinter: Printer
@@ -259,10 +266,17 @@ module Language: {
 }
 
 let parseProgramIn: (Language.t, string) => program<sourceLocation>
-let translateProgram: (~input: Language.t, ~output: Language.t, bool, string) => string
+let translateProgram: (
+  ~input: Language.t,
+  ~output: Language.t,
+  ~preciseMutation: bool=?,
+  bool,
+  string,
+) => string
 let translateProgramFull: (
   ~input: Language.t,
   ~output: Language.t,
+  ~preciseMutation: bool=?,
   bool,
   string,
 ) => program<printAnn>

@@ -5159,15 +5159,120 @@ module RhombusPrinter = {
   // Rhombus requires `mutable` on a binding before `:=` will accept it, and the
   // SMoL AST does not record it, so it has to be recovered.
   //
-  // Deliberately, this asks only whether the program mutates *anything* and
-  // then marks every binding, exactly as the Scala printer decides `var`
-  // against `val`. Marking only the names that are actually assigned would be
-  // easy and would read better, but these programs are written to test whether
-  // a reader can tell mutating a variable from mutating what it points at, and
-  // a precise annotation answers that question for them.
-  let involveMutation = ref(false)
+  // By default this asks only whether the program mutates *anything* and then
+  // marks every binding, exactly as the Scala printer decides `var` against
+  // `val`. These programs are written to test whether a reader can tell
+  // mutating a variable from mutating what it points at, and a precise
+  // annotation answers that question for them (SMoL Tutor relies on this).
+  //
+  // `preciseMutation` instead marks only the bindings that some `set!`
+  // assigns, which reads better where nothing is being quizzed (Stacker uses
+  // this). Each `set!` is resolved to the binding it refers to under SMoL's
+  // scoping, so a shadowed name is marked only where it is actually assigned.
+  // Vector and pair mutation never needs `mutable`: it changes the value, not
+  // the binding.
+  let preciseMutation = ref(false)
 
-  let isMutated = _ => involveMutation.contents
+  let involveMutation = ref(false)
+  let assignedBinders: ref<Belt.Set.String.t> = ref(Belt.Set.String.empty)
+
+  // A binder is identified by its name and where it is written.
+  let binderKey = (x, sourceLocation) => `${x}@${SourceLocation.toString(sourceLocation)}`
+
+  let isMutated = (x, sourceLocation) =>
+    if preciseMutation.contents {
+      assignedBinders.contents->Belt.Set.String.has(binderKey(x, sourceLocation))
+    } else {
+      involveMutation.contents
+    }
+
+  let collectAssigned = (p: program<sourceLocation>) => {
+    let assigned = ref(Belt.Set.String.empty)
+    let bind = (env, x: annotated<symbol, sourceLocation>) =>
+      env->Belt.Map.String.set(x.it, binderKey(x.it, x.ann))
+    let bindAll = (env, xs) => xs->List.reduce(env, bind)
+    // Definitions in a block or at the top level are in scope throughout it.
+    let definedIn = (terms: list<term<sourceLocation>>) =>
+      terms->List.reduce(list{}, (xs, {it, _}) =>
+        switch it {
+        | Def({it: Var(x, _) | Fun(x, _, _) | GFun(x, _, _), _}) => list{x, ...xs}
+        | Exp(_) => xs
+        }
+      )->List.reverse
+    let rec expression = (env, {it, _}: expression<sourceLocation>) =>
+      switch it {
+      | Set(x, e) =>
+        env
+        ->Belt.Map.String.get(x.it)
+        ->Option.forEach(key => assigned := assigned.contents->Belt.Set.String.add(key))
+        expression(env, e)
+      | Con(_) | Ref(_) => ()
+      | Lam(xs, b) => block(bindAll(env, xs), b)
+      | Let(k, bs, b) =>
+        let xs = bs->List.map(({it: (x, _), _}) => x)
+        switch k {
+        | Plain =>
+          bs->List.forEach(({it: (_, e), _}) => expression(env, e))
+          block(bindAll(env, xs), b)
+        | Nested =>
+          let env = bs->List.reduce(env, (env, {it: (x, e), _}) => {
+            expression(env, e)
+            bind(env, x)
+          })
+          block(env, b)
+        | Recursive =>
+          let env = bindAll(env, xs)
+          bs->List.forEach(({it: (_, e), _}) => expression(env, e))
+          block(env, b)
+        }
+      | AppPrm(_, es) => es->List.forEach(e => expression(env, e))
+      | App(e, es) =>
+        expression(env, e)
+        es->List.forEach(e => expression(env, e))
+      | Bgn(es, e) =>
+        es->List.forEach(e => expression(env, e))
+        expression(env, e)
+      | If(e1, e2, e3) =>
+        expression(env, e1)
+        expression(env, e2)
+        expression(env, e3)
+      | And(es) | Or(es) => es->List.forEach(e => expression(env, e))
+      | Cnd(ebs, ob) =>
+        ebs->List.forEach(((e, b)) => {
+          expression(env, e)
+          block(env, b)
+        })
+        ob->Option.forEach(b => block(env, b))
+      | Yield(e) => expression(env, e)
+      | While(e, es) =>
+        expression(env, e)
+        es->List.forEach(e => expression(env, e))
+      }
+    and block = (env, b: block<sourceLocation>) => {
+      let env = bindAll(env, definedIn(termsOfBlock(b)))
+      let rec walk = ({it, _}: block<sourceLocation>) =>
+        switch it {
+        | BRet(e) => expression(env, e)
+        | BCons(t, b) =>
+          term(env, t)
+          walk(b)
+        }
+      walk(b)
+    }
+    and term = (env, {it, _}: term<sourceLocation>) =>
+      switch it {
+      | Exp(e) => expression(env, e)
+      | Def({it: d, _}) =>
+        switch d {
+        | Var(_, e) => expression(env, e)
+        | Fun(_, xs, b) | GFun(_, xs, b) => block(bindAll(env, xs), b)
+        }
+      }
+    let terms = termsOfProgram(p)
+    let env = bindAll(Belt.Map.String.empty, definedIn(terms))
+    terms->List.forEach(t => term(env, t))
+    assigned.contents
+  }
 
   let collectMutated = (p: program<sourceLocation>) => {
     let mutates = ref(false)
@@ -5234,9 +5339,9 @@ module RhombusPrinter = {
     mutates.contents
   }
 
-  // A binder writes `mutable` only where something assigns the name.
-  let binderOf = (keyword, x) =>
-    if isMutated(x) {
+  // A binder writes `mutable` only where something assigns it.
+  let binderOf = (keyword, x, sourceLocation) =>
+    if isMutated(x, sourceLocation) {
       `${keyword} mutable`
     } else {
       keyword
@@ -5499,8 +5604,8 @@ module RhombusPrinter = {
   let funLike = (op, x, xs, e) =>
     Print.s`${Print.fromString(op)} ${Print.dummy(exprAppToString(x, xs))}:${indentBlock(e, 2)}`
 
-  let defvarToString = (x, name, e) =>
-    Print.s`${Print.fromString(binderOf("def", name))} ${x} = ${e}`
+  let defvarToString = (x, name, sourceLocation, e) =>
+    Print.s`${Print.fromString(binderOf("def", name, sourceLocation))} ${x} = ${e}`
 
   let deffunToString = (f, xs, b) => funLike("fun", f, xs, b)
 
@@ -5545,7 +5650,7 @@ module RhombusPrinter = {
 
   /// A parameter, carrying `mutable` when something assigns it.
   let parameterPrint = (x: annotated<symbol, printAnn>) =>
-    if isMutated(x.it) {
+    if isMutated(x.it, x.ann.sourceLocation) {
       (Print.s`mutable ${x.ann.print}`)->Print.dummy
     } else {
       x.ann.print
@@ -5635,7 +5740,7 @@ module RhombusPrinter = {
     ctx,
     {ann: sourceLocation, it: (x, e)}: bind<sourceLocation>,
   ): bind<printAnn> => {
-    let keyword = binderOf(keyword, x.it)
+    let keyword = binderOf(keyword, x.it, x.ann)
     let x = x->symbolToString
     let e = e->printExp(ctx)
     let print = {
@@ -5897,12 +6002,13 @@ module RhombusPrinter = {
     switch d {
     | Var(x, e) => {
         let name = x.it
+        let nameLocation = x.ann
         let x = x->symbolToString
         // A definition is its own group, so its value may be laid out over
         // lines: `def f = fun (x):` with an indented body, and so on.
         let e = e->printExp(Stat(Return))
         {
-          ann: {sourceLocation, print: defvarToString(x.ann.print, name, e.ann.print)->annPrint},
+          ann: {sourceLocation, print: defvarToString(x.ann.print, name, nameLocation, e.ann.print)->annPrint},
           it: Var(x, e),
         }
       }
@@ -5992,6 +6098,7 @@ module RhombusPrinter = {
   // themselves are the ones that need it.
   let printProgramFull = (_insertPrintTopLevel, p) => {
     involveMutation := collectMutated(p)
+    assignedBinders := collectAssigned(p)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
@@ -6027,6 +6134,7 @@ module RhombusPrinter = {
 
   let printStandAloneTerm = (t: term<sourceLocation>): string => {
     involveMutation := false
+    assignedBinders := Belt.Set.String.empty
     Print.toString(printTerm(t, Step).ann.print)
   }
 }
@@ -6389,11 +6497,29 @@ let printerOf = (output: Language.t): module(Printer) =>
   | Scala => module(SCPrinter: Printer)
   }
 
+/// Run `f` with the Rhombus printer's mutation inference set as asked, putting
+/// the default back afterwards even if printing fails.
+let withPreciseMutation = (precise, f) => {
+  RhombusPrinter.preciseMutation := precise
+  switch f() {
+  | result =>
+    RhombusPrinter.preciseMutation := false
+    result
+  | exception e =>
+    RhombusPrinter.preciseMutation := false
+    raise(e)
+  }
+}
+
 /// Translate a program from one language to another.
-let translateProgram = (~input, ~output, insertPrintTopLevel, src) => {
+///
+/// `~preciseMutation` affects only Rhombus output: when true, `mutable` goes
+/// only on names that are assigned; by default every binding gets it as soon
+/// as the program mutates anything.
+let translateProgram = (~input, ~output, ~preciseMutation=false, insertPrintTopLevel, src) => {
   let p = parseProgramIn(input, src)
   module P = unpack(printerOf(output))
-  switch P.printProgram(insertPrintTopLevel, p) {
+  switch withPreciseMutation(preciseMutation, () => P.printProgram(insertPrintTopLevel, p)) {
   | printed => printed
   | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
   }
@@ -6401,10 +6527,10 @@ let translateProgram = (~input, ~output, insertPrintTopLevel, src) => {
 
 /// As {!translateProgram}, but keeping every node's own printed form, for
 /// source maps.
-let translateProgramFull = (~input, ~output, insertPrintTopLevel, src) => {
+let translateProgramFull = (~input, ~output, ~preciseMutation=false, insertPrintTopLevel, src) => {
   let p = parseProgramIn(input, src)
   module P = unpack(printerOf(output))
-  switch P.printProgramFull(insertPrintTopLevel, p) {
+  switch withPreciseMutation(preciseMutation, () => P.printProgramFull(insertPrintTopLevel, p)) {
   | printed => printed
   | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
   }
