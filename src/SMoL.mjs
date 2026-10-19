@@ -12,6 +12,7 @@ import * as Core__Array from "@rescript/core/src/Core__Array.mjs";
 import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
+import * as Belt_SetString from "rescript/lib/es6/belt_SetString.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
 import * as Belt_HashSetString from "rescript/lib/es6/belt_HashSetString.js";
@@ -10198,9 +10199,123 @@ function printName$5(x) {
   }
 }
 
+var preciseMutation = {
+  contents: false
+};
+
 var involveMutation$1 = {
   contents: false
 };
+
+var assignedNames = {
+  contents: undefined
+};
+
+function isMutated(x) {
+  if (preciseMutation.contents) {
+    return Belt_SetString.has(assignedNames.contents, x);
+  } else {
+    return involveMutation$1.contents;
+  }
+}
+
+function collectAssigned(p) {
+  var names = {
+    contents: undefined
+  };
+  var expression = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      switch (it.TAG) {
+        case "Con" :
+        case "Ref" :
+            return ;
+        case "Set" :
+            names.contents = Belt_SetString.add(names.contents, it._0.it);
+            _param = it._1;
+            continue ;
+        case "Lam" :
+            return block(it._1);
+        case "Let" :
+            Belt_List.forEach(it._1, (function (param) {
+                    expression(param.it[1]);
+                  }));
+            return block(it._2);
+        case "AppPrm" :
+            return Belt_List.forEach(it._1, expression);
+        case "Bgn" :
+            Belt_List.forEach(it._0, expression);
+            _param = it._1;
+            continue ;
+        case "If" :
+            expression(it._0);
+            expression(it._1);
+            _param = it._2;
+            continue ;
+        case "And" :
+        case "Or" :
+            return Belt_List.forEach(it._0, expression);
+        case "Cnd" :
+            Belt_List.forEach(it._0, (function (param) {
+                    expression(param[0]);
+                    block(param[1]);
+                  }));
+            return Belt_Option.forEach(it._1, block);
+        case "Yield" :
+            _param = it._0;
+            continue ;
+        case "App" :
+        case "While" :
+            break;
+        
+      }
+      expression(it._0);
+      return Belt_List.forEach(it._1, expression);
+    };
+  };
+  var block = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      if (it.TAG === "BRet") {
+        return expression(it._0);
+      }
+      term(it._0);
+      _param = it._1;
+      continue ;
+    };
+  };
+  var term = function (param) {
+    var it = param.it;
+    if (it.TAG !== "Def") {
+      return expression(it._0);
+    }
+    var d = it._0.it;
+    switch (d.TAG) {
+      case "Var" :
+          return expression(d._1);
+      case "Fun" :
+      case "GFun" :
+          return block(d._2);
+      
+    }
+  };
+  var program = function (_param) {
+    while(true) {
+      var param = _param;
+      var it = param.it;
+      if (typeof it !== "object") {
+        return ;
+      }
+      term(it._0);
+      _param = it._1;
+      continue ;
+    };
+  };
+  program(p);
+  return names.contents;
+}
 
 function collectMutated(p) {
   var mutates = {
@@ -10319,7 +10434,7 @@ function collectMutated(p) {
 }
 
 function binderOf(keyword, x) {
-  if (involveMutation$1.contents) {
+  if (isMutated(x)) {
     return keyword + " mutable";
   } else {
     return keyword;
@@ -11002,7 +11117,7 @@ function exprIfToString$5(cnd, thn, els, inStat) {
 }
 
 function parameterPrint(x) {
-  if (involveMutation$1.contents) {
+  if (isMutated(x.it)) {
     return {
             it: s([
                   "mutable ",
@@ -11876,6 +11991,7 @@ function printOutput$5(sepOpt, os) {
 
 function printProgramFull$5(_insertPrintTopLevel, p) {
   involveMutation$1.contents = collectMutated(p);
+  assignedNames.contents = collectAssigned(p);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -11953,6 +12069,7 @@ function printProgram$5(insertPrintTopLevel, p) {
 
 function printStandAloneTerm$5(t) {
   involveMutation$1.contents = false;
+  assignedNames.contents = undefined;
   return toString(printTerm$5(t, "Step").ann.print);
 }
 
@@ -13589,11 +13706,28 @@ function printerOf(output) {
   }
 }
 
-function translateProgram$6(input, output, insertPrintTopLevel, src) {
+function withPreciseMutation(precise, f) {
+  preciseMutation.contents = precise;
+  var result;
+  try {
+    result = f();
+  }
+  catch (e){
+    preciseMutation.contents = false;
+    throw e;
+  }
+  preciseMutation.contents = false;
+  return result;
+}
+
+function translateProgram$6(input, output, preciseMutationOpt, insertPrintTopLevel, src) {
+  var preciseMutation = preciseMutationOpt !== undefined ? preciseMutationOpt : false;
   var p = parseProgramIn(input, src);
   var P = printerOf(output);
   try {
-    return P.printProgram(insertPrintTopLevel, p);
+    return withPreciseMutation(preciseMutation, (function () {
+                  return P.printProgram(insertPrintTopLevel, p);
+                }));
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -13611,11 +13745,14 @@ function translateProgram$6(input, output, insertPrintTopLevel, src) {
   }
 }
 
-function translateProgramFull$6(input, output, insertPrintTopLevel, src) {
+function translateProgramFull$6(input, output, preciseMutationOpt, insertPrintTopLevel, src) {
+  var preciseMutation = preciseMutationOpt !== undefined ? preciseMutationOpt : false;
   var p = parseProgramIn(input, src);
   var P = printerOf(output);
   try {
-    return P.printProgramFull(insertPrintTopLevel, p);
+    return withPreciseMutation(preciseMutation, (function () {
+                  return P.printProgramFull(insertPrintTopLevel, p);
+                }));
   }
   catch (raw_err){
     var err = Caml_js_exceptions.internalToOCamlException(raw_err);
@@ -13706,7 +13843,8 @@ var RhombusPrinter = {
   printOutput: printOutput$5,
   printStandAloneTerm: printStandAloneTerm$5,
   printProgram: printProgram$5,
-  printProgramFull: printProgramFull$5
+  printProgramFull: printProgramFull$5,
+  preciseMutation: preciseMutation
 };
 
 var PYPrinter = {

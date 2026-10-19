@@ -5159,15 +5159,91 @@ module RhombusPrinter = {
   // Rhombus requires `mutable` on a binding before `:=` will accept it, and the
   // SMoL AST does not record it, so it has to be recovered.
   //
-  // Deliberately, this asks only whether the program mutates *anything* and
-  // then marks every binding, exactly as the Scala printer decides `var`
-  // against `val`. Marking only the names that are actually assigned would be
-  // easy and would read better, but these programs are written to test whether
-  // a reader can tell mutating a variable from mutating what it points at, and
-  // a precise annotation answers that question for them.
-  let involveMutation = ref(false)
+  // By default this asks only whether the program mutates *anything* and then
+  // marks every binding, exactly as the Scala printer decides `var` against
+  // `val`. These programs are written to test whether a reader can tell
+  // mutating a variable from mutating what it points at, and a precise
+  // annotation answers that question for them (SMoL Tutor relies on this).
+  //
+  // `preciseMutation` instead marks only the names that some `set!` assigns,
+  // which reads better where nothing is being quizzed (Stacker uses this).
+  // Vector and pair mutation never needs `mutable`: it changes the value, not
+  // the binding. Names are compared without regard to scope, so a shadowed
+  // name that is assigned in one scope is marked in all of them; that is
+  // conservative and still valid Rhombus.
+  let preciseMutation = ref(false)
 
-  let isMutated = _ => involveMutation.contents
+  let involveMutation = ref(false)
+  let assignedNames: ref<Belt.Set.String.t> = ref(Belt.Set.String.empty)
+
+  let isMutated = x =>
+    if preciseMutation.contents {
+      assignedNames.contents->Belt.Set.String.has(x)
+    } else {
+      involveMutation.contents
+    }
+
+  let collectAssigned = (p: program<sourceLocation>) => {
+    let names = ref(Belt.Set.String.empty)
+    let rec expression = ({it, _}: expression<sourceLocation>) =>
+      switch it {
+      | Set(x, e) =>
+        names := names.contents->Belt.Set.String.add(x.it)
+        expression(e)
+      | Con(_) | Ref(_) => ()
+      | Lam(_, b) => block(b)
+      | Let(_, bs, b) =>
+        bs->List.forEach(({it: (_, e), _}) => expression(e))
+        block(b)
+      | AppPrm(_, es) => es->List.forEach(expression)
+      | App(e, es) =>
+        expression(e)
+        es->List.forEach(expression)
+      | Bgn(es, e) =>
+        es->List.forEach(expression)
+        expression(e)
+      | If(e1, e2, e3) =>
+        expression(e1)
+        expression(e2)
+        expression(e3)
+      | And(es) | Or(es) => es->List.forEach(expression)
+      | Cnd(ebs, ob) =>
+        ebs->List.forEach(((e, b)) => {
+          expression(e)
+          block(b)
+        })
+        ob->Option.forEach(block)
+      | Yield(e) => expression(e)
+      | While(e, es) =>
+        expression(e)
+        es->List.forEach(expression)
+      }
+    and block = ({it, _}: block<sourceLocation>) =>
+      switch it {
+      | BRet(e) => expression(e)
+      | BCons(t, b) =>
+        term(t)
+        block(b)
+      }
+    and term = ({it, _}: term<sourceLocation>) =>
+      switch it {
+      | Exp(e) => expression(e)
+      | Def({it: d, _}) =>
+        switch d {
+        | Var(_, e) => expression(e)
+        | Fun(_, _, b) | GFun(_, _, b) => block(b)
+        }
+      }
+    and program = ({it, _}: program<sourceLocation>) =>
+      switch it {
+      | PNil => ()
+      | PCons(t, p) =>
+        term(t)
+        program(p)
+      }
+    program(p)
+    names.contents
+  }
 
   let collectMutated = (p: program<sourceLocation>) => {
     let mutates = ref(false)
@@ -5992,6 +6068,7 @@ module RhombusPrinter = {
   // themselves are the ones that need it.
   let printProgramFull = (_insertPrintTopLevel, p) => {
     involveMutation := collectMutated(p)
+    assignedNames := collectAssigned(p)
     let rec print = ({it, ann: sourceLocation}: program<sourceLocation>): program<printAnn> => {
       let annPrint = print => {
         sourceLocation,
@@ -6027,6 +6104,7 @@ module RhombusPrinter = {
 
   let printStandAloneTerm = (t: term<sourceLocation>): string => {
     involveMutation := false
+    assignedNames := Belt.Set.String.empty
     Print.toString(printTerm(t, Step).ann.print)
   }
 }
@@ -6389,11 +6467,29 @@ let printerOf = (output: Language.t): module(Printer) =>
   | Scala => module(SCPrinter: Printer)
   }
 
+/// Run `f` with the Rhombus printer's mutation inference set as asked, putting
+/// the default back afterwards even if printing fails.
+let withPreciseMutation = (precise, f) => {
+  RhombusPrinter.preciseMutation := precise
+  switch f() {
+  | result =>
+    RhombusPrinter.preciseMutation := false
+    result
+  | exception e =>
+    RhombusPrinter.preciseMutation := false
+    raise(e)
+  }
+}
+
 /// Translate a program from one language to another.
-let translateProgram = (~input, ~output, insertPrintTopLevel, src) => {
+///
+/// `~preciseMutation` affects only Rhombus output: when true, `mutable` goes
+/// only on names that are assigned; by default every binding gets it as soon
+/// as the program mutates anything.
+let translateProgram = (~input, ~output, ~preciseMutation=false, insertPrintTopLevel, src) => {
   let p = parseProgramIn(input, src)
   module P = unpack(printerOf(output))
-  switch P.printProgram(insertPrintTopLevel, p) {
+  switch withPreciseMutation(preciseMutation, () => P.printProgram(insertPrintTopLevel, p)) {
   | printed => printed
   | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
   }
@@ -6401,10 +6497,10 @@ let translateProgram = (~input, ~output, insertPrintTopLevel, src) => {
 
 /// As {!translateProgram}, but keeping every node's own printed form, for
 /// source maps.
-let translateProgramFull = (~input, ~output, insertPrintTopLevel, src) => {
+let translateProgramFull = (~input, ~output, ~preciseMutation=false, insertPrintTopLevel, src) => {
   let p = parseProgramIn(input, src)
   module P = unpack(printerOf(output))
-  switch P.printProgramFull(insertPrintTopLevel, p) {
+  switch withPreciseMutation(preciseMutation, () => P.printProgramFull(insertPrintTopLevel, p)) {
   | printed => printed
   | exception SMoLPrintError(err) => raise(SMoLTranslateError(PrintError(err)))
   }
