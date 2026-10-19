@@ -12,6 +12,7 @@ import * as Core__Array from "@rescript/core/src/Core__Array.mjs";
 import * as Core__Float from "@rescript/core/src/Core__Float.mjs";
 import * as SExpression from "@brownplt/s-expression/src/SExpression.mjs";
 import * as Core__Option from "@rescript/core/src/Core__Option.mjs";
+import * as Belt_MapString from "rescript/lib/es6/belt_MapString.js";
 import * as Belt_SetString from "rescript/lib/es6/belt_SetString.js";
 import * as Caml_exceptions from "rescript/lib/es6/caml_exceptions.js";
 import * as Belt_HashMapString from "rescript/lib/es6/belt_HashMapString.js";
@@ -10207,23 +10208,43 @@ var involveMutation$1 = {
   contents: false
 };
 
-var assignedNames = {
+var assignedBinders = {
   contents: undefined
 };
 
-function isMutated(x) {
+function binderKey(x, sourceLocation) {
+  return x + "@" + SExpression.SourceLocation.toString(sourceLocation);
+}
+
+function isMutated(x, sourceLocation) {
   if (preciseMutation.contents) {
-    return Belt_SetString.has(assignedNames.contents, x);
+    return Belt_SetString.has(assignedBinders.contents, binderKey(x, sourceLocation));
   } else {
     return involveMutation$1.contents;
   }
 }
 
 function collectAssigned(p) {
-  var names = {
+  var assigned = {
     contents: undefined
   };
-  var expression = function (_param) {
+  var bind = function (env, x) {
+    return Belt_MapString.set(env, x.it, binderKey(x.it, x.ann));
+  };
+  var definedIn = function (terms) {
+    return Belt_List.reverse(Belt_List.reduce(terms, /* [] */0, (function (xs, param) {
+                      var it = param.it;
+                      if (it.TAG === "Def") {
+                        return {
+                                hd: it._0.it._0,
+                                tl: xs
+                              };
+                      } else {
+                        return xs;
+                      }
+                    })));
+  };
+  var expression = function (env, _param) {
     while(true) {
       var param = _param;
       var it = param.it;
@@ -10232,89 +10253,124 @@ function collectAssigned(p) {
         case "Ref" :
             return ;
         case "Set" :
-            names.contents = Belt_SetString.add(names.contents, it._0.it);
+            Belt_Option.forEach(Belt_MapString.get(env, it._0.it), (function (key) {
+                    assigned.contents = Belt_SetString.add(assigned.contents, key);
+                  }));
             _param = it._1;
             continue ;
         case "Lam" :
-            return block(it._1);
+            return block(Belt_List.reduce(it._0, env, bind), it._1);
         case "Let" :
-            Belt_List.forEach(it._1, (function (param) {
-                    expression(param.it[1]);
+            var b = it._2;
+            var bs = it._1;
+            var xs = Belt_List.map(bs, (function (param) {
+                    return param.it[0];
                   }));
-            return block(it._2);
+            switch (it._0) {
+              case "Plain" :
+                  Belt_List.forEach(bs, (function (param) {
+                          expression(env, param.it[1]);
+                        }));
+                  return block(Belt_List.reduce(xs, env, bind), b);
+              case "Nested" :
+                  var env$1 = Belt_List.reduce(bs, env, (function (env, param) {
+                          var match = param.it;
+                          expression(env, match[1]);
+                          return bind(env, match[0]);
+                        }));
+                  return block(env$1, b);
+              case "Recursive" :
+                  var env$2 = Belt_List.reduce(xs, env, bind);
+                  Belt_List.forEach(bs, (function(env$2){
+                      return function (param) {
+                        expression(env$2, param.it[1]);
+                      }
+                      }(env$2)));
+                  return block(env$2, b);
+              
+            }
         case "AppPrm" :
-            return Belt_List.forEach(it._1, expression);
+            return Belt_List.forEach(it._1, (function (e) {
+                          expression(env, e);
+                        }));
+        case "App" :
+            expression(env, it._0);
+            return Belt_List.forEach(it._1, (function (e) {
+                          expression(env, e);
+                        }));
         case "Bgn" :
-            Belt_List.forEach(it._0, expression);
+            Belt_List.forEach(it._0, (function (e) {
+                    expression(env, e);
+                  }));
             _param = it._1;
             continue ;
         case "If" :
-            expression(it._0);
-            expression(it._1);
+            expression(env, it._0);
+            expression(env, it._1);
             _param = it._2;
             continue ;
         case "And" :
         case "Or" :
-            return Belt_List.forEach(it._0, expression);
+            break;
         case "Cnd" :
             Belt_List.forEach(it._0, (function (param) {
-                    expression(param[0]);
-                    block(param[1]);
+                    expression(env, param[0]);
+                    block(env, param[1]);
                   }));
-            return Belt_Option.forEach(it._1, block);
+            return Belt_Option.forEach(it._1, (function (b) {
+                          block(env, b);
+                        }));
         case "Yield" :
             _param = it._0;
             continue ;
-        case "App" :
         case "While" :
-            break;
+            expression(env, it._0);
+            return Belt_List.forEach(it._1, (function (e) {
+                          expression(env, e);
+                        }));
         
       }
-      expression(it._0);
-      return Belt_List.forEach(it._1, expression);
+      return Belt_List.forEach(it._0, (function (e) {
+                    expression(env, e);
+                  }));
     };
   };
-  var block = function (_param) {
+  var block = function (env, b) {
+    var env$1 = Belt_List.reduce(definedIn(termsOfBlock(b)), env, bind);
+    var _param = b;
     while(true) {
       var param = _param;
       var it = param.it;
       if (it.TAG === "BRet") {
-        return expression(it._0);
+        return expression(env$1, it._0);
       }
-      term(it._0);
+      term(env$1, it._0);
       _param = it._1;
       continue ;
     };
   };
-  var term = function (param) {
+  var term = function (env, param) {
     var it = param.it;
     if (it.TAG !== "Def") {
-      return expression(it._0);
+      return expression(env, it._0);
     }
     var d = it._0.it;
     switch (d.TAG) {
       case "Var" :
-          return expression(d._1);
+          return expression(env, d._1);
       case "Fun" :
       case "GFun" :
-          return block(d._2);
+          break;
       
     }
+    block(Belt_List.reduce(d._1, env, bind), d._2);
   };
-  var program = function (_param) {
-    while(true) {
-      var param = _param;
-      var it = param.it;
-      if (typeof it !== "object") {
-        return ;
-      }
-      term(it._0);
-      _param = it._1;
-      continue ;
-    };
-  };
-  program(p);
-  return names.contents;
+  var terms = termsOfProgram(p);
+  var env = Belt_List.reduce(definedIn(terms), undefined, bind);
+  Belt_List.forEach(terms, (function (t) {
+          term(env, t);
+        }));
+  return assigned.contents;
 }
 
 function collectMutated(p) {
@@ -10433,8 +10489,8 @@ function collectMutated(p) {
   return mutates.contents;
 }
 
-function binderOf(keyword, x) {
-  if (isMutated(x)) {
+function binderOf(keyword, x, sourceLocation) {
+  if (isMutated(x, sourceLocation)) {
     return keyword + " mutable";
   } else {
     return keyword;
@@ -10967,8 +11023,8 @@ function exprAppPrmToString$4(ann, ctx, p, es) {
       };
 }
 
-function defvarToString$5(x, name, e) {
-  var it = binderOf("def", name);
+function defvarToString$5(x, name, sourceLocation, e) {
+  var it = binderOf("def", name, sourceLocation);
   return s([
               "",
               " ",
@@ -11117,7 +11173,7 @@ function exprIfToString$5(cnd, thn, els, inStat) {
 }
 
 function parameterPrint(x) {
-  if (isMutated(x.it)) {
+  if (isMutated(x.it, x.ann.sourceLocation)) {
     return {
             it: s([
                   "mutable ",
@@ -11433,7 +11489,7 @@ function printExp$5(param, ctx) {
                 var sourceLocation = xe.ann;
                 var match = xe.it;
                 var x = match[0];
-                var keyword$1 = binderOf(keyword, x.it);
+                var keyword$1 = binderOf(keyword, x.it, x.ann);
                 var x$1 = symbolToString$5(x);
                 var e = printExp$5(match[1], bindCtx);
                 var print_it = s([
@@ -11789,6 +11845,7 @@ function printDef$5(param) {
     case "Var" :
         var x = d._0;
         var name = x.it;
+        var nameLocation = x.ann;
         var x$1 = symbolToString$5(x);
         var e = printExp$5(d._1, {
               TAG: "Stat",
@@ -11802,7 +11859,7 @@ function printDef$5(param) {
                 },
                 ann: {
                   sourceLocation: sourceLocation,
-                  print: annPrint(defvarToString$5(x$1.ann.print, name, e.ann.print))
+                  print: annPrint(defvarToString$5(x$1.ann.print, name, nameLocation, e.ann.print))
                 }
               };
     case "Fun" :
@@ -11991,7 +12048,7 @@ function printOutput$5(sepOpt, os) {
 
 function printProgramFull$5(_insertPrintTopLevel, p) {
   involveMutation$1.contents = collectMutated(p);
-  assignedNames.contents = collectAssigned(p);
+  assignedBinders.contents = collectAssigned(p);
   var print = function (param) {
     var sourceLocation = param.ann;
     var it = param.it;
@@ -12069,7 +12126,7 @@ function printProgram$5(insertPrintTopLevel, p) {
 
 function printStandAloneTerm$5(t) {
   involveMutation$1.contents = false;
-  assignedNames.contents = undefined;
+  assignedBinders.contents = undefined;
   return toString(printTerm$5(t, "Step").ann.print);
 }
 
